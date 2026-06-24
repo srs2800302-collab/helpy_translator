@@ -14,6 +14,10 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
   final TranslateCanonicalPhrase translateCanonicalPhrase;
   final AuditCanonicalClientRules auditCanonicalClientRules;
 
+  void clearResults() {
+    emit(const TranslatorState.initial());
+  }
+
   Future<void> translate(String sentence) async {
     emit(
       state.copyWith(

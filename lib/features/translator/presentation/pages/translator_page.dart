@@ -51,16 +51,34 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              FilledButton(
-                onPressed:
-                    state.status == TranslatorStatus.loading ? null : _translate,
-                child: state.status == TranslatorStatus.loading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Перевести'),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: state.status == TranslatorStatus.loading
+                          ? null
+                          : _translate,
+                      child: state.status == TranslatorStatus.loading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Перевести'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: state.status == TranslatorStatus.loading ||
+                            state.status == TranslatorStatus.auditLoading
+                        ? null
+                        : () {
+                            context.read<TranslatorCubit>().clearResults();
+                          },
+                    icon: const Icon(Icons.clear),
+                    tooltip: 'Очистить результаты',
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -87,10 +105,10 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                     child: Text(state.errorMessage),
                   ),
                 ),
-              if (state.auditResults.isNotEmpty)
-                CanonicalAuditResultsView(results: state.auditResults),
               if (state.result != null)
                 TranslationResultView(result: state.result!),
+              if (state.auditResults.isNotEmpty)
+                CanonicalAuditResultsView(results: state.auditResults),
             ],
           );
         },
