@@ -18,6 +18,18 @@ final class CanonicalAuditResultsView extends StatelessWidget {
         })
         .length;
 
+    final int equivalentCount = results
+        .where((CanonicalAuditResult result) {
+          return result.status == CanonicalAuditStatus.equivalent;
+        })
+        .length;
+
+    final int reviewCount = results
+        .where((CanonicalAuditResult result) {
+          return result.status == CanonicalAuditStatus.needsReview;
+        })
+        .length;
+
     final int driftCount = results
         .where((CanonicalAuditResult result) {
           return result.status == CanonicalAuditStatus.drift;
@@ -38,7 +50,7 @@ final class CanonicalAuditResultsView extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        Text('✅ Exact: $exactCount   ⚠ Drift: $driftCount   ❌ Failed: $failedCount'),
+        Text('✅ Exact: $exactCount   🟢 Eq: $equivalentCount   🟡 Review: $reviewCount   🔴 Drift: $driftCount   ❌ Failed: $failedCount'),
         const SizedBox(height: 12),
         for (int index = 0; index < results.length; index++)
           _CanonicalAuditCard(
@@ -63,12 +75,16 @@ final class _CanonicalAuditCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String statusLabel = switch (result.status) {
       CanonicalAuditStatus.exact => '✅ Exact',
-      CanonicalAuditStatus.drift => '⚠ Canonical Drift',
+      CanonicalAuditStatus.equivalent => '🟢 Equivalent',
+      CanonicalAuditStatus.needsReview => '🟡 Needs Review',
+      CanonicalAuditStatus.drift => '🔴 Canonical Drift',
       CanonicalAuditStatus.failed => '❌ Failed',
     };
 
     final Color statusColor = switch (result.status) {
       CanonicalAuditStatus.exact => Colors.green.shade50,
+      CanonicalAuditStatus.equivalent => Colors.lightGreen.shade50,
+      CanonicalAuditStatus.needsReview => Colors.yellow.shade50,
       CanonicalAuditStatus.drift => Colors.orange.shade50,
       CanonicalAuditStatus.failed => Colors.red.shade50,
     };
@@ -89,6 +105,8 @@ final class _CanonicalAuditCard extends StatelessWidget {
             _TextRow(label: 'TH', value: translation.th),
             _TextRow(label: 'EN → RU', value: translation.enToRu),
             _TextRow(label: 'TH → RU', value: translation.thToRu),
+            _TextRow(label: 'Verdict', value: translation.canonicalVerdict),
+            _TextRow(label: 'Comment', value: translation.canonicalComment),
           ],
           if (result.errorMessage.isNotEmpty)
             _TextRow(label: 'Error', value: result.errorMessage),

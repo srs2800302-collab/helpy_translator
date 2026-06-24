@@ -9,6 +9,8 @@ final class TranslationResultModel extends TranslationResult {
     required super.thToRu,
     required super.enToTh,
     required super.thToEn,
+    required super.canonicalVerdict,
+    required super.canonicalComment,
   });
 
   factory TranslationResultModel.fromContent(String content) {
@@ -22,6 +24,8 @@ final class TranslationResultModel extends TranslationResult {
       thToRu: sections['TH → RU'] ?? '',
       enToTh: sections['EN → TH'] ?? '',
       thToEn: sections['TH → EN'] ?? '',
+      canonicalVerdict: sections['CANONICAL VERDICT'] ?? 'NEEDS_REVIEW',
+      canonicalComment: sections['CANONICAL COMMENT'] ?? '',
     );
   }
 
@@ -34,6 +38,8 @@ final class TranslationResultModel extends TranslationResult {
       'TH → RU',
       'EN → TH',
       'TH → EN',
+      'CANONICAL VERDICT',
+      'CANONICAL COMMENT',
     ];
 
     final Map<String, String> result = <String, String>{};

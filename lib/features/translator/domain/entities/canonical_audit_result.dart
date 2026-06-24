@@ -4,6 +4,8 @@ import 'translation_result.dart';
 
 enum CanonicalAuditStatus {
   exact,
+  equivalent,
+  needsReview,
   drift,
   failed,
 }

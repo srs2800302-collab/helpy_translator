@@ -9,6 +9,8 @@ base class TranslationResult extends Equatable {
     required this.thToRu,
     required this.enToTh,
     required this.thToEn,
+    required this.canonicalVerdict,
+    required this.canonicalComment,
   });
 
   final String ru;
@@ -18,6 +20,8 @@ base class TranslationResult extends Equatable {
   final String thToRu;
   final String enToTh;
   final String thToEn;
+  final String canonicalVerdict;
+  final String canonicalComment;
 
   @override
   List<Object?> get props => <Object?>[
@@ -28,5 +32,7 @@ base class TranslationResult extends Equatable {
         thToRu,
         enToTh,
         thToEn,
+        canonicalVerdict,
+        canonicalComment,
       ];
 }

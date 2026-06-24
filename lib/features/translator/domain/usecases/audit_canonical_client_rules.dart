@@ -51,6 +51,20 @@ final class AuditCanonicalClientRules {
       return CanonicalAuditStatus.exact;
     }
 
+    final String verdict = translation.canonicalVerdict.trim().toUpperCase();
+
+    if (verdict == 'EXACT') {
+      return CanonicalAuditStatus.exact;
+    }
+
+    if (verdict == 'EQUIVALENT') {
+      return CanonicalAuditStatus.equivalent;
+    }
+
+    if (verdict == 'NEEDS_REVIEW') {
+      return CanonicalAuditStatus.needsReview;
+    }
+
     return CanonicalAuditStatus.drift;
   }
 
