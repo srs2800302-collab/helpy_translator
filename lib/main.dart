@@ -4,8 +4,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
+import 'features/translator/data/datasources/canonical_rules_local_datasource.dart';
 import 'features/translator/data/datasources/translator_remote_datasource.dart';
 import 'features/translator/data/repositories/translator_repository_impl.dart';
+import 'features/translator/domain/usecases/audit_canonical_client_rules.dart';
 import 'features/translator/domain/usecases/translate_canonical_phrase.dart';
 import 'features/translator/presentation/cubit/translator_cubit.dart';
 import 'features/translator/presentation/pages/translator_page.dart';
@@ -25,15 +27,26 @@ Future<void> main() async {
       appConfig: appConfig,
     );
 
-    final TranslatorRepositoryImpl repository =
-        TranslatorRepositoryImpl(remoteDataSource);
+    const CanonicalRulesLocalDataSource localDataSource =
+        CanonicalRulesLocalDataSourceImpl();
+
+    final TranslatorRepositoryImpl repository = TranslatorRepositoryImpl(
+      remoteDataSource: remoteDataSource,
+      localDataSource: localDataSource,
+    );
 
     final TranslateCanonicalPhrase translateCanonicalPhrase =
         TranslateCanonicalPhrase(repository);
 
+    final AuditCanonicalClientRules auditCanonicalClientRules =
+        AuditCanonicalClientRules(repository);
+
     runApp(
       HelpyTranslatorApp(
-        translatorCubit: TranslatorCubit(translateCanonicalPhrase),
+        translatorCubit: TranslatorCubit(
+          translateCanonicalPhrase: translateCanonicalPhrase,
+          auditCanonicalClientRules: auditCanonicalClientRules,
+        ),
       ),
     );
   } catch (error) {
