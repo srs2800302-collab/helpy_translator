@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubit/translator_cubit.dart';
 import '../cubit/translator_state.dart';
+import '../widgets/canonical_audit_results_view.dart';
 import '../widgets/translation_result_view.dart';
 
 final class TranslatorPage extends StatefulWidget {
@@ -61,7 +62,24 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                       )
                     : const Text('Перевести'),
               ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: state.status == TranslatorStatus.auditLoading
+                    ? null
+                    : () {
+                        context.read<TranslatorCubit>().auditCanonicalRules();
+                      },
+                icon: const Icon(Icons.fact_check),
+                label: const Text('Проверить весь словарь'),
+              ),
               const SizedBox(height: 16),
+              if (state.status == TranslatorStatus.auditLoading)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('Идёт пакетная проверка словаря...'),
+                  ),
+                ),
               if (state.status == TranslatorStatus.failure)
                 Card(
                   child: Padding(
@@ -69,6 +87,8 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                     child: Text(state.errorMessage),
                   ),
                 ),
+              if (state.auditResults.isNotEmpty)
+                CanonicalAuditResultsView(results: state.auditResults),
               if (state.result != null)
                 TranslationResultView(result: state.result!),
             ],
