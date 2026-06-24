@@ -67,7 +67,7 @@ final class _CanonicalAuditCard extends StatelessWidget {
       CanonicalAuditStatus.failed => '❌ Failed',
     };
 
-    final Color? statusColor = switch (result.status) {
+    final Color statusColor = switch (result.status) {
       CanonicalAuditStatus.exact => Colors.green.shade50,
       CanonicalAuditStatus.drift => Colors.orange.shade50,
       CanonicalAuditStatus.failed => Colors.red.shade50,
