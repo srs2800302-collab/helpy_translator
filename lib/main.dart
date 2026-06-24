@@ -13,27 +13,32 @@ import 'features/translator/presentation/pages/translator_page.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: '.env');
-  final AppConfig appConfig = AppConfig.fromEnv();
-  final ApiClient apiClient = ApiClient(appConfig);
+  try {
+    await dotenv.load(fileName: '.env');
 
-  final TranslatorRemoteDataSource remoteDataSource =
-      TranslatorRemoteDataSourceImpl(
-    apiClient: apiClient,
-    appConfig: appConfig,
-  );
+    final AppConfig appConfig = AppConfig.fromEnv();
+    final ApiClient apiClient = ApiClient(appConfig);
 
-  final TranslatorRepositoryImpl repository =
-      TranslatorRepositoryImpl(remoteDataSource);
+    final TranslatorRemoteDataSource remoteDataSource =
+        TranslatorRemoteDataSourceImpl(
+      apiClient: apiClient,
+      appConfig: appConfig,
+    );
 
-  final TranslateCanonicalPhrase translateCanonicalPhrase =
-      TranslateCanonicalPhrase(repository);
+    final TranslatorRepositoryImpl repository =
+        TranslatorRepositoryImpl(remoteDataSource);
 
-  runApp(
-    HelpyTranslatorApp(
-      translatorCubit: TranslatorCubit(translateCanonicalPhrase),
-    ),
-  );
+    final TranslateCanonicalPhrase translateCanonicalPhrase =
+        TranslateCanonicalPhrase(repository);
+
+    runApp(
+      HelpyTranslatorApp(
+        translatorCubit: TranslatorCubit(translateCanonicalPhrase),
+      ),
+    );
+  } catch (error) {
+    runApp(StartupErrorApp(message: error.toString()));
+  }
 }
 
 class HelpyTranslatorApp extends StatelessWidget {
@@ -55,6 +60,34 @@ class HelpyTranslatorApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
         home: const TranslatorPage(),
+      ),
+    );
+  }
+}
+
+class StartupErrorApp extends StatelessWidget {
+  const StartupErrorApp({
+    required this.message,
+    super.key,
+  });
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Helpy Translator Error',
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: SelectableText(
+              'Ошибка запуска:\n\n$message',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
       ),
     );
   }
