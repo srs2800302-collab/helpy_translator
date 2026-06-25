@@ -13,7 +13,6 @@ final class StatusSummaryView extends StatelessWidget {
     super.key,
   });
 
-
   factory StatusSummaryView.fromTranslationResults({
     required List<TranslationResult> results,
   }) {
@@ -87,13 +86,22 @@ final class StatusSummaryView extends StatelessWidget {
     );
   }
 
+  static int _countTranslations(
+    List<TranslationResult> results,
+    String verdict,
+  ) {
+    return results.where((TranslationResult result) {
+      return result.canonicalVerdict.trim().toUpperCase() == verdict;
+    }).length;
+  }
+
   static int _count(
     List<CanonicalAuditResult> results,
     CanonicalAuditStatus status,
   ) {
-    return results
-        .where((CanonicalAuditResult result) => result.status == status)
-        .length;
+    return results.where((CanonicalAuditResult result) {
+      return result.status == status;
+    }).length;
   }
 }
 
@@ -110,9 +118,6 @@ final class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      '$icon $label: $count',
-      style: Theme.of(context).textTheme.bodyMedium,
-    );
+    return Text('$icon $label: $count');
   }
 }
