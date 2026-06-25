@@ -127,11 +127,11 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           errorMessage: error.message,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       emit(
         state.copyWith(
           status: TranslatorStatus.failure,
-          errorMessage: 'Неизвестная ошибка аудита.',
+          errorMessage: error.toString(),
         ),
       );
     } finally {
