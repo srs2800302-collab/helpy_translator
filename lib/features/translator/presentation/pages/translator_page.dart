@@ -19,32 +19,11 @@ final class _TranslatorPageState extends State<TranslatorPage> {
   final TextEditingController _controller = TextEditingController(
     text: 'Освободите оборудование от вещей до приезда мастера.',
   );
-  final ScrollController _scrollController = ScrollController();
-  int _lastAuditResultsCount = 0;
 
   @override
   void dispose() {
     _controller.dispose();
-    _scrollController.dispose();
     super.dispose();
-  }
-
-  void _scrollToBottom() {
-    if (!_scrollController.hasClients) {
-      return;
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) {
-        return;
-      }
-
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeOut,
-      );
-    });
   }
 
   void _translate() {
@@ -60,15 +39,29 @@ final class _TranslatorPageState extends State<TranslatorPage> {
       ),
       body: BlocBuilder<TranslatorCubit, TranslatorState>(
         builder: (BuildContext context, TranslatorState state) {
-          if (state.auditResults.length > _lastAuditResultsCount) {
-            _lastAuditResultsCount = state.auditResults.length;
-            _scrollToBottom();
-          }
-
           return ListView(
-            controller: _scrollController,
             padding: const EdgeInsets.all(16),
             children: <Widget>[
+              if (state.auditResults.isNotEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: StatusSummaryView.fromAuditResults(
+                      results: state.auditResults,
+                    ),
+                  ),
+                ),
+              if (state.auditResults.isEmpty &&
+                  state.translationHistory.isNotEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: StatusSummaryView.fromVerdict(
+                      state.translationHistory.first.canonicalVerdict,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
               TextField(
                 controller: _controller,
                 minLines: 3,
@@ -129,7 +122,7 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                 ),
               if (state.status == TranslatorStatus.auditLoading)
                 ProgressStatusCard(
-                  title: 'Проверка канонического словаря',
+                  title: 'Проверка канонических формулировок',
                   completed: state.auditCompleted,
                   total: state.auditTotal,
                   currentPhrase: state.currentAuditPhrase,
@@ -141,15 +134,14 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                     child: Text(state.errorMessage),
                   ),
                 ),
-              if (state.result != null) ...<Widget>[
+              if (state.translationHistory.isNotEmpty) ...<Widget>[
                 const Text(
-                  'Результат перевода',
+                  'Результаты переводов',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
-                StatusSummaryView.fromVerdict(state.result!.canonicalVerdict),
-                const SizedBox(height: 8),
-                TranslationResultView(result: state.result!),
+                for (final result in state.translationHistory)
+                  TranslationResultView(result: result),
               ],
               if (state.auditResults.isNotEmpty)
                 CanonicalAuditResultsView(results: state.auditResults),

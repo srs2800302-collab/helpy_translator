@@ -16,6 +16,7 @@ final class TranslatorState extends Equatable {
   const TranslatorState({
     required this.status,
     required this.result,
+    required this.translationHistory,
     required this.auditResults,
     required this.errorMessage,
     required this.auditTotal,
@@ -26,6 +27,7 @@ final class TranslatorState extends Equatable {
   const TranslatorState.initial()
       : status = TranslatorStatus.initial,
         result = null,
+        translationHistory = const <TranslationResult>[],
         auditResults = const <CanonicalAuditResult>[],
         errorMessage = '',
         auditTotal = 0,
@@ -34,6 +36,7 @@ final class TranslatorState extends Equatable {
 
   final TranslatorStatus status;
   final TranslationResult? result;
+  final List<TranslationResult> translationHistory;
   final List<CanonicalAuditResult> auditResults;
   final String errorMessage;
   final int auditTotal;
@@ -44,6 +47,8 @@ final class TranslatorState extends Equatable {
     TranslatorStatus? status,
     TranslationResult? result,
     bool clearResult = false,
+    List<TranslationResult>? translationHistory,
+    bool clearTranslationHistory = false,
     List<CanonicalAuditResult>? auditResults,
     String? errorMessage,
     int? auditTotal,
@@ -53,6 +58,9 @@ final class TranslatorState extends Equatable {
     return TranslatorState(
       status: status ?? this.status,
       result: clearResult ? null : result ?? this.result,
+      translationHistory: clearTranslationHistory
+          ? const <TranslationResult>[]
+          : translationHistory ?? this.translationHistory,
       auditResults: auditResults ?? this.auditResults,
       errorMessage: errorMessage ?? this.errorMessage,
       auditTotal: auditTotal ?? this.auditTotal,
@@ -65,6 +73,7 @@ final class TranslatorState extends Equatable {
   List<Object?> get props => <Object?>[
         status,
         result,
+        translationHistory,
         auditResults,
         errorMessage,
         auditTotal,

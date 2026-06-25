@@ -46,6 +46,10 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
         state.copyWith(
           status: TranslatorStatus.success,
           result: result,
+          translationHistory: <TranslationResult>[
+            result,
+            ...state.translationHistory,
+          ],
           errorMessage: '',
         ),
       );
