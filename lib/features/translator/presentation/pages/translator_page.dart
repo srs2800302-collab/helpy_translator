@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/translator_cubit.dart';
 import '../cubit/translator_state.dart';
 import '../widgets/canonical_audit_results_view.dart';
+import '../widgets/status_summary_view.dart';
 import '../widgets/translation_result_view.dart';
 
 final class TranslatorPage extends StatefulWidget {
@@ -91,11 +92,14 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                 label: const Text('Проверить весь словарь'),
               ),
               const SizedBox(height: 16),
-              if (state.status == TranslatorStatus.auditLoading)
+              if (state.status == TranslatorStatus.loading ||
+                  state.status == TranslatorStatus.auditLoading)
                 const Card(
                   child: Padding(
                     padding: EdgeInsets.all(12),
-                    child: Text('Идёт пакетная проверка словаря...'),
+                    child: Text(
+                      'Перевод в процессе...\nРаботает в фоне. Можно свернуть приложение.',
+                    ),
                   ),
                 ),
               if (state.status == TranslatorStatus.failure)
@@ -105,8 +109,16 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                     child: Text(state.errorMessage),
                   ),
                 ),
-              if (state.result != null)
+              if (state.result != null) ...<Widget>[
+                const Text(
+                  'Результат перевода',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                StatusSummaryView.fromVerdict(state.result!.canonicalVerdict),
+                const SizedBox(height: 8),
                 TranslationResultView(result: state.result!),
+              ],
               if (state.auditResults.isNotEmpty)
                 CanonicalAuditResultsView(results: state.auditResults),
             ],
