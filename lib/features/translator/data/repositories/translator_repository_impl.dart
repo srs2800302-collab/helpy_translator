@@ -1,6 +1,6 @@
 import '../../domain/entities/translation_result.dart';
 import '../../domain/repositories/translator_repository.dart';
-import '../datasources/canonical_rules_local_datasource.dart';
+import '../datasources/registry_local_datasource.dart';
 import '../datasources/translator_remote_datasource.dart';
 
 final class TranslatorRepositoryImpl implements TranslatorRepository {
@@ -10,7 +10,7 @@ final class TranslatorRepositoryImpl implements TranslatorRepository {
   });
 
   final TranslatorRemoteDataSource remoteDataSource;
-  final CanonicalRulesLocalDataSource localDataSource;
+  final RegistryLocalDataSource localDataSource;
 
   @override
   Future<TranslationResult> translate(String sentence) {
@@ -19,6 +19,6 @@ final class TranslatorRepositoryImpl implements TranslatorRepository {
 
   @override
   Future<List<String>> loadCanonicalClientRules() {
-    return localDataSource.loadClientRules();
+    return localDataSource.loadCanonicalClientRules();
   }
 }

@@ -29,4 +29,3 @@ flutter:
 
   assets:
     - .env
-    - assets/canonical_client_rules_ru.txt
