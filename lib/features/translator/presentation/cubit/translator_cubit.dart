@@ -27,8 +27,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     emit(
       state.copyWith(
         status: TranslatorStatus.loading,
-        clearResult: true,
-        auditResults: const <CanonicalAuditResult>[],
         errorMessage: '',
         auditTotal: 0,
         auditCompleted: 0,
@@ -48,7 +46,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
         state.copyWith(
           status: TranslatorStatus.success,
           result: result,
-          auditResults: const <CanonicalAuditResult>[],
           errorMessage: '',
         ),
       );
@@ -75,8 +72,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     emit(
       state.copyWith(
         status: TranslatorStatus.auditLoading,
-        clearResult: true,
-        auditResults: const <CanonicalAuditResult>[],
         errorMessage: '',
         auditTotal: 0,
         auditCompleted: 0,
@@ -91,12 +86,29 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
 
     try {
       final List<CanonicalAuditResult> results =
-          await auditCanonicalClientRules();
+          await auditCanonicalClientRules(
+        onProgress: ({
+          required int completed,
+          required int total,
+          required String currentPhrase,
+          required List<CanonicalAuditResult> results,
+        }) {
+          emit(
+            state.copyWith(
+              status: TranslatorStatus.auditLoading,
+              auditResults: results,
+              auditTotal: total,
+              auditCompleted: completed,
+              currentAuditPhrase: currentPhrase,
+              errorMessage: '',
+            ),
+          );
+        },
+      );
 
       emit(
         state.copyWith(
           status: TranslatorStatus.auditSuccess,
-          clearResult: true,
           auditResults: results,
           auditTotal: results.length,
           auditCompleted: results.length,

@@ -2,16 +2,39 @@ import '../entities/canonical_audit_result.dart';
 import '../entities/translation_result.dart';
 import '../repositories/translator_repository.dart';
 
+typedef CanonicalAuditProgress = void Function({
+  required int completed,
+  required int total,
+  required String currentPhrase,
+  required List<CanonicalAuditResult> results,
+});
+
 final class AuditCanonicalClientRules {
   const AuditCanonicalClientRules(this.repository);
 
   final TranslatorRepository repository;
 
-  Future<List<CanonicalAuditResult>> call() async {
+  Future<List<CanonicalAuditResult>> call({
+    CanonicalAuditProgress? onProgress,
+  }) async {
     final List<String> rules = await repository.loadCanonicalClientRules();
     final List<CanonicalAuditResult> results = <CanonicalAuditResult>[];
 
+    onProgress?.call(
+      completed: 0,
+      total: rules.length,
+      currentPhrase: rules.isEmpty ? '' : rules.first,
+      results: const <CanonicalAuditResult>[],
+    );
+
     for (final String rule in rules) {
+      onProgress?.call(
+        completed: results.length,
+        total: rules.length,
+        currentPhrase: rule,
+        results: List<CanonicalAuditResult>.unmodifiable(results),
+      );
+
       try {
         final TranslationResult translation = await repository.translate(rule);
 
@@ -33,6 +56,13 @@ final class AuditCanonicalClientRules {
           ),
         );
       }
+
+      onProgress?.call(
+        completed: results.length,
+        total: rules.length,
+        currentPhrase: rule,
+        results: List<CanonicalAuditResult>.unmodifiable(results),
+      );
     }
 
     return results;
