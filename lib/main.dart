@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/background/android_foreground_service_controller.dart';
-import 'core/background/background_execution_controller.dart';
 import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
 import 'features/translator/data/datasources/canonical_rules_local_datasource.dart';
