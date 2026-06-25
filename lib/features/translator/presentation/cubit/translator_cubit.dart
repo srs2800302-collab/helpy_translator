@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/background/background_execution_controller.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../domain/entities/canonical_audit_result.dart';
 import '../../domain/entities/translation_result.dart';
@@ -11,10 +12,12 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
   TranslatorCubit({
     required this.translateCanonicalPhrase,
     required this.auditCanonicalClientRules,
+    required this.backgroundExecutionController,
   }) : super(const TranslatorState.initial());
 
   final TranslateCanonicalPhrase translateCanonicalPhrase;
   final AuditCanonicalClientRules auditCanonicalClientRules;
+  final BackgroundExecutionController backgroundExecutionController;
 
   void clearResults() {
     emit(const TranslatorState.initial());
@@ -31,6 +34,11 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
         auditCompleted: 0,
         currentAuditPhrase: '',
       ),
+    );
+
+    await backgroundExecutionController.start(
+      title: 'Helpy Translator',
+      message: 'Перевод формулировки выполняется в фоне',
     );
 
     try {
@@ -58,6 +66,8 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           errorMessage: 'Неизвестная ошибка перевода.',
         ),
       );
+    } finally {
+      await backgroundExecutionController.stop();
     }
   }
 
@@ -72,6 +82,11 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
         auditCompleted: 0,
         currentAuditPhrase: 'Подготовка словаря...',
       ),
+    );
+
+    await backgroundExecutionController.start(
+      title: 'Helpy Translator',
+      message: 'Проверка канонического словаря выполняется в фоне',
     );
 
     try {
@@ -103,6 +118,8 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           errorMessage: 'Неизвестная ошибка аудита.',
         ),
       );
+    } finally {
+      await backgroundExecutionController.stop();
     }
   }
 }
