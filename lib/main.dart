@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/background/android_foreground_service_controller.dart';
 import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
-import 'features/translator/data/datasources/registry_local_datasource.dart';
+import 'features/translator/data/datasources/registry_remote_datasource.dart';
 import 'features/translator/data/datasources/translator_remote_datasource.dart';
 import 'features/translator/data/repositories/translator_repository_impl.dart';
 import 'features/translator/domain/usecases/audit_canonical_client_rules.dart';
@@ -28,12 +28,12 @@ Future<void> main() async {
       appConfig: appConfig,
     );
 
-    const RegistryLocalDataSource localDataSource =
-        RegistryLocalDataSourceImpl();
+    final RegistryRemoteDataSource registryRemoteDataSource =
+        RegistryRemoteDataSourceImpl(appConfig: appConfig);
 
     final TranslatorRepositoryImpl repository = TranslatorRepositoryImpl(
       remoteDataSource: remoteDataSource,
-      localDataSource: localDataSource,
+      registryRemoteDataSource: registryRemoteDataSource,
     );
 
     final TranslateCanonicalPhrase translateCanonicalPhrase =
