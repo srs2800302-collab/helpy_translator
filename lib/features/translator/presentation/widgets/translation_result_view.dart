@@ -38,7 +38,7 @@ final class TranslationResultView extends StatelessWidget {
               label: const Text('Копировать всё'),
             ),
           ),
-          _TextRow(label: 'Исходная формулировка (RU)', value: result.ru),
+          _TextRow(label: 'Исходная формулировка (${result.sourceLanguage})', value: result.sourceText),
           const Divider(),
           _TextRow(label: 'RU → EN', value: result.en),
           _TextRow(label: 'RU → TH', value: result.th),
@@ -58,8 +58,8 @@ final class TranslationResultView extends StatelessWidget {
 
   static String _copyAllText(TranslationResult result) {
     return '''
-Исходная формулировка (RU):
-${result.ru}
+Исходная формулировка (${result.sourceLanguage}):
+${result.sourceText}
 
 RU → EN:
 ${result.en}

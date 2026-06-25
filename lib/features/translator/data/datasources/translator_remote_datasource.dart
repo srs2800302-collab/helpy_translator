@@ -21,7 +21,6 @@ final class TranslatorRemoteDataSourceImpl implements TranslatorRemoteDataSource
   @override
   Future<TranslationResultModel> translate(String sentence) async {
     final String normalizedSentence = sentence.trim();
-
     if (normalizedSentence.isEmpty) {
       throw const AppException('Введите текст для перевода.');
     }
@@ -31,9 +30,9 @@ final class TranslatorRemoteDataSourceImpl implements TranslatorRemoteDataSource
         '/chat/completions',
         data: <String, Object>{
           'model': appConfig.typhoonModel,
-          'max_completion_tokens': 512,
-          'temperature': 0.6,
-          'top_p': 1.0,
+          'max_completion_tokens': 900,
+          'temperature': 0.15,
+          'top_p': 0.8,
           'frequency_penalty': 0.0,
           'messages': <Map<String, String>>[
             <String, String>{
@@ -42,7 +41,7 @@ final class TranslatorRemoteDataSourceImpl implements TranslatorRemoteDataSource
             },
             <String, String>{
               'role': 'user',
-              'content': 'Sentence:\n"$normalizedSentence"',
+              'content': 'Source text:\n"$normalizedSentence"',
             },
           ],
         },
@@ -56,30 +55,61 @@ final class TranslatorRemoteDataSourceImpl implements TranslatorRemoteDataSource
   }
 
   static const String _systemPrompt = '''
-You are Helpy canonical translation auditor.
+You are Helpy multilingual canonical translation auditor.
 
-Task:
-Translate the sentence into Russian, English and Thai.
-Then perform reverse translations.
-Then evaluate whether the canonical Russian wording is preserved.
+This is not normal translation.
+This is a strict audit of canonical business wording for a home-services marketplace.
 
-Strict rules:
-- Preserve the source meaning.
+Input can be RU, EN or TH.
+First detect the source language.
+Then translate into RU, EN and TH.
+Then perform reverse translations in all required directions.
+Then assign a strict canonical verdict.
+
+Core audit principles:
+- Preserve exact business meaning.
 - Preserve service-marketplace terminology.
-- Do not replace key terms with softer synonyms when avoidable.
-- мастер = master / technician / ช่าง depending on language naturalness.
-- клиент = client / customer / ลูกค้า.
-- оборудование = equipment / อุปกรณ์.
-- Do not improve, simplify, legalize or rewrite the source sentence.
-- For Russian reverse translations, return the closest possible wording to the original Russian canonical phrase.
+- Preserve role meaning: client, master/technician, equipment, access, work area, safety, materials, diagnostics, installation, removal, replacement.
+- Do not soften, generalize, simplify, legalize or improve the source wording.
+- Do not replace specific terms with broader terms.
+- Do not change action, timing, responsibility, boundary or risk.
+- If a term can be interpreted differently after translation, do not return EXACT.
+- If style changes from instruction to description, do not return EXACT.
+- If translation is natural but less precise, return NEEDS_REVIEW.
+- If business meaning changes, return CANONICAL_DRIFT.
+- EXACT is allowed only when meaning, terminology and canonical intent survive all language cycles.
 
-Canonical verdict values:
-- EXACT: reverse RU translations preserve the original wording almost exactly.
-- EQUIVALENT: wording differs, but business meaning is fully preserved.
-- NEEDS_REVIEW: meaning is mostly preserved, but wording may be risky for canonical rules.
-- CANONICAL_DRIFT: meaning, responsibility, role, action, timing or boundary changed.
+Status rules:
+EXACT:
+- Meaning is fully preserved in RU, EN and TH.
+- Reverse translations preserve the same business meaning.
+- Key terminology is stable.
+- No ambiguity was introduced.
 
-Output strictly in this format:
+EQUIVALENT:
+- Wording differs only because of natural language localization.
+- Business meaning is fully preserved.
+- No role, duty, timing, boundary, safety or technical meaning changed.
+
+NEEDS_REVIEW:
+- Meaning is mostly preserved, but wording is less precise.
+- Terminology changed to a close but not identical term.
+- Style, register or canonical tone changed.
+- Manual review is required before accepting as canonical.
+
+CANONICAL_DRIFT:
+- Meaning changed.
+- Requirement, role, timing, boundary, action or safety implication changed.
+- Added or removed obligation.
+- Translation may mislead client or master.
+
+Output strictly in this exact format:
+
+SOURCE LANGUAGE:
+RU | EN | TH
+
+SOURCE TEXT:
+...
 
 RU:
 ...
@@ -103,10 +133,10 @@ TH → EN:
 ...
 
 CANONICAL VERDICT:
-...
+EXACT | EQUIVALENT | NEEDS_REVIEW | CANONICAL_DRIFT
 
 CANONICAL COMMENT:
-...
+Short Russian explanation. Explain the weakest point if status is not EXACT.
 ''';
 
   static String _extractContent(Object? data) {

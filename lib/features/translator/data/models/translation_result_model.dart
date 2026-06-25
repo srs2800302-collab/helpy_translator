@@ -2,6 +2,8 @@ import '../../domain/entities/translation_result.dart';
 
 final class TranslationResultModel extends TranslationResult {
   const TranslationResultModel({
+    required super.sourceLanguage,
+    required super.sourceText,
     required super.ru,
     required super.en,
     required super.th,
@@ -17,6 +19,8 @@ final class TranslationResultModel extends TranslationResult {
     final Map<String, String> sections = _parseSections(content);
 
     return TranslationResultModel(
+      sourceLanguage: sections['SOURCE LANGUAGE'] ?? 'UNKNOWN',
+      sourceText: sections['SOURCE TEXT'] ?? '',
       ru: sections['RU'] ?? '',
       en: sections['EN'] ?? '',
       th: sections['TH'] ?? '',
@@ -31,6 +35,8 @@ final class TranslationResultModel extends TranslationResult {
 
   static Map<String, String> _parseSections(String content) {
     const List<String> labels = <String>[
+      'SOURCE LANGUAGE',
+      'SOURCE TEXT',
       'RU',
       'EN',
       'TH',

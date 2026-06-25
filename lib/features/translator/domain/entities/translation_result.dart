@@ -2,6 +2,8 @@ import 'package:equatable/equatable.dart';
 
 base class TranslationResult extends Equatable {
   const TranslationResult({
+    required this.sourceLanguage,
+    required this.sourceText,
     required this.ru,
     required this.en,
     required this.th,
@@ -13,6 +15,8 @@ base class TranslationResult extends Equatable {
     required this.canonicalComment,
   });
 
+  final String sourceLanguage;
+  final String sourceText;
   final String ru;
   final String en;
   final String th;
@@ -25,6 +29,8 @@ base class TranslationResult extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[
+        sourceLanguage,
+        sourceText,
         ru,
         en,
         th,

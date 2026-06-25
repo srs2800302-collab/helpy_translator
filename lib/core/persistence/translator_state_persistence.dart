@@ -71,6 +71,8 @@ final class TranslatorStatePersistence {
 
   static Map<String, Object?> _translationToJson(TranslationResult result) {
     return <String, Object?>{
+      'sourceLanguage': result.sourceLanguage,
+      'sourceText': result.sourceText,
       'ru': result.ru,
       'en': result.en,
       'th': result.th,
@@ -85,6 +87,12 @@ final class TranslatorStatePersistence {
 
   static TranslationResult _translationFromJson(Map<String, dynamic> json) {
     return TranslationResult(
+      sourceLanguage: _string(json['sourceLanguage']).isEmpty
+          ? 'RU'
+          : _string(json['sourceLanguage']),
+      sourceText: _string(json['sourceText']).isEmpty
+          ? _string(json['ru'])
+          : _string(json['sourceText']),
       ru: _string(json['ru']),
       en: _string(json['en']),
       th: _string(json['th']),
