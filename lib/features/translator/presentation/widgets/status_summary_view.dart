@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/canonical_audit_result.dart';
+import '../../domain/entities/translation_result.dart';
 
 final class StatusSummaryView extends StatelessWidget {
   const StatusSummaryView({
@@ -11,6 +12,28 @@ final class StatusSummaryView extends StatelessWidget {
     required this.failedCount,
     super.key,
   });
+
+
+  factory StatusSummaryView.fromTranslationResults({
+    required List<TranslationResult> results,
+  }) {
+    return StatusSummaryView(
+      exactCount: _countTranslations(results, 'EXACT'),
+      equivalentCount: _countTranslations(results, 'EQUIVALENT'),
+      reviewCount: _countTranslations(results, 'NEEDS_REVIEW'),
+      driftCount: _countTranslations(results, 'CANONICAL_DRIFT'),
+      failedCount: results.where((TranslationResult result) {
+        final String verdict = result.canonicalVerdict.trim().toUpperCase();
+        return verdict.isEmpty ||
+            !<String>{
+              'EXACT',
+              'EQUIVALENT',
+              'NEEDS_REVIEW',
+              'CANONICAL_DRIFT',
+            }.contains(verdict);
+      }).length,
+    );
+  }
 
   factory StatusSummaryView.fromAuditResults({
     required List<CanonicalAuditResult> results,

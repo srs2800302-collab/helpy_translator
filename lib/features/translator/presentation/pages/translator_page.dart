@@ -40,22 +40,12 @@ final class _TranslatorPageState extends State<TranslatorPage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: <Widget>[
-              if (state.auditResults.isNotEmpty)
+              if (state.translationHistory.isNotEmpty)
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: StatusSummaryView.fromAuditResults(
-                      results: state.auditResults,
-                    ),
-                  ),
-                ),
-              if (state.auditResults.isEmpty &&
-                  state.translationHistory.isNotEmpty)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: StatusSummaryView.fromVerdict(
-                      state.translationHistory.first.canonicalVerdict,
+                    child: StatusSummaryView.fromTranslationResults(
+                      results: state.translationHistory,
                     ),
                   ),
                 ),
