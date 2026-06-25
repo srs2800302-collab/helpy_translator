@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/background/android_foreground_service_controller.dart';
 import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
+import 'core/persistence/translator_state_persistence.dart';
 import 'features/translator/data/datasources/registry_remote_datasource.dart';
 import 'features/translator/data/datasources/translator_remote_datasource.dart';
 import 'features/translator/data/repositories/translator_repository_impl.dart';
@@ -42,14 +43,19 @@ Future<void> main() async {
     final AuditCanonicalClientRules auditCanonicalClientRules =
         AuditCanonicalClientRules(repository);
 
+    final TranslatorCubit translatorCubit = TranslatorCubit(
+      translateCanonicalPhrase: translateCanonicalPhrase,
+      auditCanonicalClientRules: auditCanonicalClientRules,
+      backgroundExecutionController:
+          const AndroidForegroundServiceController(),
+      persistence: const TranslatorStatePersistence(),
+    );
+
+    await translatorCubit.restorePersistedState();
+
     runApp(
       HelpyTranslatorApp(
-        translatorCubit: TranslatorCubit(
-          translateCanonicalPhrase: translateCanonicalPhrase,
-          auditCanonicalClientRules: auditCanonicalClientRules,
-          backgroundExecutionController:
-              const AndroidForegroundServiceController(),
-        ),
+        translatorCubit: translatorCubit,
       ),
     );
   } catch (error) {

@@ -16,9 +16,7 @@ final class TranslatorPage extends StatefulWidget {
 }
 
 final class _TranslatorPageState extends State<TranslatorPage> {
-  final TextEditingController _controller = TextEditingController(
-    text: 'Освободите оборудование от вещей до приезда мастера.',
-  );
+  final TextEditingController _controller = TextEditingController();
 
   @override
   void dispose() {

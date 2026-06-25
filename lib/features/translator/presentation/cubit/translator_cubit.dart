@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/background/background_execution_controller.dart';
 import '../../../../core/errors/app_exception.dart';
+import '../../../../core/persistence/translator_state_persistence.dart';
 import '../../domain/entities/canonical_audit_result.dart';
 import '../../domain/entities/translation_result.dart';
 import '../../domain/usecases/audit_canonical_client_rules.dart';
@@ -13,13 +14,33 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     required this.translateCanonicalPhrase,
     required this.auditCanonicalClientRules,
     required this.backgroundExecutionController,
+    required this.persistence,
   }) : super(const TranslatorState.initial());
 
   final TranslateCanonicalPhrase translateCanonicalPhrase;
   final AuditCanonicalClientRules auditCanonicalClientRules;
   final BackgroundExecutionController backgroundExecutionController;
+  final TranslatorStatePersistence persistence;
 
-  void clearResults() {
+  Future<void> restorePersistedState() async {
+    final List<TranslationResult> translationHistory =
+        await persistence.loadTranslationHistory();
+    final List<CanonicalAuditResult> auditResults =
+        await persistence.loadAuditResults();
+
+    emit(
+      state.copyWith(
+        translationHistory: translationHistory,
+        auditResults: auditResults,
+        auditTotal: auditResults.length,
+        auditCompleted: auditResults.length,
+        currentAuditPhrase: '',
+      ),
+    );
+  }
+
+  Future<void> clearResults() async {
+    await persistence.clear();
     emit(const TranslatorState.initial());
   }
 
@@ -41,15 +62,18 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
 
     try {
       final TranslationResult result = await translateCanonicalPhrase(sentence);
+      final List<TranslationResult> updatedHistory = <TranslationResult>[
+        result,
+        ...state.translationHistory,
+      ];
+
+      await persistence.saveTranslationHistory(updatedHistory);
 
       emit(
         state.copyWith(
           status: TranslatorStatus.success,
           result: result,
-          translationHistory: <TranslationResult>[
-            result,
-            ...state.translationHistory,
-          ],
+          translationHistory: updatedHistory,
           errorMessage: '',
         ),
       );
@@ -60,11 +84,11 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           errorMessage: error.message,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       emit(
         state.copyWith(
           status: TranslatorStatus.failure,
-          errorMessage: 'Неизвестная ошибка перевода.',
+          errorMessage: error.toString(),
         ),
       );
     } finally {
@@ -97,6 +121,8 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           required String currentPhrase,
           required List<CanonicalAuditResult> results,
         }) {
+          persistence.saveAuditResults(results);
+
           emit(
             state.copyWith(
               status: TranslatorStatus.auditLoading,
@@ -109,6 +135,8 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           );
         },
       );
+
+      await persistence.saveAuditResults(results);
 
       emit(
         state.copyWith(
