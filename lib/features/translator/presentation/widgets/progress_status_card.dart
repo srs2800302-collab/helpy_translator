@@ -18,6 +18,7 @@ final class ProgressStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final double progress =
         total == 0 ? 0 : (completed / total).clamp(0.0, 1.0);
+    final int percent = (progress * 100).round();
 
     return Card(
       child: Padding(
@@ -29,12 +30,12 @@ final class ProgressStatusCard extends StatelessWidget {
             const SizedBox(height: 10),
             LinearProgressIndicator(value: total == 0 ? null : progress),
             const SizedBox(height: 8),
-            Text(total == 0 ? 'Подготовка...' : '$completed / $total'),
+            Text(total == 0 ? 'Подготовка...' : '$completed / $total · $percent%'),
             if (currentPhrase.isNotEmpty) ...<Widget>[
               const SizedBox(height: 8),
               Text(
-                currentPhrase,
-                maxLines: 3,
+                'Текущая:\n$currentPhrase',
+                maxLines: 4,
                 overflow: TextOverflow.ellipsis,
               ),
             ],

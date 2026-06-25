@@ -19,11 +19,32 @@ final class _TranslatorPageState extends State<TranslatorPage> {
   final TextEditingController _controller = TextEditingController(
     text: 'Освободите оборудование от вещей до приезда мастера.',
   );
+  final ScrollController _scrollController = ScrollController();
+  int _lastAuditResultsCount = 0;
 
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) {
+        return;
+      }
+
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   void _translate() {
@@ -39,7 +60,13 @@ final class _TranslatorPageState extends State<TranslatorPage> {
       ),
       body: BlocBuilder<TranslatorCubit, TranslatorState>(
         builder: (BuildContext context, TranslatorState state) {
+          if (state.auditResults.length > _lastAuditResultsCount) {
+            _lastAuditResultsCount = state.auditResults.length;
+            _scrollToBottom();
+          }
+
           return ListView(
+            controller: _scrollController,
             padding: const EdgeInsets.all(16),
             children: <Widget>[
               TextField(
