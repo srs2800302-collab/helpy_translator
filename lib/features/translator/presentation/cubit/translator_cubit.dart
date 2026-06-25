@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/errors/app_exception.dart';
+import '../../domain/entities/canonical_audit_result.dart';
+import '../../domain/entities/translation_result.dart';
 import '../../domain/usecases/audit_canonical_client_rules.dart';
 import '../../domain/usecases/translate_canonical_phrase.dart';
 import 'translator_state.dart';
@@ -22,17 +24,23 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     emit(
       state.copyWith(
         status: TranslatorStatus.loading,
+        clearResult: true,
+        auditResults: const <CanonicalAuditResult>[],
         errorMessage: '',
+        auditTotal: 0,
+        auditCompleted: 0,
+        currentAuditPhrase: '',
       ),
     );
 
     try {
-      final result = await translateCanonicalPhrase(sentence);
+      final TranslationResult result = await translateCanonicalPhrase(sentence);
 
       emit(
         state.copyWith(
           status: TranslatorStatus.success,
           result: result,
+          auditResults: const <CanonicalAuditResult>[],
           errorMessage: '',
         ),
       );
@@ -57,18 +65,27 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     emit(
       state.copyWith(
         status: TranslatorStatus.auditLoading,
-        auditResults: const [],
+        clearResult: true,
+        auditResults: const <CanonicalAuditResult>[],
         errorMessage: '',
+        auditTotal: 0,
+        auditCompleted: 0,
+        currentAuditPhrase: 'Подготовка словаря...',
       ),
     );
 
     try {
-      final results = await auditCanonicalClientRules();
+      final List<CanonicalAuditResult> results =
+          await auditCanonicalClientRules();
 
       emit(
         state.copyWith(
           status: TranslatorStatus.auditSuccess,
+          clearResult: true,
           auditResults: results,
+          auditTotal: results.length,
+          auditCompleted: results.length,
+          currentAuditPhrase: '',
           errorMessage: '',
         ),
       );

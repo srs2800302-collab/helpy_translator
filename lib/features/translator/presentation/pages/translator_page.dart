@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/translator_cubit.dart';
 import '../cubit/translator_state.dart';
 import '../widgets/canonical_audit_results_view.dart';
+import '../widgets/progress_status_card.dart';
 import '../widgets/status_summary_view.dart';
 import '../widgets/translation_result_view.dart';
 
@@ -92,15 +93,19 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                 label: const Text('Проверить весь словарь'),
               ),
               const SizedBox(height: 16),
-              if (state.status == TranslatorStatus.loading ||
-                  state.status == TranslatorStatus.auditLoading)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      'Перевод в процессе...\nРаботает в фоне. Можно свернуть приложение.',
-                    ),
-                  ),
+              if (state.status == TranslatorStatus.loading)
+                const ProgressStatusCard(
+                  title: 'Перевод формулировки',
+                  completed: 0,
+                  total: 0,
+                  currentPhrase: '',
+                ),
+              if (state.status == TranslatorStatus.auditLoading)
+                ProgressStatusCard(
+                  title: 'Проверка канонического словаря',
+                  completed: state.auditCompleted,
+                  total: state.auditTotal,
+                  currentPhrase: state.currentAuditPhrase,
                 ),
               if (state.status == TranslatorStatus.failure)
                 Card(
