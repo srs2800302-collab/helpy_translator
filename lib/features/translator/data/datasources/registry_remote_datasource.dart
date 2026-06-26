@@ -66,7 +66,7 @@ final class RegistryRemoteDataSourceImpl implements RegistryRemoteDataSource {
 
   List<String> _extractCanonicalClientRules(String text) {
     final RegExp blockPattern = RegExp(
-      r'## Client Rules Language & Translation Standard(.*?)(?:\n## |\$)',
+      r'## Rule Language & Translation Standard(.*?)(?:\n## |\$)',
       dotAll: true,
     );
 
