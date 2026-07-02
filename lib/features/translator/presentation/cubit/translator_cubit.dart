@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/background/background_execution_controller.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/persistence/translator_state_persistence.dart';
+import '../../../../core/persistence/registry_phrase_status_persistence.dart';
 import '../../domain/entities/canonical_audit_result.dart';
 import '../../domain/entities/registry_node.dart';
 import '../../domain/entities/translation_result.dart';
@@ -18,6 +19,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     required this.backgroundExecutionController,
     required this.persistence,
     required this.loadRegistryTree,
+    required this.registryPhraseStatusPersistence,
   }) : super(const TranslatorState.initial());
 
   final TranslateCanonicalPhrase translateCanonicalPhrase;
@@ -25,12 +27,15 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
   final BackgroundExecutionController backgroundExecutionController;
   final TranslatorStatePersistence persistence;
   final LoadRegistryTree loadRegistryTree;
+  final RegistryPhraseStatusPersistence registryPhraseStatusPersistence;
 
   Future<void> restorePersistedState() async {
     final List<TranslationResult> translationHistory =
         await persistence.loadTranslationHistory();
     final List<CanonicalAuditResult> auditResults =
         await persistence.loadAuditResults();
+    final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
+        await registryPhraseStatusPersistence.loadIndex();
 
     emit(
       state.copyWith(
@@ -39,12 +44,14 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
         auditTotal: auditResults.length,
         auditCompleted: auditResults.length,
         currentAuditPhrase: '',
+        registryPhraseStatusIndex: phraseStatusIndex,
       ),
     );
   }
 
   Future<void> clearResults() async {
     await persistence.clear();
+    await registryPhraseStatusPersistence.clear();
     emit(const TranslatorState.initial());
   }
 
@@ -100,12 +107,16 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
       ];
 
       await persistence.saveTranslationHistory(updatedHistory);
+      await registryPhraseStatusPersistence.saveTranslationResult(result);
+      final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
+          await registryPhraseStatusPersistence.loadIndex();
 
       emit(
         state.copyWith(
           status: TranslatorStatus.success,
           result: result,
           translationHistory: updatedHistory,
+          registryPhraseStatusIndex: phraseStatusIndex,
           errorMessage: '',
         ),
       );
@@ -154,6 +165,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           required List<CanonicalAuditResult> results,
         }) {
           persistence.saveAuditResults(results);
+          registryPhraseStatusPersistence.saveAuditResults(results);
 
           emit(
             state.copyWith(
@@ -169,6 +181,9 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
       );
 
       await persistence.saveAuditResults(results);
+      await registryPhraseStatusPersistence.saveAuditResults(results);
+      final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
+          await registryPhraseStatusPersistence.loadIndex();
 
       emit(
         state.copyWith(
@@ -177,6 +192,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           auditTotal: results.length,
           auditCompleted: results.length,
           currentAuditPhrase: '',
+          registryPhraseStatusIndex: phraseStatusIndex,
           errorMessage: '',
         ),
       );

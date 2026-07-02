@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubit/translator_cubit.dart';
+import '../../../../core/persistence/registry_phrase_status_persistence.dart';
 import '../../domain/entities/canonical_audit_result.dart';
 import '../../domain/entities/registry_node.dart';
 import '../../domain/entities/translation_result.dart';
@@ -253,6 +254,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
               for (final RegistryNode child in root.children)
                 _RegistryNodeTile(
                   node: child,
+                  phraseStatusIndex: state.registryPhraseStatusIndex,
                   translationHistory: state.translationHistory,
                   auditResults: state.auditResults,
                   onPhraseSelected: widget.onPhraseSelected,
@@ -268,12 +270,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
 final class _RegistryNodeTile extends StatelessWidget {
   const _RegistryNodeTile({
     required this.node,
+    required this.phraseStatusIndex,
     required this.translationHistory,
     required this.auditResults,
     required this.onPhraseSelected,
   });
 
   final RegistryNode node;
+  final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex;
   final List<TranslationResult> translationHistory;
   final List<CanonicalAuditResult> auditResults;
   final ValueChanged<String> onPhraseSelected;
@@ -305,6 +309,7 @@ final class _RegistryNodeTile extends StatelessWidget {
             leading: _RegistryPhraseStatusIcon(
               status: _resolvePhraseStatus(
                 phrase: phrase,
+                phraseStatusIndex: phraseStatusIndex,
                 translationHistory: translationHistory,
                 auditResults: auditResults,
               ),
@@ -317,6 +322,7 @@ final class _RegistryNodeTile extends StatelessWidget {
         for (final RegistryNode child in node.children)
           _RegistryNodeTile(
             node: child,
+            phraseStatusIndex: phraseStatusIndex,
             translationHistory: translationHistory,
             auditResults: auditResults,
             onPhraseSelected: onPhraseSelected,
@@ -327,9 +333,17 @@ final class _RegistryNodeTile extends StatelessWidget {
 
   static _RegistryPhraseStatus _resolvePhraseStatus({
     required String phrase,
+    required Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex,
     required List<TranslationResult> translationHistory,
     required List<CanonicalAuditResult> auditResults,
   }) {
+    final PersistedRegistryPhraseRecord? persisted =
+        phraseStatusIndex[RegistryPhraseStatusPersistence.normalizePhrase(phrase)];
+
+    if (persisted != null) {
+      return _RegistryPhraseStatus.fromPersistedStatus(persisted.status);
+    }
+
     for (final TranslationResult result in translationHistory) {
       if (result.sourceText.trim() == phrase.trim() ||
           result.ru.trim() == phrase.trim()) {
@@ -354,6 +368,20 @@ enum _RegistryPhraseStatus {
   drift,
   failed,
   unchecked;
+
+  static _RegistryPhraseStatus fromPersistedStatus(
+    PersistedRegistryPhraseStatus status,
+  ) {
+    return switch (status) {
+      PersistedRegistryPhraseStatus.exact => _RegistryPhraseStatus.exact,
+      PersistedRegistryPhraseStatus.equivalent =>
+        _RegistryPhraseStatus.equivalent,
+      PersistedRegistryPhraseStatus.needsReview =>
+        _RegistryPhraseStatus.needsReview,
+      PersistedRegistryPhraseStatus.drift => _RegistryPhraseStatus.drift,
+      PersistedRegistryPhraseStatus.failed => _RegistryPhraseStatus.failed,
+    };
+  }
 
   static _RegistryPhraseStatus fromVerdict(String verdict) {
     return switch (verdict.trim().toUpperCase()) {

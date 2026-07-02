@@ -6,6 +6,7 @@ import 'core/background/android_foreground_service_controller.dart';
 import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
 import 'core/persistence/translator_state_persistence.dart';
+import 'core/persistence/registry_phrase_status_persistence.dart';
 import 'features/translator/data/datasources/registry_remote_datasource.dart';
 import 'features/translator/data/datasources/translator_remote_datasource.dart';
 import 'features/translator/data/repositories/translator_repository_impl.dart';
@@ -52,6 +53,8 @@ Future<void> main() async {
           const AndroidForegroundServiceController(),
       persistence: const TranslatorStatePersistence(),
       loadRegistryTree: loadRegistryTree,
+      registryPhraseStatusPersistence:
+          const RegistryPhraseStatusPersistence(),
     );
 
     await translatorCubit.restorePersistedState();

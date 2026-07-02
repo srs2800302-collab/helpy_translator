@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../../core/persistence/registry_phrase_status_persistence.dart';
+
 import '../../domain/entities/canonical_audit_result.dart';
 import '../../domain/entities/registry_node.dart';
 import '../../domain/entities/translation_result.dart';
@@ -27,6 +29,7 @@ final class TranslatorState extends Equatable {
     required this.currentAuditPhrase,
     required this.registryRoot,
     required this.registryErrorMessage,
+    required this.registryPhraseStatusIndex,
   });
 
   const TranslatorState.initial()
@@ -39,7 +42,9 @@ final class TranslatorState extends Equatable {
         auditCompleted = 0,
         currentAuditPhrase = '',
         registryRoot = null,
-        registryErrorMessage = '';
+        registryErrorMessage = '',
+        registryPhraseStatusIndex =
+            const <String, PersistedRegistryPhraseRecord>{};
 
   final TranslatorStatus status;
   final TranslationResult? result;
@@ -51,6 +56,7 @@ final class TranslatorState extends Equatable {
   final String currentAuditPhrase;
   final RegistryNode? registryRoot;
   final String registryErrorMessage;
+  final Map<String, PersistedRegistryPhraseRecord> registryPhraseStatusIndex;
 
   TranslatorState copyWith({
     TranslatorStatus? status,
@@ -66,6 +72,7 @@ final class TranslatorState extends Equatable {
     RegistryNode? registryRoot,
     bool clearRegistryRoot = false,
     String? registryErrorMessage,
+    Map<String, PersistedRegistryPhraseRecord>? registryPhraseStatusIndex,
   }) {
     return TranslatorState(
       status: status ?? this.status,
@@ -80,6 +87,8 @@ final class TranslatorState extends Equatable {
       currentAuditPhrase: currentAuditPhrase ?? this.currentAuditPhrase,
       registryRoot: clearRegistryRoot ? null : registryRoot ?? this.registryRoot,
       registryErrorMessage: registryErrorMessage ?? this.registryErrorMessage,
+      registryPhraseStatusIndex:
+          registryPhraseStatusIndex ?? this.registryPhraseStatusIndex,
     );
   }
 
@@ -95,5 +104,6 @@ final class TranslatorState extends Equatable {
         currentAuditPhrase,
         registryRoot,
         registryErrorMessage,
+        registryPhraseStatusIndex,
       ];
 }
