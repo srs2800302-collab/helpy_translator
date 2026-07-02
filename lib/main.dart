@@ -76,7 +76,7 @@ class HelpyTranslatorApp extends StatelessWidget {
     return BlocProvider<TranslatorCubit>.value(
       value: translatorCubit,
       child: MaterialApp(
-        title: 'Helpy Translator',
+        title: 'Helpy Registry Studio',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
