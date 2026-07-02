@@ -70,16 +70,17 @@ final class RegistryPhraseStatusPersistence {
     final String? raw = preferences.getString(_key);
 
     if (raw == null || raw.isEmpty) {
-      return const <String, PersistedRegistryPhraseRecord>{};
+      return <String, PersistedRegistryPhraseRecord>{};
     }
 
     final Object? decoded = jsonDecode(raw);
 
     if (decoded is! Map<String, dynamic>) {
-      return const <String, PersistedRegistryPhraseRecord>{};
+      return <String, PersistedRegistryPhraseRecord>{};
     }
 
-    return decoded.map(
+    return Map<String, PersistedRegistryPhraseRecord>.from(
+      decoded.map(
       (String key, Object? value) {
         if (value is Map<String, dynamic>) {
           return MapEntry<String, PersistedRegistryPhraseRecord>(
@@ -99,6 +100,7 @@ final class RegistryPhraseStatusPersistence {
           ),
         );
       },
+      ),
     );
   }
 
