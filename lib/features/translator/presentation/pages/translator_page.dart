@@ -198,6 +198,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   String _query = '';
   _RegistryStatusFilter _statusFilter = _RegistryStatusFilter.all;
   RegistryWorkSession? _workSession;
+  bool _registryLoadRequested = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -250,6 +251,15 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
 
     return BlocBuilder<TranslatorCubit, TranslatorState>(
       builder: (BuildContext context, TranslatorState state) {
+        if (!_registryLoadRequested && state.registryRoot == null) {
+          _registryLoadRequested = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              context.read<TranslatorCubit>().loadRegistry();
+            }
+          });
+        }
+
         final RegistryNode? root = state.registryRoot;
         final _RegistrySearchResult? searchResult = root == null || _query.isEmpty
             ? null
@@ -287,7 +297,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                   onPressed: state.status == TranslatorStatus.registryLoading
                       ? null
                       : () {
-                          context.read<TranslatorCubit>().loadRegistry();
+                          context.read<TranslatorCubit>().refreshRegistry();
                         },
                   icon: state.status == TranslatorStatus.registryLoading
                       ? const SizedBox(

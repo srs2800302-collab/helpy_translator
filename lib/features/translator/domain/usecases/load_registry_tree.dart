@@ -9,4 +9,8 @@ final class LoadRegistryTree {
   Future<RegistryNode> call() {
     return repository.loadRegistryTree();
   }
+
+  Future<RegistryNode> refresh() {
+    return repository.refreshRegistryTree();
+  }
 }

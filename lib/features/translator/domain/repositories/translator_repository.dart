@@ -7,4 +7,6 @@ abstract interface class TranslatorRepository {
   Future<List<String>> loadCanonicalClientRules();
 
   Future<RegistryNode> loadRegistryTree();
+
+  Future<RegistryNode> refreshRegistryTree();
 }

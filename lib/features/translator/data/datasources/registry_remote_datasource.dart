@@ -2,20 +2,25 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../../core/config/app_config.dart';
+import '../../../../core/persistence/registry_cache_persistence.dart';
 import '../../domain/entities/registry_node.dart';
 
 abstract interface class RegistryRemoteDataSource {
   Future<List<String>> loadCanonicalClientRules();
 
   Future<RegistryNode> loadRegistryTree();
+
+  Future<RegistryNode> refreshRegistryTree();
 }
 
 final class RegistryRemoteDataSourceImpl implements RegistryRemoteDataSource {
   const RegistryRemoteDataSourceImpl({
     required this.appConfig,
+    this.cachePersistence = const RegistryCachePersistence(),
   });
 
   final AppConfig appConfig;
+  final RegistryCachePersistence cachePersistence;
 
   static const List<String> _prefixes = <String>[
     'Вы не обязаны',
@@ -31,7 +36,19 @@ final class RegistryRemoteDataSourceImpl implements RegistryRemoteDataSource {
 
   @override
   Future<RegistryNode> loadRegistryTree() async {
+    final String? cachedText = await cachePersistence.load();
+
+    if (cachedText != null) {
+      return _buildRegistryTree(cachedText);
+    }
+
+    return refreshRegistryTree();
+  }
+
+  @override
+  Future<RegistryNode> refreshRegistryTree() async {
     final String registryText = await _loadRegistryTextFromGitHub();
+    await cachePersistence.save(registryText);
     return _buildRegistryTree(registryText);
   }
 

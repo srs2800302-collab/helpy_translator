@@ -56,6 +56,14 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
   }
 
   Future<void> loadRegistry() async {
+    await _loadRegistry(refresh: false);
+  }
+
+  Future<void> refreshRegistry() async {
+    await _loadRegistry(refresh: true);
+  }
+
+  Future<void> _loadRegistry({required bool refresh}) async {
     emit(
       state.copyWith(
         status: TranslatorStatus.registryLoading,
@@ -64,7 +72,8 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     );
 
     try {
-      final RegistryNode root = await loadRegistryTree();
+      final RegistryNode root =
+          refresh ? await loadRegistryTree.refresh() : await loadRegistryTree();
 
       emit(
         state.copyWith(

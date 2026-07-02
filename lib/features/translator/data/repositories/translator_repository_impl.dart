@@ -27,4 +27,9 @@ final class TranslatorRepositoryImpl implements TranslatorRepository {
   Future<RegistryNode> loadRegistryTree() {
     return registryRemoteDataSource.loadRegistryTree();
   }
+
+  @override
+  Future<RegistryNode> refreshRegistryTree() {
+    return registryRemoteDataSource.refreshRegistryTree();
+  }
 }
