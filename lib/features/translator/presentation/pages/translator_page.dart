@@ -192,6 +192,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   final TextEditingController _searchController = TextEditingController();
 
   String _query = '';
+  _RegistryStatusFilter _statusFilter = _RegistryStatusFilter.all;
 
   @override
   bool get wantKeepAlive => true;
@@ -214,7 +215,19 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
             ? null
             : _RegistrySearchEngine.search(root: root, query: _query);
 
-        final List<RegistryNode> visibleNodes = searchResult?.nodes ?? root?.children ?? <RegistryNode>[];
+        final List<RegistryNode> baseNodes =
+            searchResult?.nodes ?? root?.children ?? <RegistryNode>[];
+
+        final List<RegistryNode> visibleNodes = _RegistryStatusFilterEngine.filterNodes(
+          nodes: baseNodes,
+          filter: _statusFilter,
+          phraseStatusIndex: state.registryPhraseStatusIndex,
+          translationHistory: state.translationHistory,
+          auditResults: state.auditResults,
+        );
+
+        final _RegistryVisibleStats visibleStats =
+            _RegistryVisibleStats.fromNodes(visibleNodes);
 
         return ListView(
           key: const PageStorageKey<String>('registry_explorer_scroll'),
@@ -273,6 +286,15 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
               },
             ),
             const SizedBox(height: 8),
+            _RegistryStatusFilterBar(
+              selectedFilter: _statusFilter,
+              onChanged: (_RegistryStatusFilter filter) {
+                setState(() {
+                  _statusFilter = filter;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
             if (state.registryErrorMessage.isNotEmpty)
               Card(
                 child: Padding(
@@ -285,12 +307,12 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                 'Нажмите обновить, чтобы скачать Registry из GitHub и построить дерево разделов.',
               ),
             ] else ...<Widget>[
-              if (searchResult == null)
+              if (searchResult == null && _statusFilter == _RegistryStatusFilter.all)
                 Text('Разделов: ${root.children.length} · Фраз: ${root.totalPhrases}')
               else
                 Text(
-                  'Найдено: ${searchResult.sectionMatches} разделов · '
-                  '${searchResult.phraseMatches} фраз',
+                  'Показано: ${visibleStats.sections} разделов · '
+                  '${visibleStats.phrases} фраз',
                 ),
               const SizedBox(height: 12),
               for (final RegistryNode child in visibleNodes)
@@ -388,6 +410,20 @@ final class _RegistryNodeTile extends StatelessWidget {
     return '${pathTitles.join(' → ')} · line $lineNumber';
   }
 
+  static _RegistryPhraseStatus resolvePhraseStatusForFilter({
+    required String phrase,
+    required Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex,
+    required List<TranslationResult> translationHistory,
+    required List<CanonicalAuditResult> auditResults,
+  }) {
+    return _resolvePhraseStatus(
+      phrase: phrase,
+      phraseStatusIndex: phraseStatusIndex,
+      translationHistory: translationHistory,
+      auditResults: auditResults,
+    );
+  }
+
   static _RegistryPhraseStatus _resolvePhraseStatus({
     required String phrase,
     required Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex,
@@ -415,6 +451,180 @@ final class _RegistryNodeTile extends StatelessWidget {
     }
 
     return _RegistryPhraseStatus.unchecked;
+  }
+}
+
+
+enum _RegistryStatusFilter {
+  all,
+  unchecked,
+  exact,
+  equivalent,
+  needsReview,
+  drift,
+  failed,
+}
+
+final class _RegistryStatusFilterBar extends StatelessWidget {
+  const _RegistryStatusFilterBar({
+    required this.selectedFilter,
+    required this.onChanged,
+  });
+
+  final _RegistryStatusFilter selectedFilter;
+  final ValueChanged<_RegistryStatusFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        _chip(label: 'Все', filter: _RegistryStatusFilter.all),
+        _chip(label: '⚪ Unchecked', filter: _RegistryStatusFilter.unchecked),
+        _chip(label: '✅ Exact', filter: _RegistryStatusFilter.exact),
+        _chip(label: '🟢 Eq', filter: _RegistryStatusFilter.equivalent),
+        _chip(label: '🟡 Review', filter: _RegistryStatusFilter.needsReview),
+        _chip(label: '🔴 Drift', filter: _RegistryStatusFilter.drift),
+        _chip(label: '❌ Failed', filter: _RegistryStatusFilter.failed),
+      ],
+    );
+  }
+
+  Widget _chip({
+    required String label,
+    required _RegistryStatusFilter filter,
+  }) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selectedFilter == filter,
+      onSelected: (_) {
+        onChanged(filter);
+      },
+    );
+  }
+}
+
+final class _RegistryStatusFilterEngine {
+  const _RegistryStatusFilterEngine._();
+
+  static List<RegistryNode> filterNodes({
+    required List<RegistryNode> nodes,
+    required _RegistryStatusFilter filter,
+    required Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex,
+    required List<TranslationResult> translationHistory,
+    required List<CanonicalAuditResult> auditResults,
+  }) {
+    if (filter == _RegistryStatusFilter.all) {
+      return nodes;
+    }
+
+    final List<RegistryNode> result = <RegistryNode>[];
+
+    for (final RegistryNode node in nodes) {
+      final RegistryNode? filtered = _filterNode(
+        node: node,
+        filter: filter,
+        phraseStatusIndex: phraseStatusIndex,
+        translationHistory: translationHistory,
+        auditResults: auditResults,
+      );
+
+      if (filtered != null) {
+        result.add(filtered);
+      }
+    }
+
+    return List<RegistryNode>.unmodifiable(result);
+  }
+
+  static RegistryNode? _filterNode({
+    required RegistryNode node,
+    required _RegistryStatusFilter filter,
+    required Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex,
+    required List<TranslationResult> translationHistory,
+    required List<CanonicalAuditResult> auditResults,
+  }) {
+    final List<String> phrases = node.phrases.where((String phrase) {
+      final _RegistryPhraseStatus status = _RegistryNodeTile.resolvePhraseStatusForFilter(
+        phrase: phrase,
+        phraseStatusIndex: phraseStatusIndex,
+        translationHistory: translationHistory,
+        auditResults: auditResults,
+      );
+
+      return _matchesFilter(status: status, filter: filter);
+    }).toList(growable: false);
+
+    final List<RegistryNode> children = <RegistryNode>[];
+
+    for (final RegistryNode child in node.children) {
+      final RegistryNode? filteredChild = _filterNode(
+        node: child,
+        filter: filter,
+        phraseStatusIndex: phraseStatusIndex,
+        translationHistory: translationHistory,
+        auditResults: auditResults,
+      );
+
+      if (filteredChild != null) {
+        children.add(filteredChild);
+      }
+    }
+
+    if (phrases.isEmpty && children.isEmpty) {
+      return null;
+    }
+
+    return node.copyWith(
+      phrases: List<String>.unmodifiable(phrases),
+      children: List<RegistryNode>.unmodifiable(children),
+    );
+  }
+
+  static bool _matchesFilter({
+    required _RegistryPhraseStatus status,
+    required _RegistryStatusFilter filter,
+  }) {
+    return switch (filter) {
+      _RegistryStatusFilter.all => true,
+      _RegistryStatusFilter.unchecked => status == _RegistryPhraseStatus.unchecked,
+      _RegistryStatusFilter.exact => status == _RegistryPhraseStatus.exact,
+      _RegistryStatusFilter.equivalent => status == _RegistryPhraseStatus.equivalent,
+      _RegistryStatusFilter.needsReview => status == _RegistryPhraseStatus.needsReview,
+      _RegistryStatusFilter.drift => status == _RegistryPhraseStatus.drift,
+      _RegistryStatusFilter.failed => status == _RegistryPhraseStatus.failed,
+    };
+  }
+}
+
+final class _RegistryVisibleStats {
+  const _RegistryVisibleStats({
+    required this.sections,
+    required this.phrases,
+  });
+
+  final int sections;
+  final int phrases;
+
+  static _RegistryVisibleStats fromNodes(List<RegistryNode> nodes) {
+    int sections = 0;
+    int phrases = 0;
+
+    void walk(RegistryNode node) {
+      sections++;
+      phrases += node.phrases.length;
+
+      for (final RegistryNode child in node.children) {
+        walk(child);
+      }
+    }
+
+    for (final RegistryNode node in nodes) {
+      walk(node);
+    }
+
+    return _RegistryVisibleStats(sections: sections, phrases: phrases);
   }
 }
 
