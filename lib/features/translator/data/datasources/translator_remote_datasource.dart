@@ -112,25 +112,25 @@ ${translation['EN'] ?? ''}
 TH:
 ${translation['TH'] ?? ''}
 
-EN → RU:
+EN_TO_RU:
 ${translation['EN → RU'] ?? ''}
 
-TH → RU:
+TH_TO_RU:
 ${translation['TH → RU'] ?? ''}
 
-EN → TH:
+EN_TO_TH:
 ${translation['EN → TH'] ?? ''}
 
-TH → EN:
+TH_TO_EN:
 ${translation['TH → EN'] ?? ''}
 '''.trim();
   }
 
   static String _resolveVerdict(Map<String, String> audit) {
-    final bool meaning = _isYes(audit['MEANING PRESERVED']);
-    final bool terminology = _isYes(audit['TERMINOLOGY PRESERVED']);
-    final bool style = _isYes(audit['CANONICAL STYLE PRESERVED']);
-    final bool ambiguous = _isYes(audit['AMBIGUOUS WORDING']);
+    final bool meaning = _isYes(audit['MEANING_PRESERVED']);
+    final bool terminology = _isYes(audit['TERMINOLOGY_PRESERVED']);
+    final bool style = _isYes(audit['CANONICAL_STYLE_PRESERVED']);
+    final bool ambiguous = _isYes(audit['AMBIGUOUS_WORDING']);
 
     if (!meaning) {
       return 'CANONICAL_DRIFT';
@@ -149,10 +149,10 @@ ${translation['TH → EN'] ?? ''}
 
   static String _buildComment(Map<String, String> audit) {
     return '''
-Meaning preserved: ${audit['MEANING PRESERVED'] ?? 'NO'}
-Terminology preserved: ${audit['TERMINOLOGY PRESERVED'] ?? 'NO'}
-Canonical style preserved: ${audit['CANONICAL STYLE PRESERVED'] ?? 'NO'}
-Ambiguous wording: ${audit['AMBIGUOUS WORDING'] ?? 'YES'}
+Meaning preserved: ${audit['MEANING_PRESERVED'] ?? 'NO'}
+Terminology preserved: ${audit['TERMINOLOGY_PRESERVED'] ?? 'NO'}
+Canonical style preserved: ${audit['CANONICAL_STYLE_PRESERVED'] ?? 'NO'}
+Ambiguous wording: ${audit['AMBIGUOUS_WORDING'] ?? 'YES'}
 
 ${audit['REASON'] ?? ''}
 '''.trim();
@@ -208,10 +208,10 @@ ${audit['REASON'] ?? ''}
   ];
 
   static const List<String> _auditLabels = <String>[
-    'MEANING PRESERVED',
-    'TERMINOLOGY PRESERVED',
-    'CANONICAL STYLE PRESERVED',
-    'AMBIGUOUS WORDING',
+    'MEANING_PRESERVED',
+    'TERMINOLOGY_PRESERVED',
+    'CANONICAL_STYLE_PRESERVED',
+    'AMBIGUOUS_WORDING',
     'REASON',
   ];
 
@@ -245,16 +245,16 @@ EN:
 TH:
 ...
 
-EN → RU:
+EN_TO_RU:
 ...
 
-TH → RU:
+TH_TO_RU:
 ...
 
-EN → TH:
+EN_TO_TH:
 ...
 
-TH → EN:
+TH_TO_EN:
 ...
 ''';
 
@@ -281,16 +281,16 @@ Rules:
 
 Output strictly:
 
-MEANING PRESERVED:
+MEANING_PRESERVED:
 YES | NO
 
-TERMINOLOGY PRESERVED:
+TERMINOLOGY_PRESERVED:
 YES | NO
 
-CANONICAL STYLE PRESERVED:
+CANONICAL_STYLE_PRESERVED:
 YES | NO
 
-AMBIGUOUS WORDING:
+AMBIGUOUS_WORDING:
 YES | NO
 
 REASON:
