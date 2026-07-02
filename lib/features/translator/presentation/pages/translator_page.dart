@@ -245,6 +245,33 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
     await _loadWorkSession();
   }
 
+  void _continueWork(RegistryWorkSession session) {
+    final String query = session.lastPhrase.trim().isNotEmpty
+        ? session.lastPhrase.trim()
+        : session.pathTitles.isEmpty
+            ? ''
+            : session.pathTitles.last.trim();
+
+    if (query.isEmpty) {
+      return;
+    }
+
+    _searchController.text = query;
+
+    setState(() {
+      _query = query;
+      _statusFilter = _RegistryStatusFilter.all;
+    });
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -314,7 +341,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
             if (_workSession != null)
               _ContinueWorkCard(
                 session: _workSession!,
-                onContinue: _workSession!.lastPhrase.trim().isEmpty
+                onContinue: () {
+                  _continueWork(_workSession!);
+                },
+                onOpenTranslation: _workSession!.lastPhrase.trim().isEmpty
                     ? null
                     : () {
                         widget.onPhraseSelected(_workSession!.lastPhrase);
@@ -409,10 +439,12 @@ final class _ContinueWorkCard extends StatelessWidget {
   const _ContinueWorkCard({
     required this.session,
     required this.onContinue,
+    required this.onOpenTranslation,
   });
 
   final RegistryWorkSession session;
-  final VoidCallback? onContinue;
+  final VoidCallback onContinue;
+  final VoidCallback? onOpenTranslation;
 
   @override
   Widget build(BuildContext context) {
@@ -444,16 +476,23 @@ final class _ContinueWorkCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text('Сохранено: ${session.updatedAtIso}'),
             ],
-            if (onContinue != null) ...<Widget>[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.end,
+              children: <Widget>[
+                FilledButton(
                   onPressed: onContinue,
-                  child: const Text('Продолжить'),
+                  child: const Text('Найти в Registry'),
                 ),
-              ),
-            ],
+                if (onOpenTranslation != null)
+                  FilledButton.tonal(
+                    onPressed: onOpenTranslation,
+                    child: const Text('В перевод'),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
