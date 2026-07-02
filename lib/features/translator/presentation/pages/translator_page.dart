@@ -38,30 +38,34 @@ final class _TranslatorPageState extends State<TranslatorPage> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Helpy Registry Studio'),
-          bottom: const TabBar(
-            tabs: <Widget>[
-              Tab(text: 'Перевод'),
-              Tab(text: 'Registry'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: <Widget>[
-            _TranslationWorkspace(
-              controller: _controller,
-              onTranslate: _translate,
+      child: Builder(
+        builder: (BuildContext tabContext) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Helpy Registry Studio'),
+              bottom: const TabBar(
+                tabs: <Widget>[
+                  Tab(text: 'Перевод'),
+                  Tab(text: 'Registry'),
+                ],
+              ),
             ),
-            _RegistryExplorerView(
-              onPhraseSelected: (String phrase) {
-                _controller.text = phrase;
-                DefaultTabController.of(context).animateTo(0);
-              },
+            body: TabBarView(
+              children: <Widget>[
+                _TranslationWorkspace(
+                  controller: _controller,
+                  onTranslate: _translate,
+                ),
+                _RegistryExplorerView(
+                  onPhraseSelected: (String phrase) {
+                    _controller.text = phrase;
+                    DefaultTabController.of(tabContext).animateTo(0);
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -363,11 +367,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                 onContinue: () {
                   _continueWork(_workSession!);
                 },
-                onOpenTranslation: _workSession!.lastPhrase.trim().isEmpty
-                    ? null
-                    : () {
-                        widget.onPhraseSelected(_workSession!.lastPhrase);
-                      },
               ),
             if (_workSession != null) const SizedBox(height: 8),
             TextField(
@@ -481,12 +480,10 @@ final class _ContinueWorkCard extends StatelessWidget {
   const _ContinueWorkCard({
     required this.session,
     required this.onContinue,
-    required this.onOpenTranslation,
   });
 
   final RegistryWorkSession session;
   final VoidCallback onContinue;
-  final VoidCallback? onOpenTranslation;
 
   @override
   Widget build(BuildContext context) {
@@ -528,11 +525,6 @@ final class _ContinueWorkCard extends StatelessWidget {
                   onPressed: onContinue,
                   child: const Text('Найти в Registry'),
                 ),
-                if (onOpenTranslation != null)
-                  FilledButton.tonal(
-                    onPressed: onOpenTranslation,
-                    child: const Text('В перевод'),
-                  ),
               ],
             ),
           ],
