@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubit/translator_cubit.dart';
+import '../../domain/entities/canonical_audit_result.dart';
 import '../../domain/entities/registry_node.dart';
+import '../../domain/entities/translation_result.dart';
 import '../cubit/translator_state.dart';
 import '../widgets/canonical_audit_results_view.dart';
 import '../widgets/progress_status_card.dart';
@@ -170,7 +172,8 @@ final class _TranslationWorkspace extends StatelessWidget {
 }
 
 
-final class _RegistryExplorerView extends StatelessWidget {
+
+final class _RegistryExplorerView extends StatefulWidget {
   const _RegistryExplorerView({
     required this.onPhraseSelected,
   });
@@ -178,12 +181,33 @@ final class _RegistryExplorerView extends StatelessWidget {
   final ValueChanged<String> onPhraseSelected;
 
   @override
+  State<_RegistryExplorerView> createState() => _RegistryExplorerViewState();
+}
+
+final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
+    with AutomaticKeepAliveClientMixin<_RegistryExplorerView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     return BlocBuilder<TranslatorCubit, TranslatorState>(
       builder: (BuildContext context, TranslatorState state) {
         final RegistryNode? root = state.registryRoot;
 
         return ListView(
+          key: const PageStorageKey<String>('registry_explorer_scroll'),
+          controller: _scrollController,
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             Row(
@@ -229,7 +253,9 @@ final class _RegistryExplorerView extends StatelessWidget {
               for (final RegistryNode child in root.children)
                 _RegistryNodeTile(
                   node: child,
-                  onPhraseSelected: onPhraseSelected,
+                  translationHistory: state.translationHistory,
+                  auditResults: state.auditResults,
+                  onPhraseSelected: widget.onPhraseSelected,
                 ),
             ],
           ],
@@ -242,10 +268,14 @@ final class _RegistryExplorerView extends StatelessWidget {
 final class _RegistryNodeTile extends StatelessWidget {
   const _RegistryNodeTile({
     required this.node,
+    required this.translationHistory,
+    required this.auditResults,
     required this.onPhraseSelected,
   });
 
   final RegistryNode node;
+  final List<TranslationResult> translationHistory;
+  final List<CanonicalAuditResult> auditResults;
   final ValueChanged<String> onPhraseSelected;
 
   @override
@@ -262,6 +292,7 @@ final class _RegistryNodeTile extends StatelessWidget {
     }
 
     return ExpansionTile(
+      key: PageStorageKey<String>('registry_node_${node.id}'),
       title: Text(node.title),
       subtitle: Text(
         'line ${node.lineNumber} · phrases ${node.totalPhrases}',
@@ -271,7 +302,13 @@ final class _RegistryNodeTile extends StatelessWidget {
         for (final String phrase in node.phrases)
           ListTile(
             dense: true,
-            leading: const Icon(Icons.short_text),
+            leading: _RegistryPhraseStatusIcon(
+              status: _resolvePhraseStatus(
+                phrase: phrase,
+                translationHistory: translationHistory,
+                auditResults: auditResults,
+              ),
+            ),
             title: Text(phrase),
             onTap: () {
               onPhraseSelected(phrase);
@@ -280,9 +317,86 @@ final class _RegistryNodeTile extends StatelessWidget {
         for (final RegistryNode child in node.children)
           _RegistryNodeTile(
             node: child,
+            translationHistory: translationHistory,
+            auditResults: auditResults,
             onPhraseSelected: onPhraseSelected,
           ),
       ],
+    );
+  }
+
+  static _RegistryPhraseStatus _resolvePhraseStatus({
+    required String phrase,
+    required List<TranslationResult> translationHistory,
+    required List<CanonicalAuditResult> auditResults,
+  }) {
+    for (final TranslationResult result in translationHistory) {
+      if (result.sourceText.trim() == phrase.trim() ||
+          result.ru.trim() == phrase.trim()) {
+        return _RegistryPhraseStatus.fromVerdict(result.canonicalVerdict);
+      }
+    }
+
+    for (final CanonicalAuditResult result in auditResults) {
+      if (result.sourceRu.trim() == phrase.trim()) {
+        return _RegistryPhraseStatus.fromAuditStatus(result.status);
+      }
+    }
+
+    return _RegistryPhraseStatus.unchecked;
+  }
+}
+
+enum _RegistryPhraseStatus {
+  exact,
+  equivalent,
+  needsReview,
+  drift,
+  failed,
+  unchecked;
+
+  static _RegistryPhraseStatus fromVerdict(String verdict) {
+    return switch (verdict.trim().toUpperCase()) {
+      'EXACT' => _RegistryPhraseStatus.exact,
+      'EQUIVALENT' => _RegistryPhraseStatus.equivalent,
+      'NEEDS_REVIEW' => _RegistryPhraseStatus.needsReview,
+      'CANONICAL_DRIFT' => _RegistryPhraseStatus.drift,
+      _ => _RegistryPhraseStatus.failed,
+    };
+  }
+
+  static _RegistryPhraseStatus fromAuditStatus(CanonicalAuditStatus status) {
+    return switch (status) {
+      CanonicalAuditStatus.exact => _RegistryPhraseStatus.exact,
+      CanonicalAuditStatus.equivalent => _RegistryPhraseStatus.equivalent,
+      CanonicalAuditStatus.needsReview => _RegistryPhraseStatus.needsReview,
+      CanonicalAuditStatus.drift => _RegistryPhraseStatus.drift,
+      CanonicalAuditStatus.failed => _RegistryPhraseStatus.failed,
+    };
+  }
+}
+
+final class _RegistryPhraseStatusIcon extends StatelessWidget {
+  const _RegistryPhraseStatusIcon({
+    required this.status,
+  });
+
+  final _RegistryPhraseStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final String icon = switch (status) {
+      _RegistryPhraseStatus.exact => '✅',
+      _RegistryPhraseStatus.equivalent => '🟢',
+      _RegistryPhraseStatus.needsReview => '🟡',
+      _RegistryPhraseStatus.drift => '🔴',
+      _RegistryPhraseStatus.failed => '❌',
+      _RegistryPhraseStatus.unchecked => '⚪',
+    };
+
+    return Text(
+      icon,
+      style: const TextStyle(fontSize: 22),
     );
   }
 }
