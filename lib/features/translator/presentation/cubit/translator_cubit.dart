@@ -4,8 +4,10 @@ import '../../../../core/background/background_execution_controller.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/persistence/translator_state_persistence.dart';
 import '../../domain/entities/canonical_audit_result.dart';
+import '../../domain/entities/registry_node.dart';
 import '../../domain/entities/translation_result.dart';
 import '../../domain/usecases/audit_canonical_client_rules.dart';
+import '../../domain/usecases/load_registry_tree.dart';
 import '../../domain/usecases/translate_canonical_phrase.dart';
 import 'translator_state.dart';
 
@@ -15,12 +17,14 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     required this.auditCanonicalClientRules,
     required this.backgroundExecutionController,
     required this.persistence,
+    required this.loadRegistryTree,
   }) : super(const TranslatorState.initial());
 
   final TranslateCanonicalPhrase translateCanonicalPhrase;
   final AuditCanonicalClientRules auditCanonicalClientRules;
   final BackgroundExecutionController backgroundExecutionController;
   final TranslatorStatePersistence persistence;
+  final LoadRegistryTree loadRegistryTree;
 
   Future<void> restorePersistedState() async {
     final List<TranslationResult> translationHistory =
@@ -42,6 +46,34 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
   Future<void> clearResults() async {
     await persistence.clear();
     emit(const TranslatorState.initial());
+  }
+
+  Future<void> loadRegistry() async {
+    emit(
+      state.copyWith(
+        status: TranslatorStatus.registryLoading,
+        registryErrorMessage: '',
+      ),
+    );
+
+    try {
+      final RegistryNode root = await loadRegistryTree();
+
+      emit(
+        state.copyWith(
+          status: TranslatorStatus.registrySuccess,
+          registryRoot: root,
+          registryErrorMessage: '',
+        ),
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          status: TranslatorStatus.failure,
+          registryErrorMessage: error.toString(),
+        ),
+      );
+    }
   }
 
   Future<void> translate(String sentence) async {

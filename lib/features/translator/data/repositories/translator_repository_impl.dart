@@ -1,3 +1,4 @@
+import '../../domain/entities/registry_node.dart';
 import '../../domain/entities/translation_result.dart';
 import '../../domain/repositories/translator_repository.dart';
 import '../datasources/registry_remote_datasource.dart';
@@ -20,5 +21,10 @@ final class TranslatorRepositoryImpl implements TranslatorRepository {
   @override
   Future<List<String>> loadCanonicalClientRules() {
     return registryRemoteDataSource.loadCanonicalClientRules();
+  }
+
+  @override
+  Future<RegistryNode> loadRegistryTree() {
+    return registryRemoteDataSource.loadRegistryTree();
   }
 }

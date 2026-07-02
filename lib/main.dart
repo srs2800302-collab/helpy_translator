@@ -10,6 +10,7 @@ import 'features/translator/data/datasources/registry_remote_datasource.dart';
 import 'features/translator/data/datasources/translator_remote_datasource.dart';
 import 'features/translator/data/repositories/translator_repository_impl.dart';
 import 'features/translator/domain/usecases/audit_canonical_client_rules.dart';
+import 'features/translator/domain/usecases/load_registry_tree.dart';
 import 'features/translator/domain/usecases/translate_canonical_phrase.dart';
 import 'features/translator/presentation/cubit/translator_cubit.dart';
 import 'features/translator/presentation/pages/translator_page.dart';
@@ -42,6 +43,7 @@ Future<void> main() async {
 
     final AuditCanonicalClientRules auditCanonicalClientRules =
         AuditCanonicalClientRules(repository);
+    final LoadRegistryTree loadRegistryTree = LoadRegistryTree(repository);
 
     final TranslatorCubit translatorCubit = TranslatorCubit(
       translateCanonicalPhrase: translateCanonicalPhrase,
@@ -49,6 +51,7 @@ Future<void> main() async {
       backgroundExecutionController:
           const AndroidForegroundServiceController(),
       persistence: const TranslatorStatePersistence(),
+      loadRegistryTree: loadRegistryTree,
     );
 
     await translatorCubit.restorePersistedState();

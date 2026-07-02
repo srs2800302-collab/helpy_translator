@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/canonical_audit_result.dart';
+import '../../domain/entities/registry_node.dart';
 import '../../domain/entities/translation_result.dart';
 
 enum TranslatorStatus {
@@ -10,6 +11,8 @@ enum TranslatorStatus {
   failure,
   auditLoading,
   auditSuccess,
+  registryLoading,
+  registrySuccess,
 }
 
 final class TranslatorState extends Equatable {
@@ -22,6 +25,8 @@ final class TranslatorState extends Equatable {
     required this.auditTotal,
     required this.auditCompleted,
     required this.currentAuditPhrase,
+    required this.registryRoot,
+    required this.registryErrorMessage,
   });
 
   const TranslatorState.initial()
@@ -32,7 +37,9 @@ final class TranslatorState extends Equatable {
         errorMessage = '',
         auditTotal = 0,
         auditCompleted = 0,
-        currentAuditPhrase = '';
+        currentAuditPhrase = '',
+        registryRoot = null,
+        registryErrorMessage = '';
 
   final TranslatorStatus status;
   final TranslationResult? result;
@@ -42,6 +49,8 @@ final class TranslatorState extends Equatable {
   final int auditTotal;
   final int auditCompleted;
   final String currentAuditPhrase;
+  final RegistryNode? registryRoot;
+  final String registryErrorMessage;
 
   TranslatorState copyWith({
     TranslatorStatus? status,
@@ -54,6 +63,9 @@ final class TranslatorState extends Equatable {
     int? auditTotal,
     int? auditCompleted,
     String? currentAuditPhrase,
+    RegistryNode? registryRoot,
+    bool clearRegistryRoot = false,
+    String? registryErrorMessage,
   }) {
     return TranslatorState(
       status: status ?? this.status,
@@ -66,6 +78,8 @@ final class TranslatorState extends Equatable {
       auditTotal: auditTotal ?? this.auditTotal,
       auditCompleted: auditCompleted ?? this.auditCompleted,
       currentAuditPhrase: currentAuditPhrase ?? this.currentAuditPhrase,
+      registryRoot: clearRegistryRoot ? null : registryRoot ?? this.registryRoot,
+      registryErrorMessage: registryErrorMessage ?? this.registryErrorMessage,
     );
   }
 
@@ -79,5 +93,7 @@ final class TranslatorState extends Equatable {
         auditTotal,
         auditCompleted,
         currentAuditPhrase,
+        registryRoot,
+        registryErrorMessage,
       ];
 }

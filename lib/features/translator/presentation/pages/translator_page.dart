@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubit/translator_cubit.dart';
+import '../../domain/entities/registry_node.dart';
 import '../cubit/translator_state.dart';
 import '../widgets/canonical_audit_results_view.dart';
 import '../widgets/progress_status_card.dart';
@@ -49,7 +50,12 @@ final class _TranslatorPageState extends State<TranslatorPage> {
               controller: _controller,
               onTranslate: _translate,
             ),
-            const _RegistryExplorerPlaceholder(),
+            _RegistryExplorerView(
+              onPhraseSelected: (String phrase) {
+                _controller.text = phrase;
+                DefaultTabController.of(context).animateTo(0);
+              },
+            ),
           ],
         ),
       ),
@@ -163,22 +169,119 @@ final class _TranslationWorkspace extends StatelessWidget {
   }
 }
 
-final class _RegistryExplorerPlaceholder extends StatelessWidget {
-  const _RegistryExplorerPlaceholder();
+
+final class _RegistryExplorerView extends StatelessWidget {
+  const _RegistryExplorerView({
+    required this.onPhraseSelected,
+  });
+
+  final ValueChanged<String> onPhraseSelected;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return BlocBuilder<TranslatorCubit, TranslatorState>(
+      builder: (BuildContext context, TranslatorState state) {
+        final RegistryNode? root = state.registryRoot;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Expanded(
+                  child: Text(
+                    'Registry Explorer',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                IconButton.filledTonal(
+                  onPressed: state.status == TranslatorStatus.registryLoading
+                      ? null
+                      : () {
+                          context.read<TranslatorCubit>().loadRegistry();
+                        },
+                  icon: state.status == TranslatorStatus.registryLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  tooltip: 'Обновить Registry',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (state.registryErrorMessage.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(state.registryErrorMessage),
+                ),
+              ),
+            if (root == null) ...<Widget>[
+              const Text(
+                'Нажмите обновить, чтобы скачать Registry из GitHub и построить дерево разделов.',
+              ),
+            ] else ...<Widget>[
+              Text('Разделов: ${root.children.length} · Фраз: ${root.totalPhrases}'),
+              const SizedBox(height: 12),
+              for (final RegistryNode child in root.children)
+                _RegistryNodeTile(
+                  node: child,
+                  onPhraseSelected: onPhraseSelected,
+                ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+final class _RegistryNodeTile extends StatelessWidget {
+  const _RegistryNodeTile({
+    required this.node,
+    required this.onPhraseSelected,
+  });
+
+  final RegistryNode node;
+  final ValueChanged<String> onPhraseSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasChildren = node.children.isNotEmpty;
+    final bool hasPhrases = node.phrases.isNotEmpty;
+
+    if (!hasChildren && !hasPhrases) {
+      return ListTile(
+        dense: true,
+        title: Text(node.title),
+        subtitle: Text('line ${node.lineNumber}'),
+      );
+    }
+
+    return ExpansionTile(
+      title: Text(node.title),
+      subtitle: Text(
+        'line ${node.lineNumber} · phrases ${node.totalPhrases}',
+      ),
+      childrenPadding: const EdgeInsets.only(left: 12),
       children: <Widget>[
-        Text(
-          'Registry Explorer',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-        ),
-        SizedBox(height: 8),
-        Text(
-          'Здесь будет дерево разделов Registry: заголовки, подразделы, фразы и проверка выбранной ветки.',
-        ),
+        for (final String phrase in node.phrases)
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.short_text),
+            title: Text(phrase),
+            onTap: () {
+              onPhraseSelected(phrase);
+            },
+          ),
+        for (final RegistryNode child in node.children)
+          _RegistryNodeTile(
+            node: child,
+            onPhraseSelected: onPhraseSelected,
+          ),
       ],
     );
   }
