@@ -228,17 +228,25 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
     });
   }
 
-  Future<void> _saveOpenedSection(List<String> pathTitles) async {
-    await _workSessionPersistence.saveSection(pathTitles: pathTitles);
+  Future<void> _saveOpenedSection({
+    required List<String> pathTitles,
+    required List<String> pathNodeIds,
+  }) async {
+    await _workSessionPersistence.saveSection(
+      pathTitles: pathTitles,
+      pathNodeIds: pathNodeIds,
+    );
     await _loadWorkSession();
   }
 
   Future<void> _saveSelectedPhrase({
     required List<String> pathTitles,
+    required List<String> pathNodeIds,
     required String phrase,
   }) async {
     await _workSessionPersistence.savePhrase(
       pathTitles: pathTitles,
+      pathNodeIds: pathNodeIds,
       phrase: phrase,
     );
 
@@ -414,13 +422,16 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                   auditResults: state.auditResults,
                   searchQuery: _query,
                   pathTitles: const <String>[],
+                  pathNodeIds: const <String>[],
                   onSectionOpened: _saveOpenedSection,
                   onPhraseSelected: ({
                     required String phrase,
                     required List<String> pathTitles,
+                    required List<String> pathNodeIds,
                   }) async {
                     await _saveSelectedPhrase(
                       pathTitles: pathTitles,
+                      pathNodeIds: pathNodeIds,
                       phrase: phrase,
                     );
 
@@ -508,6 +519,7 @@ final class _RegistryNodeTile extends StatelessWidget {
     required this.auditResults,
     required this.searchQuery,
     required this.pathTitles,
+    required this.pathNodeIds,
     required this.onSectionOpened,
     required this.onPhraseSelected,
   });
@@ -518,10 +530,15 @@ final class _RegistryNodeTile extends StatelessWidget {
   final List<CanonicalAuditResult> auditResults;
   final String searchQuery;
   final List<String> pathTitles;
-  final ValueChanged<List<String>> onSectionOpened;
+  final List<String> pathNodeIds;
+  final Future<void> Function({
+    required List<String> pathTitles,
+    required List<String> pathNodeIds,
+  }) onSectionOpened;
   final Future<void> Function({
     required String phrase,
     required List<String> pathTitles,
+    required List<String> pathNodeIds,
   }) onPhraseSelected;
 
   @override
@@ -529,6 +546,7 @@ final class _RegistryNodeTile extends StatelessWidget {
     final bool hasChildren = node.children.isNotEmpty;
     final bool hasPhrases = node.phrases.isNotEmpty;
     final List<String> currentPath = <String>[...pathTitles, node.title];
+    final List<String> currentNodePath = <String>[...pathNodeIds, node.id];
 
     if (!hasChildren && !hasPhrases) {
       return ListTile(
@@ -536,7 +554,10 @@ final class _RegistryNodeTile extends StatelessWidget {
         title: _HighlightedText(text: node.title, query: searchQuery),
         subtitle: Text(_pathSubtitle(currentPath, node.lineNumber)),
         onTap: () {
-          onSectionOpened(currentPath);
+          onSectionOpened(
+            pathTitles: currentPath,
+            pathNodeIds: currentNodePath,
+          );
         },
       );
     }
@@ -551,7 +572,10 @@ final class _RegistryNodeTile extends StatelessWidget {
       childrenPadding: const EdgeInsets.only(left: 12),
       onExpansionChanged: (bool expanded) {
         if (expanded) {
-          onSectionOpened(currentPath);
+          onSectionOpened(
+            pathTitles: currentPath,
+            pathNodeIds: currentNodePath,
+          );
         }
       },
       children: <Widget>[
@@ -572,6 +596,7 @@ final class _RegistryNodeTile extends StatelessWidget {
               onPhraseSelected(
                 phrase: phrase,
                 pathTitles: currentPath,
+                pathNodeIds: currentNodePath,
               );
             },
           ),
@@ -583,6 +608,7 @@ final class _RegistryNodeTile extends StatelessWidget {
             auditResults: auditResults,
             searchQuery: searchQuery,
             pathTitles: currentPath,
+            pathNodeIds: currentNodePath,
             onSectionOpened: onSectionOpened,
             onPhraseSelected: onPhraseSelected,
           ),
