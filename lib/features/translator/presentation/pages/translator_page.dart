@@ -198,6 +198,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   String _query = '';
   _RegistryStatusFilter _statusFilter = _RegistryStatusFilter.all;
   RegistryWorkSession? _workSession;
+  List<String> _focusedNodeIds = const <String>[];
   bool _registryLoadRequested = false;
 
   @override
@@ -268,6 +269,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
 
     setState(() {
       _query = query;
+      _focusedNodeIds = session.pathNodeIds;
       _statusFilter = _RegistryStatusFilter.all;
     });
 
@@ -300,8 +302,15 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
             ? null
             : _RegistrySearchEngine.search(root: root, query: _query);
 
-        final List<RegistryNode> baseNodes =
+        final List<RegistryNode> searchNodes =
             searchResult?.nodes ?? root?.children ?? <RegistryNode>[];
+
+        final List<RegistryNode> baseNodes = _focusedNodeIds.isEmpty
+            ? searchNodes
+            : _RegistryFocusEngine.focusNodes(
+                nodes: searchNodes,
+                nodeIds: _focusedNodeIds,
+              );
 
         final List<RegistryNode> visibleNodes =
             _RegistryStatusFilterEngine.filterNodes(
@@ -373,6 +382,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                           _searchController.clear();
                           setState(() {
                             _query = '';
+                            _focusedNodeIds = const <String>[];
                           });
                         },
                         icon: const Icon(Icons.clear),
@@ -381,6 +391,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
               onChanged: (String value) {
                 setState(() {
                   _query = value.trim();
+                  _focusedNodeIds = const <String>[];
                 });
               },
             ),
@@ -661,6 +672,40 @@ final class _RegistryNodeTile extends StatelessWidget {
     }
 
     return _RegistryPhraseStatus.unchecked;
+  }
+}
+
+
+final class _RegistryFocusEngine {
+  const _RegistryFocusEngine._();
+
+  static List<RegistryNode> focusNodes({
+    required List<RegistryNode> nodes,
+    required List<String> nodeIds,
+  }) {
+    if (nodeIds.isEmpty) {
+      return nodes;
+    }
+
+    final String targetId = nodeIds.first;
+    final List<String> remainingIds = nodeIds.skip(1).toList(growable: false);
+
+    for (final RegistryNode node in nodes) {
+      if (node.id != targetId) {
+        continue;
+      }
+
+      return <RegistryNode>[
+        node.copyWith(
+          children: focusNodes(
+            nodes: node.children,
+            nodeIds: remainingIds,
+          ),
+        ),
+      ];
+    }
+
+    return nodes;
   }
 }
 
