@@ -174,6 +174,7 @@ final class _TranslationWorkspace extends StatelessWidget {
 
 
 
+
 final class _RegistryExplorerView extends StatefulWidget {
   const _RegistryExplorerView({
     required this.onPhraseSelected,
@@ -188,6 +189,9 @@ final class _RegistryExplorerView extends StatefulWidget {
 final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
     with AutomaticKeepAliveClientMixin<_RegistryExplorerView> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+
+  String _query = '';
 
   @override
   bool get wantKeepAlive => true;
@@ -195,6 +199,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -205,6 +210,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
     return BlocBuilder<TranslatorCubit, TranslatorState>(
       builder: (BuildContext context, TranslatorState state) {
         final RegistryNode? root = state.registryRoot;
+        final _RegistrySearchResult? searchResult = root == null || _query.isEmpty
+            ? null
+            : _RegistrySearchEngine.search(root: root, query: _query);
+
+        final List<RegistryNode> visibleNodes = searchResult?.nodes ?? root?.children ?? <RegistryNode>[];
 
         return ListView(
           key: const PageStorageKey<String>('registry_explorer_scroll'),
@@ -237,6 +247,32 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
               ],
             ),
             const SizedBox(height: 8),
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                labelText: 'Поиск по Registry',
+                hintText: 'Контракт, раздел или фраза',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _query = '';
+                          });
+                        },
+                        icon: const Icon(Icons.clear),
+                      ),
+              ),
+              onChanged: (String value) {
+                setState(() {
+                  _query = value.trim();
+                });
+              },
+            ),
+            const SizedBox(height: 8),
             if (state.registryErrorMessage.isNotEmpty)
               Card(
                 child: Padding(
@@ -249,14 +285,22 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                 'Нажмите обновить, чтобы скачать Registry из GitHub и построить дерево разделов.',
               ),
             ] else ...<Widget>[
-              Text('Разделов: ${root.children.length} · Фраз: ${root.totalPhrases}'),
+              if (searchResult == null)
+                Text('Разделов: ${root.children.length} · Фраз: ${root.totalPhrases}')
+              else
+                Text(
+                  'Найдено: ${searchResult.sectionMatches} разделов · '
+                  '${searchResult.phraseMatches} фраз',
+                ),
               const SizedBox(height: 12),
-              for (final RegistryNode child in root.children)
+              for (final RegistryNode child in visibleNodes)
                 _RegistryNodeTile(
                   node: child,
                   phraseStatusIndex: state.registryPhraseStatusIndex,
                   translationHistory: state.translationHistory,
                   auditResults: state.auditResults,
+                  searchQuery: _query,
+                  pathTitles: const <String>[],
                   onPhraseSelected: widget.onPhraseSelected,
                 ),
             ],
@@ -273,6 +317,8 @@ final class _RegistryNodeTile extends StatelessWidget {
     required this.phraseStatusIndex,
     required this.translationHistory,
     required this.auditResults,
+    required this.searchQuery,
+    required this.pathTitles,
     required this.onPhraseSelected,
   });
 
@@ -280,26 +326,30 @@ final class _RegistryNodeTile extends StatelessWidget {
   final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex;
   final List<TranslationResult> translationHistory;
   final List<CanonicalAuditResult> auditResults;
+  final String searchQuery;
+  final List<String> pathTitles;
   final ValueChanged<String> onPhraseSelected;
 
   @override
   Widget build(BuildContext context) {
     final bool hasChildren = node.children.isNotEmpty;
     final bool hasPhrases = node.phrases.isNotEmpty;
+    final List<String> currentPath = <String>[...pathTitles, node.title];
 
     if (!hasChildren && !hasPhrases) {
       return ListTile(
         dense: true,
-        title: Text(node.title),
-        subtitle: Text('line ${node.lineNumber}'),
+        title: _HighlightedText(text: node.title, query: searchQuery),
+        subtitle: Text(_pathSubtitle(currentPath, node.lineNumber)),
       );
     }
 
     return ExpansionTile(
-      key: PageStorageKey<String>('registry_node_${node.id}'),
-      title: Text(node.title),
+      key: PageStorageKey<String>('registry_node_${node.id}_$searchQuery'),
+      initiallyExpanded: searchQuery.isNotEmpty,
+      title: _HighlightedText(text: node.title, query: searchQuery),
       subtitle: Text(
-        'line ${node.lineNumber} · phrases ${node.totalPhrases}',
+        '${_pathSubtitle(currentPath, node.lineNumber)} · phrases ${node.totalPhrases}',
       ),
       childrenPadding: const EdgeInsets.only(left: 12),
       children: <Widget>[
@@ -314,7 +364,8 @@ final class _RegistryNodeTile extends StatelessWidget {
                 auditResults: auditResults,
               ),
             ),
-            title: Text(phrase),
+            title: _HighlightedText(text: phrase, query: searchQuery),
+            subtitle: Text(currentPath.join(' → ')),
             onTap: () {
               onPhraseSelected(phrase);
             },
@@ -325,10 +376,16 @@ final class _RegistryNodeTile extends StatelessWidget {
             phraseStatusIndex: phraseStatusIndex,
             translationHistory: translationHistory,
             auditResults: auditResults,
+            searchQuery: searchQuery,
+            pathTitles: currentPath,
             onPhraseSelected: onPhraseSelected,
           ),
       ],
     );
+  }
+
+  static String _pathSubtitle(List<String> pathTitles, int lineNumber) {
+    return '${pathTitles.join(' → ')} · line $lineNumber';
   }
 
   static _RegistryPhraseStatus _resolvePhraseStatus({
@@ -358,6 +415,159 @@ final class _RegistryNodeTile extends StatelessWidget {
     }
 
     return _RegistryPhraseStatus.unchecked;
+  }
+}
+
+final class _RegistrySearchEngine {
+  const _RegistrySearchEngine._();
+
+  static _RegistrySearchResult search({
+    required RegistryNode root,
+    required String query,
+  }) {
+    final String normalizedQuery = _normalize(query);
+    final List<RegistryNode> nodes = <RegistryNode>[];
+    int sectionMatches = 0;
+    int phraseMatches = 0;
+
+    for (final RegistryNode child in root.children) {
+      final _RegistryNodeSearchResult? result = _filterNode(
+        node: child,
+        normalizedQuery: normalizedQuery,
+      );
+
+      if (result != null) {
+        nodes.add(result.node);
+        sectionMatches += result.sectionMatches;
+        phraseMatches += result.phraseMatches;
+      }
+    }
+
+    return _RegistrySearchResult(
+      nodes: List<RegistryNode>.unmodifiable(nodes),
+      sectionMatches: sectionMatches,
+      phraseMatches: phraseMatches,
+    );
+  }
+
+  static _RegistryNodeSearchResult? _filterNode({
+    required RegistryNode node,
+    required String normalizedQuery,
+  }) {
+    final bool titleMatches = _normalize(node.title).contains(normalizedQuery);
+
+    final List<String> matchedPhrases = node.phrases.where((String phrase) {
+      return _normalize(phrase).contains(normalizedQuery);
+    }).toList(growable: false);
+
+    final List<RegistryNode> matchedChildren = <RegistryNode>[];
+    int childSectionMatches = 0;
+    int childPhraseMatches = 0;
+
+    for (final RegistryNode child in node.children) {
+      final _RegistryNodeSearchResult? childResult = _filterNode(
+        node: child,
+        normalizedQuery: normalizedQuery,
+      );
+
+      if (childResult != null) {
+        matchedChildren.add(childResult.node);
+        childSectionMatches += childResult.sectionMatches;
+        childPhraseMatches += childResult.phraseMatches;
+      }
+    }
+
+    final bool hasMatches =
+        titleMatches || matchedPhrases.isNotEmpty || matchedChildren.isNotEmpty;
+
+    if (!hasMatches) {
+      return null;
+    }
+
+    final RegistryNode filteredNode = node.copyWith(
+      phrases: titleMatches ? node.phrases : matchedPhrases,
+      children: List<RegistryNode>.unmodifiable(matchedChildren),
+    );
+
+    return _RegistryNodeSearchResult(
+      node: filteredNode,
+      sectionMatches: childSectionMatches + (titleMatches ? 1 : 0),
+      phraseMatches: childPhraseMatches + matchedPhrases.length,
+    );
+  }
+
+  static String _normalize(String value) {
+    return value
+        .trim()
+        .replaceAll('ё', 'е')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .toLowerCase();
+  }
+}
+
+final class _RegistrySearchResult {
+  const _RegistrySearchResult({
+    required this.nodes,
+    required this.sectionMatches,
+    required this.phraseMatches,
+  });
+
+  final List<RegistryNode> nodes;
+  final int sectionMatches;
+  final int phraseMatches;
+}
+
+final class _RegistryNodeSearchResult {
+  const _RegistryNodeSearchResult({
+    required this.node,
+    required this.sectionMatches,
+    required this.phraseMatches,
+  });
+
+  final RegistryNode node;
+  final int sectionMatches;
+  final int phraseMatches;
+}
+
+final class _HighlightedText extends StatelessWidget {
+  const _HighlightedText({
+    required this.text,
+    required this.query,
+  });
+
+  final String text;
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    if (query.trim().isEmpty) {
+      return Text(text);
+    }
+
+    final String lowerText = text.toLowerCase();
+    final String lowerQuery = query.toLowerCase();
+    final int start = lowerText.indexOf(lowerQuery);
+
+    if (start == -1) {
+      return Text(text);
+    }
+
+    final int end = start + query.length;
+    final TextStyle baseStyle = DefaultTextStyle.of(context).style;
+
+    return RichText(
+      text: TextSpan(
+        style: baseStyle,
+        children: <TextSpan>[
+          TextSpan(text: text.substring(0, start)),
+          TextSpan(
+            text: text.substring(start, end),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          TextSpan(text: text.substring(end)),
+        ],
+      ),
+    );
   }
 }
 
