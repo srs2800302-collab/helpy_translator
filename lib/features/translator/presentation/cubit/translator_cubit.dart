@@ -51,8 +51,19 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
 
   Future<void> clearResults() async {
     await persistence.clear();
-    await registryPhraseStatusPersistence.clear();
-    emit(const TranslatorState.initial());
+
+    emit(
+      state.copyWith(
+        status: TranslatorStatus.initial,
+        clearResult: true,
+        clearTranslationHistory: true,
+        auditResults: const <CanonicalAuditResult>[],
+        errorMessage: '',
+        auditTotal: 0,
+        auditCompleted: 0,
+        currentAuditPhrase: '',
+      ),
+    );
   }
 
   Future<void> loadRegistry() async {
@@ -74,11 +85,14 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     try {
       final RegistryNode root =
           refresh ? await loadRegistryTree.refresh() : await loadRegistryTree();
+      final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
+          await registryPhraseStatusPersistence.loadIndex();
 
       emit(
         state.copyWith(
           status: TranslatorStatus.registrySuccess,
           registryRoot: root,
+          registryPhraseStatusIndex: phraseStatusIndex,
           registryErrorMessage: '',
         ),
       );

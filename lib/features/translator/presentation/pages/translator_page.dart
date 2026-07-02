@@ -277,6 +277,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
       _statusFilter = _RegistryStatusFilter.all;
     });
 
+    _scrollToTop();
+  }
+
+  void _scrollToTop() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,
@@ -327,6 +331,12 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
 
         final _RegistryVisibleStats visibleStats =
             _RegistryVisibleStats.fromNodes(visibleNodes);
+        final _RegistryStatusCounts statusCounts = _RegistryStatusCounts.fromNodes(
+          nodes: root?.children ?? const <RegistryNode>[],
+          phraseStatusIndex: state.registryPhraseStatusIndex,
+          translationHistory: state.translationHistory,
+          auditResults: state.auditResults,
+        );
 
         return Stack(
           children: <Widget>[
@@ -343,6 +353,12 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
                   ),
                 ),
+                IconButton.filledTonal(
+                  onPressed: _scrollToTop,
+                  icon: const Icon(Icons.keyboard_arrow_up),
+                  tooltip: 'Наверх',
+                ),
+                const SizedBox(width: 8),
                 IconButton.filledTonal(
                   onPressed: state.status == TranslatorStatus.registryLoading
                       ? null
@@ -399,6 +415,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
             const SizedBox(height: 8),
             _RegistryStatusFilterBar(
               selectedFilter: _statusFilter,
+                counts: statusCounts,
               onChanged: (_RegistryStatusFilter filter) {
                 setState(() {
                   _statusFilter = filter;
@@ -452,22 +469,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                 ),
             ],
           ],
-            ),
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: FloatingActionButton.small(
-                onPressed: () {
-                  if (_scrollController.hasClients) {
-                    _scrollController.animateTo(
-                      0,
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOut,
-                    );
-                  }
-                },
-                child: const Icon(Icons.keyboard_arrow_up),
-              ),
             ),
           ],
         );
@@ -731,13 +732,97 @@ enum _RegistryStatusFilter {
   failed,
 }
 
+
+final class _RegistryStatusCounts {
+  const _RegistryStatusCounts({
+    required this.total,
+    required this.unchecked,
+    required this.exact,
+    required this.equivalent,
+    required this.needsReview,
+    required this.drift,
+    required this.failed,
+  });
+
+  final int total;
+  final int unchecked;
+  final int exact;
+  final int equivalent;
+  final int needsReview;
+  final int drift;
+  final int failed;
+
+  static _RegistryStatusCounts fromNodes({
+    required List<RegistryNode> nodes,
+    required Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex,
+    required List<TranslationResult> translationHistory,
+    required List<CanonicalAuditResult> auditResults,
+  }) {
+    int total = 0;
+    int unchecked = 0;
+    int exact = 0;
+    int equivalent = 0;
+    int needsReview = 0;
+    int drift = 0;
+    int failed = 0;
+
+    void collect(RegistryNode node) {
+      for (final String phrase in node.phrases) {
+        total++;
+        final _RegistryPhraseStatus status =
+            _RegistryNodeTile.resolvePhraseStatusForFilter(
+          phrase: phrase,
+          phraseStatusIndex: phraseStatusIndex,
+          translationHistory: translationHistory,
+          auditResults: auditResults,
+        );
+
+        switch (status) {
+          case _RegistryPhraseStatus.unchecked:
+            unchecked++;
+          case _RegistryPhraseStatus.exact:
+            exact++;
+          case _RegistryPhraseStatus.equivalent:
+            equivalent++;
+          case _RegistryPhraseStatus.needsReview:
+            needsReview++;
+          case _RegistryPhraseStatus.drift:
+            drift++;
+          case _RegistryPhraseStatus.failed:
+            failed++;
+        }
+      }
+
+      for (final RegistryNode child in node.children) {
+        collect(child);
+      }
+    }
+
+    for (final RegistryNode node in nodes) {
+      collect(node);
+    }
+
+    return _RegistryStatusCounts(
+      total: total,
+      unchecked: unchecked,
+      exact: exact,
+      equivalent: equivalent,
+      needsReview: needsReview,
+      drift: drift,
+      failed: failed,
+    );
+  }
+}
+
 final class _RegistryStatusFilterBar extends StatelessWidget {
   const _RegistryStatusFilterBar({
     required this.selectedFilter,
+    required this.counts,
     required this.onChanged,
   });
 
   final _RegistryStatusFilter selectedFilter;
+  final _RegistryStatusCounts counts;
   final ValueChanged<_RegistryStatusFilter> onChanged;
 
   @override
@@ -746,13 +831,13 @@ final class _RegistryStatusFilterBar extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: <Widget>[
-        _chip(label: 'Все', filter: _RegistryStatusFilter.all),
-        _chip(label: '⚪ Unchecked', filter: _RegistryStatusFilter.unchecked),
-        _chip(label: '✅ Exact', filter: _RegistryStatusFilter.exact),
-        _chip(label: '🟢 Eq', filter: _RegistryStatusFilter.equivalent),
-        _chip(label: '🟡 Review', filter: _RegistryStatusFilter.needsReview),
-        _chip(label: '🔴 Drift', filter: _RegistryStatusFilter.drift),
-        _chip(label: '❌ Failed', filter: _RegistryStatusFilter.failed),
+        _chip(label: 'Все ${counts.total}', filter: _RegistryStatusFilter.all),
+        _chip(label: '⚪ ${counts.unchecked}', filter: _RegistryStatusFilter.unchecked),
+        _chip(label: '✅ ${counts.exact}', filter: _RegistryStatusFilter.exact),
+        _chip(label: '🟢 ${counts.equivalent}', filter: _RegistryStatusFilter.equivalent),
+        _chip(label: '🟡 ${counts.needsReview}', filter: _RegistryStatusFilter.needsReview),
+        _chip(label: '🔴 ${counts.drift}', filter: _RegistryStatusFilter.drift),
+        _chip(label: '❌ ${counts.failed}', filter: _RegistryStatusFilter.failed),
       ],
     );
   }
