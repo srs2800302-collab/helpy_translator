@@ -168,8 +168,8 @@ final class _RegistryExplorerPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ListView(
-      padding: EdgeInsets.all(16),
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: <Widget>[
         Text(
           'Registry Explorer',
