@@ -79,29 +79,31 @@ final class RegistryPhraseStatusPersistence {
       return <String, PersistedRegistryPhraseRecord>{};
     }
 
-    return Map<String, PersistedRegistryPhraseRecord>.from(
-      decoded.map(
-      (String key, Object? value) {
-        if (value is Map<String, dynamic>) {
-          return MapEntry<String, PersistedRegistryPhraseRecord>(
-            key,
-            PersistedRegistryPhraseRecord.fromJson(value),
-          );
-        }
+    final Map<String, PersistedRegistryPhraseRecord> result =
+        <String, PersistedRegistryPhraseRecord>{};
 
-        return MapEntry<String, PersistedRegistryPhraseRecord>(
-          key,
-          PersistedRegistryPhraseRecord(
-            phrase: '',
-            status: PersistedRegistryPhraseStatus.failed,
-            verdict: 'FAILED',
-            comment: 'Invalid persisted record.',
-            checkedAtIso: '',
-          ),
-        );
-      },
-      ),
-    );
+    decoded.forEach((String key, Object? value) {
+      if (value is Map<String, dynamic>) {
+        final PersistedRegistryPhraseRecord record =
+            PersistedRegistryPhraseRecord.fromJson(value);
+        final String normalizedKey = record.phrase.trim().isEmpty
+            ? _normalize(key)
+            : _normalize(record.phrase);
+
+        result[normalizedKey] = record;
+        return;
+      }
+
+      result[_normalize(key)] = PersistedRegistryPhraseRecord(
+        phrase: '',
+        status: PersistedRegistryPhraseStatus.failed,
+        verdict: 'FAILED',
+        comment: 'Invalid persisted record.',
+        checkedAtIso: '',
+      );
+    });
+
+    return result;
   }
 
   Future<void> saveTranslationResult(TranslationResult result) async {
