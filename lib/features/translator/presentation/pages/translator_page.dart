@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubit/translator_cubit.dart';
 import '../../../../core/persistence/registry_phrase_status_persistence.dart';
+import '../../../../core/persistence/registry_work_session_persistence.dart';
 import '../../domain/entities/canonical_audit_result.dart';
 import '../../domain/entities/registry_node.dart';
 import '../../domain/entities/translation_result.dart';
@@ -175,6 +176,7 @@ final class _TranslationWorkspace extends StatelessWidget {
 
 
 
+
 final class _RegistryExplorerView extends StatefulWidget {
   const _RegistryExplorerView({
     required this.onPhraseSelected,
@@ -190,18 +192,56 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
     with AutomaticKeepAliveClientMixin<_RegistryExplorerView> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
+  final RegistryWorkSessionPersistence _workSessionPersistence =
+      const RegistryWorkSessionPersistence();
 
   String _query = '';
   _RegistryStatusFilter _statusFilter = _RegistryStatusFilter.all;
+  RegistryWorkSession? _workSession;
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkSession();
+  }
 
   @override
   void dispose() {
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadWorkSession() async {
+    final RegistryWorkSession? session = await _workSessionPersistence.load();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _workSession = session;
+    });
+  }
+
+  Future<void> _saveOpenedSection(List<String> pathTitles) async {
+    await _workSessionPersistence.saveSection(pathTitles: pathTitles);
+    await _loadWorkSession();
+  }
+
+  Future<void> _saveSelectedPhrase({
+    required List<String> pathTitles,
+    required String phrase,
+  }) async {
+    await _workSessionPersistence.savePhrase(
+      pathTitles: pathTitles,
+      phrase: phrase,
+    );
+
+    await _loadWorkSession();
   }
 
   @override
@@ -218,7 +258,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
         final List<RegistryNode> baseNodes =
             searchResult?.nodes ?? root?.children ?? <RegistryNode>[];
 
-        final List<RegistryNode> visibleNodes = _RegistryStatusFilterEngine.filterNodes(
+        final List<RegistryNode> visibleNodes =
+            _RegistryStatusFilterEngine.filterNodes(
           nodes: baseNodes,
           filter: _statusFilter,
           phraseStatusIndex: state.registryPhraseStatusIndex,
@@ -260,6 +301,16 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
               ],
             ),
             const SizedBox(height: 8),
+            if (_workSession != null)
+              _ContinueWorkCard(
+                session: _workSession!,
+                onContinue: _workSession!.lastPhrase.trim().isEmpty
+                    ? null
+                    : () {
+                        widget.onPhraseSelected(_workSession!.lastPhrase);
+                      },
+              ),
+            if (_workSession != null) const SizedBox(height: 8),
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -323,12 +374,79 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                   auditResults: state.auditResults,
                   searchQuery: _query,
                   pathTitles: const <String>[],
-                  onPhraseSelected: widget.onPhraseSelected,
+                  onSectionOpened: _saveOpenedSection,
+                  onPhraseSelected: ({
+                    required String phrase,
+                    required List<String> pathTitles,
+                  }) async {
+                    await _saveSelectedPhrase(
+                      pathTitles: pathTitles,
+                      phrase: phrase,
+                    );
+
+                    widget.onPhraseSelected(phrase);
+                  },
                 ),
             ],
           ],
         );
       },
+    );
+  }
+}
+
+final class _ContinueWorkCard extends StatelessWidget {
+  const _ContinueWorkCard({
+    required this.session,
+    required this.onContinue,
+  });
+
+  final RegistryWorkSession session;
+  final VoidCallback? onContinue;
+
+  @override
+  Widget build(BuildContext context) {
+    final String path = session.pathTitles.isEmpty
+        ? 'Путь не сохранён'
+        : session.pathTitles.join(' → ');
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Продолжить работу',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            Text(path),
+            if (session.lastPhrase.trim().isNotEmpty) ...<Widget>[
+              const SizedBox(height: 6),
+              Text(
+                session.lastPhrase,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            if (session.updatedAtIso.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 6),
+              Text('Сохранено: ${session.updatedAtIso}'),
+            ],
+            if (onContinue != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: onContinue,
+                  child: const Text('Продолжить'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -341,6 +459,7 @@ final class _RegistryNodeTile extends StatelessWidget {
     required this.auditResults,
     required this.searchQuery,
     required this.pathTitles,
+    required this.onSectionOpened,
     required this.onPhraseSelected,
   });
 
@@ -350,7 +469,11 @@ final class _RegistryNodeTile extends StatelessWidget {
   final List<CanonicalAuditResult> auditResults;
   final String searchQuery;
   final List<String> pathTitles;
-  final ValueChanged<String> onPhraseSelected;
+  final ValueChanged<List<String>> onSectionOpened;
+  final Future<void> Function({
+    required String phrase,
+    required List<String> pathTitles,
+  }) onPhraseSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -363,6 +486,9 @@ final class _RegistryNodeTile extends StatelessWidget {
         dense: true,
         title: _HighlightedText(text: node.title, query: searchQuery),
         subtitle: Text(_pathSubtitle(currentPath, node.lineNumber)),
+        onTap: () {
+          onSectionOpened(currentPath);
+        },
       );
     }
 
@@ -374,6 +500,11 @@ final class _RegistryNodeTile extends StatelessWidget {
         '${_pathSubtitle(currentPath, node.lineNumber)} · phrases ${node.totalPhrases}',
       ),
       childrenPadding: const EdgeInsets.only(left: 12),
+      onExpansionChanged: (bool expanded) {
+        if (expanded) {
+          onSectionOpened(currentPath);
+        }
+      },
       children: <Widget>[
         for (final String phrase in node.phrases)
           ListTile(
@@ -389,7 +520,10 @@ final class _RegistryNodeTile extends StatelessWidget {
             title: _HighlightedText(text: phrase, query: searchQuery),
             subtitle: Text(currentPath.join(' → ')),
             onTap: () {
-              onPhraseSelected(phrase);
+              onPhraseSelected(
+                phrase: phrase,
+                pathTitles: currentPath,
+              );
             },
           ),
         for (final RegistryNode child in node.children)
@@ -400,6 +534,7 @@ final class _RegistryNodeTile extends StatelessWidget {
             auditResults: auditResults,
             searchQuery: searchQuery,
             pathTitles: currentPath,
+            onSectionOpened: onSectionOpened,
             onPhraseSelected: onPhraseSelected,
           ),
       ],
@@ -453,7 +588,6 @@ final class _RegistryNodeTile extends StatelessWidget {
     return _RegistryPhraseStatus.unchecked;
   }
 }
-
 
 enum _RegistryStatusFilter {
   all,
