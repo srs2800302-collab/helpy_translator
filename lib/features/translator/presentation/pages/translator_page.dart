@@ -324,7 +324,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
         final _RegistryVisibleStats visibleStats =
             _RegistryVisibleStats.fromNodes(visibleNodes);
 
-        return ListView(
+        return Stack(
+          children: <Widget>[
+            ListView(
           key: const PageStorageKey<String>('registry_explorer_scroll'),
           controller: _scrollController,
           padding: const EdgeInsets.all(16),
@@ -450,6 +452,24 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                   },
                 ),
             ],
+          ],
+            ),
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: FloatingActionButton.small(
+                onPressed: () {
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                },
+                child: const Icon(Icons.keyboard_arrow_up),
+              ),
+            ),
           ],
         );
       },

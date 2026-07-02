@@ -214,6 +214,11 @@ final class RegistryPhraseStatusPersistence {
     return phrase
         .trim()
         .replaceAll('ё', 'е')
+        .replaceAll('«', '')
+        .replaceAll('»', '')
+        .replaceAll('"', '')
+        .replaceAll('“', '')
+        .replaceAll('”', '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .replaceAll(RegExp(r'[.!?]+$'), '')
         .toLowerCase();
