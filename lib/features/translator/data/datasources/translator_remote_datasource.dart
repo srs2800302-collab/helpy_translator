@@ -54,10 +54,10 @@ final class TranslatorRemoteDataSourceImpl implements TranslatorRemoteDataSource
         ru: translation['RU'] ?? '',
         en: translation['EN'] ?? '',
         th: translation['TH'] ?? '',
-        enToRu: translation['EN → RU'] ?? '',
-        thToRu: translation['TH → RU'] ?? '',
-        enToTh: translation['EN → TH'] ?? '',
-        thToEn: translation['TH → EN'] ?? '',
+        enToRu: translation['EN_TO_RU'] ?? '',
+        thToRu: translation['TH_TO_RU'] ?? '',
+        enToTh: translation['EN_TO_TH'] ?? '',
+        thToEn: translation['TH_TO_EN'] ?? '',
         canonicalVerdict: verdict,
         canonicalComment: comment,
       );
@@ -76,8 +76,8 @@ final class TranslatorRemoteDataSourceImpl implements TranslatorRemoteDataSource
       data: <String, Object>{
         'model': appConfig.typhoonModel,
         'max_completion_tokens': maxTokens,
-        'temperature': 0.1,
-        'top_p': 0.7,
+        'temperature': 0.0,
+        'top_p': 1.0,
         'frequency_penalty': 0.0,
         'messages': <Map<String, String>>[
           <String, String>{
@@ -113,16 +113,16 @@ TH:
 ${translation['TH'] ?? ''}
 
 EN_TO_RU:
-${translation['EN → RU'] ?? ''}
+${translation['EN_TO_RU'] ?? ''}
 
 TH_TO_RU:
-${translation['TH → RU'] ?? ''}
+${translation['TH_TO_RU'] ?? ''}
 
 EN_TO_TH:
-${translation['EN → TH'] ?? ''}
+${translation['EN_TO_TH'] ?? ''}
 
 TH_TO_EN:
-${translation['TH → EN'] ?? ''}
+${translation['TH_TO_EN'] ?? ''}
 '''.trim();
   }
 
@@ -201,10 +201,10 @@ ${audit['REASON'] ?? ''}
     'RU',
     'EN',
     'TH',
-    'EN → RU',
-    'TH → RU',
-    'EN → TH',
-    'TH → EN',
+    'EN_TO_RU',
+    'TH_TO_RU',
+    'EN_TO_TH',
+    'TH_TO_EN',
   ];
 
   static const List<String> _auditLabels = <String>[
