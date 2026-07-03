@@ -152,6 +152,50 @@ final class RegistryPhraseStatusPersistence {
     await preferences.remove(_key);
   }
 
+  Future<String> exportJson() async {
+    final Map<String, PersistedRegistryPhraseRecord> index = await loadIndex();
+
+    final Map<String, Object?> json = index.map(
+      (String key, PersistedRegistryPhraseRecord value) {
+        return MapEntry<String, Object?>(key, value.toJson());
+      },
+    );
+
+    return jsonEncode(json);
+  }
+
+  Future<void> importJson(String rawJson) async {
+    final Object? decoded = jsonDecode(rawJson);
+
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid Registry status JSON.');
+    }
+
+    final Map<String, PersistedRegistryPhraseRecord> imported =
+        <String, PersistedRegistryPhraseRecord>{};
+
+    decoded.forEach((String key, Object? value) {
+      if (value is! Map<String, dynamic>) {
+        return;
+      }
+
+      final PersistedRegistryPhraseRecord record =
+          PersistedRegistryPhraseRecord.fromJson(value);
+
+      final String normalizedKey = record.phrase.trim().isEmpty
+          ? _normalize(key)
+          : _normalize(record.phrase);
+
+      if (normalizedKey.isEmpty) {
+        return;
+      }
+
+      imported[normalizedKey] = record;
+    });
+
+    await _saveIndex(imported);
+  }
+
   Future<void> _upsert({
     required String phrase,
     required PersistedRegistryPhraseStatus status,
