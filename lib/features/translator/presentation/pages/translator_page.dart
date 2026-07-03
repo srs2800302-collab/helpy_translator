@@ -745,9 +745,7 @@ final class _RegistryNodeTile extends StatelessWidget {
       key: PageStorageKey<String>('registry_node_${node.id}_$searchQuery'),
       initiallyExpanded: searchQuery.isNotEmpty,
       title: _HighlightedText(text: node.title, query: searchQuery),
-      subtitle: Text(
-        '${_pathSubtitle(currentPath, node.lineNumber)} · phrases ${node.totalPhrases}',
-      ),
+      subtitle: Text(_pathSubtitle(currentPath, node.lineNumber)),
       childrenPadding: const EdgeInsets.only(left: 12),
       onExpansionChanged: (bool expanded) {
         if (expanded) {
