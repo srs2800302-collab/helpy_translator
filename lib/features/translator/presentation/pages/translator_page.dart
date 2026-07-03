@@ -345,6 +345,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   _RegistryStatusFilter _statusFilter = _RegistryStatusFilter.all;
   RegistryWorkSession? _workSession;
   List<String> _focusedNodeIds = const <String>[];
+  Set<String> _expandedNodeIds = const <String>{};
   bool _registryLoadRequested = false;
   Timer? _searchDebounce;
 
@@ -480,114 +481,128 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
               translationHistory: state.translationHistory,
               auditResults: state.auditResults,
             );
+        final List<_RegistryFlatRow> visibleRows =
+            _RegistryFlatRowsEngine.build(
+              nodes: visibleNodes,
+              expandedNodeIds: _expandedNodeIds,
+              forceExpanded:
+                  _query.isNotEmpty ||
+                  _statusFilter != _RegistryStatusFilter.all,
+            );
 
-        return Stack(
-          children: <Widget>[
-            ListView(
-              key: const PageStorageKey<String>('registry_explorer_scroll'),
-              controller: widget.scrollController,
-              padding: const EdgeInsets.all(16),
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    const Expanded(
-                      child: Text(
-                        'Registry Explorer',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
+        return ListView.builder(
+          key: const PageStorageKey<String>('registry_explorer_scroll'),
+          controller: widget.scrollController,
+          padding: const EdgeInsets.all(16),
+          itemCount: root == null ? 1 : visibleRows.length + 1,
+          itemBuilder: (BuildContext context, int index) {
+            if (index == 0) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      const Expanded(
+                        child: Text(
+                          'Registry Explorer',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
+                      IconButton.filledTonal(
+                        onPressed:
+                            state.status == TranslatorStatus.registryLoading
+                            ? null
+                            : () {
+                                context
+                                    .read<TranslatorCubit>()
+                                    .refreshRegistry();
+                              },
+                        icon: state.status == TranslatorStatus.registryLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.refresh),
+                        tooltip: 'Обновить Registry',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (_workSession != null)
+                    _ContinueWorkCard(
+                      session: _workSession!,
+                      onContinue: () {
+                        _continueWork(_workSession!);
+                      },
                     ),
-                    IconButton.filledTonal(
-                      onPressed:
-                          state.status == TranslatorStatus.registryLoading
+                  if (_workSession != null) const SizedBox(height: 8),
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      labelText: 'Поиск по Registry',
+                      hintText: 'Контракт, раздел или фраза',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _query.isEmpty
                           ? null
-                          : () {
-                              context.read<TranslatorCubit>().refreshRegistry();
-                            },
-                      icon: state.status == TranslatorStatus.registryLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.refresh),
-                      tooltip: 'Обновить Registry',
+                          : IconButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _query = '';
+                                  _focusedNodeIds = const <String>[];
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_workSession != null)
-                  _ContinueWorkCard(
-                    session: _workSession!,
-                    onContinue: () {
-                      _continueWork(_workSession!);
+                    onChanged: (String value) {
+                      _searchDebounce?.cancel();
+                      _searchDebounce = Timer(
+                        const Duration(milliseconds: 450),
+                        () {
+                          if (!mounted) {
+                            return;
+                          }
+
+                          setState(() {
+                            _query = value.trim();
+                            _focusedNodeIds = const <String>[];
+                          });
+                        },
+                      );
                     },
                   ),
-                if (_workSession != null) const SizedBox(height: 8),
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    labelText: 'Поиск по Registry',
-                    hintText: 'Контракт, раздел или фраза',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _query = '';
-                                _focusedNodeIds = const <String>[];
-                              });
-                            },
-                            icon: const Icon(Icons.clear),
-                          ),
+                  const SizedBox(height: 8),
+                  _RegistryStatusFilterBar(
+                    selectedFilter: _statusFilter,
+                    counts: statusCounts,
+                    onChanged: (_RegistryStatusFilter filter) {
+                      setState(() {
+                        _statusFilter = filter;
+                      });
+                      _scrollToTop();
+                    },
                   ),
-                  onChanged: (String value) {
-                    _searchDebounce?.cancel();
-                    _searchDebounce = Timer(
-                      const Duration(milliseconds: 450),
-                      () {
-                        if (!mounted) {
-                          return;
-                        }
-
-                        setState(() {
-                          _query = value.trim();
-                          _focusedNodeIds = const <String>[];
-                        });
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-                _RegistryStatusFilterBar(
-                  selectedFilter: _statusFilter,
-                  counts: statusCounts,
-                  onChanged: (_RegistryStatusFilter filter) {
-                    setState(() {
-                      _statusFilter = filter;
-                    });
-                    _scrollToTop();
-                  },
-                ),
-                const SizedBox(height: 8),
-                if (state.registryErrorMessage.isNotEmpty)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(state.registryErrorMessage),
+                  const SizedBox(height: 8),
+                  if (state.registryErrorMessage.isNotEmpty)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(state.registryErrorMessage),
+                      ),
                     ),
-                  ),
-                if (root == null) ...<Widget>[
-                  const Text(
-                    'Нажмите обновить, чтобы скачать Registry из GitHub и построить дерево разделов.',
-                  ),
-                ] else ...<Widget>[
-                  if (searchResult == null &&
+                  if (root == null)
+                    const Text(
+                      'Нажмите обновить, чтобы скачать Registry из GitHub и построить дерево разделов.',
+                    )
+                  else if (searchResult == null &&
                       _statusFilter == _RegistryStatusFilter.all)
                     Text(
                       'Разделов: ${root.children.length} · Фраз: ${root.totalPhrases}',
@@ -598,35 +613,55 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                       '${visibleStats.phrases} фраз',
                     ),
                   const SizedBox(height: 12),
-                  for (final RegistryNode child in visibleNodes)
-                    _RegistryNodeTile(
-                      node: child,
-                      phraseStatusIndex: state.registryPhraseStatusIndex,
-                      translationHistory: state.translationHistory,
-                      auditResults: state.auditResults,
-                      searchQuery: _query,
-                      pathTitles: const <String>[],
-                      pathNodeIds: const <String>[],
-                      onSectionOpened: _saveOpenedSection,
-                      onPhraseSelected:
-                          ({
-                            required String phrase,
-                            required List<String> pathTitles,
-                            required List<String> pathNodeIds,
-                          }) async {
-                            await _saveSelectedPhrase(
-                              pathTitles: pathTitles,
-                              pathNodeIds: pathNodeIds,
-                              phrase: phrase,
-                            );
-
-                            widget.onPhraseSelected(phrase);
-                          },
-                    ),
                 ],
-              ],
-            ),
-          ],
+              );
+            }
+
+            final _RegistryFlatRow row = visibleRows[index - 1];
+
+            return _RegistryFlatRowTile(
+              row: row,
+              phraseStatusIndex: state.registryPhraseStatusIndex,
+              translationHistory: state.translationHistory,
+              auditResults: state.auditResults,
+              searchQuery: _query,
+              onSectionTap:
+                  ({
+                    required String nodeId,
+                    required List<String> pathTitles,
+                    required List<String> pathNodeIds,
+                  }) async {
+                    setState(() {
+                      final Set<String> updated = <String>{..._expandedNodeIds};
+
+                      if (!updated.add(nodeId)) {
+                        updated.remove(nodeId);
+                      }
+
+                      _expandedNodeIds = updated;
+                    });
+
+                    await _saveOpenedSection(
+                      pathTitles: pathTitles,
+                      pathNodeIds: pathNodeIds,
+                    );
+                  },
+              onPhraseSelected:
+                  ({
+                    required String phrase,
+                    required List<String> pathTitles,
+                    required List<String> pathNodeIds,
+                  }) async {
+                    await _saveSelectedPhrase(
+                      pathTitles: pathTitles,
+                      pathNodeIds: pathNodeIds,
+                      phrase: phrase,
+                    );
+
+                    widget.onPhraseSelected(phrase);
+                  },
+            );
+          },
         );
       },
     );
@@ -684,6 +719,206 @@ final class _ContinueWorkCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+final class _RegistryFlatRow {
+  const _RegistryFlatRow.section({
+    required this.nodeId,
+    required this.title,
+    required this.lineNumber,
+    required this.depth,
+    required this.pathTitles,
+    required this.pathNodeIds,
+    required this.hasNestedContent,
+    required this.isExpanded,
+  }) : phrase = null;
+
+  const _RegistryFlatRow.phrase({
+    required this.phrase,
+    required this.depth,
+    required this.pathTitles,
+    required this.pathNodeIds,
+  }) : nodeId = '',
+       title = '',
+       lineNumber = 0,
+       hasNestedContent = false,
+       isExpanded = false;
+
+  final String nodeId;
+  final String title;
+  final String? phrase;
+  final int lineNumber;
+  final int depth;
+  final List<String> pathTitles;
+  final List<String> pathNodeIds;
+  final bool hasNestedContent;
+  final bool isExpanded;
+
+  bool get isSection => phrase == null;
+}
+
+final class _RegistryFlatRowsEngine {
+  const _RegistryFlatRowsEngine._();
+
+  static List<_RegistryFlatRow> build({
+    required List<RegistryNode> nodes,
+    required Set<String> expandedNodeIds,
+    required bool forceExpanded,
+  }) {
+    final List<_RegistryFlatRow> rows = <_RegistryFlatRow>[];
+
+    for (final RegistryNode node in nodes) {
+      _appendNode(
+        rows: rows,
+        node: node,
+        pathTitles: const <String>[],
+        pathNodeIds: const <String>[],
+        depth: 0,
+        expandedNodeIds: expandedNodeIds,
+        forceExpanded: forceExpanded,
+      );
+    }
+
+    return List<_RegistryFlatRow>.unmodifiable(rows);
+  }
+
+  static void _appendNode({
+    required List<_RegistryFlatRow> rows,
+    required RegistryNode node,
+    required List<String> pathTitles,
+    required List<String> pathNodeIds,
+    required int depth,
+    required Set<String> expandedNodeIds,
+    required bool forceExpanded,
+  }) {
+    final List<String> currentPath = <String>[...pathTitles, node.title];
+    final List<String> currentNodePath = <String>[...pathNodeIds, node.id];
+    final bool hasNestedContent =
+        node.phrases.isNotEmpty || node.children.isNotEmpty;
+    final bool isExpanded = forceExpanded || expandedNodeIds.contains(node.id);
+
+    rows.add(
+      _RegistryFlatRow.section(
+        nodeId: node.id,
+        title: node.title,
+        lineNumber: node.lineNumber,
+        depth: depth,
+        pathTitles: currentPath,
+        pathNodeIds: currentNodePath,
+        hasNestedContent: hasNestedContent,
+        isExpanded: isExpanded,
+      ),
+    );
+
+    if (!hasNestedContent || !isExpanded) {
+      return;
+    }
+
+    for (final String phrase in node.phrases) {
+      rows.add(
+        _RegistryFlatRow.phrase(
+          phrase: phrase,
+          depth: depth + 1,
+          pathTitles: currentPath,
+          pathNodeIds: currentNodePath,
+        ),
+      );
+    }
+
+    for (final RegistryNode child in node.children) {
+      _appendNode(
+        rows: rows,
+        node: child,
+        pathTitles: currentPath,
+        pathNodeIds: currentNodePath,
+        depth: depth + 1,
+        expandedNodeIds: expandedNodeIds,
+        forceExpanded: forceExpanded,
+      );
+    }
+  }
+}
+
+final class _RegistryFlatRowTile extends StatelessWidget {
+  const _RegistryFlatRowTile({
+    required this.row,
+    required this.phraseStatusIndex,
+    required this.translationHistory,
+    required this.auditResults,
+    required this.searchQuery,
+    required this.onSectionTap,
+    required this.onPhraseSelected,
+  });
+
+  final _RegistryFlatRow row;
+  final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex;
+  final List<TranslationResult> translationHistory;
+  final List<CanonicalAuditResult> auditResults;
+  final String searchQuery;
+  final Future<void> Function({
+    required String nodeId,
+    required List<String> pathTitles,
+    required List<String> pathNodeIds,
+  })
+  onSectionTap;
+  final Future<void> Function({
+    required String phrase,
+    required List<String> pathTitles,
+    required List<String> pathNodeIds,
+  })
+  onPhraseSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final double leftPadding = 16 + row.depth * 18;
+
+    if (row.isSection) {
+      return ListTile(
+        dense: true,
+        contentPadding: EdgeInsets.only(left: leftPadding, right: 16),
+        leading: row.hasNestedContent
+            ? Icon(row.isExpanded ? Icons.expand_more : Icons.chevron_right)
+            : const SizedBox(width: 24),
+        title: _HighlightedText(text: row.title, query: searchQuery),
+        subtitle: Text(
+          '${row.pathTitles.join(' → ')} · line ${row.lineNumber}',
+        ),
+        onTap: row.hasNestedContent
+            ? () {
+                onSectionTap(
+                  nodeId: row.nodeId,
+                  pathTitles: row.pathTitles,
+                  pathNodeIds: row.pathNodeIds,
+                );
+              }
+            : null,
+      );
+    }
+
+    final String phrase = row.phrase ?? '';
+
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.only(left: leftPadding, right: 16),
+      leading: _RegistryPhraseStatusIcon(
+        status: _RegistryNodeTile.resolvePhraseStatusForFilter(
+          phrase: phrase,
+          phraseStatusIndex: phraseStatusIndex,
+          translationHistory: translationHistory,
+          auditResults: auditResults,
+        ),
+      ),
+      title: _HighlightedText(text: phrase, query: searchQuery),
+      subtitle: Text(row.pathTitles.join(' → ')),
+      onTap: () {
+        onPhraseSelected(
+          phrase: phrase,
+          pathTitles: row.pathTitles,
+          pathNodeIds: row.pathNodeIds,
+        );
+      },
     );
   }
 }
