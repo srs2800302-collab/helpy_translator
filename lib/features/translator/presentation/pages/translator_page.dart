@@ -466,7 +466,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
         final List<RegistryNode> searchNodes =
             searchResult?.nodes ?? root?.children ?? <RegistryNode>[];
 
-        final List<RegistryNode> baseNodes = _focusedNodeIds.isEmpty
+        final List<RegistryNode> baseNodes =
+            _query.isNotEmpty || _focusedNodeIds.isEmpty
             ? searchNodes
             : _RegistryFocusEngine.focusNodes(
                 nodes: searchNodes,
@@ -1230,11 +1231,7 @@ final class _RegistrySearchEngine {
   }
 
   static String _normalize(String value) {
-    return value
-        .trim()
-        .replaceAll('ё', 'е')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .toLowerCase();
+    return RegistryPhraseStatusPersistence.normalizePhrase(value);
   }
 }
 
