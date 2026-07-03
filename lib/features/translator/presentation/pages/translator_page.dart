@@ -12,6 +12,7 @@ import '../widgets/canonical_audit_results_view.dart';
 import '../widgets/progress_status_card.dart';
 import '../widgets/status_summary_view.dart';
 import '../widgets/translation_result_view.dart';
+import '../widgets/translation_consistency_warnings_view.dart';
 
 final class TranslatorPage extends StatefulWidget {
   const TranslatorPage({super.key});
@@ -195,6 +196,10 @@ final class _TranslationWorkspace extends StatelessWidget {
                 ),
               ),
             if (state.translationHistory.isNotEmpty) ...<Widget>[
+              TranslationConsistencyWarningsView(
+                results: state.translationHistory,
+              ),
+              const SizedBox(height: 8),
               const Text(
                 'Результаты переводов',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
