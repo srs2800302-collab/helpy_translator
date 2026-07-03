@@ -155,11 +155,12 @@ final class RegistryPhraseStatusPersistence {
   Future<String> exportJson() async {
     final Map<String, PersistedRegistryPhraseRecord> index = await loadIndex();
 
-    final Map<String, Object?> json = index.map(
-      (String key, PersistedRegistryPhraseRecord value) {
-        return MapEntry<String, Object?>(key, value.toJson());
-      },
-    );
+    final Map<String, Object?> json = index.map((
+      String key,
+      PersistedRegistryPhraseRecord value,
+    ) {
+      return MapEntry<String, Object?>(key, value.toJson());
+    });
 
     return jsonEncode(json);
   }
@@ -219,11 +220,12 @@ final class RegistryPhraseStatusPersistence {
     Map<String, PersistedRegistryPhraseRecord> index,
   ) async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
-    final Map<String, Object?> json = index.map(
-      (String key, PersistedRegistryPhraseRecord value) {
-        return MapEntry<String, Object?>(key, value.toJson());
-      },
-    );
+    final Map<String, Object?> json = index.map((
+      String key,
+      PersistedRegistryPhraseRecord value,
+    ) {
+      return MapEntry<String, Object?>(key, value.toJson());
+    });
 
     await preferences.setString(_key, jsonEncode(json));
   }
@@ -259,14 +261,14 @@ final class RegistryPhraseStatusPersistence {
   static String _normalize(String phrase) {
     return phrase
         .trim()
+        .replaceAll('\u00A0', ' ')
+        .replaceAll('\u202F', ' ')
         .replaceAll('ё', 'е')
-        .replaceAll('«', '')
-        .replaceAll('»', '')
-        .replaceAll('"', '')
-        .replaceAll('“', '')
-        .replaceAll('”', '')
+        .replaceAll('Ё', 'Е')
+        .replaceAll(RegExp(r'[«»"“”„‟‹›]+'), '')
         .replaceAll(RegExp(r'\s+'), ' ')
-        .replaceAll(RegExp(r'[.!?]+$'), '')
+        .replaceAll(RegExp(r'^[\s.!?,:;]+'), '')
+        .replaceAll(RegExp(r'[\s.!?,:;]+$'), '')
         .toLowerCase();
   }
 }

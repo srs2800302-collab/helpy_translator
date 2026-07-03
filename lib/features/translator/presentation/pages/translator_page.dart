@@ -48,6 +48,22 @@ final class _TranslatorPageState extends State<TranslatorPage> {
     }
   }
 
+  Widget _registryOnlyControl({
+    required BuildContext tabContext,
+    required Widget child,
+  }) {
+    return AnimatedBuilder(
+      animation: DefaultTabController.of(tabContext),
+      builder: (BuildContext context, Widget? child) {
+        final bool isRegistryTab =
+            DefaultTabController.of(tabContext).index == 1;
+
+        return isRegistryTab ? child! : const SizedBox.shrink();
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -69,81 +85,100 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                       ],
                     ),
                     Positioned(
-                      left: 8,
-                      child: PopupMenuButton<_RegistryStatusBackupAction>(
-                        tooltip: 'Статусы Registry',
-                        icon: const Icon(Icons.backup),
-                        onSelected: (_RegistryStatusBackupAction action) async {
-                          final TranslatorCubit cubit =
-                              context.read<TranslatorCubit>();
-                          final ScaffoldMessengerState messenger =
-                              ScaffoldMessenger.of(context);
+                      left: 16,
+                      child: _registryOnlyControl(
+                        tabContext: tabContext,
+                        child: PopupMenuButton<_RegistryStatusBackupAction>(
+                          tooltip: 'Статусы Registry',
+                          icon: const Icon(Icons.backup),
+                          onSelected:
+                              (_RegistryStatusBackupAction action) async {
+                                final TranslatorCubit cubit = context
+                                    .read<TranslatorCubit>();
+                                final ScaffoldMessengerState messenger =
+                                    ScaffoldMessenger.of(context);
 
-                          switch (action) {
-                            case _RegistryStatusBackupAction.export:
-                              final String json =
-                                  await cubit.exportRegistryStatuses();
-                              await Clipboard.setData(ClipboardData(text: json));
-                              if (context.mounted) {
-                                messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Статусы Registry скопированы.'),
-                                  ),
-                                );
-                              }
-                            case _RegistryStatusBackupAction.import:
-                              final ClipboardData? data =
-                                  await Clipboard.getData('text/plain');
-                              final String rawJson = data?.text ?? '';
+                                switch (action) {
+                                  case _RegistryStatusBackupAction.export:
+                                    final String json = await cubit
+                                        .exportRegistryStatuses();
+                                    await Clipboard.setData(
+                                      ClipboardData(text: json),
+                                    );
+                                    if (context.mounted) {
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Статусы Registry скопированы.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  case _RegistryStatusBackupAction.import:
+                                    final ClipboardData? data =
+                                        await Clipboard.getData('text/plain');
+                                    final String rawJson = data?.text ?? '';
 
-                              if (rawJson.trim().isEmpty) {
-                                if (context.mounted) {
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Буфер обмена пуст.'),
-                                    ),
-                                  );
+                                    if (rawJson.trim().isEmpty) {
+                                      if (context.mounted) {
+                                        messenger.showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Буфер обмена пуст.'),
+                                          ),
+                                        );
+                                      }
+                                      return;
+                                    }
+
+                                    try {
+                                      await cubit.importRegistryStatuses(
+                                        rawJson,
+                                      );
+
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Статусы Registry восстановлены.',
+                                          ),
+                                        ),
+                                      );
+                                    } on FormatException {
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Некорректный JSON статусов.',
+                                          ),
+                                        ),
+                                      );
+                                    }
                                 }
-                                return;
-                              }
-
-                              try {
-                                await cubit.importRegistryStatuses(rawJson);
-
-                                messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Статусы Registry восстановлены.'),
-                                  ),
-                                );
-                              } on FormatException {
-                                messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Некорректный JSON статусов.'),
-                                  ),
-                                );
-                              }
-                          }
-                        },
-                        itemBuilder: (BuildContext context) {
-                          return const <PopupMenuEntry<_RegistryStatusBackupAction>>[
-                            PopupMenuItem<_RegistryStatusBackupAction>(
-                              value: _RegistryStatusBackupAction.export,
-                              child: Text('Экспорт статусов'),
-                            ),
-                            PopupMenuItem<_RegistryStatusBackupAction>(
-                              value: _RegistryStatusBackupAction.import,
-                              child: Text('Импорт статусов'),
-                            ),
-                          ];
-                        },
+                              },
+                          itemBuilder: (BuildContext context) {
+                            return const <
+                              PopupMenuEntry<_RegistryStatusBackupAction>
+                            >[
+                              PopupMenuItem<_RegistryStatusBackupAction>(
+                                value: _RegistryStatusBackupAction.export,
+                                child: Text('Экспорт статусов'),
+                              ),
+                              PopupMenuItem<_RegistryStatusBackupAction>(
+                                value: _RegistryStatusBackupAction.import,
+                                child: Text('Импорт статусов'),
+                              ),
+                            ];
+                          },
+                        ),
                       ),
                     ),
                     Positioned(
-                      right: 8,
-                      child: IconButton.filledTonal(
-                        onPressed: _scrollRegistryToTop,
-                        icon: const Icon(Icons.keyboard_arrow_up),
-                        tooltip: 'Наверх',
+                      right: 16,
+                      child: _registryOnlyControl(
+                        tabContext: tabContext,
+                        child: IconButton.filledTonal(
+                          onPressed: _scrollRegistryToTop,
+                          icon: const Icon(Icons.keyboard_arrow_up),
+                          tooltip: 'Наверх',
+                        ),
                       ),
                     ),
                   ],
@@ -229,7 +264,8 @@ final class _TranslationWorkspace extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
-                  onPressed: state.status == TranslatorStatus.loading ||
+                  onPressed:
+                      state.status == TranslatorStatus.loading ||
                           state.status == TranslatorStatus.auditLoading
                       ? null
                       : () {
@@ -283,10 +319,6 @@ final class _TranslationWorkspace extends StatelessWidget {
     );
   }
 }
-
-
-
-
 
 final class _RegistryExplorerView extends StatefulWidget {
   const _RegistryExplorerView({
@@ -366,21 +398,34 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   }
 
   void _continueWork(RegistryWorkSession session) {
-    final String query = session.lastPhrase.trim().isNotEmpty
-        ? session.lastPhrase.trim()
-        : session.pathTitles.isEmpty
-            ? ''
-            : session.pathTitles.last.trim();
+    final List<String> focusedNodeIds = session.pathNodeIds
+        .where((String id) => id.trim().isNotEmpty)
+        .toList(growable: false);
 
-    if (query.isEmpty) {
+    if (focusedNodeIds.isNotEmpty) {
+      _searchController.clear();
+
+      setState(() {
+        _query = '';
+        _focusedNodeIds = focusedNodeIds;
+        _statusFilter = _RegistryStatusFilter.all;
+      });
+
+      _scrollToTop();
       return;
     }
 
-    _searchController.text = query;
+    final String fallbackQuery = session.lastPhrase.trim();
+
+    if (fallbackQuery.isEmpty) {
+      return;
+    }
+
+    _searchController.text = fallbackQuery;
 
     setState(() {
-      _query = query;
-      _focusedNodeIds = session.pathNodeIds;
+      _query = fallbackQuery;
+      _focusedNodeIds = const <String>[];
       _statusFilter = _RegistryStatusFilter.all;
     });
 
@@ -413,7 +458,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
         }
 
         final RegistryNode? root = state.registryRoot;
-        final _RegistrySearchResult? searchResult = root == null || _query.isEmpty
+        final _RegistrySearchResult? searchResult =
+            root == null || _query.isEmpty
             ? null
             : _RegistrySearchEngine.search(root: root, query: _query);
 
@@ -429,147 +475,156 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
 
         final List<RegistryNode> visibleNodes =
             _RegistryStatusFilterEngine.filterNodes(
-          nodes: baseNodes,
-          filter: _statusFilter,
-          phraseStatusIndex: state.registryPhraseStatusIndex,
-          translationHistory: state.translationHistory,
-          auditResults: state.auditResults,
-        );
+              nodes: baseNodes,
+              filter: _statusFilter,
+              phraseStatusIndex: state.registryPhraseStatusIndex,
+              translationHistory: state.translationHistory,
+              auditResults: state.auditResults,
+            );
 
         final _RegistryVisibleStats visibleStats =
             _RegistryVisibleStats.fromNodes(visibleNodes);
-        final _RegistryStatusCounts statusCounts = _RegistryStatusCounts.fromNodes(
-          nodes: root?.children ?? const <RegistryNode>[],
-          phraseStatusIndex: state.registryPhraseStatusIndex,
-          translationHistory: state.translationHistory,
-          auditResults: state.auditResults,
-        );
+        final _RegistryStatusCounts statusCounts =
+            _RegistryStatusCounts.fromNodes(
+              nodes: root?.children ?? const <RegistryNode>[],
+              phraseStatusIndex: state.registryPhraseStatusIndex,
+              translationHistory: state.translationHistory,
+              auditResults: state.auditResults,
+            );
 
         return Stack(
           children: <Widget>[
             ListView(
-          key: const PageStorageKey<String>('registry_explorer_scroll'),
-          controller: widget.scrollController,
-          padding: const EdgeInsets.all(16),
-          children: <Widget>[
-            Row(
+              key: const PageStorageKey<String>('registry_explorer_scroll'),
+              controller: widget.scrollController,
+              padding: const EdgeInsets.all(16),
               children: <Widget>[
-                const Expanded(
-                  child: Text(
-                    'Registry Explorer',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                IconButton.filledTonal(
-                  onPressed: state.status == TranslatorStatus.registryLoading
-                      ? null
-                      : () {
-                          context.read<TranslatorCubit>().refreshRegistry();
-                        },
-                  icon: state.status == TranslatorStatus.registryLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh),
-                  tooltip: 'Обновить Registry',
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (_workSession != null)
-              _ContinueWorkCard(
-                session: _workSession!,
-                onContinue: () {
-                  _continueWork(_workSession!);
-                },
-              ),
-            if (_workSession != null) const SizedBox(height: 8),
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: 'Поиск по Registry',
-                hintText: 'Контракт, раздел или фраза',
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _query.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _query = '';
-                            _focusedNodeIds = const <String>[];
-                          });
-                        },
-                        icon: const Icon(Icons.clear),
+                Row(
+                  children: <Widget>[
+                    const Expanded(
+                      child: Text(
+                        'Registry Explorer',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-              ),
-              onChanged: (String value) {
-                setState(() {
-                  _query = value.trim();
-                  _focusedNodeIds = const <String>[];
-                });
-              },
-            ),
-            const SizedBox(height: 8),
-            _RegistryStatusFilterBar(
-              selectedFilter: _statusFilter,
-                counts: statusCounts,
-              onChanged: (_RegistryStatusFilter filter) {
-                setState(() {
-                  _statusFilter = filter;
-                });
-              },
-            ),
-            const SizedBox(height: 8),
-            if (state.registryErrorMessage.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(state.registryErrorMessage),
+                    ),
+                    IconButton.filledTonal(
+                      onPressed:
+                          state.status == TranslatorStatus.registryLoading
+                          ? null
+                          : () {
+                              context.read<TranslatorCubit>().refreshRegistry();
+                            },
+                      icon: state.status == TranslatorStatus.registryLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh),
+                      tooltip: 'Обновить Registry',
+                    ),
+                  ],
                 ),
-              ),
-            if (root == null) ...<Widget>[
-              const Text(
-                'Нажмите обновить, чтобы скачать Registry из GitHub и построить дерево разделов.',
-              ),
-            ] else ...<Widget>[
-              if (searchResult == null && _statusFilter == _RegistryStatusFilter.all)
-                Text('Разделов: ${root.children.length} · Фраз: ${root.totalPhrases}')
-              else
-                Text(
-                  'Показано: ${visibleStats.sections} разделов · '
-                  '${visibleStats.phrases} фраз',
-                ),
-              const SizedBox(height: 12),
-              for (final RegistryNode child in visibleNodes)
-                _RegistryNodeTile(
-                  node: child,
-                  phraseStatusIndex: state.registryPhraseStatusIndex,
-                  translationHistory: state.translationHistory,
-                  auditResults: state.auditResults,
-                  searchQuery: _query,
-                  pathTitles: const <String>[],
-                  pathNodeIds: const <String>[],
-                  onSectionOpened: _saveOpenedSection,
-                  onPhraseSelected: ({
-                    required String phrase,
-                    required List<String> pathTitles,
-                    required List<String> pathNodeIds,
-                  }) async {
-                    await _saveSelectedPhrase(
-                      pathTitles: pathTitles,
-                      pathNodeIds: pathNodeIds,
-                      phrase: phrase,
-                    );
-
-                    widget.onPhraseSelected(phrase);
+                const SizedBox(height: 8),
+                if (_workSession != null)
+                  _ContinueWorkCard(
+                    session: _workSession!,
+                    onContinue: () {
+                      _continueWork(_workSession!);
+                    },
+                  ),
+                if (_workSession != null) const SizedBox(height: 8),
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    labelText: 'Поиск по Registry',
+                    hintText: 'Контракт, раздел или фраза',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _query = '';
+                                _focusedNodeIds = const <String>[];
+                              });
+                            },
+                            icon: const Icon(Icons.clear),
+                          ),
+                  ),
+                  onChanged: (String value) {
+                    setState(() {
+                      _query = value.trim();
+                      _focusedNodeIds = const <String>[];
+                    });
                   },
                 ),
-            ],
-          ],
+                const SizedBox(height: 8),
+                _RegistryStatusFilterBar(
+                  selectedFilter: _statusFilter,
+                  counts: statusCounts,
+                  onChanged: (_RegistryStatusFilter filter) {
+                    setState(() {
+                      _statusFilter = filter;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                if (state.registryErrorMessage.isNotEmpty)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(state.registryErrorMessage),
+                    ),
+                  ),
+                if (root == null) ...<Widget>[
+                  const Text(
+                    'Нажмите обновить, чтобы скачать Registry из GitHub и построить дерево разделов.',
+                  ),
+                ] else ...<Widget>[
+                  if (searchResult == null &&
+                      _statusFilter == _RegistryStatusFilter.all)
+                    Text(
+                      'Разделов: ${root.children.length} · Фраз: ${root.totalPhrases}',
+                    )
+                  else
+                    Text(
+                      'Показано: ${visibleStats.sections} разделов · '
+                      '${visibleStats.phrases} фраз',
+                    ),
+                  const SizedBox(height: 12),
+                  for (final RegistryNode child in visibleNodes)
+                    _RegistryNodeTile(
+                      node: child,
+                      phraseStatusIndex: state.registryPhraseStatusIndex,
+                      translationHistory: state.translationHistory,
+                      auditResults: state.auditResults,
+                      searchQuery: _query,
+                      pathTitles: const <String>[],
+                      pathNodeIds: const <String>[],
+                      onSectionOpened: _saveOpenedSection,
+                      onPhraseSelected:
+                          ({
+                            required String phrase,
+                            required List<String> pathTitles,
+                            required List<String> pathNodeIds,
+                          }) async {
+                            await _saveSelectedPhrase(
+                              pathTitles: pathTitles,
+                              pathNodeIds: pathNodeIds,
+                              phrase: phrase,
+                            );
+
+                            widget.onPhraseSelected(phrase);
+                          },
+                    ),
+                ],
+              ],
             ),
           ],
         );
@@ -579,10 +634,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
 }
 
 final class _ContinueWorkCard extends StatelessWidget {
-  const _ContinueWorkCard({
-    required this.session,
-    required this.onContinue,
-  });
+  const _ContinueWorkCard({required this.session, required this.onContinue});
 
   final RegistryWorkSession session;
   final VoidCallback onContinue;
@@ -659,12 +711,14 @@ final class _RegistryNodeTile extends StatelessWidget {
   final Future<void> Function({
     required List<String> pathTitles,
     required List<String> pathNodeIds,
-  }) onSectionOpened;
+  })
+  onSectionOpened;
   final Future<void> Function({
     required String phrase,
     required List<String> pathTitles,
     required List<String> pathNodeIds,
-  }) onPhraseSelected;
+  })
+  onPhraseSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -766,7 +820,9 @@ final class _RegistryNodeTile extends StatelessWidget {
     required List<CanonicalAuditResult> auditResults,
   }) {
     final PersistedRegistryPhraseRecord? persisted =
-        phraseStatusIndex[RegistryPhraseStatusPersistence.normalizePhrase(phrase)];
+        phraseStatusIndex[RegistryPhraseStatusPersistence.normalizePhrase(
+          phrase,
+        )];
 
     if (persisted != null) {
       return _RegistryPhraseStatus.fromPersistedStatus(persisted.status);
@@ -789,7 +845,6 @@ final class _RegistryNodeTile extends StatelessWidget {
   }
 }
 
-
 final class _RegistryFocusEngine {
   const _RegistryFocusEngine._();
 
@@ -811,10 +866,7 @@ final class _RegistryFocusEngine {
 
       return <RegistryNode>[
         node.copyWith(
-          children: focusNodes(
-            nodes: node.children,
-            nodeIds: remainingIds,
-          ),
+          children: focusNodes(nodes: node.children, nodeIds: remainingIds),
         ),
       ];
     }
@@ -832,7 +884,6 @@ enum _RegistryStatusFilter {
   drift,
   failed,
 }
-
 
 final class _RegistryStatusCounts {
   const _RegistryStatusCounts({
@@ -872,11 +923,11 @@ final class _RegistryStatusCounts {
         total++;
         final _RegistryPhraseStatus status =
             _RegistryNodeTile.resolvePhraseStatusForFilter(
-          phrase: phrase,
-          phraseStatusIndex: phraseStatusIndex,
-          translationHistory: translationHistory,
-          auditResults: auditResults,
-        );
+              phrase: phrase,
+              phraseStatusIndex: phraseStatusIndex,
+              translationHistory: translationHistory,
+              auditResults: auditResults,
+            );
 
         switch (status) {
           case _RegistryPhraseStatus.unchecked:
@@ -933,20 +984,29 @@ final class _RegistryStatusFilterBar extends StatelessWidget {
       runSpacing: 8,
       children: <Widget>[
         _chip(label: 'Все ${counts.total}', filter: _RegistryStatusFilter.all),
-        _chip(label: '⚪ ${counts.unchecked}', filter: _RegistryStatusFilter.unchecked),
+        _chip(
+          label: '⚪ ${counts.unchecked}',
+          filter: _RegistryStatusFilter.unchecked,
+        ),
         _chip(label: '✅ ${counts.exact}', filter: _RegistryStatusFilter.exact),
-        _chip(label: '🟢 ${counts.equivalent}', filter: _RegistryStatusFilter.equivalent),
-        _chip(label: '🟡 ${counts.needsReview}', filter: _RegistryStatusFilter.needsReview),
+        _chip(
+          label: '🟢 ${counts.equivalent}',
+          filter: _RegistryStatusFilter.equivalent,
+        ),
+        _chip(
+          label: '🟡 ${counts.needsReview}',
+          filter: _RegistryStatusFilter.needsReview,
+        ),
         _chip(label: '🔴 ${counts.drift}', filter: _RegistryStatusFilter.drift),
-        _chip(label: '❌ ${counts.failed}', filter: _RegistryStatusFilter.failed),
+        _chip(
+          label: '❌ ${counts.failed}',
+          filter: _RegistryStatusFilter.failed,
+        ),
       ],
     );
   }
 
-  Widget _chip({
-    required String label,
-    required _RegistryStatusFilter filter,
-  }) {
+  Widget _chip({required String label, required _RegistryStatusFilter filter}) {
     return ChoiceChip(
       label: Text(label),
       selected: selectedFilter == filter,
@@ -997,16 +1057,19 @@ final class _RegistryStatusFilterEngine {
     required List<TranslationResult> translationHistory,
     required List<CanonicalAuditResult> auditResults,
   }) {
-    final List<String> phrases = node.phrases.where((String phrase) {
-      final _RegistryPhraseStatus status = _RegistryNodeTile.resolvePhraseStatusForFilter(
-        phrase: phrase,
-        phraseStatusIndex: phraseStatusIndex,
-        translationHistory: translationHistory,
-        auditResults: auditResults,
-      );
+    final List<String> phrases = node.phrases
+        .where((String phrase) {
+          final _RegistryPhraseStatus status =
+              _RegistryNodeTile.resolvePhraseStatusForFilter(
+                phrase: phrase,
+                phraseStatusIndex: phraseStatusIndex,
+                translationHistory: translationHistory,
+                auditResults: auditResults,
+              );
 
-      return _matchesFilter(status: status, filter: filter);
-    }).toList(growable: false);
+          return _matchesFilter(status: status, filter: filter);
+        })
+        .toList(growable: false);
 
     final List<RegistryNode> children = <RegistryNode>[];
 
@@ -1040,10 +1103,13 @@ final class _RegistryStatusFilterEngine {
   }) {
     return switch (filter) {
       _RegistryStatusFilter.all => true,
-      _RegistryStatusFilter.unchecked => status == _RegistryPhraseStatus.unchecked,
+      _RegistryStatusFilter.unchecked =>
+        status == _RegistryPhraseStatus.unchecked,
       _RegistryStatusFilter.exact => status == _RegistryPhraseStatus.exact,
-      _RegistryStatusFilter.equivalent => status == _RegistryPhraseStatus.equivalent,
-      _RegistryStatusFilter.needsReview => status == _RegistryPhraseStatus.needsReview,
+      _RegistryStatusFilter.equivalent =>
+        status == _RegistryPhraseStatus.equivalent,
+      _RegistryStatusFilter.needsReview =>
+        status == _RegistryPhraseStatus.needsReview,
       _RegistryStatusFilter.drift => status == _RegistryPhraseStatus.drift,
       _RegistryStatusFilter.failed => status == _RegistryPhraseStatus.failed,
     };
@@ -1051,10 +1117,7 @@ final class _RegistryStatusFilterEngine {
 }
 
 final class _RegistryVisibleStats {
-  const _RegistryVisibleStats({
-    required this.sections,
-    required this.phrases,
-  });
+  const _RegistryVisibleStats({required this.sections, required this.phrases});
 
   final int sections;
   final int phrases;
@@ -1118,9 +1181,11 @@ final class _RegistrySearchEngine {
   }) {
     final bool titleMatches = _normalize(node.title).contains(normalizedQuery);
 
-    final List<String> matchedPhrases = node.phrases.where((String phrase) {
-      return _normalize(phrase).contains(normalizedQuery);
-    }).toList(growable: false);
+    final List<String> matchedPhrases = node.phrases
+        .where((String phrase) {
+          return _normalize(phrase).contains(normalizedQuery);
+        })
+        .toList(growable: false);
 
     final List<RegistryNode> matchedChildren = <RegistryNode>[];
     int childSectionMatches = 0;
@@ -1192,10 +1257,7 @@ final class _RegistryNodeSearchResult {
 }
 
 final class _HighlightedText extends StatelessWidget {
-  const _HighlightedText({
-    required this.text,
-    required this.query,
-  });
+  const _HighlightedText({required this.text, required this.query});
 
   final String text;
   final String query;
@@ -1277,9 +1339,7 @@ enum _RegistryPhraseStatus {
 }
 
 final class _RegistryPhraseStatusIcon extends StatelessWidget {
-  const _RegistryPhraseStatusIcon({
-    required this.status,
-  });
+  const _RegistryPhraseStatusIcon({required this.status});
 
   final _RegistryPhraseStatus status;
 
@@ -1294,9 +1354,6 @@ final class _RegistryPhraseStatusIcon extends StatelessWidget {
       _RegistryPhraseStatus.unchecked => '⚪',
     };
 
-    return Text(
-      icon,
-      style: const TextStyle(fontSize: 22),
-    );
+    return Text(icon, style: const TextStyle(fontSize: 22));
   }
 }

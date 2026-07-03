@@ -30,16 +30,22 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
   final RegistryPhraseStatusPersistence registryPhraseStatusPersistence;
 
   Future<void> restorePersistedState() async {
-    final List<TranslationResult> translationHistory =
-        await persistence.loadTranslationHistory();
-    final List<CanonicalAuditResult> auditResults =
-        await persistence.loadAuditResults();
+    final List<TranslationResult> translationHistory = await persistence
+        .loadTranslationHistory();
+    final List<TranslationResult> deduplicatedTranslationHistory =
+        _deduplicateTranslationHistory(translationHistory);
+    if (deduplicatedTranslationHistory.length != translationHistory.length) {
+      await persistence.saveTranslationHistory(deduplicatedTranslationHistory);
+    }
+
+    final List<CanonicalAuditResult> auditResults = await persistence
+        .loadAuditResults();
     final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
         await registryPhraseStatusPersistence.loadIndex();
 
     emit(
       state.copyWith(
-        translationHistory: _deduplicateTranslationHistory(translationHistory),
+        translationHistory: deduplicatedTranslationHistory,
         auditResults: auditResults,
         auditTotal: auditResults.length,
         auditCompleted: auditResults.length,
@@ -76,11 +82,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
         await registryPhraseStatusPersistence.loadIndex();
 
-    emit(
-      state.copyWith(
-        registryPhraseStatusIndex: phraseStatusIndex,
-      ),
-    );
+    emit(state.copyWith(registryPhraseStatusIndex: phraseStatusIndex));
   }
 
   Future<void> loadRegistry() async {
@@ -100,8 +102,9 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     );
 
     try {
-      final RegistryNode root =
-          refresh ? await loadRegistryTree.refresh() : await loadRegistryTree();
+      final RegistryNode root = refresh
+          ? await loadRegistryTree.refresh()
+          : await loadRegistryTree();
       final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
           await registryPhraseStatusPersistence.loadIndex();
 
@@ -143,9 +146,9 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
       final TranslationResult result = await translateCanonicalPhrase(sentence);
       final List<TranslationResult> updatedHistory =
           _deduplicateTranslationHistory(<TranslationResult>[
-        result,
-        ...state.translationHistory,
-      ]);
+            result,
+            ...state.translationHistory,
+          ]);
 
       await persistence.saveTranslationHistory(updatedHistory);
       await registryPhraseStatusPersistence.saveTranslationResult(result);
@@ -180,7 +183,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     }
   }
 
-
   static List<TranslationResult> _deduplicateTranslationHistory(
     List<TranslationResult> history,
   ) {
@@ -191,7 +193,9 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
       final String phrase = item.sourceText.trim().isEmpty
           ? item.ru.trim()
           : item.sourceText.trim();
-      final String key = RegistryPhraseStatusPersistence.normalizePhrase(phrase);
+      final String key = RegistryPhraseStatusPersistence.normalizePhrase(
+        phrase,
+      );
 
       if (key.isEmpty || seen.contains(key)) {
         continue;
@@ -203,7 +207,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
 
     return List<TranslationResult>.unmodifiable(result);
   }
-
 
   Future<void> auditCanonicalRules() async {
     emit(
@@ -224,27 +227,28 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     try {
       final List<CanonicalAuditResult> results =
           await auditCanonicalClientRules(
-        onProgress: ({
-          required int completed,
-          required int total,
-          required String currentPhrase,
-          required List<CanonicalAuditResult> results,
-        }) {
-          persistence.saveAuditResults(results);
-          registryPhraseStatusPersistence.saveAuditResults(results);
+            onProgress:
+                ({
+                  required int completed,
+                  required int total,
+                  required String currentPhrase,
+                  required List<CanonicalAuditResult> results,
+                }) {
+                  persistence.saveAuditResults(results);
+                  registryPhraseStatusPersistence.saveAuditResults(results);
 
-          emit(
-            state.copyWith(
-              status: TranslatorStatus.auditLoading,
-              auditResults: results,
-              auditTotal: total,
-              auditCompleted: completed,
-              currentAuditPhrase: currentPhrase,
-              errorMessage: '',
-            ),
+                  emit(
+                    state.copyWith(
+                      status: TranslatorStatus.auditLoading,
+                      auditResults: results,
+                      auditTotal: total,
+                      auditCompleted: completed,
+                      currentAuditPhrase: currentPhrase,
+                      errorMessage: '',
+                    ),
+                  );
+                },
           );
-        },
-      );
 
       await persistence.saveAuditResults(results);
       await registryPhraseStatusPersistence.saveAuditResults(results);
