@@ -151,7 +151,11 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           ]);
 
       await persistence.saveTranslationHistory(updatedHistory);
-      await registryPhraseStatusPersistence.saveTranslationResult(result);
+
+      if (_translationExistsInRegistry(result, state.registryRoot)) {
+        await registryPhraseStatusPersistence.saveTranslationResult(result);
+      }
+
       final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
           await registryPhraseStatusPersistence.loadIndex();
 
@@ -181,6 +185,45 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     } finally {
       await backgroundExecutionController.stop();
     }
+  }
+
+  static bool _translationExistsInRegistry(
+    TranslationResult result,
+    RegistryNode? root,
+  ) {
+    if (root == null) {
+      return false;
+    }
+
+    final String phrase = result.sourceText.trim().isEmpty
+        ? result.ru.trim()
+        : result.sourceText.trim();
+
+    final String normalizedPhrase =
+        RegistryPhraseStatusPersistence.normalizePhrase(phrase);
+
+    if (normalizedPhrase.isEmpty) {
+      return false;
+    }
+
+    return _nodeContainsPhrase(root, normalizedPhrase);
+  }
+
+  static bool _nodeContainsPhrase(RegistryNode node, String normalizedPhrase) {
+    for (final String phrase in node.phrases) {
+      if (RegistryPhraseStatusPersistence.normalizePhrase(phrase) ==
+          normalizedPhrase) {
+        return true;
+      }
+    }
+
+    for (final RegistryNode child in node.children) {
+      if (_nodeContainsPhrase(child, normalizedPhrase)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   static List<TranslationResult> _deduplicateTranslationHistory(
