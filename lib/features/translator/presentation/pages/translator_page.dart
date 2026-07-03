@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -344,6 +346,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   RegistryWorkSession? _workSession;
   List<String> _focusedNodeIds = const <String>[];
   bool _registryLoadRequested = false;
+  Timer? _searchDebounce;
 
   @override
   bool get wantKeepAlive => true;
@@ -356,6 +359,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -543,10 +547,20 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                           ),
                   ),
                   onChanged: (String value) {
-                    setState(() {
-                      _query = value.trim();
-                      _focusedNodeIds = const <String>[];
-                    });
+                    _searchDebounce?.cancel();
+                    _searchDebounce = Timer(
+                      const Duration(milliseconds: 450),
+                      () {
+                        if (!mounted) {
+                          return;
+                        }
+
+                        setState(() {
+                          _query = value.trim();
+                          _focusedNodeIds = const <String>[];
+                        });
+                      },
+                    );
                   },
                 ),
                 const SizedBox(height: 8),
