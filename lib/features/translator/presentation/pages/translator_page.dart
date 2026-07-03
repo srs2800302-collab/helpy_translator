@@ -22,16 +22,28 @@ final class TranslatorPage extends StatefulWidget {
 
 final class _TranslatorPageState extends State<TranslatorPage> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _registryScrollController = ScrollController();
 
   @override
   void dispose() {
     _controller.dispose();
+    _registryScrollController.dispose();
     super.dispose();
   }
 
   void _translate() {
     FocusScope.of(context).unfocus();
     context.read<TranslatorCubit>().translate(_controller.text);
+  }
+
+  void _scrollRegistryToTop() {
+    if (_registryScrollController.hasClients) {
+      _registryScrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -43,11 +55,24 @@ final class _TranslatorPageState extends State<TranslatorPage> {
           return Scaffold(
             appBar: AppBar(
               title: const Text('Helpy Registry Studio'),
-              bottom: const TabBar(
-                tabs: <Widget>[
-                  Tab(text: 'Перевод'),
-                  Tab(text: 'Registry'),
-                ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(kTextTabBarHeight),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    const TabBar(
+                      tabs: <Widget>[
+                        Tab(text: 'Перевод'),
+                        Tab(text: 'Registry'),
+                      ],
+                    ),
+                    IconButton.filledTonal(
+                      onPressed: _scrollRegistryToTop,
+                      icon: const Icon(Icons.keyboard_arrow_up),
+                      tooltip: 'Наверх',
+                    ),
+                  ],
+                ),
               ),
             ),
             body: TabBarView(
@@ -57,6 +82,7 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                   onTranslate: _translate,
                 ),
                 _RegistryExplorerView(
+                  scrollController: _registryScrollController,
                   onPhraseSelected: (String phrase) {
                     _controller.text = phrase;
                     DefaultTabController.of(tabContext).animateTo(0);
@@ -183,9 +209,11 @@ final class _TranslationWorkspace extends StatelessWidget {
 
 final class _RegistryExplorerView extends StatefulWidget {
   const _RegistryExplorerView({
+    required this.scrollController,
     required this.onPhraseSelected,
   });
 
+  final ScrollController scrollController;
   final ValueChanged<String> onPhraseSelected;
 
   @override
@@ -194,7 +222,6 @@ final class _RegistryExplorerView extends StatefulWidget {
 
 final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
     with AutomaticKeepAliveClientMixin<_RegistryExplorerView> {
-  final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final RegistryWorkSessionPersistence _workSessionPersistence =
       const RegistryWorkSessionPersistence();
@@ -216,7 +243,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -259,15 +285,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   }
 
   void _continueWork(RegistryWorkSession session) {
-    final String query = session.lastPhrase.trim().isNotEmpty
-        ? session.lastPhrase.trim()
-        : session.pathTitles.isEmpty
-            ? ''
-            : session.pathTitles.last.trim();
-
-    if (query.isEmpty) {
-      return;
-    }
+    final String query = session.lastPhrase.trim();
 
     _searchController.text = query;
 
@@ -281,8 +299,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   }
 
   void _scrollToTop() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
+    if (widget.scrollController.hasClients) {
+      widget.scrollController.animateTo(
         0,
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
@@ -342,7 +360,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
           children: <Widget>[
             ListView(
           key: const PageStorageKey<String>('registry_explorer_scroll'),
-          controller: _scrollController,
+          controller: widget.scrollController,
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             Row(
@@ -353,12 +371,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
                   ),
                 ),
-                IconButton.filledTonal(
-                  onPressed: _scrollToTop,
-                  icon: const Icon(Icons.keyboard_arrow_up),
-                  tooltip: 'Наверх',
-                ),
-                const SizedBox(width: 8),
                 IconButton.filledTonal(
                   onPressed: state.status == TranslatorStatus.registryLoading
                       ? null
