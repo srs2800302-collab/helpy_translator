@@ -571,6 +571,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
                     setState(() {
                       _statusFilter = filter;
                     });
+                    _scrollToTop();
                   },
                 ),
                 const SizedBox(height: 8),
