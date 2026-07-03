@@ -66,6 +66,23 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     );
   }
 
+  Future<String> exportRegistryStatuses() {
+    return registryPhraseStatusPersistence.exportJson();
+  }
+
+  Future<void> importRegistryStatuses(String rawJson) async {
+    await registryPhraseStatusPersistence.importJson(rawJson);
+
+    final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex =
+        await registryPhraseStatusPersistence.loadIndex();
+
+    emit(
+      state.copyWith(
+        registryPhraseStatusIndex: phraseStatusIndex,
+      ),
+    );
+  }
+
   Future<void> loadRegistry() async {
     await _loadRegistry(refresh: false);
   }

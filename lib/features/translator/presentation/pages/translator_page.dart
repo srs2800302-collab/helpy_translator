@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubit/translator_cubit.dart';
@@ -67,14 +68,78 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                         Tab(text: 'Registry'),
                       ],
                     ),
-                    AnimatedBuilder(
-                      animation: DefaultTabController.of(tabContext),
-                      builder: (BuildContext context, Widget? child) {
-                        final bool isRegistryTab =
-                            DefaultTabController.of(tabContext).index == 1;
+                    Positioned(
+                      left: 8,
+                      child: PopupMenuButton<_RegistryStatusBackupAction>(
+                        tooltip: 'Статусы Registry',
+                        icon: const Icon(Icons.backup),
+                        onSelected: (_RegistryStatusBackupAction action) async {
+                          final TranslatorCubit cubit =
+                              context.read<TranslatorCubit>();
+                          final ScaffoldMessengerState messenger =
+                              ScaffoldMessenger.of(context);
 
-                        return isRegistryTab ? child! : const SizedBox.shrink();
-                      },
+                          switch (action) {
+                            case _RegistryStatusBackupAction.export:
+                              final String json =
+                                  await cubit.exportRegistryStatuses();
+                              await Clipboard.setData(ClipboardData(text: json));
+                              if (context.mounted) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Статусы Registry скопированы.'),
+                                  ),
+                                );
+                              }
+                            case _RegistryStatusBackupAction.import:
+                              final ClipboardData? data =
+                                  await Clipboard.getData('text/plain');
+                              final String rawJson = data?.text ?? '';
+
+                              if (rawJson.trim().isEmpty) {
+                                if (context.mounted) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Буфер обмена пуст.'),
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+
+                              try {
+                                await cubit.importRegistryStatuses(rawJson);
+
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Статусы Registry восстановлены.'),
+                                  ),
+                                );
+                              } on FormatException {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Некорректный JSON статусов.'),
+                                  ),
+                                );
+                              }
+                          }
+                        },
+                        itemBuilder: (BuildContext context) {
+                          return const <PopupMenuEntry<_RegistryStatusBackupAction>>[
+                            PopupMenuItem<_RegistryStatusBackupAction>(
+                              value: _RegistryStatusBackupAction.export,
+                              child: Text('Экспорт статусов'),
+                            ),
+                            PopupMenuItem<_RegistryStatusBackupAction>(
+                              value: _RegistryStatusBackupAction.import,
+                              child: Text('Импорт статусов'),
+                            ),
+                          ];
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      right: 8,
                       child: IconButton.filledTonal(
                         onPressed: _scrollRegistryToTop,
                         icon: const Icon(Icons.keyboard_arrow_up),
@@ -106,6 +171,8 @@ final class _TranslatorPageState extends State<TranslatorPage> {
     );
   }
 }
+
+enum _RegistryStatusBackupAction { export, import }
 
 final class _TranslationWorkspace extends StatelessWidget {
   const _TranslationWorkspace({
