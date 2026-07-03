@@ -398,35 +398,19 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   }
 
   void _continueWork(RegistryWorkSession session) {
-    final List<String> focusedNodeIds = session.pathNodeIds
-        .where((String id) => id.trim().isNotEmpty)
-        .toList(growable: false);
+    final String sectionQuery = session.pathTitles.isEmpty
+        ? ''
+        : session.pathTitles.last.trim();
 
-    if (focusedNodeIds.isNotEmpty) {
-      _searchController.clear();
-
-      setState(() {
-        _query = '';
-        _focusedNodeIds = focusedNodeIds;
-        _statusFilter = _RegistryStatusFilter.all;
-      });
-
-      _scrollToTop();
+    if (sectionQuery.isEmpty) {
       return;
     }
 
-    final String fallbackQuery = session.lastPhrase.trim();
-
-    if (fallbackQuery.isEmpty) {
-      return;
-    }
-
-    _searchController.text = fallbackQuery;
+    _searchController.text = sectionQuery;
 
     setState(() {
-      _query = fallbackQuery;
+      _query = sectionQuery;
       _focusedNodeIds = const <String>[];
-      _statusFilter = _RegistryStatusFilter.all;
     });
 
     _scrollToTop();
