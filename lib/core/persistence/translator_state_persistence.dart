@@ -19,7 +19,12 @@ final class TranslatorStatePersistence {
       return const <TranslationResult>[];
     }
 
-    final Object? decoded = jsonDecode(raw);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      return const <TranslationResult>[];
+    }
 
     if (decoded is! List<dynamic>) {
       return const <TranslationResult>[];
@@ -39,7 +44,12 @@ final class TranslatorStatePersistence {
       return const <CanonicalAuditResult>[];
     }
 
-    final Object? decoded = jsonDecode(raw);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      return const <CanonicalAuditResult>[];
+    }
 
     if (decoded is! List<dynamic>) {
       return const <CanonicalAuditResult>[];

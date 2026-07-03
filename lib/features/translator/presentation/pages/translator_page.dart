@@ -828,15 +828,21 @@ final class _RegistryNodeTile extends StatelessWidget {
       return _RegistryPhraseStatus.fromPersistedStatus(persisted.status);
     }
 
+    final String normalizedPhrase =
+        RegistryPhraseStatusPersistence.normalizePhrase(phrase);
+
     for (final TranslationResult result in translationHistory) {
-      if (result.sourceText.trim() == phrase.trim() ||
-          result.ru.trim() == phrase.trim()) {
+      if (RegistryPhraseStatusPersistence.normalizePhrase(result.sourceText) ==
+              normalizedPhrase ||
+          RegistryPhraseStatusPersistence.normalizePhrase(result.ru) ==
+              normalizedPhrase) {
         return _RegistryPhraseStatus.fromVerdict(result.canonicalVerdict);
       }
     }
 
     for (final CanonicalAuditResult result in auditResults) {
-      if (result.sourceRu.trim() == phrase.trim()) {
+      if (RegistryPhraseStatusPersistence.normalizePhrase(result.sourceRu) ==
+          normalizedPhrase) {
         return _RegistryPhraseStatus.fromAuditStatus(result.status);
       }
     }

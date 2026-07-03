@@ -73,7 +73,12 @@ final class RegistryPhraseStatusPersistence {
       return <String, PersistedRegistryPhraseRecord>{};
     }
 
-    final Object? decoded = jsonDecode(raw);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      return <String, PersistedRegistryPhraseRecord>{};
+    }
 
     if (decoded is! Map<String, dynamic>) {
       return <String, PersistedRegistryPhraseRecord>{};

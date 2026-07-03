@@ -65,7 +65,12 @@ final class RegistryWorkSessionPersistence {
       return null;
     }
 
-    final Object? decoded = jsonDecode(raw);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      return null;
+    }
 
     if (decoded is! Map<String, dynamic>) {
       return null;

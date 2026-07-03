@@ -57,6 +57,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
 
   Future<void> clearResults() async {
     await persistence.clear();
+    await registryPhraseStatusPersistence.clear();
 
     emit(
       state.copyWith(
@@ -68,6 +69,8 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
         auditTotal: 0,
         auditCompleted: 0,
         currentAuditPhrase: '',
+        registryPhraseStatusIndex:
+            const <String, PersistedRegistryPhraseRecord>{},
       ),
     );
   }
