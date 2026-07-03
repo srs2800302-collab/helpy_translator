@@ -294,7 +294,15 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView>
   }
 
   void _continueWork(RegistryWorkSession session) {
-    final String query = session.lastPhrase.trim();
+    final String query = session.lastPhrase.trim().isNotEmpty
+        ? session.lastPhrase.trim()
+        : session.pathTitles.isEmpty
+            ? ''
+            : session.pathTitles.last.trim();
+
+    if (query.isEmpty) {
+      return;
+    }
 
     _searchController.text = query;
 
