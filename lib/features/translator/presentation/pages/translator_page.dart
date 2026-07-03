@@ -66,10 +66,19 @@ final class _TranslatorPageState extends State<TranslatorPage> {
                         Tab(text: 'Registry'),
                       ],
                     ),
-                    IconButton.filledTonal(
-                      onPressed: _scrollRegistryToTop,
-                      icon: const Icon(Icons.keyboard_arrow_up),
-                      tooltip: 'Наверх',
+                    AnimatedBuilder(
+                      animation: DefaultTabController.of(tabContext),
+                      builder: (BuildContext context, Widget? child) {
+                        final bool isRegistryTab =
+                            DefaultTabController.of(tabContext).index == 1;
+
+                        return isRegistryTab ? child! : const SizedBox.shrink();
+                      },
+                      child: IconButton.filledTonal(
+                        onPressed: _scrollRegistryToTop,
+                        icon: const Icon(Icons.keyboard_arrow_up),
+                        tooltip: 'Наверх',
+                      ),
                     ),
                   ],
                 ),

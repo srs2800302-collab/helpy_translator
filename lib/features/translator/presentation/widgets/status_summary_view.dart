@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/canonical_audit_result.dart';
 import '../../domain/entities/translation_result.dart';
+import '../../../../core/persistence/registry_phrase_status_persistence.dart';
 
 final class StatusSummaryView extends StatelessWidget {
   const StatusSummaryView({
@@ -16,12 +17,14 @@ final class StatusSummaryView extends StatelessWidget {
   factory StatusSummaryView.fromTranslationResults({
     required List<TranslationResult> results,
   }) {
+    final List<TranslationResult> uniqueResults = _latestUniqueTranslations(results);
+
     return StatusSummaryView(
-      exactCount: _countTranslations(results, 'EXACT'),
-      equivalentCount: _countTranslations(results, 'EQUIVALENT'),
-      reviewCount: _countTranslations(results, 'NEEDS_REVIEW'),
-      driftCount: _countTranslations(results, 'CANONICAL_DRIFT'),
-      failedCount: results.where((TranslationResult result) {
+      exactCount: _countTranslations(uniqueResults, 'EXACT'),
+      equivalentCount: _countTranslations(uniqueResults, 'EQUIVALENT'),
+      reviewCount: _countTranslations(uniqueResults, 'NEEDS_REVIEW'),
+      driftCount: _countTranslations(uniqueResults, 'CANONICAL_DRIFT'),
+      failedCount: uniqueResults.where((TranslationResult result) {
         final String verdict = result.canonicalVerdict.trim().toUpperCase();
         return verdict.isEmpty ||
             !<String>{
@@ -90,9 +93,32 @@ final class StatusSummaryView extends StatelessWidget {
     List<TranslationResult> results,
     String verdict,
   ) {
-    return results.where((TranslationResult result) {
+    return _latestUniqueTranslations(results).where((TranslationResult result) {
       return result.canonicalVerdict.trim().toUpperCase() == verdict;
     }).length;
+  }
+
+  static List<TranslationResult> _latestUniqueTranslations(
+    List<TranslationResult> results,
+  ) {
+    final Set<String> seen = <String>{};
+    final List<TranslationResult> unique = <TranslationResult>[];
+
+    for (final TranslationResult result in results) {
+      final String phrase = result.sourceText.trim().isEmpty
+          ? result.ru.trim()
+          : result.sourceText.trim();
+      final String key = RegistryPhraseStatusPersistence.normalizePhrase(phrase);
+
+      if (key.isEmpty || seen.contains(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      unique.add(result);
+    }
+
+    return unique;
   }
 
   static int _count(

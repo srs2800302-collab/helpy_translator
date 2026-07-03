@@ -39,7 +39,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
 
     emit(
       state.copyWith(
-        translationHistory: translationHistory,
+        translationHistory: _deduplicateTranslationHistory(translationHistory),
         auditResults: auditResults,
         auditTotal: auditResults.length,
         auditCompleted: auditResults.length,
@@ -124,10 +124,11 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
 
     try {
       final TranslationResult result = await translateCanonicalPhrase(sentence);
-      final List<TranslationResult> updatedHistory = <TranslationResult>[
+      final List<TranslationResult> updatedHistory =
+          _deduplicateTranslationHistory(<TranslationResult>[
         result,
         ...state.translationHistory,
-      ];
+      ]);
 
       await persistence.saveTranslationHistory(updatedHistory);
       await registryPhraseStatusPersistence.saveTranslationResult(result);
@@ -161,6 +162,31 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
       await backgroundExecutionController.stop();
     }
   }
+
+
+  static List<TranslationResult> _deduplicateTranslationHistory(
+    List<TranslationResult> history,
+  ) {
+    final Set<String> seen = <String>{};
+    final List<TranslationResult> result = <TranslationResult>[];
+
+    for (final TranslationResult item in history) {
+      final String phrase = item.sourceText.trim().isEmpty
+          ? item.ru.trim()
+          : item.sourceText.trim();
+      final String key = RegistryPhraseStatusPersistence.normalizePhrase(phrase);
+
+      if (key.isEmpty || seen.contains(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      result.add(item);
+    }
+
+    return List<TranslationResult>.unmodifiable(result);
+  }
+
 
   Future<void> auditCanonicalRules() async {
     emit(
