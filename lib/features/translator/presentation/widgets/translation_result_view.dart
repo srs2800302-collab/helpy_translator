@@ -40,14 +40,14 @@ final class TranslationResultView extends StatelessWidget {
           ),
           _TextRow(label: 'Исходная формулировка (${result.sourceLanguage})', value: result.sourceText),
           const Divider(),
-          _TextRow(label: 'RU → EN', value: result.en),
-          _TextRow(label: 'RU → TH', value: result.th),
+          _TextRow(label: 'RU_TO_EN', value: result.en),
+          _TextRow(label: 'RU_TO_TH', value: result.th),
           const Divider(),
-          _TextRow(label: 'EN → RU', value: result.enToRu),
-          _TextRow(label: 'TH → RU', value: result.thToRu),
+          _TextRow(label: 'EN_TO_RU', value: result.enToRu),
+          _TextRow(label: 'TH_TO_RU', value: result.thToRu),
           const Divider(),
-          _TextRow(label: 'EN → TH', value: result.enToTh),
-          _TextRow(label: 'TH → EN', value: result.thToEn),
+          _TextRow(label: 'EN_TO_TH', value: result.enToTh),
+          _TextRow(label: 'TH_TO_EN', value: result.thToEn),
           const Divider(),
           _TextRow(label: 'Вердикт', value: result.canonicalVerdict),
           _TextRow(label: 'Комментарий', value: result.canonicalComment),
@@ -61,22 +61,22 @@ final class TranslationResultView extends StatelessWidget {
 Исходная формулировка (${result.sourceLanguage}):
 ${result.sourceText}
 
-RU → EN:
+RU_TO_EN:
 ${result.en}
 
-RU → TH:
+RU_TO_TH:
 ${result.th}
 
-EN → RU:
+EN_TO_RU:
 ${result.enToRu}
 
-TH → RU:
+TH_TO_RU:
 ${result.thToRu}
 
-EN → TH:
+EN_TO_TH:
 ${result.enToTh}
 
-TH → EN:
+TH_TO_EN:
 ${result.thToEn}
 
 Вердикт:
