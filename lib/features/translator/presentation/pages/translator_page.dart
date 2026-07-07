@@ -903,7 +903,7 @@ final class _RegistryFlatRowTile extends StatelessWidget {
       dense: true,
       contentPadding: EdgeInsets.only(left: leftPadding, right: 16),
       leading: _RegistryPhraseStatusIcon(
-        status: _RegistryNodeTile.resolvePhraseStatusForFilter(
+        status: _RegistryPhraseStatusResolver.resolve(
           phrase: phrase,
           phraseStatusIndex: phraseStatusIndex,
           translationHistory: translationHistory,
@@ -923,116 +923,10 @@ final class _RegistryFlatRowTile extends StatelessWidget {
   }
 }
 
-final class _RegistryNodeTile extends StatelessWidget {
-  const _RegistryNodeTile({
-    required this.node,
-    required this.phraseStatusIndex,
-    required this.translationHistory,
-    required this.auditResults,
-    required this.searchQuery,
-    required this.pathTitles,
-    required this.pathNodeIds,
-    required this.onSectionOpened,
-    required this.onPhraseSelected,
-  });
+final class _RegistryPhraseStatusResolver {
+  const _RegistryPhraseStatusResolver._();
 
-  final RegistryNode node;
-  final Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex;
-  final List<TranslationResult> translationHistory;
-  final List<CanonicalAuditResult> auditResults;
-  final String searchQuery;
-  final List<String> pathTitles;
-  final List<String> pathNodeIds;
-  final Future<void> Function({
-    required List<String> pathTitles,
-    required List<String> pathNodeIds,
-  })
-  onSectionOpened;
-  final Future<void> Function({
-    required String phrase,
-    required List<String> pathTitles,
-    required List<String> pathNodeIds,
-  })
-  onPhraseSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool hasChildren = node.children.isNotEmpty;
-    final bool hasPhrases = node.phrases.isNotEmpty;
-    final List<String> currentPath = <String>[...pathTitles, node.title];
-    final List<String> currentNodePath = <String>[...pathNodeIds, node.id];
-
-    if (!hasChildren && !hasPhrases) {
-      return ListTile(
-        dense: true,
-        title: _HighlightedText(text: node.title, query: searchQuery),
-        subtitle: Text(_pathSubtitle(currentPath, node.lineNumber)),
-        onTap: () {
-          onSectionOpened(
-            pathTitles: currentPath,
-            pathNodeIds: currentNodePath,
-          );
-        },
-      );
-    }
-
-    return ExpansionTile(
-      key: PageStorageKey<String>('registry_node_${node.id}_$searchQuery'),
-      initiallyExpanded: searchQuery.isNotEmpty,
-      title: _HighlightedText(text: node.title, query: searchQuery),
-      subtitle: Text(_pathSubtitle(currentPath, node.lineNumber)),
-      childrenPadding: const EdgeInsets.only(left: 12),
-      onExpansionChanged: (bool expanded) {
-        if (expanded) {
-          onSectionOpened(
-            pathTitles: currentPath,
-            pathNodeIds: currentNodePath,
-          );
-        }
-      },
-      children: <Widget>[
-        for (final String phrase in node.phrases)
-          ListTile(
-            dense: true,
-            leading: _RegistryPhraseStatusIcon(
-              status: _resolvePhraseStatus(
-                phrase: phrase,
-                phraseStatusIndex: phraseStatusIndex,
-                translationHistory: translationHistory,
-                auditResults: auditResults,
-              ),
-            ),
-            title: _HighlightedText(text: phrase, query: searchQuery),
-            subtitle: Text(currentPath.join(' → ')),
-            onTap: () {
-              onPhraseSelected(
-                phrase: phrase,
-                pathTitles: currentPath,
-                pathNodeIds: currentNodePath,
-              );
-            },
-          ),
-        for (final RegistryNode child in node.children)
-          _RegistryNodeTile(
-            node: child,
-            phraseStatusIndex: phraseStatusIndex,
-            translationHistory: translationHistory,
-            auditResults: auditResults,
-            searchQuery: searchQuery,
-            pathTitles: currentPath,
-            pathNodeIds: currentNodePath,
-            onSectionOpened: onSectionOpened,
-            onPhraseSelected: onPhraseSelected,
-          ),
-      ],
-    );
-  }
-
-  static String _pathSubtitle(List<String> pathTitles, int lineNumber) {
-    return '${pathTitles.join(' → ')} · line $lineNumber';
-  }
-
-  static _RegistryPhraseStatus resolvePhraseStatusForFilter({
+  static _RegistryPhraseStatus resolve({
     required String phrase,
     required Map<String, PersistedRegistryPhraseRecord> phraseStatusIndex,
     required List<TranslationResult> translationHistory,
@@ -1161,7 +1055,7 @@ final class _RegistryStatusCounts {
       for (final String phrase in node.phrases) {
         total++;
         final _RegistryPhraseStatus status =
-            _RegistryNodeTile.resolvePhraseStatusForFilter(
+            _RegistryPhraseStatusResolver.resolve(
               phrase: phrase,
               phraseStatusIndex: phraseStatusIndex,
               translationHistory: translationHistory,
@@ -1299,7 +1193,7 @@ final class _RegistryStatusFilterEngine {
     final List<String> phrases = node.phrases
         .where((String phrase) {
           final _RegistryPhraseStatus status =
-              _RegistryNodeTile.resolvePhraseStatusForFilter(
+              _RegistryPhraseStatusResolver.resolve(
                 phrase: phrase,
                 phraseStatusIndex: phraseStatusIndex,
                 translationHistory: translationHistory,
