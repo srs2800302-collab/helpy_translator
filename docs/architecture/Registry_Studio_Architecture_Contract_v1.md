@@ -116,6 +116,80 @@ For any adapter that uses canonical formulations:
 A candidate added from Translator enters only a DraftWorkspace. It does not
 create Published Registry state until governed publication succeeds.
 
+### Helpy Adapter: Permanent Service Intake Semantic Contract
+
+The Helpy adapter defines durable semantic content for service intake. This
+content is not a temporary parser projection, Translator feature model, or
+Markdown navigation model.
+
+Helpy uses adapter-defined RegistryEntity kinds including:
+
+- `helpy.service_standard` for an approved service/category/branch standard;
+- `helpy.service_intake` for one service intake entity.
+
+A `helpy.service_intake` RegistryEntity owns one permanent typed Helpy payload:
+
+```text
+Entity
+→ Scenario
+  → Questions
+  → Photo Questions
+```
+
+The Core `RegistryEntity` remains the only aggregate identity owner. The Helpy
+payload must not be duplicated by a parallel intake aggregate created solely
+for a pilot, parser, navigation tree, or UI.
+
+`Scenario Selection` is not a fifth domain entity. It is source-level entry
+evidence belonging to the selected Scenario. It records the selector question
+and the selected answer through which the client enters that Scenario.
+
+Conditions and answer/context variants are not additional primary scenarios.
+They remain qualifiers inside Questions and determine the applicability of
+Photo Questions and photo limits.
+
+Within one `helpy.service_intake` entity, Questions, answer options, Photo
+Questions, and photo limits must have adapter-defined semantic keys whenever
+another payload component refers to them. These keys are scoped to the owning
+RegistryEntity and are not Core RegistryEntity identities.
+
+Photo Questions contain:
+
+- required photo questions;
+- optional photo questions;
+- photo limits;
+- confirmed answer/context applicability;
+- confirmed reuse, addition, or replacement semantics where explicitly
+  approved by an engineer.
+
+A `helpy.service_standard` and a rendered local intake question are different
+semantic objects even when their wording is similar. A standard may govern
+the placement or structure of a local Scenario Selection without duplicating
+that local intake question.
+
+A confirmed standard-to-intake dependency is represented only through an
+adapter-defined RegistryRelation. The initial Helpy relation kind is
+`governs_intake_structure`. Its typed qualifiers identify the governed scope,
+for example `scenario_entry_placement`. Textual similarity alone must never
+create this relation.
+
+Helpy source evidence may preserve:
+
+- configured document path;
+- immutable loaded-source fingerprint;
+- heading path;
+- source line range or ranges.
+
+Source evidence proves provenance only. Markdown text, heading path, line
+number, fingerprint, Git revision, cache key, and storage coordinate are
+never RegistryEntity identity, semantic component identity, or automatic
+relation identity.
+
+Source extraction may create read-only verified facts for EngineeringContext.
+It must not independently create RegistryEntity records, stable identities,
+confirmed RegistryRelation records, DraftWorkspace changes, publication
+evidence, or automatic Registry modifications.
+
 ## 5. Core Domain Model
 
 ### Registry
