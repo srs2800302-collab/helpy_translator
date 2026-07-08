@@ -226,3 +226,25 @@ Translator может быть будущей assistant capability для engine
 `RegistryRelatedContext` отклоняется как первичное имя, потому что это assembled context/result для engineer/user, а не atomic relation fact.
 
 `RegistryContextGraph` отклоняется как первичное имя, потому что graph является более поздней composition/analysis structure и может преждевременно потянуть infrastructure/analyzer design.
+
+## Ownership decision для RegistryRelation
+
+`RegistryRelation` на текущем этапе является value object, а не entity.
+
+Для `RegistryRelation` не создаётся отдельный `RegistryRelationId`, потому что relation пока не имеет самостоятельного lifecycle, publication state, review state или mutation flow.
+
+Уникальность `RegistryRelation` выводится из:
+
+- source registry entity;
+- target registry entity;
+- relation meaning.
+
+`RegistryRelation` является directional fact: связь от одной registry entity к другой registry entity имеет конкретный semantic meaning.
+
+Если в будущем relation получит самостоятельный lifecycle, review state, confidence state, approval state или publication control, вопрос отдельной identity должен пройти новый ownership-аудит.
+
+`RegistryRelation` не должна хранить payload связанных entities. Она ссылается на registry entities через `RegistryEntityId`.
+
+`RegistryRelation` не должна становиться graph container. Набор relations, traversal, grouping и related context assembly являются отдельными responsibilities и не входят в первый `RegistryRelation` primitive.
+
+`RegistryRelation` должна быть пригодна для построения related context, но не является этим context.
