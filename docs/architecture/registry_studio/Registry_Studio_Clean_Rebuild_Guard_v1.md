@@ -171,3 +171,17 @@ Registry functionality была добавлена поверх translator proto
 Translator может быть будущей assistant capability для engineer/user, но не является владельцем registry identity, registry structure, semantic decisions, drift analysis или publication path.
 
 Детальная translator boundary требует отдельного ownership-аудита и не принимается в рамках текущего clean rebuild шага.
+
+## Решение по RegistryEntityKind / RegistryEntityPayload contract boundary
+
+`RegistryEntityKind` и `RegistryEntityPayload` защищают engineer/user от анализа registry entity с payload, который не соответствует заявленному semantic contract, entity kind или schema version.
+
+Эта связка нужна для drift analysis, verified context и safe review: engineer/user должен видеть typed registry entity, у которой kind и payload согласованы до начала анализа связанных мест.
+
+`adapterContract` в текущем Core означает только external/source-specific semantic contract identity.
+
+`adapterContract` не является runtime adapter, service binding, presenter, importer, handler, locator или execution capability.
+
+`RegistryAdapterContractIdentity` не даёт Core права создавать adapter, вызывать adapter, resolve-ить implementation или выполнять runtime operation.
+
+Если позже потребуется runtime integration, importer или translator capability, это должно пройти отдельный ownership-аудит вне текущей domain entity compatibility responsibility.
