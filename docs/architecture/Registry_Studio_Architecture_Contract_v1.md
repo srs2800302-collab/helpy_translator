@@ -420,6 +420,16 @@ required before execution.
 
 EngineeringOrchestrator coordinates only confirmed workflow execution.
 
+EngineeringOrchestrator ownership boundary:
+
+`EngineeringOrchestrator` не заменяет `EngineeringOperation` и не владеет
+workflow step definition, runtime step state, typed handler contract,
+service handler execution или service capability resolution.
+
+Эти ответственности остаются у `WorkflowStepDefinition`,
+`WorkflowStepExecution`, `EngineeringServiceContract` и
+`EngineeringServiceCapabilityCatalog`.
+
 EngineeringWorkflowInstance owns workflow runtime state.
 
 WorkflowStepDefinition replaces legacy EngineeringOperation.
