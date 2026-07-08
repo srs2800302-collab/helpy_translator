@@ -139,3 +139,35 @@ Orchestrator может знать только доступный ему инс
 Orchestrator не должен становиться god object, service locator, runtime executor или местом, где смешиваются responsibilities разных entities.
 
 Метафора: дирижёр не играет за каждого музыканта и не владеет техникой игры каждого инструмента. Он знает состав оркестра, допустимые партии, момент входа и правила координации.
+
+## Основная mission Registry Studio и human authority boundary
+
+Основная задача Registry Studio — находить drift, рассинхрон и неоднозначности в registry и показывать их engineer/user в проверяемом context.
+
+Registry Studio должна:
+
+- подсвечивать найденные проблемные места;
+- показывать связанные registry места;
+- анализировать найденную проблему в доступном context;
+- явно показывать engineer/user, если context недостаточен, противоречив или неоднозначен;
+- готовить verified engineering context для принятия решения.
+
+Registry Studio не имеет права самостоятельно принимать semantic decisions, canonicalization decisions, change-scope decisions или publication decisions.
+
+Registry Studio не должна самостоятельно править registry.
+
+Любое изменение registry допускается только после решения engineer/user и через approved use case boundary.
+
+Engineer/user остаётся единственным владельцем semantic decision, ambiguity resolution, approved change scope и publication control.
+
+## Translator boundary note
+
+Исторически текущий repository начинался как трехъязычный translator.
+
+Registry functionality была добавлена поверх translator prototype, что привело к смешению responsibilities и последующему clean rebuild.
+
+В новой архитектуре Registry Studio является самостоятельным registry engineering tool.
+
+Translator может быть будущей assistant capability для engineer/user, но не является владельцем registry identity, registry structure, semantic decisions, drift analysis или publication path.
+
+Детальная translator boundary требует отдельного ownership-аудита и не принимается в рамках текущего clean rebuild шага.
