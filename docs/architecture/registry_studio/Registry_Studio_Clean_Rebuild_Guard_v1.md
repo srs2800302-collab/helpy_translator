@@ -248,3 +248,19 @@ Translator может быть будущей assistant capability для engine
 `RegistryRelation` не должна становиться graph container. Набор relations, traversal, grouping и related context assembly являются отдельными responsibilities и не входят в первый `RegistryRelation` primitive.
 
 `RegistryRelation` должна быть пригодна для построения related context, но не является этим context.
+
+## Решение по RegistryRelation collection boundary
+
+После добавления `RegistryRelation` отдельный `RegistryRelationSet`, `RegistryRelations`, `RegistryRelationCollection`, graph или context container не создаётся.
+
+На текущем этапе набор relations может передаваться как `Iterable<RegistryRelation>`.
+
+Отдельная collection/domain container responsibility допускается только при появлении явного domain invariant, например:
+
+- запрет duplicate relations;
+- принадлежность всех relations одному registry snapshot;
+- completeness boundary для relation set;
+- traversal/indexing/grouping;
+- related context assembly для engineer/user.
+
+До появления такого invariant collection wrapper будет преждевременным слоем и нарушит clean rebuild boundary.
