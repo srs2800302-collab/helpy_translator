@@ -185,3 +185,24 @@ Translator может быть будущей assistant capability для engine
 `RegistrySemanticContractIdentity` не даёт Core права создавать adapter, вызывать adapter, resolve-ить implementation или выполнять runtime operation.
 
 Если позже потребуется runtime integration, importer или translator capability, это должно пройти отдельный ownership-аудит вне текущей domain entity compatibility responsibility.
+
+## Ownership gap после audit текущих domain primitives
+
+Текущие domain primitives закрывают только базовую валидность typed source-backed `RegistryEntity`.
+
+Они покрывают:
+
+- stable identity через `RegistryEntityId`;
+- canonical domain position через `RegistryPath`;
+- semantic contract / kind / schema compatibility через `RegistrySemanticContractIdentity`, `RegistryEntityKind` и `RegistryEntityPayload`;
+- source provenance через `SourceEvidence`.
+
+Они не покрывают responsibility поиска drift, рассинхрона, связанных registry мест, dependency context, unclear context или verified engineering context.
+
+Эта responsibility не должна добавляться внутрь `RegistryEntity`, потому что `RegistryEntity` не должна знать внутреннюю работу других entities и не должна становиться graph, analyzer или review context.
+
+Эта responsibility не должна добавляться внутрь `RegistryPath`, потому что `RegistryPath` является canonical domain path, а не relation graph или dependency model.
+
+Эта responsibility не должна добавляться внутрь `SourceEvidence`, потому что `SourceEvidence` владеет только provenance/source coordinates.
+
+Следующая domain responsibility должна быть спроектирована отдельно как representation of registry relationships / related context before drift analysis, но только после отдельного naming и ownership-аудита.
