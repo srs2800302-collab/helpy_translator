@@ -25,9 +25,9 @@ void main() {
       final RegistryEntity entity = RegistryEntity(
         id: RegistryEntityId('registry-entity-001'),
         path: RegistryPath(<String>[
-          'sample_adapter',
-          'sample_domain',
-          'sample_entity',
+          'sample_scope',
+          'sample_section',
+          'sample_item',
         ]),
         kind: kind,
         payload: _TestPayload(
@@ -62,7 +62,7 @@ void main() {
       expect(
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
-          path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
+          path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: kind,
           payload: _TestPayload(
             adapterContract: adapter,
@@ -90,7 +90,7 @@ void main() {
       expect(
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
-          path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
+          path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: RegistryEntityKind(
             adapterContract: sampleAdapter,
             kindId: 'sample.entity',
@@ -122,7 +122,7 @@ void main() {
       expect(
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
-          path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
+          path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: entityKind,
           payload: _TestPayload(
             adapterContract: adapter,
@@ -137,7 +137,7 @@ void main() {
       expect(
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
-          path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
+          path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: entityKind,
           payload: _TestPayload(
             adapterContract: adapter,
@@ -166,9 +166,9 @@ void main() {
       final RegistryEntity first = RegistryEntity(
         id: id,
         path: RegistryPath(<String>[
-          'sample_adapter',
-          'sample_domain',
-          'sample_entity',
+          'sample_scope',
+          'sample_section',
+          'sample_item',
         ]),
         kind: kind,
         payload: _TestPayload(
@@ -181,9 +181,9 @@ void main() {
       final RegistryEntity second = RegistryEntity(
         id: id,
         path: RegistryPath(<String>[
-          'sample_adapter',
-          'sample_domain',
-          'sample_variant',
+          'sample_scope',
+          'sample_section',
+          'sample_variant_item',
         ]),
         kind: kind,
         payload: _TestPayload(

@@ -7,18 +7,18 @@ void main() {
   group('RegistryPath', () {
     test('normalizes and preserves semantic segments', () {
       final RegistryPath path = RegistryPath(<String>[
-        ' sample_adapter ',
-        ' sample_domain ',
-        ' sample_entity ',
+        ' sample_scope ',
+        ' sample_section ',
+        ' sample_item ',
       ]);
 
-      expect(path.segments, <String>['sample_adapter', 'sample_domain', 'sample_entity']);
+      expect(path.segments, <String>['sample_scope', 'sample_section', 'sample_item']);
       expect(() => path.segments.add('line_10014'), throwsUnsupportedError);
     });
 
     test('rejects an empty path or an empty semantic segment', () {
       expect(() => RegistryPath(const <String>[]), throwsArgumentError);
-      expect(() => RegistryPath(<String>['sample_adapter', '']), throwsArgumentError);
+      expect(() => RegistryPath(<String>['sample_scope', '']), throwsArgumentError);
     });
   });
 

@@ -89,3 +89,19 @@ Pilot-project code, terminology, payloads, scenarios, fixtures или documents 
 Для этого не создаётся новая entity/model. Используется уже существующий `SourceEvidence`.
 
 Equality для `RegistryEntity` остаётся основанным на stable `RegistryEntityId`; `SourceEvidence`, `RegistryPath`, `RegistryEntityKind` и `RegistryEntityPayload` не меняют identity entity.
+
+## Решение по RegistryPath domain ownership
+
+Registry Studio не строит domain identity вокруг Markdown, source headings или source line positions.
+
+`RegistryPath` является canonical domain path: он описывает semantic domain position конкретного `RegistryEntity` внутри registry domain model.
+
+`RegistryPath` не является Markdown navigation path, source document heading path, document locator, line-based identity, UI navigation path или runtime adapter path.
+
+Source document coordinates принадлежат `SourceEvidence`.
+
+`SourceEvidence.headingPath`, `sourceDocumentPath`, `startLine` и `endLine` используются только как provenance/source evidence и не определяют domain identity `RegistryEntity`.
+
+`RegistryPath` сейчас фиксирует базовые универсальные инварианты: non-empty ordered segments, trim каждого segment, запрет пустых segments и immutable list.
+
+Это не MVP-сокращение и не временная слабая модель. Более строгая canonical path shape допускается только после отдельного ownership-аудита domain hierarchy, чтобы не зашить случайную adapter-shaped, Markdown-shaped или UI-shaped структуру как долгоживущий domain contract.
