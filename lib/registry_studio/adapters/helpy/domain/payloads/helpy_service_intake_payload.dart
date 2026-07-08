@@ -368,7 +368,7 @@ final class HelpyQuestionQualifier extends Equatable {
   List<Object?> get props => <Object?>[key, kind, expression];
 }
 
-enum HelpyPhotoSourceMode { direct, reuse, addition }
+enum HelpyPhotoSourceMode { direct, reuse, addition, replacement }
 
 final class HelpyPhotoQuestionSource extends Equatable {
   factory HelpyPhotoQuestionSource({

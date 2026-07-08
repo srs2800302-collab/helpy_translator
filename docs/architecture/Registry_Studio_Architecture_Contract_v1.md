@@ -132,31 +132,61 @@ A `helpy.service_intake` RegistryEntity owns one permanent typed Helpy payload:
 ```text
 Entity
 → Scenario
+  → Scenario Entry Evidence
   → Questions
   → Photo Questions
+  → Photo Limits
+  → Client Guidance
+  → Master Guidance
 ```
 
 The Core `RegistryEntity` remains the only aggregate identity owner. The Helpy
 payload must not be duplicated by a parallel intake aggregate created solely
 for a pilot, parser, navigation tree, or UI.
 
-`Scenario Selection` is not a fifth domain entity. It is source-level entry
-evidence belonging to the selected Scenario. It records the selector question
-and the selected answer through which the client enters that Scenario.
+`Scenario Selection` is represented as Scenario Entry Evidence. It is not a
+fifth domain entity. It records the selector question and selected answer
+through which the client enters that Scenario.
 
 Conditions and answer/context variants are not additional primary scenarios.
 They remain qualifiers inside Questions and determine the applicability of
 Photo Questions and photo limits.
+
+Any engineering review of scenario content must be able to raise the full
+technical specification for the Entity and all relevant Scenarios:
+
+```text
+Entity
+→ relevant Scenario(s)
+  → Scenario Entry Evidence
+  → Questions
+  → Photo Questions
+  → Photo Limits
+  → Client Guidance
+  → Master Guidance
+```
+
+Questions and Photo Questions are the primary structure through which Helpy
+collects the client technical specification for the master. Client Guidance and
+Master Guidance are scenario-owned role-specific hints shown on application
+screens. The client sees only Client Guidance. The master sees only Master
+Guidance. Guidance wording may differ between Scenarios and must be evaluated
+against the full technical specification context of the relevant Scenario,
+never in isolation.
+
+Scenarios remain independent semantic branches. A Replace scenario may repeat
+selected questions or photo requests from Install & Connect and may contain
+additional requirements. Repeated wording or source context must not create an
+automatic cross-scenario identity, relation, or merge.
 
 Within one `helpy.service_intake` entity, Questions, answer options, Photo
 Questions, and photo limits must have adapter-defined semantic keys whenever
 another payload component refers to them. These keys are scoped to the owning
 RegistryEntity and are not Core RegistryEntity identities.
 
-Photo Questions contain:
+Scenario photo content contains:
 
-- required photo questions;
-- optional photo questions;
+- required and optional Photo Questions;
 - photo limits;
 - confirmed answer/context applicability;
 - confirmed reuse, addition, or replacement semantics where explicitly

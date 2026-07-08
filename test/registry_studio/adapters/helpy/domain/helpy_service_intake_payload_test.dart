@@ -87,7 +87,7 @@ void main() {
     );
 
     test(
-      'allows a scenario to reuse a photo question from another scenario',
+      'allows an independent replace scenario to reuse context and add replacement-specific photos',
       () {
         final HelpyIntakeScenario installScenario = _scenario(
           key: 'install_connect',
@@ -119,6 +119,12 @@ void main() {
                 sourceScenarioKey: 'install_connect',
                 sourcePhotoQuestionKey: 'installed_faucet',
               ),
+            ),
+            _photoQuestion(
+              key: 'existing_faucet',
+              qualifierKeys: const <String>[],
+              limitKey: 'replace_photos',
+              source: _source(HelpyPhotoSourceMode.replacement),
             ),
           ],
           photoLimits: <HelpyPhotoLimit>[_photoLimit(key: 'replace_photos')],
