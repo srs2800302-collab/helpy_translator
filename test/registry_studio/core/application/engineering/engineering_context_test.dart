@@ -15,20 +15,20 @@ void main() {
       () {
         final RegistryAdapterContractIdentity adapter =
             RegistryAdapterContractIdentity(
-              adapterId: 'helpy',
+              adapterId: 'sample_adapter',
               semanticContractVersion: '1',
             );
         final _TestPayload payload = _TestPayload(
           adapterContract: adapter,
-          entityKindId: 'helpy.service_intake',
+          entityKindId: 'sample.entity',
           payloadSchemaVersion: '1',
         );
         final RegistryEntity entity = RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
-          path: RegistryPath(<String>['helpy', 'plumbing', 'faucet']),
+          path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
           kind: RegistryEntityKind(
             adapterContract: adapter,
-            kindId: 'helpy.service_intake',
+            kindId: 'sample.entity',
             schemaVersion: '1',
           ),
           payload: payload,
@@ -47,20 +47,20 @@ void main() {
     test('rejects an unexpected payload type', () {
       final RegistryAdapterContractIdentity adapter =
           RegistryAdapterContractIdentity(
-            adapterId: 'helpy',
+            adapterId: 'sample_adapter',
             semanticContractVersion: '1',
           );
       final RegistryEntity entity = RegistryEntity(
         id: RegistryEntityId('registry-entity-001'),
-        path: RegistryPath(<String>['helpy', 'plumbing', 'faucet']),
+        path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
         kind: RegistryEntityKind(
           adapterContract: adapter,
-          kindId: 'helpy.service_intake',
+          kindId: 'sample.entity',
           schemaVersion: '1',
         ),
         payload: _TestPayload(
           adapterContract: adapter,
-          entityKindId: 'helpy.service_intake',
+          entityKindId: 'sample.entity',
           payloadSchemaVersion: '1',
         ),
       );
@@ -97,12 +97,12 @@ final class _AnotherPayload implements RegistryEntityPayload {
   @override
   RegistryAdapterContractIdentity get adapterContract =>
       RegistryAdapterContractIdentity(
-        adapterId: 'helpy',
+        adapterId: 'sample_adapter',
         semanticContractVersion: '1',
       );
 
   @override
-  String get entityKindId => 'helpy.service_intake';
+  String get entityKindId => 'sample.entity';
 
   @override
   String get payloadSchemaVersion => '1';

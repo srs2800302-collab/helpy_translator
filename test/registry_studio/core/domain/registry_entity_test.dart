@@ -12,22 +12,22 @@ void main() {
     test('accepts a payload compatible with its primary kind', () {
       final RegistryAdapterContractIdentity adapter =
           RegistryAdapterContractIdentity(
-            adapterId: 'helpy',
+            adapterId: 'sample_adapter',
             semanticContractVersion: '1',
           );
       final RegistryEntityKind kind = RegistryEntityKind(
         adapterContract: adapter,
-        kindId: 'helpy.service_intake',
+        kindId: 'sample.entity',
         schemaVersion: '1',
       );
 
       final RegistryEntity entity = RegistryEntity(
         id: RegistryEntityId('registry-entity-001'),
-        path: RegistryPath(<String>['helpy', 'plumbing', 'faucet']),
+        path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
         kind: kind,
         payload: _TestPayload(
           adapterContract: adapter,
-          entityKindId: 'helpy.service_intake',
+          entityKindId: 'sample.entity',
           payloadSchemaVersion: '1',
         ),
       );
@@ -37,9 +37,9 @@ void main() {
     });
 
     test('rejects a payload from another adapter contract', () {
-      final RegistryAdapterContractIdentity helpy =
+      final RegistryAdapterContractIdentity sampleAdapter =
           RegistryAdapterContractIdentity(
-            adapterId: 'helpy',
+            adapterId: 'sample_adapter',
             semanticContractVersion: '1',
           );
       final RegistryAdapterContractIdentity anotherAdapter =
@@ -51,15 +51,15 @@ void main() {
       expect(
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
-          path: RegistryPath(<String>['helpy', 'plumbing']),
+          path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
           kind: RegistryEntityKind(
-            adapterContract: helpy,
-            kindId: 'helpy.service_intake',
+            adapterContract: sampleAdapter,
+            kindId: 'sample.entity',
             schemaVersion: '1',
           ),
           payload: _TestPayload(
             adapterContract: anotherAdapter,
-            entityKindId: 'helpy.service_intake',
+            entityKindId: 'sample.entity',
             payloadSchemaVersion: '1',
           ),
         ),
@@ -70,23 +70,23 @@ void main() {
     test('rejects a payload for another entity kind or schema', () {
       final RegistryAdapterContractIdentity adapter =
           RegistryAdapterContractIdentity(
-            adapterId: 'helpy',
+            adapterId: 'sample_adapter',
             semanticContractVersion: '1',
           );
       final RegistryEntityKind intakeKind = RegistryEntityKind(
         adapterContract: adapter,
-        kindId: 'helpy.service_intake',
+        kindId: 'sample.entity',
         schemaVersion: '1',
       );
 
       expect(
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
-          path: RegistryPath(<String>['helpy', 'plumbing']),
+          path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
           kind: intakeKind,
           payload: _TestPayload(
             adapterContract: adapter,
-            entityKindId: 'helpy.service_standard',
+            entityKindId: 'sample.standard',
             payloadSchemaVersion: '1',
           ),
         ),
@@ -96,11 +96,11 @@ void main() {
       expect(
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
-          path: RegistryPath(<String>['helpy', 'plumbing']),
+          path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
           kind: intakeKind,
           payload: _TestPayload(
             adapterContract: adapter,
-            entityKindId: 'helpy.service_intake',
+            entityKindId: 'sample.entity',
             payloadSchemaVersion: '2',
           ),
         ),
@@ -111,19 +111,19 @@ void main() {
     test('uses stable immutable identity for entity equality', () {
       final RegistryAdapterContractIdentity adapter =
           RegistryAdapterContractIdentity(
-            adapterId: 'helpy',
+            adapterId: 'sample_adapter',
             semanticContractVersion: '1',
           );
       final RegistryEntityKind kind = RegistryEntityKind(
         adapterContract: adapter,
-        kindId: 'helpy.service_intake',
+        kindId: 'sample.entity',
         schemaVersion: '1',
       );
       final RegistryEntityId id = RegistryEntityId('registry-entity-001');
 
       final RegistryEntity first = RegistryEntity(
         id: id,
-        path: RegistryPath(<String>['helpy', 'plumbing', 'faucet']),
+        path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
         kind: kind,
         payload: _TestPayload(
           adapterContract: adapter,
@@ -133,7 +133,7 @@ void main() {
       );
       final RegistryEntity second = RegistryEntity(
         id: id,
-        path: RegistryPath(<String>['helpy', 'plumbing', 'kitchen_faucet']),
+        path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_variant']),
         kind: kind,
         payload: _TestPayload(
           adapterContract: adapter,

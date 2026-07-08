@@ -7,18 +7,18 @@ void main() {
   group('RegistryPath', () {
     test('normalizes and preserves semantic segments', () {
       final RegistryPath path = RegistryPath(<String>[
-        ' helpy ',
-        ' plumbing ',
-        ' faucet ',
+        ' sample_adapter ',
+        ' sample_domain ',
+        ' sample_entity ',
       ]);
 
-      expect(path.segments, <String>['helpy', 'plumbing', 'faucet']);
+      expect(path.segments, <String>['sample_adapter', 'sample_domain', 'sample_entity']);
       expect(() => path.segments.add('line_10014'), throwsUnsupportedError);
     });
 
     test('rejects an empty path or an empty semantic segment', () {
       expect(() => RegistryPath(const <String>[]), throwsArgumentError);
-      expect(() => RegistryPath(<String>['helpy', '']), throwsArgumentError);
+      expect(() => RegistryPath(<String>['sample_adapter', '']), throwsArgumentError);
     });
   });
 
@@ -26,7 +26,7 @@ void main() {
     test('stores provenance independently from registry identity', () {
       final SourceEvidence evidence = SourceEvidence(
         sourceDocumentPath:
-            'docs/architecture/Helpy_Architecture_Registry_v1.md',
+            'docs/architecture/Registry_Studio_Source_v1.md',
         sourceSnapshotFingerprint: 'sha256:abc123',
         headingPath: <String>['Plumbing', 'Faucet'],
         startLine: 10014,

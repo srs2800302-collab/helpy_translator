@@ -24,13 +24,13 @@ void main() {
     test('allows path target instead of entity identity', () {
       final EngineerIntent intent = EngineerIntent(
         objective: 'Review path',
-        targetPath: RegistryPath(<String>[' helpy ', ' plumbing ', ' faucet ']),
+        targetPath: RegistryPath(<String>[' sample_adapter ', ' sample_domain ', ' sample_entity ']),
       );
 
       expect(intent.targetEntityId, isNull);
       expect(
         intent.targetPath,
-        RegistryPath(<String>['helpy', 'plumbing', 'faucet']),
+        RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
       );
       expect(intent.hasTarget, isTrue);
     });
@@ -70,7 +70,7 @@ void main() {
         () => EngineerIntent(
           objective: 'Review intake entity',
           targetEntityId: RegistryEntityId('registry-entity-001'),
-          targetPath: RegistryPath(<String>['helpy', 'plumbing', 'faucet']),
+          targetPath: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
         ),
         throwsArgumentError,
       );

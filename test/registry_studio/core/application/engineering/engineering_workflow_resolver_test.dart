@@ -277,21 +277,21 @@ EngineerIntent _intent() {
 EngineeringContext _context() {
   final RegistryAdapterContractIdentity adapter =
       RegistryAdapterContractIdentity(
-        adapterId: 'helpy',
+        adapterId: 'sample_adapter',
         semanticContractVersion: '1',
       );
 
   final RegistryEntity entity = RegistryEntity(
     id: RegistryEntityId('registry-entity-001'),
-    path: RegistryPath(<String>['helpy', 'plumbing', 'faucet']),
+    path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
     kind: RegistryEntityKind(
       adapterContract: adapter,
-      kindId: 'helpy.service_intake',
+      kindId: 'sample.entity',
       schemaVersion: '1',
     ),
     payload: _TestPayload(
       adapterContract: adapter,
-      entityKindId: 'helpy.service_intake',
+      entityKindId: 'sample.entity',
       payloadSchemaVersion: '1',
     ),
   );
@@ -339,9 +339,9 @@ final class _MapEligibilityEvaluator
   }) {
     expect(intent.objective, 'Review intake context');
     expect(context.targetEntity.path.segments, <String>[
-      'helpy',
-      'plumbing',
-      'faucet',
+      'sample_adapter',
+      'sample_domain',
+      'sample_entity',
     ]);
 
     return _eligibilityByWorkflowKey[workflow.workflowKey] ??
