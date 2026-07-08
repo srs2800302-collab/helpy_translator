@@ -442,6 +442,10 @@ deep analysis, controlled refactoring, ambiguity handling, and Registry health.
 Registry Studio Core must not:
 
 - contain project-specific business logic;
+- include project-specific names in universal Studio component names;
+- allow project names such as `Helpy` outside explicit adapter or
+  source-integration boundaries. Universal Core, Review, Workflow, Runtime,
+  Publication, and Registry components must remain project-agnostic;
 - execute orders, payments, finance, customer, worker, or operational runtime;
 - become an Admin Panel module;
 - use Markdown syntax as domain identity;
@@ -454,7 +458,7 @@ Registry Studio Core must not:
 
 ## 12. Current Implementation Baseline
 
-The current `develop/v2` prototype provides working evidence for:
+The current Registry Studio prototype provides working evidence for:
 
 - manual source-formulation input;
 - translation review;
