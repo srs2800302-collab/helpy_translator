@@ -379,6 +379,31 @@ capability, not Registry Studio Core.
 
 EngineeringContext provides verified read-only base context.
 
+`EngineeringContext` обязан показывать инженеру полный read-only контекст целевой `RegistryEntity` из `RegistryEntity.payload`:
+
+```text
+Entity
+→ Scenario
+  → Scenario Entry Evidence
+  → Questions
+  → Photo Questions
+  → Photo Limits
+  → Client Guidance
+  → Master Guidance
+```
+
+Каждый `Scenario` рассматривается отдельно. У разных `Scenario` могут быть
+разные `Questions`, `Photo Questions`, `Photo Limits`, `Client Guidance` и
+`Master Guidance`.
+
+`Client Guidance` и `Master Guidance` являются role-specific подсказками
+экранов для конкретного `Scenario`.
+
+`EngineeringContext` не создаёт отдельный `RegistryEntityReviewContext`,
+`ReviewContent` или параллельный payload. Он использует существующих владельцев
+ответственности: `RegistryEntity`, `RegistryEntityPayload`, `SourceEvidence`,
+`RegistryRelation`, `RegistryDependency`, `RegistryGraph` и `RegistrySnapshot`.
+
 EngineerIntent is runtime input.
 
 EngineeringWorkflowResolver proposes eligible workflow. Engineer confirmation is
