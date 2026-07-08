@@ -174,6 +174,40 @@ void main() {
       },
     );
 
+    test('allows stopped step to preserve pending engineer confirmation', () {
+      final WorkflowStepDefinition<_Input, _Output> step =
+          WorkflowStepDefinition<_Input, _Output>(
+            stepKey: 'confirmable_step',
+            sequenceOrder: 1,
+            title: 'Confirmable step',
+            serviceContract: EngineeringServiceContract<_Input, _Output>(
+              contractKey: 'confirmable_contract',
+              semanticVersion: '1.0.0',
+              description: 'Confirmable contract.',
+            ),
+            engineerConfirmationRequirements: <String>[
+              'Confirm target before execution.',
+            ],
+          );
+
+      final WorkflowStepExecution<_Input, _Output> execution =
+          WorkflowStepExecution<_Input, _Output>.stopped(
+            stepDefinition: step,
+            resolvedHandlerBindingProvenance: 'handler:v1',
+            input: const _Input('target'),
+            stopReason: 'Required engineer confirmation before execution.',
+            engineerConfirmationState:
+                WorkflowStepEngineerConfirmationState.pending,
+          );
+
+      expect(execution.isStopped, isTrue);
+      expect(
+        execution.engineerConfirmationState,
+        WorkflowStepEngineerConfirmationState.pending,
+      );
+      expect(execution.isResumable, isTrue);
+    });
+
     test('rejects invalid confirmation state combinations', () {
       expect(
         () => WorkflowStepExecution<_Input, _Output>.running(

@@ -317,10 +317,12 @@ WorkflowStepEngineerConfirmationState _validateConfirmationState<
     );
   }
 
-  if (status != WorkflowStepExecutionStatus.pending &&
+  if ((status == WorkflowStepExecutionStatus.running ||
+          status == WorkflowStepExecutionStatus.completed ||
+          status == WorkflowStepExecutionStatus.failed) &&
       state == WorkflowStepEngineerConfirmationState.pending) {
     throw ArgumentError(
-      'Workflow step execution cannot run before required engineer confirmation.',
+      'Workflow step execution cannot execute before required engineer confirmation.',
     );
   }
 
