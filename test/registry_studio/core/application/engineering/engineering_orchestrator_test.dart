@@ -186,6 +186,103 @@ void main() {
       },
     );
 
+    test('resumes stopped current step after engineer decision', () async {
+      final EngineeringWorkflow workflow = _workflow(
+        'review_intake',
+        requiresConfirmation: true,
+      );
+      final _Service service = _Service(contract: _contract('review_intake'));
+      final EngineeringWorkflowInstance stopped = await _stoppedInstance(
+        workflow,
+        service,
+      );
+
+      final EngineeringWorkflowInstance resumed =
+          await const EngineeringOrchestrator()
+              .resumeCurrentStepAfterEngineerDecision<_Input, _Output>(
+                instance: stopped,
+                capabilityCatalog: _catalog(service),
+                engineerDecisionReference: 'decision:resume-step',
+                completionSummary: 'Step completed after confirmation.',
+                runtimeAuditReferences: <String>['audit:resume'],
+              );
+
+      expect(resumed.status, EngineeringWorkflowInstanceStatus.completed);
+      expect(resumed.stepExecutions.single.isCompleted, isTrue);
+      expect(
+        resumed.stepExecutions.single.engineerConfirmationState,
+        WorkflowStepEngineerConfirmationState.confirmed,
+      );
+      expect(resumed.completionState, 'Step completed after confirmation.');
+      expect(resumed.runtimeAuditReferences, <String>[
+        'decision:confirm-review-intake',
+        'decision:resume-step',
+        'audit:resume',
+        'trace:target',
+      ]);
+      expect(service.executeCount, 1);
+    });
+
+    test(
+      'does not resume automatically when handler binding provenance changed',
+      () async {
+        final EngineeringWorkflow workflow = _workflow(
+          'review_intake',
+          requiresConfirmation: true,
+        );
+        final _Service service = _Service(contract: _contract('review_intake'));
+        final EngineeringWorkflowInstance stopped = await _stoppedInstance(
+          workflow,
+          service,
+        );
+
+        final EngineeringWorkflowInstance stillStopped =
+            await const EngineeringOrchestrator()
+                .resumeCurrentStepAfterEngineerDecision<_Input, _Output>(
+                  instance: stopped,
+                  capabilityCatalog: _catalog(
+                    service,
+                    bindingProvenance: 'review_intake.contract:handler:v2',
+                  ),
+                  engineerDecisionReference: 'decision:resume-step',
+                  completionSummary: 'Step completed after confirmation.',
+                  bindingChangedDecisionPointReference:
+                      'decision:confirm-new-binding',
+                  bindingChangedStopReason:
+                      'Handler binding provenance changed before resume.',
+                );
+
+        expect(stillStopped.status, EngineeringWorkflowInstanceStatus.stopped);
+        expect(
+          stillStopped.resumeState,
+          'Handler binding provenance changed before resume.',
+        );
+        expect(stillStopped.engineerDecisionPoints, <String>[
+          'decision:confirm-step',
+          'decision:confirm-new-binding',
+        ]);
+        expect(stillStopped.currentStepExecution?.isStopped, isTrue);
+        expect(service.executeCount, 0);
+      },
+    );
+
+    test('rejects resume for non-stopped workflow instance', () async {
+      final EngineeringWorkflow workflow = _workflow('review_intake');
+      final EngineeringWorkflowInstance instance = _startedInstance(workflow);
+      final _Service service = _Service(contract: _contract('review_intake'));
+
+      expect(
+        () => const EngineeringOrchestrator()
+            .resumeCurrentStepAfterEngineerDecision<_Input, _Output>(
+              instance: instance,
+              capabilityCatalog: _catalog(service),
+              engineerDecisionReference: 'decision:resume-step',
+              completionSummary: 'Step completed.',
+            ),
+        throwsStateError,
+      );
+    });
+
     test(
       'rejects execution with mismatched runtime composition catalog',
       () async {
@@ -223,6 +320,21 @@ EngineeringWorkflowInstance _startedInstance(EngineeringWorkflow workflow) {
       confirmationReference: 'decision:confirm-review-intake',
     ),
     activeRuntimeCompositionFingerprint: 'composition:v1',
+  );
+}
+
+Future<EngineeringWorkflowInstance> _stoppedInstance(
+  EngineeringWorkflow workflow,
+  _Service service,
+) {
+  return const EngineeringOrchestrator().executeCurrentStep<_Input, _Output>(
+    instance: _startedInstance(workflow),
+    capabilityCatalog: _catalog(service),
+    input: const _Input('target'),
+    completionSummary: 'Step completed.',
+    engineerDecisionPointReference: 'decision:confirm-step',
+    engineerDecisionStopReason:
+        'Required engineer confirmation before execution.',
   );
 }
 
@@ -274,6 +386,7 @@ EngineeringServiceContract<_Input, _Output> _contract(String workflowKey) {
 EngineeringServiceCapabilityCatalog _catalog(
   _Service service, {
   String compositionFingerprint = 'composition:v1',
+  String? bindingProvenance,
 }) {
   return EngineeringServiceCapabilityCatalog(
     catalogVersion: '1.0.0',
@@ -288,7 +401,9 @@ EngineeringServiceCapabilityCatalog _catalog(
           EngineeringServiceBinding<_Input, _Output>(
             bindingKey: '${service.contract.contractKey}.binding',
             service: service,
-            bindingProvenance: '${service.contract.contractKey}:handler:v1',
+            bindingProvenance:
+                bindingProvenance ??
+                '${service.contract.contractKey}:handler:v1',
             source: EngineeringServiceBindingSource.platform,
           ),
         ],

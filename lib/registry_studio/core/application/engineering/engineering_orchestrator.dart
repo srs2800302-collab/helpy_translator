@@ -115,6 +115,135 @@ final class EngineeringOrchestrator {
       ],
     );
   }
+
+  Future<EngineeringWorkflowInstance> resumeCurrentStepAfterEngineerDecision<
+    I extends EngineeringServiceInput,
+    O extends EngineeringServiceOutput
+  >({
+    required EngineeringWorkflowInstance instance,
+    required EngineeringServiceCapabilityCatalog capabilityCatalog,
+    required String engineerDecisionReference,
+    required String completionSummary,
+    String? bindingChangedDecisionPointReference,
+    String? bindingChangedStopReason,
+    Iterable<String> runtimeAuditReferences = const <String>[],
+  }) async {
+    _ensureStoppedInstance(instance);
+    _ensureCatalogMatchesInstance(instance, capabilityCatalog);
+
+    final String resumeDecisionReference = _requiredText(
+      engineerDecisionReference,
+      'engineerDecisionReference',
+    );
+
+    final WorkflowStepExecution<I, O> stoppedExecution =
+        _typedCurrentStoppedExecution<I, O>(instance);
+
+    final WorkflowStepDefinition<I, O> stepDefinition =
+        stoppedExecution.stepDefinition;
+
+    final EngineeringServiceBinding<I, O> binding = capabilityCatalog
+        .resolveForStep<I, O>(stepDefinition);
+
+    if (stoppedExecution.requiresEngineerDecisionForBinding(
+      binding.bindingProvenance,
+    )) {
+      return EngineeringWorkflowInstance.stopped(
+        workflowInstanceId: instance.workflowInstanceId,
+        workflow: instance.workflow,
+        activeRuntimeCompositionFingerprint:
+            instance.activeRuntimeCompositionFingerprint,
+        currentExecutionPosition: instance.currentExecutionPosition,
+        stepExecutions: instance.stepExecutions,
+        resumeState: _requiredText(
+          bindingChangedStopReason,
+          'bindingChangedStopReason',
+        ),
+        intermediateResultReferences: instance.intermediateResultReferences,
+        engineerDecisionPoints: _mergeUnique(<String>[
+          ...instance.engineerDecisionPoints,
+          _requiredText(
+            bindingChangedDecisionPointReference,
+            'bindingChangedDecisionPointReference',
+          ),
+        ]),
+        registryTransactionReference: instance.registryTransactionReference,
+        runtimeAuditReferences: _mergeUnique(<String>[
+          ...instance.runtimeAuditReferences,
+          resumeDecisionReference,
+          ...runtimeAuditReferences,
+        ]),
+      );
+    }
+
+    if (!stoppedExecution.canResumeWithBinding(binding.bindingProvenance)) {
+      throw StateError(
+        'Engineering orchestrator cannot resume current step with the active handler binding.',
+      );
+    }
+
+    final I input = stoppedExecution.input as I;
+    final EngineeringServiceResult<O> result;
+
+    try {
+      result = await binding.service.execute(input);
+    } on Object catch (error) {
+      return _failedInstance<I, O>(
+        instance: instance,
+        stepExecution: WorkflowStepExecution<I, O>.failed(
+          stepDefinition: stepDefinition,
+          resolvedHandlerBindingProvenance: binding.bindingProvenance,
+          input: input,
+          failure: EngineeringServiceFailure(
+            code: 'engineering_service_exception',
+            message: 'Engineering service execution threw: $error',
+          ),
+        ),
+        failureState: 'engineering_service_exception: $error',
+        runtimeAuditReferences: <String>[
+          resumeDecisionReference,
+          ...runtimeAuditReferences,
+        ],
+      );
+    }
+
+    if (result.isFailure) {
+      final EngineeringServiceFailure failure = result.requireFailure;
+
+      return _failedInstance<I, O>(
+        instance: instance,
+        stepExecution: WorkflowStepExecution<I, O>.failed(
+          stepDefinition: stepDefinition,
+          resolvedHandlerBindingProvenance: binding.bindingProvenance,
+          input: input,
+          failure: failure,
+        ),
+        failureState: '${failure.code}: ${failure.message}',
+        runtimeAuditReferences: <String>[
+          resumeDecisionReference,
+          ...runtimeAuditReferences,
+          ...result.traceabilityReferences,
+        ],
+      );
+    }
+
+    return _instanceAfterCompletedStep<I, O>(
+      instance: instance,
+      completedExecution: WorkflowStepExecution<I, O>.completed(
+        stepDefinition: stepDefinition,
+        resolvedHandlerBindingProvenance: binding.bindingProvenance,
+        input: input,
+        output: result.requireOutput,
+        completionSummary: completionSummary,
+      ),
+      completionSummary: completionSummary,
+      runtimeAuditReferences: <String>[
+        resumeDecisionReference,
+        ...runtimeAuditReferences,
+        ...result.traceabilityReferences,
+      ],
+    );
+  }
 }
 
 List<String> _runtimeAuditReferencesFor(
@@ -130,6 +259,14 @@ void _ensureRunningInstance(EngineeringWorkflowInstance instance) {
   if (!instance.isRunning) {
     throw StateError(
       'Engineering orchestrator can execute current step only for RUNNING workflow instance.',
+    );
+  }
+}
+
+void _ensureStoppedInstance(EngineeringWorkflowInstance instance) {
+  if (!instance.isStopped) {
+    throw StateError(
+      'Engineering orchestrator can resume current step only for STOPPED workflow instance.',
     );
   }
 }
@@ -163,6 +300,38 @@ WorkflowStepDefinition<I, O> _typedCurrentStepDefinition<
   }
 
   return currentStepDefinition as WorkflowStepDefinition<I, O>;
+}
+
+WorkflowStepExecution<I, O> _typedCurrentStoppedExecution<
+  I extends EngineeringServiceInput,
+  O extends EngineeringServiceOutput
+>(EngineeringWorkflowInstance instance) {
+  final WorkflowStepExecution<
+    EngineeringServiceInput,
+    EngineeringServiceOutput
+  >?
+  execution = instance.currentStepExecution;
+
+  if (execution == null || !execution.isStopped) {
+    throw StateError(
+      'Engineering orchestrator stopped workflow instance must preserve stopped current step execution.',
+    );
+  }
+
+  final EngineeringServiceInput? input = execution.input;
+  if (input == null) {
+    throw StateError(
+      'Engineering orchestrator cannot resume stopped current step without preserved typed input.',
+    );
+  }
+
+  if (!execution.stepDefinition.serviceContract.acceptsInput(input)) {
+    throw StateError(
+      'Engineering orchestrator stopped current step input no longer matches its service contract.',
+    );
+  }
+
+  return execution as WorkflowStepExecution<I, O>;
 }
 
 EngineeringWorkflowInstance _stopForEngineerConfirmation<
