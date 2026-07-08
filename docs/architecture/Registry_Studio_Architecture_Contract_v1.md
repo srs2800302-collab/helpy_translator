@@ -2,7 +2,7 @@
 
 Status: APPROVED — UNIVERSAL ARCHITECTURE BASELINE
 Repository: `helpy_translator`
-Development branch: `develop/v2`
+Development branch: `registry-studio/v1`
 
 ## 1. Authority and Development Boundary
 
