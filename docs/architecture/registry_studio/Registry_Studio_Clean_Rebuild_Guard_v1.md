@@ -123,3 +123,19 @@ Registry Studio проектируется сверху вниз от основ
 UI, Markdown, source document structure, runtime adapter, importer или presenter не должны определять domain identity.
 
 Engineer-centered framing определяет problem boundary; domain model определяет устойчивые contracts, identity, lifecycle, ownership и invariants.
+
+## Принцип responsibility isolation и orchestration boundary
+
+Registry Studio entities должны сохранять изоляцию responsibilities.
+
+Entity не должна знать внутренний workflow другой entity и не должна смешивать чужие рабочие процессы со своей responsibility.
+
+Взаимодействие между entities допускается только через явные domain contracts, value objects, invariants или approved use case boundary.
+
+Orchestrator / coordinator не должен знать внутреннюю реализацию каждой entity и не должен владеть её domain logic.
+
+Orchestrator может знать только доступный ему инструментарий: approved capabilities, contracts, use case boundaries и допустимые interaction points.
+
+Orchestrator не должен становиться god object, service locator, runtime executor или местом, где смешиваются responsibilities разных entities.
+
+Метафора: дирижёр не играет за каждого музыканта и не владеет техникой игры каждого инструмента. Он знает состав оркестра, допустимые партии, момент входа и правила координации.
