@@ -404,6 +404,15 @@ Entity
 ответственности: `RegistryEntity`, `RegistryEntityPayload`, `SourceEvidence`,
 `RegistryRelation`, `RegistryDependency`, `RegistryGraph` и `RegistrySnapshot`.
 
+До появления отдельного Registry Studio runtime/UI entrypoint adapter-level
+engineering presenters, включая `HelpyEngineeringContextPresenter`, остаются
+в adapter application boundary.
+
+Они не подключаются к существующему Translator feature, `main.dart` или legacy
+application runtime. Интеграция допускается только через утверждённый Registry
+Studio runtime/application entrypoint, который использует `EngineeringContext`
+и выбранный adapter presenter binding.
+
 EngineerIntent is runtime input.
 
 EngineeringWorkflowResolver proposes eligible workflow. Engineer confirmation is
