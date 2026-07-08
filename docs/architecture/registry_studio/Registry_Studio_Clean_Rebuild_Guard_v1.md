@@ -264,3 +264,21 @@ Translator может быть будущей assistant capability для engine
 - related context assembly для engineer/user.
 
 До появления такого invariant collection wrapper будет преждевременным слоем и нарушит clean rebuild boundary.
+
+## Application boundary decision для related context
+
+В текущем `lib/registry_studio` нет готового application/use case boundary для подготовки связанных registry мест.
+
+Первая read-only application responsibility после `RegistryRelation` называется `PrepareRegistryRelatedContext`.
+
+`PrepareRegistryRelatedContext` должен готовить related context для engineer/user на основе `RegistryEntity` и `Iterable<RegistryRelation>`.
+
+Эта responsibility существует для того, чтобы engineer/user мог увидеть связанные registry места до drift analysis.
+
+`PrepareRegistryRelatedContext` не является drift detector, analyzer, finding builder, graph traversal engine, presenter, UI projection, change plan, publication instruction или mutation command.
+
+`PrepareRegistryRelatedContext` не должен принимать semantic decisions и не должен изменять registry.
+
+`RegistryRelatedContext` не принимается как первичный domain primitive. Он может появиться только как explicit read-only application result после отдельного ownership-аудита result shape.
+
+До появления result-specific invariants application boundary может быть зафиксирован без создания graph/container/domain wrapper.
