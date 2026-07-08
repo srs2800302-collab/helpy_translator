@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:helpy_translator/registry_studio/core/domain/contracts/registry_entity_payload.dart';
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_entity.dart';
+import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_adapter_contract_identity.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_kind.dart';
@@ -9,7 +10,7 @@ import 'package:helpy_translator/registry_studio/core/domain/value_objects/regis
 
 void main() {
   group('RegistryEntity', () {
-    test('accepts a payload compatible with its primary kind', () {
+    test('accepts a source-backed payload compatible with its primary kind', () {
       final RegistryAdapterContractIdentity adapter =
           RegistryAdapterContractIdentity(
             adapterId: 'sample_adapter',
@@ -23,17 +24,55 @@ void main() {
 
       final RegistryEntity entity = RegistryEntity(
         id: RegistryEntityId('registry-entity-001'),
-        path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
+        path: RegistryPath(<String>[
+          'sample_adapter',
+          'sample_domain',
+          'sample_entity',
+        ]),
         kind: kind,
         payload: _TestPayload(
           adapterContract: adapter,
           entityKindId: 'sample.entity',
           payloadSchemaVersion: '1',
         ),
+        sourceEvidence: <SourceEvidence>[_sourceEvidence()],
       );
 
       expect(entity.id.value, 'registry-entity-001');
       expect(entity.kind, kind);
+      expect(entity.sourceEvidence, <SourceEvidence>[_sourceEvidence()]);
+      expect(
+        () => entity.sourceEvidence.add(_sourceEvidence()),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('rejects an entity without source evidence', () {
+      final RegistryAdapterContractIdentity adapter =
+          RegistryAdapterContractIdentity(
+            adapterId: 'sample_adapter',
+            semanticContractVersion: '1',
+          );
+      final RegistryEntityKind kind = RegistryEntityKind(
+        adapterContract: adapter,
+        kindId: 'sample.entity',
+        schemaVersion: '1',
+      );
+
+      expect(
+        () => RegistryEntity(
+          id: RegistryEntityId('registry-entity-001'),
+          path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
+          kind: kind,
+          payload: _TestPayload(
+            adapterContract: adapter,
+            entityKindId: kind.kindId,
+            payloadSchemaVersion: kind.schemaVersion,
+          ),
+          sourceEvidence: const <SourceEvidence>[],
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('rejects a payload from another adapter contract', () {
@@ -62,6 +101,7 @@ void main() {
             entityKindId: 'sample.entity',
             payloadSchemaVersion: '1',
           ),
+          sourceEvidence: <SourceEvidence>[_sourceEvidence()],
         ),
         throwsArgumentError,
       );
@@ -73,7 +113,7 @@ void main() {
             adapterId: 'sample_adapter',
             semanticContractVersion: '1',
           );
-      final RegistryEntityKind intakeKind = RegistryEntityKind(
+      final RegistryEntityKind entityKind = RegistryEntityKind(
         adapterContract: adapter,
         kindId: 'sample.entity',
         schemaVersion: '1',
@@ -83,12 +123,13 @@ void main() {
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
           path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
-          kind: intakeKind,
+          kind: entityKind,
           payload: _TestPayload(
             adapterContract: adapter,
             entityKindId: 'sample.standard',
             payloadSchemaVersion: '1',
           ),
+          sourceEvidence: <SourceEvidence>[_sourceEvidence()],
         ),
         throwsArgumentError,
       );
@@ -97,12 +138,13 @@ void main() {
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
           path: RegistryPath(<String>['sample_adapter', 'sample_domain']),
-          kind: intakeKind,
+          kind: entityKind,
           payload: _TestPayload(
             adapterContract: adapter,
             entityKindId: 'sample.entity',
             payloadSchemaVersion: '2',
           ),
+          sourceEvidence: <SourceEvidence>[_sourceEvidence()],
         ),
         throwsArgumentError,
       );
@@ -123,30 +165,51 @@ void main() {
 
       final RegistryEntity first = RegistryEntity(
         id: id,
-        path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_entity']),
+        path: RegistryPath(<String>[
+          'sample_adapter',
+          'sample_domain',
+          'sample_entity',
+        ]),
         kind: kind,
         payload: _TestPayload(
           adapterContract: adapter,
           entityKindId: kind.kindId,
           payloadSchemaVersion: kind.schemaVersion,
         ),
+        sourceEvidence: <SourceEvidence>[_sourceEvidence(startLine: 10)],
       );
       final RegistryEntity second = RegistryEntity(
         id: id,
-        path: RegistryPath(<String>['sample_adapter', 'sample_domain', 'sample_variant']),
+        path: RegistryPath(<String>[
+          'sample_adapter',
+          'sample_domain',
+          'sample_variant',
+        ]),
         kind: kind,
         payload: _TestPayload(
           adapterContract: adapter,
           entityKindId: kind.kindId,
           payloadSchemaVersion: kind.schemaVersion,
         ),
+        sourceEvidence: <SourceEvidence>[_sourceEvidence(startLine: 20)],
       );
 
       expect(first, second);
       expect(first.id, second.id);
       expect(first.path, isNot(second.path));
+      expect(first.sourceEvidence, isNot(second.sourceEvidence));
     });
   });
+}
+
+SourceEvidence _sourceEvidence({int startLine = 100}) {
+  return SourceEvidence(
+    sourceDocumentPath: 'docs/architecture/Registry_Studio_Source_v1.md',
+    sourceSnapshotFingerprint: 'sha256:abc123',
+    headingPath: <String>['Sample Domain', 'Sample Entity'],
+    startLine: startLine,
+    endLine: startLine + 10,
+  );
 }
 
 final class _TestPayload implements RegistryEntityPayload {

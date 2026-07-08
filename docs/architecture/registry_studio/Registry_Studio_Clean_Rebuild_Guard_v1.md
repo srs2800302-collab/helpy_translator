@@ -77,3 +77,15 @@ Pilot-project code, terminology, payloads, scenarios, fixtures или documents 
 Он может рассматриваться только как legacy reference.
 
 Любая будущая workflow, orchestration, mutation, runtime или service execution model требует отдельного ownership audit до принятия кода.
+
+## Решение по source ownership для RegistryEntity
+
+`RegistryEntity` является source-backed registry unit.
+
+`SourceEvidence` входит в `RegistryEntity` как обязательная provenance часть.
+
+`RegistryEntity` не может существовать без хотя бы одного `SourceEvidence`, потому что Core не должен допускать registry entity без доказанного источника.
+
+Для этого не создаётся новая entity/model. Используется уже существующий `SourceEvidence`.
+
+Equality для `RegistryEntity` остаётся основанным на stable `RegistryEntityId`; `SourceEvidence`, `RegistryPath`, `RegistryEntityKind` и `RegistryEntityPayload` не меняют identity entity.

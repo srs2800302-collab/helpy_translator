@@ -28,12 +28,12 @@ void main() {
         sourceDocumentPath:
             'docs/architecture/Registry_Studio_Source_v1.md',
         sourceSnapshotFingerprint: 'sha256:abc123',
-        headingPath: <String>['Plumbing', 'Faucet'],
+        headingPath: <String>['Sample Domain', 'Sample Entity'],
         startLine: 10014,
         endLine: 10314,
       );
 
-      expect(evidence.headingPath, <String>['Plumbing', 'Faucet']);
+      expect(evidence.headingPath, <String>['Sample Domain', 'Sample Entity']);
       expect(evidence.startLine, 10014);
       expect(evidence.endLine, 10314);
     });
@@ -43,7 +43,7 @@ void main() {
         () => SourceEvidence(
           sourceDocumentPath: '',
           sourceSnapshotFingerprint: 'sha256:abc123',
-          headingPath: <String>['Plumbing'],
+          headingPath: <String>['Sample Domain'],
           startLine: 1,
           endLine: 1,
         ),
@@ -54,7 +54,7 @@ void main() {
         () => SourceEvidence(
           sourceDocumentPath: 'registry.md',
           sourceSnapshotFingerprint: 'sha256:abc123',
-          headingPath: <String>['Plumbing'],
+          headingPath: <String>['Sample Domain'],
           startLine: 10,
           endLine: 9,
         ),
