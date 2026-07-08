@@ -105,3 +105,21 @@ Source document coordinates принадлежат `SourceEvidence`.
 `RegistryPath` сейчас фиксирует базовые универсальные инварианты: non-empty ordered segments, trim каждого segment, запрет пустых segments и immutable list.
 
 Это не MVP-сокращение и не временная слабая модель. Более строгая canonical path shape допускается только после отдельного ownership-аудита domain hierarchy, чтобы не зашить случайную adapter-shaped, Markdown-shaped или UI-shaped структуру как долгоживущий domain contract.
+
+## Принцип engineer-centered top-down design
+
+Registry Studio проектируется сверху вниз от основного потребителя: engineer/user, который анализирует registry, принимает архитектурные решения, проверяет изменения и контролирует publication path.
+
+Каждая новая responsibility должна объясняться через реальную engineering-задачу:
+
+- какое решение принимает engineer/user;
+- какой verified context нужен для этого решения;
+- какие domain invariants должны защитить registry от ошибки;
+- какая часть ответственности уже покрыта существующими domain сущностями;
+- почему новая model/entity нужна или не нужна.
+
+Этот принцип не означает UI-first design.
+
+UI, Markdown, source document structure, runtime adapter, importer или presenter не должны определять domain identity.
+
+Engineer-centered framing определяет problem boundary; domain model определяет устойчивые contracts, identity, lifecycle, ownership и invariants.
