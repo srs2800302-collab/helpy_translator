@@ -206,3 +206,23 @@ Translator может быть будущей assistant capability для engine
 Эта responsibility не должна добавляться внутрь `SourceEvidence`, потому что `SourceEvidence` владеет только provenance/source coordinates.
 
 Следующая domain responsibility должна быть спроектирована отдельно как representation of registry relationships / related context before drift analysis, но только после отдельного naming и ownership-аудита.
+
+## Решение по первой relationship responsibility
+
+Первая новая domain responsibility после `RegistryEntity` называется `RegistryRelation`.
+
+`RegistryRelation` означает явную domain-связь между registry entities, которая помогает engineer/user увидеть связанные registry места до drift analysis.
+
+`RegistryRelation` не является graph, analyzer, finding, review context, change plan, publication instruction или mutation command.
+
+`RegistryRelation` не должна выполнять drift detection самостоятельно.
+
+`RegistryRelation` не должна знать internal workflow связанных entities.
+
+`RegistryRelation` должна быть atomic domain fact: какая registry entity связана с какой другой registry entity и каким relation meaning эта связь объясняется.
+
+`RegistryDependency` отклоняется как первичное имя, потому что dependency является только одним возможным видом relation и преждевременно сужает domain.
+
+`RegistryRelatedContext` отклоняется как первичное имя, потому что это assembled context/result для engineer/user, а не atomic relation fact.
+
+`RegistryContextGraph` отклоняется как первичное имя, потому что graph является более поздней composition/analysis structure и может преждевременно потянуть infrastructure/analyzer design.
