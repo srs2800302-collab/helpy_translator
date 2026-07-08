@@ -282,3 +282,32 @@ Translator может быть будущей assistant capability для engine
 `RegistryRelatedContext` не принимается как первичный domain primitive. Он может появиться только как explicit read-only application result после отдельного ownership-аудита result shape.
 
 До появления result-specific invariants application boundary может быть зафиксирован без создания graph/container/domain wrapper.
+
+## Result shape decision для PrepareRegistryRelatedContext
+
+`PrepareRegistryRelatedContext` требует explicit read-only application result, потому что у результата есть собственные invariants.
+
+Этот result называется `RegistryRelatedContext`.
+
+`RegistryRelatedContext` допускается только как application result, а не как primary domain primitive.
+
+`RegistryRelatedContext` должен содержать:
+
+- primary `RegistryEntity`;
+- matched `RegistryRelation` items, которые связаны с primary entity;
+- related `RegistryEntityId` values, выведенные из matched relations.
+
+`RegistryRelatedContext` не должен hydrated related entities, если они явно не переданы use case.
+
+`RegistryRelatedContext` не должен выполнять drift detection, semantic analysis, graph traversal, finding building, review decision, publication decision или mutation.
+
+`RegistryRelatedContext` не является presenter, UI projection или view model.
+
+Минимальные invariants `RegistryRelatedContext`:
+
+- каждая matched relation должна содержать `primary.id` как source или target;
+- related entity ids выводятся из matched relations;
+- related entity ids не должны содержать `primary.id`;
+- collections внутри result должны быть immutable.
+
+Unresolved/hydrated related entities не входят в первый result shape. Они могут быть добавлены только после отдельного ownership-аудита input boundary и result invariants.
