@@ -1,7 +1,7 @@
-import '../value_objects/registry_adapter_contract_identity.dart';
+import '../value_objects/registry_semantic_contract_identity.dart';
 
 abstract interface class RegistryEntityPayload {
-  RegistryAdapterContractIdentity get adapterContract;
+  RegistrySemanticContractIdentity get semanticContract;
 
   String get entityKindId;
 

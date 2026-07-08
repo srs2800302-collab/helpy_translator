@@ -61,12 +61,12 @@ Pilot-project code, terminology, payloads, scenarios, fixtures или documents 
 
 ### Принято как contract primitives с ownership watch
 
-- `RegistryAdapterContractIdentity`
+- `RegistrySemanticContractIdentity`
 - `RegistryEntityKind`
 - `RegistryEntityPayload`
 - `RegistryEntity`
 
-Термин `adapterContract` допускается только как external/source-specific semantic contract identity.
+`semanticContract` допускается только как semantic contract identity.
 
 Он не должен расширяться в runtime adapters, service locators, implementation bindings, presenters, helper layers или project-specific adapter packages.
 
@@ -178,10 +178,10 @@ Translator может быть будущей assistant capability для engine
 
 Эта связка нужна для drift analysis, verified context и safe review: engineer/user должен видеть typed registry entity, у которой kind и payload согласованы до начала анализа связанных мест.
 
-`adapterContract` в текущем Core означает только external/source-specific semantic contract identity.
+`semanticContract` в текущем Core означает только semantic contract identity.
 
-`adapterContract` не является runtime adapter, service binding, presenter, importer, handler, locator или execution capability.
+`semanticContract` не является runtime adapter, service binding, presenter, importer, handler, locator или execution capability.
 
-`RegistryAdapterContractIdentity` не даёт Core права создавать adapter, вызывать adapter, resolve-ить implementation или выполнять runtime operation.
+`RegistrySemanticContractIdentity` не даёт Core права создавать adapter, вызывать adapter, resolve-ить implementation или выполнять runtime operation.
 
 Если позже потребуется runtime integration, importer или translator capability, это должно пройти отдельный ownership-аудит вне текущей domain entity compatibility responsibility.

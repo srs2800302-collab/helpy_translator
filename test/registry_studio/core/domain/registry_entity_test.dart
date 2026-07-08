@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/domain/contracts/registry_entity_payload.dart';
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_entity.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
-import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_adapter_contract_identity.dart';
+import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_semantic_contract_identity.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_kind.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
@@ -11,13 +11,13 @@ import 'package:helpy_translator/registry_studio/core/domain/value_objects/regis
 void main() {
   group('RegistryEntity', () {
     test('accepts a source-backed payload compatible with its primary kind', () {
-      final RegistryAdapterContractIdentity adapter =
-          RegistryAdapterContractIdentity(
-            adapterId: 'sample_adapter',
-            semanticContractVersion: '1',
+      final RegistrySemanticContractIdentity semanticContract =
+          RegistrySemanticContractIdentity(
+            contractId: 'sample.semantic_contract',
+            version: '1',
           );
       final RegistryEntityKind kind = RegistryEntityKind(
-        adapterContract: adapter,
+        semanticContract: semanticContract,
         kindId: 'sample.entity',
         schemaVersion: '1',
       );
@@ -31,7 +31,7 @@ void main() {
         ]),
         kind: kind,
         payload: _TestPayload(
-          adapterContract: adapter,
+          semanticContract: semanticContract,
           entityKindId: 'sample.entity',
           payloadSchemaVersion: '1',
         ),
@@ -48,13 +48,13 @@ void main() {
     });
 
     test('rejects an entity without source evidence', () {
-      final RegistryAdapterContractIdentity adapter =
-          RegistryAdapterContractIdentity(
-            adapterId: 'sample_adapter',
-            semanticContractVersion: '1',
+      final RegistrySemanticContractIdentity semanticContract =
+          RegistrySemanticContractIdentity(
+            contractId: 'sample.semantic_contract',
+            version: '1',
           );
       final RegistryEntityKind kind = RegistryEntityKind(
-        adapterContract: adapter,
+        semanticContract: semanticContract,
         kindId: 'sample.entity',
         schemaVersion: '1',
       );
@@ -65,7 +65,7 @@ void main() {
           path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: kind,
           payload: _TestPayload(
-            adapterContract: adapter,
+            semanticContract: semanticContract,
             entityKindId: kind.kindId,
             payloadSchemaVersion: kind.schemaVersion,
           ),
@@ -75,16 +75,16 @@ void main() {
       );
     });
 
-    test('rejects a payload from another adapter contract', () {
-      final RegistryAdapterContractIdentity sampleAdapter =
-          RegistryAdapterContractIdentity(
-            adapterId: 'sample_adapter',
-            semanticContractVersion: '1',
+    test('rejects a payload from another semantic contract', () {
+      final RegistrySemanticContractIdentity sampleSemanticContract =
+          RegistrySemanticContractIdentity(
+            contractId: 'sample.semantic_contract',
+            version: '1',
           );
-      final RegistryAdapterContractIdentity anotherAdapter =
-          RegistryAdapterContractIdentity(
-            adapterId: 'another_adapter',
-            semanticContractVersion: '1',
+      final RegistrySemanticContractIdentity anotherSemanticContract =
+          RegistrySemanticContractIdentity(
+            contractId: 'another.semantic_contract',
+            version: '1',
           );
 
       expect(
@@ -92,12 +92,12 @@ void main() {
           id: RegistryEntityId('registry-entity-001'),
           path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: RegistryEntityKind(
-            adapterContract: sampleAdapter,
+            semanticContract: sampleSemanticContract,
             kindId: 'sample.entity',
             schemaVersion: '1',
           ),
           payload: _TestPayload(
-            adapterContract: anotherAdapter,
+            semanticContract: anotherSemanticContract,
             entityKindId: 'sample.entity',
             payloadSchemaVersion: '1',
           ),
@@ -108,13 +108,13 @@ void main() {
     });
 
     test('rejects a payload for another entity kind or schema', () {
-      final RegistryAdapterContractIdentity adapter =
-          RegistryAdapterContractIdentity(
-            adapterId: 'sample_adapter',
-            semanticContractVersion: '1',
+      final RegistrySemanticContractIdentity semanticContract =
+          RegistrySemanticContractIdentity(
+            contractId: 'sample.semantic_contract',
+            version: '1',
           );
       final RegistryEntityKind entityKind = RegistryEntityKind(
-        adapterContract: adapter,
+        semanticContract: semanticContract,
         kindId: 'sample.entity',
         schemaVersion: '1',
       );
@@ -125,7 +125,7 @@ void main() {
           path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: entityKind,
           payload: _TestPayload(
-            adapterContract: adapter,
+            semanticContract: semanticContract,
             entityKindId: 'sample.standard',
             payloadSchemaVersion: '1',
           ),
@@ -140,7 +140,7 @@ void main() {
           path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: entityKind,
           payload: _TestPayload(
-            adapterContract: adapter,
+            semanticContract: semanticContract,
             entityKindId: 'sample.entity',
             payloadSchemaVersion: '2',
           ),
@@ -151,13 +151,13 @@ void main() {
     });
 
     test('uses stable immutable identity for entity equality', () {
-      final RegistryAdapterContractIdentity adapter =
-          RegistryAdapterContractIdentity(
-            adapterId: 'sample_adapter',
-            semanticContractVersion: '1',
+      final RegistrySemanticContractIdentity semanticContract =
+          RegistrySemanticContractIdentity(
+            contractId: 'sample.semantic_contract',
+            version: '1',
           );
       final RegistryEntityKind kind = RegistryEntityKind(
-        adapterContract: adapter,
+        semanticContract: semanticContract,
         kindId: 'sample.entity',
         schemaVersion: '1',
       );
@@ -172,7 +172,7 @@ void main() {
         ]),
         kind: kind,
         payload: _TestPayload(
-          adapterContract: adapter,
+          semanticContract: semanticContract,
           entityKindId: kind.kindId,
           payloadSchemaVersion: kind.schemaVersion,
         ),
@@ -187,7 +187,7 @@ void main() {
         ]),
         kind: kind,
         payload: _TestPayload(
-          adapterContract: adapter,
+          semanticContract: semanticContract,
           entityKindId: kind.kindId,
           payloadSchemaVersion: kind.schemaVersion,
         ),
@@ -214,13 +214,13 @@ SourceEvidence _sourceEvidence({int startLine = 100}) {
 
 final class _TestPayload implements RegistryEntityPayload {
   const _TestPayload({
-    required this.adapterContract,
+    required this.semanticContract,
     required this.entityKindId,
     required this.payloadSchemaVersion,
   });
 
   @override
-  final RegistryAdapterContractIdentity adapterContract;
+  final RegistrySemanticContractIdentity semanticContract;
 
   @override
   final String entityKindId;

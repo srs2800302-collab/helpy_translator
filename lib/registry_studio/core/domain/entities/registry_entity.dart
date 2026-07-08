@@ -25,9 +25,9 @@ final class RegistryEntity extends Equatable {
       );
     }
 
-    if (payload.adapterContract != kind.adapterContract) {
+    if (payload.semanticContract != kind.semanticContract) {
       throw ArgumentError(
-        'Registry entity payload adapter contract must match entity kind.',
+        'Registry entity payload semantic contract must match entity kind.',
       );
     }
 

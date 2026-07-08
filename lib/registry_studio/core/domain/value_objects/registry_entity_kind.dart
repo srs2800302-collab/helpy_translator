@@ -1,10 +1,10 @@
 import 'package:equatable/equatable.dart';
 
-import 'registry_adapter_contract_identity.dart';
+import 'registry_semantic_contract_identity.dart';
 
 final class RegistryEntityKind extends Equatable {
   factory RegistryEntityKind({
-    required RegistryAdapterContractIdentity adapterContract,
+    required RegistrySemanticContractIdentity semanticContract,
     required String kindId,
     required String schemaVersion,
   }) {
@@ -28,22 +28,22 @@ final class RegistryEntityKind extends Equatable {
     }
 
     return RegistryEntityKind._(
-      adapterContract: adapterContract,
+      semanticContract: semanticContract,
       kindId: normalizedKindId,
       schemaVersion: normalizedSchemaVersion,
     );
   }
 
   const RegistryEntityKind._({
-    required this.adapterContract,
+    required this.semanticContract,
     required this.kindId,
     required this.schemaVersion,
   });
 
-  final RegistryAdapterContractIdentity adapterContract;
+  final RegistrySemanticContractIdentity semanticContract;
   final String kindId;
   final String schemaVersion;
 
   @override
-  List<Object?> get props => <Object?>[adapterContract, kindId, schemaVersion];
+  List<Object?> get props => <Object?>[semanticContract, kindId, schemaVersion];
 }
