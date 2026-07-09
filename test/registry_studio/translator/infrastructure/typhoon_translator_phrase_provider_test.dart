@@ -41,7 +41,7 @@ void main() {
 
         final Map<dynamic, dynamic> payload =
             requests.first.data as Map<dynamic, dynamic>;
-        expect(payload['model'], 'typhoon-test-model');
+        expect(payload['model'], _testTyphoonModel);
 
         final List<dynamic> messages = payload['messages'] as List<dynamic>;
         final Map<dynamic, dynamic> userMessage =
@@ -142,11 +142,13 @@ TyphoonTranslatorPhraseProvider _providerWithResponses({
   );
 }
 
+const String _testTyphoonModel = 'test-model';
+
 AppConfig _config() {
   return const AppConfig(
     typhoonApiKey: 'test-key',
     typhoonBaseUrl: 'https://api.example.test/v1',
-    typhoonModel: 'test-model',
+    typhoonModel: _testTyphoonModel,
   );
 }
 
