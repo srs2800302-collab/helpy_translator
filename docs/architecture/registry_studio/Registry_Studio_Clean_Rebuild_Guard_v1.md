@@ -2587,3 +2587,132 @@ Implementation commit:
 - почему это не создаёт загрузку Registry;
 - почему это не создаёт operation attachment;
 - почему это не создаёт mutation, approval или publication.
+
+## Аудит владения ответственностью за TranslatorPhraseScreen
+
+После контрольной точки реализации `TranslatorPhraseCubit` проведён аудит границы экрана слоя представления.
+
+Фактическое состояние чистого слоя представления:
+
+- `TranslatorPhraseCubit` реализован;
+- `TranslatorPhraseState` реализован;
+- чистый слой представления сейчас содержит только `presentation/cubit`;
+- чистый экран сейчас отсутствует;
+- чистый слой представления остаётся изолированным;
+- проверка запрещённых импортов для чистого слоя представления прошла.
+
+Фактическое состояние старого слоя представления:
+
+- старый `TranslatorPage` зависит от старого `TranslatorCubit`;
+- старый `TranslatorPage` содержит вкладку Registry;
+- старый `TranslatorPage` содержит загрузку Registry;
+- старый `TranslatorPage` содержит поиск, фильтры и статусы Registry;
+- старый `TranslatorPage` зависит от `RegistryNode`;
+- старые виджеты зависят от старого `TranslationResult`;
+- старые виджеты зависят от `CanonicalAuditResult`;
+- старые виджеты зависят от `RegistryPhraseStatusPersistence`.
+
+Вывод по старому слою представления:
+
+- старый `TranslatorPage` не переносится;
+- старые виджеты перевода не переносятся;
+- старые виджеты Registry не переносятся;
+- старый интерфейс статусов, аудита и истории не переносится.
+
+Решение:
+
+- `TranslatorPhraseScreen` допустим как изолированный экран слоя представления;
+- `TranslatorPhraseScreen` не является подключением во время запуска;
+- `TranslatorPhraseScreen` не является корневой сборкой приложения;
+- `TranslatorPhraseScreen` не создаёт граф зависимостей;
+- `TranslatorPhraseScreen` не заменяет `main.dart`;
+- `TranslatorPhraseScreen` не заменяет старый `TranslatorPage` во время запуска.
+
+Размещение:
+
+- рабочий код: `lib/registry_studio/translator/presentation/screens/translator_phrase_screen.dart`;
+- тесты: `test/registry_studio/translator/presentation/screens/translator_phrase_screen_test.dart`.
+
+Ответственность `TranslatorPhraseScreen`:
+
+- дать инженеру поле для выбранной формулировки или текста;
+- дать optional поле для language hint;
+- дать optional поле для engineering context;
+- вызвать `TranslatorPhraseCubit.translatePhrase`;
+- вызвать `TranslatorPhraseCubit.clear`;
+- показать состояние загрузки;
+- показать текущий `TranslatorPhraseResult`;
+- показать текущее сообщение ошибки слоя представления.
+
+`TranslatorPhraseScreen` может зависеть только от:
+
+- Flutter Material;
+- `flutter_bloc` как связующий слой представления;
+- `TranslatorPhraseCubit`;
+- `TranslatorPhraseState`;
+- `TranslatorPhraseResult`;
+- `TranslatorPhraseStatus`.
+
+`TranslatorPhraseScreen` должен получать `TranslatorPhraseCubit` извне через `BlocProvider` или context.
+
+`TranslatorPhraseScreen` не должен создавать:
+
+- `TranslatorPhraseCubit`;
+- `TranslatePhrase`;
+- `TranslatorPhraseProvider`;
+- `TyphoonTranslatorPhraseProvider`;
+- `ApiClient`;
+- `AppConfig`.
+
+Запрещено для `TranslatorPhraseScreen`:
+
+- править `main.dart`;
+- подключаться в текущий запуск приложения;
+- создавать корневую сборку приложения;
+- импортировать `features/translator`;
+- импортировать старый `TranslatorPage`;
+- импортировать старый `TranslatorCubit`;
+- импортировать старый `TranslatorState`;
+- импортировать старый `TranslationResult`;
+- импортировать старый `CanonicalAuditResult`;
+- импортировать `RegistryNode`;
+- импортировать `TranslatorRepository`;
+- импортировать `TranslatorRemoteDataSource`;
+- импортировать `RegistryRemoteDataSource`;
+- импортировать persistence;
+- импортировать хранилище статусов фраз Registry;
+- импортировать контроллер фонового выполнения;
+- загружать Registry;
+- обновлять Registry;
+- показывать вкладку Registry;
+- показывать дерево Registry;
+- показывать поиск, фильтры или статусы Registry;
+- хранить историю переводов;
+- хранить результаты canonical audit;
+- выполнять batch audit;
+- создавать operation attachment;
+- создавать audit package;
+- выполнять mutation;
+- выполнять approval;
+- выполнять publication.
+
+Отложено:
+
+- кто создаёт `TranslatorPhraseCubit`;
+- кто создаёт `TranslatePhrase`;
+- где создаётся `TyphoonTranslatorPhraseProvider`;
+- корневая сборка приложения;
+- изменения `main.dart`;
+- замена старого `TranslatorPage`;
+- интерфейс загрузки Registry;
+- интерфейс operation attachment;
+- интерфейс mutation, approval и publication.
+
+Вывод:
+
+- следующий code step может создать изолированный `TranslatorPhraseScreen`;
+- следующий code step должен иметь тесты виджета;
+- следующий code step не должен править `main.dart`;
+- следующий code step не должен создавать подключение во время запуска;
+- следующий code step не должен создавать провайдер или корневую сборку приложения;
+- после code step нужна контрольная точка реализации в Guard.
