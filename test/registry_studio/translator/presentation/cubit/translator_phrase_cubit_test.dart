@@ -31,24 +31,25 @@ void main() {
         final TranslatorPhraseCubit cubit = _cubitFor(provider);
         addTearDown(cubit.close);
 
-        final List<TranslatorPhraseState> states = <TranslatorPhraseState>[];
-        final subscription = cubit.stream.listen(states.add);
+        final Future<dynamic> expectation = expectLater(
+          cubit.stream,
+          emitsInOrder(<TranslatorPhraseState>[
+            const TranslatorPhraseState.loading(),
+            TranslatorPhraseState.success(result: expected),
+          ]),
+        );
 
         await cubit.translatePhrase(
           sourceText: ' Check wording. ',
           sourceLanguageHint: ' en ',
           engineerContext: ' Registry wording review. ',
         );
-        await subscription.cancel();
+        await expectation;
 
         expect(provider.callCount, 1);
         expect(provider.sourceText, 'Check wording.');
         expect(provider.sourceLanguageHint, 'en');
         expect(provider.engineerContext, 'Registry wording review.');
-        expect(states, <TranslatorPhraseState>[
-          const TranslatorPhraseState.loading(),
-          TranslatorPhraseState.success(result: expected),
-        ]);
         expect(cubit.state.result, same(expected));
       },
     );
@@ -61,19 +62,28 @@ void main() {
         final TranslatorPhraseCubit cubit = _cubitFor(provider);
         addTearDown(cubit.close);
 
-        final List<TranslatorPhraseState> states = <TranslatorPhraseState>[];
-        final subscription = cubit.stream.listen(states.add);
+        final Future<dynamic> expectation = expectLater(
+          cubit.stream,
+          emitsInOrder(<Object>[
+            const TranslatorPhraseState.loading(),
+            isA<TranslatorPhraseState>()
+                .having(
+                  (TranslatorPhraseState state) => state.status,
+                  'status',
+                  TranslatorPhrasePresentationStatus.failure,
+                )
+                .having(
+                  (TranslatorPhraseState state) => state.errorMessage,
+                  'errorMessage',
+                  contains('Translator phrase source text must not be empty.'),
+                ),
+          ]),
+        );
 
         await cubit.translatePhrase(sourceText: '   ');
-        await subscription.cancel();
+        await expectation;
 
         expect(provider.callCount, 0);
-        expect(states.first, const TranslatorPhraseState.loading());
-        expect(states.last.status, TranslatorPhrasePresentationStatus.failure);
-        expect(
-          states.last.errorMessage,
-          contains('Translator phrase source text must not be empty.'),
-        );
       },
     );
 
@@ -83,16 +93,28 @@ void main() {
       final TranslatorPhraseCubit cubit = _cubitFor(provider);
       addTearDown(cubit.close);
 
-      final List<TranslatorPhraseState> states = <TranslatorPhraseState>[];
-      final subscription = cubit.stream.listen(states.add);
+      final Future<dynamic> expectation = expectLater(
+        cubit.stream,
+        emitsInOrder(<Object>[
+          const TranslatorPhraseState.loading(),
+          isA<TranslatorPhraseState>()
+              .having(
+                (TranslatorPhraseState state) => state.status,
+                'status',
+                TranslatorPhrasePresentationStatus.failure,
+              )
+              .having(
+                (TranslatorPhraseState state) => state.errorMessage,
+                'errorMessage',
+                contains('provider exploded'),
+              ),
+        ]),
+      );
 
       await cubit.translatePhrase(sourceText: 'Check wording.');
-      await subscription.cancel();
+      await expectation;
 
       expect(provider.callCount, 1);
-      expect(states.first, const TranslatorPhraseState.loading());
-      expect(states.last.status, TranslatorPhrasePresentationStatus.failure);
-      expect(states.last.errorMessage, contains('provider exploded'));
     });
 
     test('clears current phrase result', () async {

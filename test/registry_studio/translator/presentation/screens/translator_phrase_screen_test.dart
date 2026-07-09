@@ -63,7 +63,7 @@ void main() {
       expect(provider.sourceLanguageHint, 'en');
       expect(provider.engineerContext, 'Registry wording review.');
       expect(find.text('Точное совпадение'), findsOneWidget);
-      expect(find.textContaining('Проверить формулировку.'), findsOneWidget);
+      expect(find.text('RU:\nПроверить формулировку.'), findsOneWidget);
     });
 
     testWidgets('shows loading state while translation is pending', (
