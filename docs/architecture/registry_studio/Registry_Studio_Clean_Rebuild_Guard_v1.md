@@ -872,3 +872,150 @@ Invalid reuse:
 - ни один существующий candidate не может корректно нести responsibility operation lifecycle / verified audit package flow без нарушения identity, lifecycle, owner или boundary;
 - новая operation boundary допустима только после отдельного ownership-аудита;
 - эта boundary не должна подменять Orchestrator, Translator, assessment, mutation или publication.
+
+## Решение по RegistryEngineeringOperation ownership boundary
+
+После existing-fit audit новая operation boundary допускается.
+
+Новая central lifecycle responsibility называется `RegistryEngineeringOperation`.
+
+`RegistryEngineeringOperation` означает одну конкретную engineering-задачу Registry Studio: проверить problem / drift / proposal / unclear context, собрать verified audit package и довести задачу до точки, где engineer может принять решение.
+
+`RegistryEngineeringOperation` является lifecycle entity Registry Studio.
+
+`RegistryEngineeringOperation` не является:
+
+- Orchestrator;
+- workflow executor;
+- runtime step runner;
+- manager;
+- facade;
+- helper;
+- service locator;
+- assessment service;
+- finding catalog;
+- mutation use case;
+- publication use case;
+- Translator result;
+- presentation state.
+
+Identity `RegistryEngineeringOperation` должна быть собственной stable identity.
+
+Правильное направление identity:
+
+- `RegistryEngineeringOperationId`.
+
+Identity не должна выводиться из:
+
+- primary `RegistryEntityId`;
+- `RegistryPath`;
+- `SourceEvidence`;
+- source line;
+- Translator proposal;
+- detected drift hash;
+- operation title;
+- current lifecycle state.
+
+Причины:
+
+- одна registry entity может иметь несколько независимых operations;
+- один detected signal может быть split/merged engineer decision;
+- Translator proposal может быть input, но не owner identity;
+- source coordinates могут измениться при document edit и не являются domain identity.
+
+Owner lifecycle:
+
+- operation lifecycle принадлежит Registry Studio operation boundary;
+- engineer owns decisions;
+- Orchestrator coordinates allowed capabilities and use case boundaries only;
+- Translator supplies read-only proposal/input only;
+- assessment supplies read-only contract-specific result only;
+- mutation/publication remains separate approved use case path.
+
+`RegistryEngineeringOperation` может содержать или ссылаться на read-only inputs:
+
+- engineer-created issue / problem statement;
+- detected drift/desync signal;
+- Translator dictionary command/proposal;
+- primary `RegistryEntity`;
+- `RegistryRelatedContext`;
+- `RegistryResolvedRelatedContext`;
+- future contract-specific assessment result after its own ownership audit.
+
+Allowed output:
+
+- read-only operation snapshot;
+- current operation lifecycle state;
+- context readiness facts;
+- missing related context facts;
+- attached input/proposal facts;
+- verified audit package readiness for engineer decision.
+
+Forbidden output:
+
+- registry mutation command;
+- publication decision;
+- semantic decision;
+- canonicalization decision;
+- ambiguity resolution;
+- approved change scope;
+- direct payload interpretation outside explicit contract-specific boundary.
+
+Lifecycle states must describe the operation itself, not derived context facts.
+
+Allowed lifecycle direction:
+
+- created / opened;
+- collecting context;
+- awaiting required context;
+- ready for engineer decision;
+- decided by engineer;
+- closed / cancelled.
+
+Derived facts are not lifecycle states:
+
+- `missingRelatedEntityIds` empty or non-empty;
+- related context exists or does not exist;
+- resolved related entities exist or do not exist;
+- Translator proposal attached or absent;
+- assessment result attached or absent;
+- audit package complete or incomplete.
+
+Those facts may affect readiness, but they do not replace operation lifecycle identity or lifecycle.
+
+`RegistryEngineeringOperation` must not perform work directly.
+
+It may not:
+
+- search registry;
+- load registry entities;
+- run graph traversal;
+- call Translator;
+- call assessment;
+- resolve services;
+- mutate registry;
+- publish registry.
+
+Work must happen through approved application use cases, and operation may only capture resulting read-only facts/state after those use cases complete.
+
+Placement direction for future code:
+
+- production: `lib/registry_studio/core/domain/entities/registry_engineering_operation.dart`;
+- operation id value object: `lib/registry_studio/core/domain/value_objects/registry_engineering_operation_id.dart`;
+- tests: `test/registry_studio/core/domain/registry_engineering_operation_test.dart`.
+
+This placement is allowed only because the operation boundary is product-neutral Registry Studio domain lifecycle, not project-specific workflow, not Translator implementation, not assessment implementation and not publication path.
+
+First future code step must be minimal:
+
+- introduce `RegistryEngineeringOperationId`;
+- introduce `RegistryEngineeringOperation` with identity and minimal lifecycle invariants;
+- no Orchestrator;
+- no workflow executor;
+- no Translator import;
+- no assessment import;
+- no mutation/publication use case;
+- no repository/store;
+- no service catalog.
+
+Before production code, lifecycle state naming and minimal invariants must be checked in a separate code ownership step.
