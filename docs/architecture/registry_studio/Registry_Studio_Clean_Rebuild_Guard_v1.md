@@ -1554,3 +1554,81 @@ Result object не вводится в первом step.
 - id generation не вводится;
 - repository/store не вводятся;
 - readiness computation не смешивается с creation или transition.
+
+## Решение по operation attachment boundary
+
+После реализации `CreateRegistryEngineeringOperation` и `TransitionRegistryEngineeringOperationStatus` выполнен audit возможной attachment boundary для operation inputs.
+
+Проверенные candidates:
+
+- primary `RegistryEntity`;
+- `RegistryRelatedContext`;
+- `RegistryResolvedRelatedContext`;
+- Translator proposal;
+- assessment result;
+- future verified audit package;
+- separate operation context/result.
+
+`RegistryEngineeringOperation` не должна прямо хранить primary `RegistryEntity`.
+
+Причина: operation entity уже определена как lifecycle snapshot. Добавление primary entity превратит её в context container и смешает lifecycle identity с application context.
+
+`RegistryEngineeringOperation` не должна прямо хранить `RegistryRelatedContext`.
+
+Причина: `RegistryRelatedContext` является read-only application result для related facts вокруг primary entity. Если поместить его внутрь operation, operation начнёт владеть context assembly result, хотя сама не должна искать, собирать или оценивать context.
+
+`RegistryEngineeringOperation` не должна прямо хранить `RegistryResolvedRelatedContext`.
+
+Причина: `RegistryResolvedRelatedContext` является read-only application result для resolved/missing related entities. Он может быть input/fact для будущего audit flow, но не должен превращать operation entity в audit package.
+
+Translator proposal не прикрепляется к operation entity в текущем step.
+
+Причина: Translator proposal должен пройти отдельный ownership-аудит как read-only engineering input. Он не является owner operation lifecycle, semantic decision, registry mutation или publication.
+
+Assessment result не прикрепляется к operation entity в текущем step.
+
+Причина: assessment result ещё не имеет утверждённой Core boundary. До отдельного ownership-аудита Core не должен создавать generic assessment attachment.
+
+Verified audit package не создаётся в текущем step.
+
+Причина: audit package может объединять operation, related context, resolved context, Translator proposal, assessment facts, readiness и future decision evidence. Такой объект имеет высокий риск стать workflow container, mini-orchestrator или premature modeling.
+
+Separate operation context/result не вводится в текущем step.
+
+Причина:
+
+- текущий код уже имеет атомарные boundaries для creation, status transition, related context и resolved related context;
+- нет отдельного consumer, которому прямо нужен `operation + attached context` result;
+- readiness может быть derived from `RegistryResolvedRelatedContext.missingRelatedEntityIds` без изменения operation;
+- создание operation context сейчас преждевременно соберёт несколько responsibilities в один container.
+
+Текущая approved composition остаётся внешней и явной:
+
+- `CreateRegistryEngineeringOperation`;
+- `PrepareRegistryRelatedContext`;
+- `PrepareRegistryResolvedRelatedContext`;
+- `TransitionRegistryEngineeringOperationStatus`.
+
+Эта composition не оформляется как composite use case, pipeline, Orchestrator, manager, facade или workflow runner.
+
+Запрещено в текущем step:
+
+- добавлять primary/context/proposal fields в `RegistryEngineeringOperation`;
+- создавать `RegistryEngineeringOperationContext`;
+- создавать `RegistryEngineeringOperationInput`;
+- создавать `RegistryEngineeringOperationAuditPackage`;
+- создавать composite use case `create + attach + transition`;
+- добавлять repository/store;
+- добавлять id generator;
+- вызывать Translator;
+- вызывать assessment;
+- вычислять readiness внутри operation;
+- выполнять registry mutation;
+- выполнять publication.
+
+Вывод:
+
+- operation attachment boundary отклоняется на текущем этапе;
+- `RegistryEngineeringOperation` остаётся минимальным lifecycle snapshot;
+- read-only context остаётся в existing application results;
+- следующий безопасный audit может быть только вокруг derived readiness на базе `RegistryResolvedRelatedContext`, если коду нужен явный readiness marker.
