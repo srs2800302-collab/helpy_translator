@@ -3046,3 +3046,161 @@ Workflow warning status:
 - нельзя возвращать legacy Translator runtime;
 - нельзя создавать app shell/composition root без отдельного решения;
 - нельзя подключать mutation / approval / publication path через Translator.
+
+## Ownership-аудит clean runtime composition
+
+После `Build APK #100` выполнен аудит возможности заменить временную нейтральную `lib/main.dart` заглушку на clean runtime composition.
+
+Фактическое состояние перед решением:
+
+- ветка синхронизирована с `origin/registry-studio/clean-rebuild`;
+- рабочее дерево clean;
+- HEAD: `09e6bd2 docs: add build apk 100 guard checkpoint`;
+- `Build APK #100` подтверждён как successful;
+- legacy Translator MVP удалён;
+- legacy GitHub registry config удалён из code/test surface;
+- `lib/main.dart` сейчас является временной технической заглушкой;
+- clean runtime composition отсутствует;
+- clean `TranslatorPhraseScreen` уже реализован;
+- clean `TranslatorPhraseCubit` уже реализован;
+- clean `TranslatePhrase` уже реализован;
+- clean `TyphoonTranslatorPhraseProvider` уже реализован;
+- `AppConfig` является Typhoon-only config;
+- `ApiClient` является Typhoon API client;
+- `Core` не зависит от `Translator`;
+- clean `Translator` не импортирует legacy runtime.
+
+Решение:
+
+- временную `lib/main.dart` заглушку можно заменить в следующем code step;
+- замена `lib/main.dart` должна быть только clean runtime composition;
+- `lib/main.dart` становится default Flutter entrypoint и владельцем создания infrastructure/application dependency graph;
+- `lib/main.dart` не становится domain layer, application use case, registry workflow, orchestrator, bootstrap abstraction или generic composition service.
+
+Разрешённый production surface следующего code step:
+
+- `lib/main.dart`;
+- `lib/registry_studio/translator/presentation/app/registry_studio_translator_app.dart`.
+
+Разрешённый test surface следующего code step:
+
+- `test/registry_studio/translator/presentation/app/registry_studio_translator_app_test.dart`.
+
+Ответственность `lib/main.dart`:
+
+- вызвать `WidgetsFlutterBinding.ensureInitialized`;
+- загрузить `.env` через `dotenv.load(fileName: '.env')`;
+- создать `AppConfig` через `AppConfig.fromEnv`;
+- создать `ApiClient`;
+- создать `TyphoonTranslatorPhraseProvider`;
+- создать `TranslatePhrase`;
+- передать `TranslatePhrase` в clean Flutter app shell;
+- вызвать `runApp`.
+
+`lib/main.dart` не должен:
+
+- создавать `RegistryEntity`;
+- создавать `RegistryEngineeringOperation`;
+- читать или загружать Registry tree;
+- создавать Registry search/filter/status UI;
+- создавать operation attachment;
+- создавать audit package;
+- выполнять mutation;
+- выполнять approval;
+- выполнять publication;
+- импортировать `features/translator`;
+- возвращать старый `TranslatorPage`;
+- возвращать старый `TranslatorCubit`;
+- возвращать старый `TranslatorRepository`;
+- возвращать старый `RegistryNode`;
+- возвращать old persistence/background execution;
+- создавать generic `CompositionRoot`, `Bootstrap`, `Manager`, `Facade`, `Bridge`, `Locator`, helper или factory shortcut.
+
+Ответственность `RegistryStudioTranslatorApp`:
+
+- быть малым Flutter app shell для clean Translator runtime;
+- принимать готовый `TranslatePhrase`;
+- создать `TranslatorPhraseCubit` через `BlocProvider`;
+- открыть `TranslatorPhraseScreen`;
+- владеть только presentation-level app wiring;
+- закрывать `TranslatorPhraseCubit` через lifecycle `BlocProvider.create`.
+
+`RegistryStudioTranslatorApp` не должен:
+
+- читать `.env`;
+- создавать `AppConfig`;
+- создавать `ApiClient`;
+- создавать `TyphoonTranslatorPhraseProvider`;
+- выполнять HTTP;
+- знать Typhoon model/request/response/prompt details;
+- загружать Registry;
+- создавать operation;
+- выполнять mutation;
+- выполнять approval;
+- выполнять publication.
+
+Причина вынесения `RegistryStudioTranslatorApp` из `main.dart`:
+
+- `main.dart` остаётся entrypoint и infrastructure composition boundary;
+- Flutter app shell получает отдельную presentation responsibility;
+- `TranslatorPhraseScreen` продолжает получать `TranslatorPhraseCubit` извне;
+- screen не начинает создавать dependencies;
+- runtime wiring тестируется через app shell без запуска real Typhoon infrastructure;
+- это не generic helper/wrapper, а явная Flutter presentation app boundary.
+
+Запрещённые имена для следующего code step:
+
+- `RegistryStudioCompositionRoot`;
+- `TranslatorPhraseCompositionRoot`;
+- `RegistryStudioBootstrap`;
+- `TranslatorPhraseBootstrap`;
+- `RegistryStudioManager`;
+- `TranslatorManager`;
+- `RegistryStudioFacade`;
+- `TranslatorFacade`;
+- `RegistryStudioLocator`;
+- `TranslatorLocator`;
+- `createTranslatorPhraseCubit`;
+- `createTranslatePhrase`;
+- `createTyphoonTranslatorPhraseProvider`.
+
+Разрешённое имя app shell:
+
+- `RegistryStudioTranslatorApp`.
+
+Почему это не возвращает legacy runtime:
+
+- dependency graph строится из clean classes only;
+- старый `features/translator` отсутствует;
+- старый `TranslatorPage` отсутствует;
+- старый `TranslatorCubit` отсутствует;
+- старый `RegistryNode` отсутствует;
+- старый repository/data source stack отсутствует;
+- old persistence/background execution отсутствуют;
+- Registry tree loading не создаётся.
+
+Почему это не нарушает `Core`:
+
+- `Core` не импортирует `Translator`;
+- runtime entrypoint может импортировать clean Translator как внешний consumer;
+- `Translator` остаётся outside Core;
+- runtime composition не меняет domain или application contracts Core.
+
+Проверки следующего code step обязательны:
+
+- scope check только для `lib/main.dart`, `RegistryStudioTranslatorApp` и его test;
+- forbidden legacy checks;
+- `Core` must not import `Translator`;
+- clean `Translator` must not import legacy;
+- `dart analyze` для изменённых файлов;
+- full `flutter analyze`;
+- targeted app shell widget test должен быть создан;
+- local `flutter test` в Termux не обязателен из-за known `libvk_swiftshader.so`;
+- финальное подтверждение через GitHub Actions после push.
+
+Вывод:
+
+- следующий code step может заменить временную `lib/main.dart` заглушку на clean runtime composition;
+- следующий code step должен добавить `RegistryStudioTranslatorApp`;
+- следующий code step не должен создавать Registry workflow, mutation, approval или publication path;
+- следующий code step не должен возвращать legacy Translator runtime.
