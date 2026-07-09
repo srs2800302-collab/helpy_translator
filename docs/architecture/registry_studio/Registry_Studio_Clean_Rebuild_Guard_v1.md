@@ -2127,3 +2127,96 @@ Translator application boundary реализована.
 - почему prompt/vendor/model/raw response не становятся application language;
 - как implementation возвращает `TranslatorPhraseResult`;
 - почему implementation не получает registry loading, mutation, approval, publication или operation attachment.
+
+## Ownership-аудит Translator infrastructure provider implementation
+
+После реализации `TranslatePhrase` подтверждён следующий допустимый future infrastructure adapter:
+
+- `TyphoonTranslatorPhraseProvider`.
+
+Placement:
+
+- production: `lib/registry_studio/translator/infrastructure/...`;
+- tests: `test/registry_studio/translator/infrastructure/...`.
+
+Implementation responsibility:
+
+- implement `TranslatorPhraseProvider`;
+- call actual Typhoon translation capability;
+- keep vendor/API/prompt/raw response details inside infrastructure;
+- map provider output into `TranslatorPhraseResult`;
+- expose only `TranslatorPhraseProvider` to application boundary.
+
+Почему имя `TyphoonTranslatorPhraseProvider` допустимо:
+
+- implementation действительно vendor-specific;
+- vendor detail явно ограничен infrastructure layer;
+- application boundary остаётся vendor-neutral через `TranslatorPhraseProvider`;
+- `TranslatePhrase` не знает Typhoon, HTTP, prompt, model или raw response.
+
+Отклонённые имена:
+
+- `TranslatorPhraseProviderImpl` — generic `Impl` не раскрывает infrastructure responsibility;
+- `TranslatorPhraseRemoteDataSource` — возвращает запрещённый DataSource language;
+- `TranslatorRepositoryImpl` — возвращает запрещённый Repository language;
+- `RemoteTranslatorPhraseProvider` — слишком общий и скрывает vendor-specific behavior;
+- `ApiTranslatorPhraseProvider` — слишком общий и смешивает transport/API naming с provider responsibility.
+
+Допустимые infrastructure dependencies для implementation:
+
+- existing `ApiClient`;
+- existing `AppConfig`;
+- Dio response/error handling внутри adapter;
+- prompt construction внутри adapter;
+- raw response parsing внутри adapter.
+
+Эти dependencies допустимы только внутри infrastructure implementation и не должны стать частью application boundary.
+
+Запрещено протаскивать в `TranslatePhrase` или `TranslatorPhraseProvider`:
+
+- Dio;
+- HTTP request shape;
+- vendor API path;
+- model name;
+- token settings;
+- prompt labels;
+- raw response map;
+- infrastructure exception mapping.
+
+Legacy usage:
+
+- `translator_remote_datasource.dart` может использоваться только как behavior evidence;
+- `translation_result_model.dart` может использоваться только как output-shape evidence;
+- `translator_repository_impl.dart` не переносится;
+- `TranslatorRepository` не переносится;
+- `RegistryRemoteDataSource` не переносится;
+- `RegistryNode` не переносится;
+- `main.dart` wiring не является clean architecture source of truth.
+
+Implementation не должна:
+
+- загружать registry tree;
+- загружать canonical client rules;
+- refresh-ить registry;
+- искать registry items;
+- хранить result;
+- выполнять cache/store behavior;
+- создавать operation;
+- менять operation status;
+- attach-ить result к operation;
+- создавать audit package;
+- выполнять mutation;
+- выполнять approval;
+- выполнять publication.
+
+Output:
+
+- только `TranslatorPhraseResult`.
+
+Вывод:
+
+- next code step может создать `TyphoonTranslatorPhraseProvider`;
+- placement должен быть infrastructure-only;
+- application boundary остаётся `TranslatorPhraseProvider`;
+- Core не импортирует Translator;
+- legacy DataSource/Repository architecture не переносится.
