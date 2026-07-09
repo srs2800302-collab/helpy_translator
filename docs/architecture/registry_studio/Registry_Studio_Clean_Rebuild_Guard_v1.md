@@ -699,3 +699,66 @@ Canonical phrase может быть опубликована в registry тол
 - Registry Studio проверяет impact и drift risk;
 - engineer принимает решение;
 - publication выполняется только через approved use case.
+
+## Решение по Translator capability placement
+
+Future clean Translator capability должна жить внутри Registry Studio product boundary, но вне Registry Studio Core.
+
+Approved placement:
+
+- production: `lib/registry_studio/translator/...`;
+- tests: `test/registry_studio/translator/...`.
+
+Это placement означает:
+
+- Translator является частью Registry Studio product extension;
+- Translator не является частью `Core`;
+- `Core` не должен импортировать Translator;
+- Translator может зависеть от read-only Core contracts только inward-направлением;
+- Translator не должен менять Core contracts ради собственного workflow.
+
+Запрещённые placements:
+
+- `lib/registry_studio/core/translator/...`;
+- `lib/registry_studio/core/application/translator/...`;
+- `lib/registry_studio/core/domain/translator/...`;
+- `lib/features/translator/...` как clean Registry Studio architecture;
+- `lib/core/persistence/...` как Registry Studio boundary;
+- generic `lib/registry_studio/capabilities/...` до отдельного taxonomy ownership-аудита.
+
+Причины:
+
+- `lib/registry_studio/core` должен оставаться universal product-neutral registry core;
+- old `lib/features/translator` связан с prototype workflow, app-level persistence, source-format registry tree и Helpy-specific prompts;
+- generic `capabilities` placement может преждевременно создать capability catalog / manager / locator pressure;
+- Translator сейчас является конкретной assistant capability, а не generic plugin system.
+
+Допустимая future dependency direction:
+
+- `registry_studio/translator` may import read-only `registry_studio/core` contracts;
+- `registry_studio/core` must never import `registry_studio/translator`;
+- publication/mutation path must not be owned by Translator;
+- proposal from Translator must enter Registry Studio audit flow through approved application boundary.
+
+Первый future implementation step в `lib/registry_studio/translator` должен вводить только одну small boundary с одной responsibility.
+
+Недопустимо первым шагом создавать:
+
+- translator repository;
+- translator manager;
+- translator facade;
+- generic capability registry;
+- plugin catalog;
+- prompt-driven source of truth;
+- registry dictionary mutation use case;
+- publication use case;
+- RegistryNode replacement inside Registry Studio.
+
+Правильный первый code direction после отдельного code ownership-аудита:
+
+- определить read-only Translator proposal/result boundary;
+- без registry mutation;
+- без publication;
+- без old `RegistryNode`;
+- без переноса `lib/features/translator`;
+- без изменения Registry Studio Core.
