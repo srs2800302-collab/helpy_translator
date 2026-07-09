@@ -2825,3 +2825,96 @@ Implementation commit:
 - почему следующее подключение не создаёт загрузку Registry;
 - почему следующее подключение не создаёт operation attachment;
 - почему следующее подключение не создаёт mutation, approval или publication.
+
+## Контрольная точка удаления legacy Translator MVP
+
+Legacy Translator MVP удалён из clean rebuild ветки.
+
+Коммит реализации:
+
+- `1dcd3c8 refactor: remove legacy translator mvp`.
+
+Удалены legacy runtime и feature files:
+
+- `lib/features/translator/**`;
+- `lib/core/background/android_foreground_service_controller.dart`;
+- `lib/core/background/background_execution_controller.dart`;
+- `lib/core/persistence/translator_state_persistence.dart`;
+- `lib/core/persistence/registry_phrase_status_persistence.dart`.
+
+Переписан:
+
+- `lib/main.dart`.
+
+Новое состояние `lib/main.dart`:
+
+- временный нейтральный Flutter entrypoint;
+- не создаёт clean runtime composition;
+- не создаёт `TranslatorPhraseCubit`;
+- не создаёт `TranslatePhrase`;
+- не создаёт `TyphoonTranslatorPhraseProvider`;
+- не открывает `TranslatorPhraseScreen`;
+- не содержит `Helpy` naming;
+- не импортирует старый Translator;
+- не импортирует `features/translator`;
+- не импортирует Registry loading;
+- не содержит mutation / approval / publication path.
+
+Причина сохранения `lib/main.dart`:
+
+- Flutter default build ожидает `lib/main.dart`;
+- файл оставлен только как временная техническая заглушка;
+- файл должен быть заменён после отдельного ownership-аудита clean runtime composition;
+- текущая заглушка не является архитектурным app shell, composition root, bootstrap entity или runtime boundary.
+
+Подтверждённые удаления:
+
+- `HelpyTranslatorApp` удалён;
+- старый `TranslatorPage` удалён;
+- старый `TranslatorCubit` удалён;
+- старый `TranslatorState` удалён;
+- старый `TranslationResult` удалён;
+- старый `CanonicalAuditResult` удалён;
+- старый `RegistryNode` удалён;
+- старый `TranslatorRepository` удалён;
+- старый `TranslatorRemoteDataSource` удалён;
+- старый `RegistryRemoteDataSource` удалён;
+- старый `TranslateCanonicalPhrase` удалён;
+- старый `AuditCanonicalClientRules` удалён;
+- старый `LoadCanonicalClientRules` удалён;
+- старый `LoadRegistryTree` удалён;
+- old persistence удалён;
+- old background execution controller удалён.
+
+Проверки шага:
+
+- legacy symbols отсутствуют в `lib` и `test`;
+- `lib/main.dart` нейтрален;
+- clean Registry Studio production naming clean;
+- `Core` не импортирует `Translator`;
+- clean `Translator` не импортирует legacy/product-specific names;
+- targeted `dart analyze` прошёл clean;
+- full `flutter analyze` прошёл clean.
+
+Ограничение проверки:
+
+- `flutter build apk --debug` в этом шаге не запускался.
+
+Текущее состояние после удаления:
+
+- clean Registry Studio hierarchy остаётся в `lib/registry_studio/**`;
+- clean Translator stack остаётся в `lib/registry_studio/translator/**`;
+- shared infrastructure `AppConfig` и `ApiClient` сохранены;
+- текущий runtime не подключён;
+- текущий `lib/main.dart` является временной заглушкой до отдельного clean runtime composition решения.
+
+Запрещено после этого шага:
+
+- возвращать `lib/features/translator`;
+- возвращать `HelpyTranslatorApp`;
+- возвращать старый `TranslatorPage`;
+- возвращать старый `TranslatorCubit`;
+- возвращать старую Registry tree loading модель;
+- использовать old persistence/background execution;
+- смешивать clean Translator с legacy runtime;
+- создавать runtime composition без отдельного ownership-аудита.
