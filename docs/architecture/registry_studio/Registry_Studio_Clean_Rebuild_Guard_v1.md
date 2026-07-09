@@ -478,3 +478,54 @@ Test fixture не должен скрывать проверяемый invariant
 - getter не должен утверждать достаточность context для semantic decision, canonicalization decision, change-scope decision или publication decision.
 
 `RegistryContextAssessment` остаётся отложенным до отдельного ownership-аудита semantic assessment boundary.
+
+## Решение по ownership semantic assessment boundary
+
+После `RegistryResolvedRelatedContext` Core имеет source-backed related facts, но не имеет универсальной semantic model для чтения `RegistryEntityPayload`.
+
+`RegistryEntityPayload` в Core остаётся только compatibility boundary:
+
+- `semanticContract`;
+- `entityKindId`;
+- `payloadSchemaVersion`.
+
+Core проверяет, что payload соответствует `RegistryEntityKind` и `RegistrySemanticContractIdentity`, но Core не интерпретирует содержимое payload.
+
+Semantic assessment не является responsibility универсального Core.
+
+Semantic assessment должен принадлежать contract-specific boundary, потому что только semantic contract знает, какие payload fields имеют смысл, какие комбинации считаются ambiguity, contradiction, drift или insufficient context.
+
+Core не должен вводить generic `Analyzer`, `AssessmentService`, `SemanticResolver`, service catalog, runtime lookup или locator для contract-specific assessment.
+
+Core не должен выбирать implementation assessment по `semanticContract` самостоятельно.
+
+Core может в будущем принять уже подготовленный contract-specific assessment result как input, если этот result пройдёт отдельный ownership-аудит и не будет содержать mutation, publication decision или semantic decision вместо engineer/user.
+
+Engineer/user остаётся владельцем:
+
+- semantic decision;
+- ambiguity resolution;
+- canonicalization decision;
+- approved change scope;
+- publication control.
+
+На текущем этапе запрещено вводить в Core:
+
+- `RegistryContextAssessment`;
+- `RegistryContextAssessmentIssue`;
+- `RegistryDriftAnalyzer`;
+- `RegistrySemanticAnalyzer`;
+- `RegistryAssessmentService`;
+- generic contract-specific resolver;
+- service locator или registry catalog для assessment implementations.
+
+Следующая допустимая работа перед semantic assessment — спроектировать contract-specific boundary отдельно от Core и доказать:
+
+- кто владеет semantic interpretation;
+- какие payload types она читает;
+- где находится implementation;
+- какой read-only result она может вернуть Core/Application;
+- почему result не принимает decisions за engineer/user;
+- почему это не mutation, не publication и не generic analyzer shortcut.
+
+До такого ownership-аудита Core должен остановиться на `RegistryResolvedRelatedContext` и derived readiness из `missingRelatedEntityIds`.
