@@ -2918,3 +2918,68 @@ Legacy Translator MVP удалён из clean rebuild ветки.
 - использовать old persistence/background execution;
 - смешивать clean Translator с legacy runtime;
 - создавать runtime composition без отдельного ownership-аудита.
+
+## Контрольная точка CI после удаления legacy Translator MVP
+
+Clean rebuild ветка подтверждена через GitHub Actions после удаления legacy Translator MVP.
+
+Подтверждённый commit:
+
+- `196e44c test: stabilize translator phrase presentation tests`.
+
+CI run:
+
+- workflow: `build-apk.yml`;
+- run: `29048121635`;
+- GitHub Actions title: `Build APK #97`;
+- branch: `registry-studio/clean-rebuild`;
+- status: `Success`;
+- duration: `5m 18s`;
+- artifacts: `1`.
+
+Что проверено CI:
+
+- `flutter analyze` прошёл;
+- `flutter test` прошёл;
+- `flutter build apk --debug` прошёл;
+- debug APK artifact создан.
+
+Причина предыдущего CI failure:
+
+- production code не был причиной failure;
+- failure был в presentation tests;
+- `TranslatorPhraseCubit` tests отменяли stream subscription слишком рано и могли видеть только loading state;
+- `TranslatorPhraseScreen` test использовал неоднозначный text finder, потому что одинаковый текст отображался в RU и reverse-check поле.
+
+Исправление tests:
+
+- `TranslatorPhraseCubit` tests теперь используют `expectLater` и `emitsInOrder`;
+- `TranslatorPhraseScreen` test проверяет точное поле `RU`;
+- production code не изменялся;
+- runtime composition не добавлялся;
+- legacy code не возвращался.
+
+Подтверждённое состояние после CI:
+
+- legacy `lib/features/translator/**` отсутствует;
+- legacy `HelpyTranslatorApp` отсутствует;
+- legacy `TranslatorPage` отсутствует;
+- legacy `TranslatorCubit` отсутствует;
+- legacy Registry tree loading отсутствует;
+- old persistence/background execution отсутствуют;
+- clean Registry Studio hierarchy остаётся в `lib/registry_studio/**`;
+- temporary neutral `lib/main.dart` остаётся только технической заглушкой;
+- clean runtime composition всё ещё не подключён.
+
+Ограничение локальной Termux проверки:
+
+- локальный `flutter build apk --debug` в Termux был заблокирован toolchain issue `aapt2` x86_64 vs AARCH64;
+- это не являлось ошибкой проекта;
+- GitHub Actions подтвердил APK build в нормальной Linux build environment.
+
+Следующее ограничение:
+
+- следующий runtime step требует отдельного ownership-аудита clean runtime composition;
+- нельзя возвращать legacy Translator runtime;
+- нельзя создавать app shell/composition root без отдельного решения;
+- нельзя подключать mutation / approval / publication path через Translator.
