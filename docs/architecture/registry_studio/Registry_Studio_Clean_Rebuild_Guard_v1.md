@@ -1019,3 +1019,113 @@ First future code step must be minimal:
 - no service catalog.
 
 Before production code, lifecycle state naming and minimal invariants must be checked in a separate code ownership step.
+
+## Решение по RegistryEngineeringOperation lifecycle status и minimal invariants
+
+Для lifecycle marker используется имя `RegistryEngineeringOperationStatus`.
+
+`RegistryEngineeringOperationState` отклоняется.
+
+Причина: `State` слишком широкое имя и может смешать lifecycle marker, UI state, workflow execution state, readiness facts, attached inputs и presentation state. Для первой domain entity нужен только lifecycle marker.
+
+`RegistryEngineeringOperationStatus` означает только lifecycle status самой operation.
+
+Первый approved status set:
+
+- `open`;
+- `awaitingContext`;
+- `readyForDecision`;
+- `decided`;
+- `cancelled`.
+
+Meaning:
+
+- `open` — operation создана и активна;
+- `awaitingContext` — operation ожидает обязательный read-only context/input;
+- `readyForDecision` — operation готова к решению engineer;
+- `decided` — engineer уже принял решение вне operation;
+- `cancelled` — operation остановлена без движения к mutation/publication.
+
+`collectingContext` не входит в первый status set.
+
+Причина: collecting context описывает application process / use case activity. Если сделать его lifecycle status, появится pressure превратить operation в workflow executor.
+
+`closed` не входит в первый status set.
+
+Причина: `closed` слишком общее состояние и скрывает важное различие между `decided` и `cancelled`. Для первого lifecycle marker terminal statuses должны быть явными.
+
+Derived readiness facts не являются statuses:
+
+- наличие или отсутствие `RegistryRelatedContext`;
+- наличие или отсутствие `RegistryResolvedRelatedContext`;
+- empty/non-empty `missingRelatedEntityIds`;
+- attached/absent Translator proposal;
+- attached/absent assessment result;
+- audit package complete/incomplete.
+
+Эти facts могут использоваться application use cases для выбора next status, но `RegistryEngineeringOperation` не должна вычислять их сама.
+
+Минимальные fields для первого production code:
+
+- `RegistryEngineeringOperationId id`;
+- `RegistryEngineeringOperationStatus status`;
+- normalized non-empty `problemStatement`.
+
+`problemStatement` является product-neutral description of engineering problem/intent. Он не является semantic decision, canonical wording approval или change scope.
+
+Первый production code не должен включать:
+
+- primary `RegistryEntity`;
+- `RegistryRelatedContext`;
+- `RegistryResolvedRelatedContext`;
+- Translator proposal;
+- assessment result;
+- verified audit package object;
+- decision result;
+- approved change scope;
+- mutation command;
+- publication command;
+- transition methods;
+- repository/store;
+- Orchestrator;
+- workflow executor;
+- service catalog.
+
+Причины исключения primary `RegistryEntity` из первого code step:
+
+- не каждая operation стартует от known primary entity;
+- Translator proposal может создать engineering intent до выбора конкретного registry place;
+- detected drift signal может требовать поиска related places до выбора primary;
+- optional primary entity в первом step превратит entity в частичный context container;
+- attachment primary/context должен пройти отдельный application/use case boundary.
+
+Минимальные invariants первого production code:
+
+- `RegistryEngineeringOperationId` trims value and rejects empty identity;
+- `RegistryEngineeringOperation.problemStatement` trims value and rejects empty problem statement;
+- `RegistryEngineeringOperation` equality is based only on `id`;
+- `status` is required;
+- entity is immutable;
+- entity does not import Translator;
+- entity does not import assessment;
+- entity does not import application related context;
+- entity does not call any use case.
+
+Transition rules не входят в первый code step.
+
+Причина: transition methods требуют отдельного audit: allowed transitions, terminal statuses, decision evidence, cancellation reason и application use case ownership. Если добавить transitions сразу, operation начнёт расти в workflow executor.
+
+Approved first code files:
+
+- `lib/registry_studio/core/domain/value_objects/registry_engineering_operation_id.dart`;
+- `lib/registry_studio/core/domain/value_objects/registry_engineering_operation_status.dart`;
+- `lib/registry_studio/core/domain/entities/registry_engineering_operation.dart`;
+- `test/registry_studio/core/domain/registry_engineering_operation_test.dart`.
+
+Первый test scope:
+
+- id trims and rejects empty;
+- operation trims and rejects empty problem statement;
+- operation preserves required status;
+- equality uses stable id only;
+- operation does not require primary entity or related context.
