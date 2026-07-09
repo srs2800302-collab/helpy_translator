@@ -311,3 +311,39 @@ Translator может быть будущей assistant capability для engine
 - collections внутри result должны быть immutable.
 
 Unresolved/hydrated related entities не входят в первый result shape. Они могут быть добавлены только после отдельного ownership-аудита input boundary и result invariants.
+
+## Provenance decision для текущих Core primitives
+
+Часть текущих Core primitives была технически создана до clean rebuild в commit `79bd7e6 | feat: add registry studio intake domain slice`.
+
+Эти primitives не принимаются как legacy source of truth автоматически. Они считаются carried but re-accepted только после отдельного ownership-аудита в clean rebuild.
+
+Carried but re-accepted clean primitives:
+
+- `RegistryEntityPayload`;
+- `RegistryEntity`;
+- `SourceEvidence`;
+- `RegistryEntityId`;
+- `RegistryEntityKind`;
+- `RegistryPath`;
+- `RegistrySemanticContractIdentity`.
+
+Причины re-acceptance:
+
+- `RegistryEntity` переутверждён как typed source-backed registry unit;
+- `SourceEvidence` переутверждён как provenance/source coordinates;
+- `RegistryPath` переутверждён как canonical domain path, не source/Markdown/UI path;
+- `RegistrySemanticContractIdentity` заменил rejected adapter/runtime naming;
+- `RegistryEntityKind` и `RegistryEntityPayload` переутверждены как semantic contract / kind / schema compatibility boundary.
+
+Created in clean rebuild:
+
+- `RegistryRelation`;
+- `RegistryRelationMeaning`;
+- `RegistryRelatedContext`.
+
+Legacy residue в текущем Core code/test не допускается.
+
+`package:helpy_translator/...` imports сейчас являются package identity текущего repository и не считаются Helpy adapter/domain leak. Переименование package identity является отдельной операцией и не входит в текущий clean rebuild step.
+
+Если carried primitive позже начнёт тянуть legacy responsibility, runtime adapter thinking, project-specific vocabulary или rejected workflow/execution semantics, он должен быть переписан, упрощён или удалён после отдельного ownership-аудита.
