@@ -1850,3 +1850,101 @@ Future operation attachment of Translator proposal не входит в перв
 - какие inputs принимает use case;
 - почему result остаётся read-only;
 - почему use case не выполняет registry mutation, approval или publication.
+
+## Ownership-аудит Translator provider boundary
+
+После реализации `TranslatorPhraseResult` подтверждён следующий допустимый future boundary: provider boundary для actual translation provider.
+
+Эта boundary допустима только внутри Translator product boundary:
+
+- production: `lib/registry_studio/translator/...`;
+- tests: `test/registry_studio/translator/...`.
+
+Owner boundary:
+
+- `registry_studio/translator`.
+
+Caller boundary:
+
+- future Translator application use case.
+
+Core ownership:
+
+- Registry Studio Core не вызывает provider;
+- Registry Studio Core не импортирует provider;
+- provider не является частью Core.
+
+Provider boundary может иметь только одну ответственность:
+
+- получить один engineer-selected phrase/text input;
+- вызвать actual translation capability через будущую implementation boundary;
+- вернуть `TranslatorPhraseResult`.
+
+Provider boundary не является Repository, потому что он не должен:
+
+- владеть registry persistence;
+- загружать registry tree;
+- загружать canonical client rules;
+- refresh-ить registry;
+- хранить result;
+- искать entities;
+- возвращать collections;
+- выполнять cache/store behavior.
+
+Provider boundary не является DataSource, потому что clean Translator boundary не должна зависеть от raw remote shape:
+
+- HTTP/Dio;
+- vendor API request;
+- model name;
+- prompt format;
+- token settings;
+- raw response parsing;
+- infrastructure exception mapping.
+
+Эти детали принадлежат future infrastructure adapter и не должны определять application/domain language.
+
+Минимальный input для first provider/application step:
+
+- required source text;
+- optional source language hint;
+- optional engineer-provided context.
+
+В first provider/application step не входят:
+
+- registry dictionary snapshot;
+- source evidence object;
+- related context;
+- resolved context;
+- operation;
+- audit package.
+
+Эти inputs требуют отдельного ownership-аудита, потому что могут создать связь с Core, registry context или future audit flow.
+
+Output boundary:
+
+- provider возвращает только `TranslatorPhraseResult`;
+- provider не возвращает mutation command;
+- provider не возвращает approval decision;
+- provider не возвращает publication instruction;
+- provider не возвращает operation attachment;
+- provider не возвращает verified audit package.
+
+Следующий implementation step может вводить provider boundary только вместе с явным consumer/use case либо после отдельного доказательства, почему provider interface без consumer не является premature modeling.
+
+Future application use case должен оставаться:
+
+- Translator-only;
+- Core-independent;
+- repository-free;
+- data-source-free at application boundary;
+- mutation-free;
+- publication-free;
+- approval-free;
+- operation-free.
+
+Вывод:
+
+- `TranslatorPhraseProvider` допустим как future boundary name candidate;
+- `TranslatorRepository` остаётся запрещённым;
+- `TranslatorRemoteDataSource` не переносится в clean Translator boundary;
+- legacy provider/data source code остаётся evidence только по behavior shape, но не по architecture shape.
