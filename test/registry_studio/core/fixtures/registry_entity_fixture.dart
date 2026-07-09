@@ -8,33 +8,76 @@ import 'package:helpy_translator/registry_studio/core/domain/value_objects/regis
 
 RegistryEntity registryEntityFixture({required String id}) {
   final RegistrySemanticContractIdentity semanticContract =
-      RegistrySemanticContractIdentity(
-        contractId: 'sample.semantic_contract',
-        version: '1',
-      );
+      registrySemanticContractFixture();
 
   return RegistryEntity(
     id: RegistryEntityId(id),
     path: RegistryPath(<String>['sample_scope', id]),
-    kind: RegistryEntityKind(
-      semanticContract: semanticContract,
-      kindId: 'sample.entity',
-      schemaVersion: '1',
-    ),
-    payload: _FixtureRegistryEntityPayload(
+    kind: registryEntityKindFixture(semanticContract: semanticContract),
+    payload: registryEntityPayloadFixture(
       semanticContract: semanticContract,
       entityKindId: 'sample.entity',
       payloadSchemaVersion: '1',
     ),
     sourceEvidence: <SourceEvidence>[
-      SourceEvidence(
-        sourceDocumentPath: 'docs/architecture/Registry_Studio_Source_v1.md',
+      sourceEvidenceFixture(
         sourceSnapshotFingerprint: 'sha256:$id',
         headingPath: <String>['Sample', id],
-        startLine: 1,
-        endLine: 1,
       ),
     ],
+  );
+}
+
+RegistrySemanticContractIdentity registrySemanticContractFixture({
+  String contractId = 'sample.semantic_contract',
+  String version = '1',
+}) {
+  return RegistrySemanticContractIdentity(
+    contractId: contractId,
+    version: version,
+  );
+}
+
+RegistryEntityKind registryEntityKindFixture({
+  required RegistrySemanticContractIdentity semanticContract,
+  String kindId = 'sample.entity',
+  String schemaVersion = '1',
+}) {
+  return RegistryEntityKind(
+    semanticContract: semanticContract,
+    kindId: kindId,
+    schemaVersion: schemaVersion,
+  );
+}
+
+RegistryEntityPayload registryEntityPayloadFixture({
+  required RegistrySemanticContractIdentity semanticContract,
+  String entityKindId = 'sample.entity',
+  String payloadSchemaVersion = '1',
+}) {
+  return _FixtureRegistryEntityPayload(
+    semanticContract: semanticContract,
+    entityKindId: entityKindId,
+    payloadSchemaVersion: payloadSchemaVersion,
+  );
+}
+
+SourceEvidence sourceEvidenceFixture({
+  String sourceDocumentPath = 'docs/architecture/Registry_Studio_Source_v1.md',
+  String sourceSnapshotFingerprint = 'sha256:fixture',
+  Iterable<String> headingPath = const <String>[
+    'Sample Domain',
+    'Sample Entity',
+  ],
+  int startLine = 100,
+  int? endLine,
+}) {
+  return SourceEvidence(
+    sourceDocumentPath: sourceDocumentPath,
+    sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+    headingPath: headingPath,
+    startLine: startLine,
+    endLine: endLine ?? startLine + 10,
   );
 }
 

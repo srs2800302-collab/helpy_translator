@@ -1,62 +1,57 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:helpy_translator/registry_studio/core/domain/contracts/registry_entity_payload.dart';
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_entity.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
-import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_semantic_contract_identity.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_kind.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
+import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_semantic_contract_identity.dart';
+
+import '../fixtures/registry_entity_fixture.dart';
 
 void main() {
   group('RegistryEntity', () {
-    test('accepts a source-backed payload compatible with its primary kind', () {
-      final RegistrySemanticContractIdentity semanticContract =
-          RegistrySemanticContractIdentity(
-            contractId: 'sample.semantic_contract',
-            version: '1',
-          );
-      final RegistryEntityKind kind = RegistryEntityKind(
-        semanticContract: semanticContract,
-        kindId: 'sample.entity',
-        schemaVersion: '1',
-      );
-
-      final RegistryEntity entity = RegistryEntity(
-        id: RegistryEntityId('registry-entity-001'),
-        path: RegistryPath(<String>[
-          'sample_scope',
-          'sample_section',
-          'sample_item',
-        ]),
-        kind: kind,
-        payload: _TestPayload(
+    test(
+      'accepts a source-backed payload compatible with its primary kind',
+      () {
+        final RegistrySemanticContractIdentity semanticContract =
+            registrySemanticContractFixture();
+        final RegistryEntityKind kind = registryEntityKindFixture(
           semanticContract: semanticContract,
-          entityKindId: 'sample.entity',
-          payloadSchemaVersion: '1',
-        ),
-        sourceEvidence: <SourceEvidence>[_sourceEvidence()],
-      );
+        );
+        final SourceEvidence evidence = sourceEvidenceFixture();
 
-      expect(entity.id.value, 'registry-entity-001');
-      expect(entity.kind, kind);
-      expect(entity.sourceEvidence, <SourceEvidence>[_sourceEvidence()]);
-      expect(
-        () => entity.sourceEvidence.add(_sourceEvidence()),
-        throwsUnsupportedError,
-      );
-    });
+        final RegistryEntity entity = RegistryEntity(
+          id: RegistryEntityId('registry-entity-001'),
+          path: RegistryPath(<String>[
+            'sample_scope',
+            'sample_section',
+            'sample_item',
+          ]),
+          kind: kind,
+          payload: registryEntityPayloadFixture(
+            semanticContract: semanticContract,
+            entityKindId: kind.kindId,
+            payloadSchemaVersion: kind.schemaVersion,
+          ),
+          sourceEvidence: <SourceEvidence>[evidence],
+        );
+
+        expect(entity.id.value, 'registry-entity-001');
+        expect(entity.kind, kind);
+        expect(entity.sourceEvidence, <SourceEvidence>[evidence]);
+        expect(
+          () => entity.sourceEvidence.add(evidence),
+          throwsUnsupportedError,
+        );
+      },
+    );
 
     test('rejects an entity without source evidence', () {
       final RegistrySemanticContractIdentity semanticContract =
-          RegistrySemanticContractIdentity(
-            contractId: 'sample.semantic_contract',
-            version: '1',
-          );
-      final RegistryEntityKind kind = RegistryEntityKind(
+          registrySemanticContractFixture();
+      final RegistryEntityKind kind = registryEntityKindFixture(
         semanticContract: semanticContract,
-        kindId: 'sample.entity',
-        schemaVersion: '1',
       );
 
       expect(
@@ -64,7 +59,7 @@ void main() {
           id: RegistryEntityId('registry-entity-001'),
           path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: kind,
-          payload: _TestPayload(
+          payload: registryEntityPayloadFixture(
             semanticContract: semanticContract,
             entityKindId: kind.kindId,
             payloadSchemaVersion: kind.schemaVersion,
@@ -77,31 +72,25 @@ void main() {
 
     test('rejects a payload from another semantic contract', () {
       final RegistrySemanticContractIdentity sampleSemanticContract =
-          RegistrySemanticContractIdentity(
-            contractId: 'sample.semantic_contract',
-            version: '1',
-          );
+          registrySemanticContractFixture();
       final RegistrySemanticContractIdentity anotherSemanticContract =
-          RegistrySemanticContractIdentity(
+          registrySemanticContractFixture(
             contractId: 'another.semantic_contract',
-            version: '1',
           );
 
       expect(
         () => RegistryEntity(
           id: RegistryEntityId('registry-entity-001'),
           path: RegistryPath(<String>['sample_scope', 'sample_section']),
-          kind: RegistryEntityKind(
+          kind: registryEntityKindFixture(
             semanticContract: sampleSemanticContract,
-            kindId: 'sample.entity',
-            schemaVersion: '1',
           ),
-          payload: _TestPayload(
+          payload: registryEntityPayloadFixture(
             semanticContract: anotherSemanticContract,
             entityKindId: 'sample.entity',
             payloadSchemaVersion: '1',
           ),
-          sourceEvidence: <SourceEvidence>[_sourceEvidence()],
+          sourceEvidence: <SourceEvidence>[sourceEvidenceFixture()],
         ),
         throwsArgumentError,
       );
@@ -109,14 +98,9 @@ void main() {
 
     test('rejects a payload for another entity kind or schema', () {
       final RegistrySemanticContractIdentity semanticContract =
-          RegistrySemanticContractIdentity(
-            contractId: 'sample.semantic_contract',
-            version: '1',
-          );
-      final RegistryEntityKind entityKind = RegistryEntityKind(
+          registrySemanticContractFixture();
+      final RegistryEntityKind entityKind = registryEntityKindFixture(
         semanticContract: semanticContract,
-        kindId: 'sample.entity',
-        schemaVersion: '1',
       );
 
       expect(
@@ -124,12 +108,12 @@ void main() {
           id: RegistryEntityId('registry-entity-001'),
           path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: entityKind,
-          payload: _TestPayload(
+          payload: registryEntityPayloadFixture(
             semanticContract: semanticContract,
             entityKindId: 'sample.standard',
             payloadSchemaVersion: '1',
           ),
-          sourceEvidence: <SourceEvidence>[_sourceEvidence()],
+          sourceEvidence: <SourceEvidence>[sourceEvidenceFixture()],
         ),
         throwsArgumentError,
       );
@@ -139,12 +123,12 @@ void main() {
           id: RegistryEntityId('registry-entity-001'),
           path: RegistryPath(<String>['sample_scope', 'sample_section']),
           kind: entityKind,
-          payload: _TestPayload(
+          payload: registryEntityPayloadFixture(
             semanticContract: semanticContract,
             entityKindId: 'sample.entity',
             payloadSchemaVersion: '2',
           ),
-          sourceEvidence: <SourceEvidence>[_sourceEvidence()],
+          sourceEvidence: <SourceEvidence>[sourceEvidenceFixture()],
         ),
         throwsArgumentError,
       );
@@ -152,14 +136,9 @@ void main() {
 
     test('uses stable immutable identity for entity equality', () {
       final RegistrySemanticContractIdentity semanticContract =
-          RegistrySemanticContractIdentity(
-            contractId: 'sample.semantic_contract',
-            version: '1',
-          );
-      final RegistryEntityKind kind = RegistryEntityKind(
+          registrySemanticContractFixture();
+      final RegistryEntityKind kind = registryEntityKindFixture(
         semanticContract: semanticContract,
-        kindId: 'sample.entity',
-        schemaVersion: '1',
       );
       final RegistryEntityId id = RegistryEntityId('registry-entity-001');
 
@@ -171,12 +150,12 @@ void main() {
           'sample_item',
         ]),
         kind: kind,
-        payload: _TestPayload(
+        payload: registryEntityPayloadFixture(
           semanticContract: semanticContract,
           entityKindId: kind.kindId,
           payloadSchemaVersion: kind.schemaVersion,
         ),
-        sourceEvidence: <SourceEvidence>[_sourceEvidence(startLine: 10)],
+        sourceEvidence: <SourceEvidence>[sourceEvidenceFixture(startLine: 10)],
       );
       final RegistryEntity second = RegistryEntity(
         id: id,
@@ -186,12 +165,12 @@ void main() {
           'sample_variant_item',
         ]),
         kind: kind,
-        payload: _TestPayload(
+        payload: registryEntityPayloadFixture(
           semanticContract: semanticContract,
           entityKindId: kind.kindId,
           payloadSchemaVersion: kind.schemaVersion,
         ),
-        sourceEvidence: <SourceEvidence>[_sourceEvidence(startLine: 20)],
+        sourceEvidence: <SourceEvidence>[sourceEvidenceFixture(startLine: 20)],
       );
 
       expect(first, second);
@@ -200,31 +179,4 @@ void main() {
       expect(first.sourceEvidence, isNot(second.sourceEvidence));
     });
   });
-}
-
-SourceEvidence _sourceEvidence({int startLine = 100}) {
-  return SourceEvidence(
-    sourceDocumentPath: 'docs/architecture/Registry_Studio_Source_v1.md',
-    sourceSnapshotFingerprint: 'sha256:abc123',
-    headingPath: <String>['Sample Domain', 'Sample Entity'],
-    startLine: startLine,
-    endLine: startLine + 10,
-  );
-}
-
-final class _TestPayload implements RegistryEntityPayload {
-  const _TestPayload({
-    required this.semanticContract,
-    required this.entityKindId,
-    required this.payloadSchemaVersion,
-  });
-
-  @override
-  final RegistrySemanticContractIdentity semanticContract;
-
-  @override
-  final String entityKindId;
-
-  @override
-  final String payloadSchemaVersion;
 }
