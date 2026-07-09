@@ -145,13 +145,8 @@ TyphoonTranslatorPhraseProvider _providerWithResponses({
 AppConfig _config() {
   return const AppConfig(
     typhoonApiKey: 'test-key',
-    typhoonBaseUrl: 'https://typhoon.test/v1',
-    typhoonModel: 'typhoon-test-model',
-    githubToken: '',
-    githubOwner: '',
-    githubRepo: '',
-    githubRegistryPath: '',
-    githubRegistryRef: '',
+    typhoonBaseUrl: 'https://api.example.test/v1',
+    typhoonModel: 'test-model',
   );
 }
 
