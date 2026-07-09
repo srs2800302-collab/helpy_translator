@@ -409,4 +409,3 @@ Legacy `lib/features/translator` можно использовать тольк�
 9. Фиксируем docs checkpoint, если был code step.
 
 Работа по памяти запрещена.
-
