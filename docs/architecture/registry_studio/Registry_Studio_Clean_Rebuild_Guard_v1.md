@@ -643,3 +643,59 @@ Candidate canonical phrase не является approved registry dictionary en
 - создавать generic translator manager/facade/helper;
 - давать Translator право approval/mutation/publication;
 - подменять registry dictionary domain model translator workflow.
+
+## Решение по Translator dictionary change proposal flow
+
+Translator capability имеет право инициировать command/proposal на исправление, замену или дополнение canonical wording в registry dictionary.
+
+Это право не является правом mutation, approval или publication.
+
+Translator dictionary command/proposal может выражать только intent:
+
+- добавить candidate canonical phrase;
+- исправить существующую canonical phrase;
+- заменить рассинхронную формулировку;
+- дополнить dictionary словом, фразой или формулировкой;
+- указать suspected translation drift или canonical wording drift.
+
+Translator command/proposal должен оставаться engineering input для Registry Studio audit flow.
+
+Translator command/proposal не является approved dictionary entry и не может напрямую менять registry.
+
+После такой command/proposal Registry Studio должна подготовить полный audit context до publication:
+
+- найти все связанные registry места;
+- проверить usage найденной фразы или формулировки;
+- проверить related context;
+- выявить unclear, ambiguous, contradictory или drift-prone места;
+- показать engineer спорные места;
+- подготовить verified audit package для решения engineer.
+
+Engineer остаётся владельцем:
+
+- выбора final canonical wording;
+- исправления спорных мест;
+- ambiguity resolution;
+- approved change scope;
+- dictionary approval;
+- publication control.
+
+Canonical phrase может быть опубликована в registry только после полного audit flow и через approved registry mutation/publication path.
+
+До завершения полного audit flow запрещено:
+
+- автоматически добавлять candidate phrase в registry dictionary;
+- автоматически заменять все найденные формулировки;
+- считать Translator verdict достаточным для publication;
+- обходить related context audit;
+- публиковать phrase только потому, что Translator нашёл Exact / Equivalent / Needs Review / Canonical Drift;
+- давать Translator право direct registry mutation.
+
+Предыдущее правило о read-only output уточняется так: Translator output read-only для registry, но может включать command/proposal, который запускает отдельный Registry Studio audit flow.
+
+Это сохраняет границу:
+
+- Translator обнаруживает и формулирует candidate correction;
+- Registry Studio проверяет impact и drift risk;
+- engineer принимает решение;
+- publication выполняется только через approved use case.
