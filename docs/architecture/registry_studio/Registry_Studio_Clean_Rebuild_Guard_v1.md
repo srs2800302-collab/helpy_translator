@@ -762,3 +762,113 @@ Approved placement:
 - без old `RegistryNode`;
 - без переноса `lib/features/translator`;
 - без изменения Registry Studio Core.
+
+## Решение по existing-fit audit перед operation boundary
+
+Перед созданием новой operation model выполнен existing-fit audit текущих Registry Studio Core сущностей, application results/use cases и существующего Translator prototype.
+
+Проверенные Registry Studio candidates:
+
+- `RegistryEntity`;
+- `RegistryRelation`;
+- `RegistryRelatedContext`;
+- `RegistryResolvedRelatedContext`;
+- `PrepareRegistryRelatedContext`;
+- `PrepareRegistryResolvedRelatedContext`.
+
+Проверенные Translator candidates:
+
+- `CanonicalAuditResult`;
+- `TranslationResult`;
+- `AuditCanonicalClientRules`;
+- `TranslateCanonicalPhrase`;
+- `LoadCanonicalClientRules`;
+- `LoadRegistryTree`;
+- `TranslatorState`;
+- `TranslatorCubit`;
+- `TranslatorRepository`;
+- `RegistryNode`;
+- Translator remote prompts/data sources;
+- Translator persistence records.
+
+`RegistryEntity` не может владеть engineering operation lifecycle.
+
+Причина: `RegistryEntity` является typed source-backed registry unit со stable identity. Добавление operation lifecycle, proposal state, audit package или engineer decision flow внутрь `RegistryEntity` нарушит identity, responsibility isolation и запрет entity знать workflow других entities.
+
+`RegistryRelation` не может владеть operation/proposal/audit lifecycle.
+
+Причина: `RegistryRelation` является atomic directional relation fact между registry entities. Она не имеет самостоятельного lifecycle, review state, publication state или mutation flow. Добавление operation state превратит relation в workflow container.
+
+`RegistryRelatedContext` не может владеть operation lifecycle.
+
+Причина: `RegistryRelatedContext` является read-only application result, который показывает primary entity, matched relations и related ids. Он не должен выполнять drift detection, semantic analysis, review decision, publication decision или mutation.
+
+`RegistryResolvedRelatedContext` не может владеть operation lifecycle.
+
+Причина: `RegistryResolvedRelatedContext` является read-only application result, который показывает resolved related entities и missing related ids. Он не решает ambiguity, contradiction или drift и не должен становиться review context, finding container или mutation command.
+
+`PrepareRegistryRelatedContext` и `PrepareRegistryResolvedRelatedContext` не могут владеть workflow state.
+
+Причина: это stateless application use cases для подготовки context. Они не должны хранить operation lifecycle, proposal state, audit status, engineer decision state или publication state.
+
+`CanonicalAuditResult` не может владеть Registry Studio operation lifecycle.
+
+Причина: это result проверки одной canonical phrase / translation set. Он не имеет operation identity, operation lifecycle, related context, impact scope, engineer decision state или publication boundary.
+
+`TranslationResult` не может владеть Registry Studio operation lifecycle.
+
+Причина: это multilingual translation / reverse-check output. Он может быть read-only language-quality evidence, но не является registry operation, audit flow или verified engineering package.
+
+`AuditCanonicalClientRules` не может владеть полным Registry Studio audit flow.
+
+Причина: этот use case фиксирует узкий batch workflow: загрузить canonical client rules, перевести каждую phrase и вернуть `CanonicalAuditResult`. Он не ищет все related registry places, не проверяет impact scope, не готовит verified audit package и не ведёт engineer decision path.
+
+`TranslateCanonicalPhrase`, `LoadCanonicalClientRules` и `LoadRegistryTree` не могут владеть operation lifecycle.
+
+Причина: это narrow use cases Translator prototype. Они выполняют отдельные действия и не имеют owner/lifecycle для Registry Studio operation.
+
+`TranslatorState` и `TranslatorCubit` не могут владеть verified audit package lifecycle.
+
+Причина: это presentation/app state для loading, progress, registry tree view, persistence и UI interaction. Presentation state не является Registry Studio domain/application operation boundary.
+
+`TranslatorRepository` не может владеть Registry Studio operation boundary.
+
+Причина: он смешивает translation capability и registry loading. Такой repository уже отклонён как clean Registry Studio boundary и не должен определять registry identity, structure, context, mutation или publication path.
+
+`RegistryNode` не может быть reused как Registry Studio operation/context model.
+
+Причина: `RegistryNode` является source-format/tree-shaped model: heading level, line number, phrases, children. Он не заменяет `RegistryEntity`, `RegistryPath`, `RegistryRelation`, related context или operation lifecycle.
+
+Translator remote prompts/data sources не могут владеть Registry Studio operation lifecycle.
+
+Причина: prompts могут быть Helpy-specific, data source грузит Markdown/GitHub registry text, а prompt-driven output не может быть source of truth для registry semantics, audit flow, mutation или publication.
+
+Translator persistence records не могут владеть Registry Studio operation lifecycle.
+
+Причина: persistence хранит UI/app history/status index и не определяет domain/application operation identity, lifecycle, invariants или engineer decision path.
+
+Valid reuse из существующего Translator prototype:
+
+- capability evidence для multilingual translation;
+- capability evidence для reverse-check;
+- capability evidence для canonical wording status;
+- capability evidence для drift / needs-review signal;
+- capability evidence для candidate canonical phrase;
+- future read-only Translator proposal/result input после clean boundary.
+
+Invalid reuse:
+
+- reuse `lib/features/translator` как Registry Studio architecture;
+- reuse `RegistryNode` как registry context;
+- reuse `TranslatorRepository` как operation boundary;
+- reuse `TranslatorCubit` / `TranslatorState` как operation lifecycle;
+- reuse prompts as source of truth;
+- reuse `AuditCanonicalClientRules` as full Registry Studio audit flow.
+
+Вывод existing-fit audit:
+
+- текущие Registry Studio сущности закрывают source-backed identity, relation facts, related context и resolved related context;
+- существующий Translator prototype закрывает только language-quality signal и candidate proposal evidence;
+- ни один существующий candidate не может корректно нести responsibility operation lifecycle / verified audit package flow без нарушения identity, lifecycle, owner или boundary;
+- новая operation boundary допустима только после отдельного ownership-аудита;
+- эта boundary не должна подменять Orchestrator, Translator, assessment, mutation или publication.
