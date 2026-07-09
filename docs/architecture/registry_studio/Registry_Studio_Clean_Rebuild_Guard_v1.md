@@ -1129,3 +1129,94 @@ Approved first code files:
 - operation preserves required status;
 - equality uses stable id only;
 - operation does not require primary entity or related context.
+
+## Решение по RegistryEngineeringOperation transition rules
+
+`RegistryEngineeringOperation` хранит текущий lifecycle status, но не должна становиться workflow executor.
+
+Transition rules являются invariant operation boundary, но выполнение status change должно принадлежать future application use case.
+
+`RegistryEngineeringOperation` не должна в ближайшем code step получать методы:
+
+- `markAwaitingContext`;
+- `markReadyForDecision`;
+- `markDecided`;
+- `cancel`;
+- generic `changeStatus`;
+- generic `copyWith`.
+
+Причины:
+
+- такие методы быстро создают pressure превратить entity в workflow executor;
+- status change зависит от application facts: available context, missing context, engineer action, future decision record, cancellation reason;
+- сама entity не должна искать context, читать assessment, вызывать Translator или принимать engineer decision.
+
+Правильное future direction:
+
+- operation entity остаётся immutable snapshot;
+- future application use case validates requested transition;
+- future application use case creates a new immutable `RegistryEngineeringOperation` instance with the next status;
+- transition validation must use explicit allowed transition matrix;
+- no repository/store is introduced until separate persistence ownership audit.
+
+Allowed status transitions:
+
+- `open` -> `awaitingContext`;
+- `open` -> `readyForDecision`;
+- `open` -> `cancelled`;
+- `awaitingContext` -> `readyForDecision`;
+- `awaitingContext` -> `cancelled`;
+- `readyForDecision` -> `awaitingContext`;
+- `readyForDecision` -> `decided`;
+- `readyForDecision` -> `cancelled`.
+
+`readyForDecision` -> `awaitingContext` is allowed only before engineer decision.
+
+Reason: if new required context is discovered before decision, the same operation is no longer ready, but it is still the same engineering problem. Creating a new operation would fragment the audit trail.
+
+Terminal statuses:
+
+- `decided`;
+- `cancelled`.
+
+Forbidden transitions from terminal statuses:
+
+- `decided` -> `open`;
+- `decided` -> `awaitingContext`;
+- `decided` -> `readyForDecision`;
+- `decided` -> `cancelled`;
+- `cancelled` -> `open`;
+- `cancelled` -> `awaitingContext`;
+- `cancelled` -> `readyForDecision`;
+- `cancelled` -> `decided`.
+
+Other forbidden transitions:
+
+- `awaitingContext` -> `open`;
+- `readyForDecision` -> `open`;
+- `open` -> `decided`.
+
+`open` -> `decided` is forbidden because engineer decision must pass through explicit readiness state. If context is immediately sufficient, the correct path is `open` -> `readyForDecision` -> `decided`.
+
+Cancellation reason is not part of `RegistryEngineeringOperation` entity yet.
+
+Decision evidence is not part of `RegistryEngineeringOperation` entity yet.
+
+Reasons:
+
+- cancellation reason needs separate ownership audit: value object, required/optional policy, owner and persistence boundary;
+- decision evidence needs separate ownership audit: engineer decision record, audit package, approved change scope and publication boundary;
+- adding them now would expand operation entity beyond current lifecycle marker responsibility.
+
+Operation status transition does not imply registry mutation.
+
+Operation status transition does not imply publication.
+
+`decided` means only that engineer has made a decision outside the operation lifecycle entity. It does not mean the registry was changed or published.
+
+Next safe step after this docs decision:
+
+- do not add transition methods inside `RegistryEngineeringOperation`;
+- design a future application boundary for changing operation status;
+- prove its owner, inputs, outputs and invariants before code;
+- keep it repository-free, store-free, Translator-free, assessment-free and publication-free in its first step.
