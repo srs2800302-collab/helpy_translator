@@ -2281,56 +2281,56 @@ Implementation commit:
 - почему wiring не создаёт operation attachment;
 - почему wiring не создаёт mutation, approval или publication.
 
-## Ownership-аудит Translator runtime wiring
+## Аудит владения ответственностью за подключение Translator во время запуска
 
-После checkpoint реализации `TyphoonTranslatorPhraseProvider` проведён ownership-аудит runtime wiring.
+После контрольной точки реализации `TyphoonTranslatorPhraseProvider` проведён аудит владения ответственностью за подключение во время запуска приложения.
 
 Фактическое состояние `lib/main.dart`:
 
-- `main.dart` остаётся legacy app bootstrap;
+- `main.dart` остаётся старой точкой запуска приложения;
 - он создаёт `TranslatorRemoteDataSourceImpl`;
 - он создаёт `RegistryRemoteDataSourceImpl`;
 - он создаёт `TranslatorRepositoryImpl`;
-- он создаёт legacy `TranslateCanonicalPhrase`;
-- он создаёт legacy `AuditCanonicalClientRules`;
-- он создаёт legacy `LoadRegistryTree`;
+- он создаёт старый `TranslateCanonicalPhrase`;
+- он создаёт старый `AuditCanonicalClientRules`;
+- он создаёт старый `LoadRegistryTree`;
 - он создаёт `TranslatorCubit`;
-- он открывает legacy `TranslatorPage`.
+- он открывает старый `TranslatorPage`.
 
-Фактическое состояние clean Translator:
+Фактическое состояние чистого Translator:
 
 - `TranslatePhrase` существует только внутри `registry_studio/translator/application`;
-- `TranslatorPhraseProvider` существует только как application boundary;
-- `TyphoonTranslatorPhraseProvider` существует только как infrastructure adapter;
-- clean Translator сейчас используется только targeted tests и documentation;
-- production runtime consumer для clean `TranslatePhrase` сейчас отсутствует.
+- `TranslatorPhraseProvider` существует только как граница слоя приложения;
+- `TyphoonTranslatorPhraseProvider` существует только как инфраструктурный адаптер;
+- чистый Translator сейчас используется только целевыми тестами и документацией;
+- рабочий потребитель чистого `TranslatePhrase` во время запуска сейчас отсутствует.
 
 Решение:
 
-- runtime wiring сейчас не разрешён;
-- `main.dart` сейчас не является clean Registry Studio composition source of truth;
-- direct wiring clean Translator в текущий `main.dart` запрещён;
-- создание composition/root/bootstrap object сейчас запрещено как premature modeling без clean runtime consumer.
+- подключение во время запуска сейчас не разрешено;
+- `main.dart` сейчас не является источником истины для чистой сборки Registry Studio;
+- прямое подключение чистого Translator в текущий `main.dart` запрещено;
+- создание объекта корневой сборки приложения сейчас запрещено как преждевременное моделирование без чистого потребителя.
 
 Причина запрета:
 
-- wiring создаёт новую responsibility;
-- текущий `main.dart` уже несёт legacy Translator architecture pressure;
-- direct wiring в `main.dart` смешал бы clean Translator с legacy Repository/DataSource/Cubit/Page;
-- wiring без clean consumer был бы unused composition layer;
-- wiring без presentation/application consumer ownership-аудита нарушил бы правило "один change = одна responsibility".
+- подключение создаёт новую ответственность;
+- текущий `main.dart` уже несёт давление старой архитектуры Translator;
+- прямое подключение в `main.dart` смешало бы чистый Translator со старыми Repository/DataSource/Cubit/Page;
+- подключение без чистого потребителя было бы неиспользуемым слоем сборки;
+- подключение без аудита владения ответственностью за consumer boundary нарушило бы правило "один change = одна responsibility".
 
 Запрещено в следующем code step:
 
 - править `main.dart`;
-- подключать `TyphoonTranslatorPhraseProvider` в legacy bootstrap;
-- подключать `TranslatePhrase` в legacy `TranslatorCubit`;
+- подключать `TyphoonTranslatorPhraseProvider` в старую точку запуска;
+- подключать `TranslatePhrase` в старый `TranslatorCubit`;
 - возвращать `TranslatorRepository`;
 - возвращать `TranslatorRemoteDataSource`;
 - возвращать `RegistryRemoteDataSource`;
 - возвращать `RegistryNode`;
-- подключать registry loading;
-- подключать registry dictionary snapshot;
+- подключать загрузку Registry;
+- подключать snapshot словаря Registry;
 - создавать operation attachment;
 - создавать audit package;
 - создавать mutation path;
@@ -2339,94 +2339,94 @@ Implementation commit:
 
 Следующая допустимая зона аудита:
 
-- clean runtime consumer / presentation boundary для `TranslatePhrase`.
+- чистый потребитель / граница слоя представления для `TranslatePhrase`.
 
-Перед любым runtime code step требуется отдельный ownership-аудит:
+Перед любым code step, связанным с запуском приложения, требуется отдельный аудит владения ответственностью:
 
-- кто является clean consumer `TranslatePhrase`;
-- это UI, command, diagnostic screen или другой product boundary;
-- где живёт clean presentation/application consumer;
-- заменяет ли он legacy `TranslatorPage` или существует отдельно;
+- кто является чистым потребителем `TranslatePhrase`;
+- это UI, command, diagnostic screen или другая product boundary;
+- где живёт чистый потребитель слоя представления или слоя приложения;
+- заменяет ли он старый `TranslatorPage` или существует отдельно;
 - почему он не зависит от `TranslatorRepository`;
 - почему он не зависит от `TranslatorCubit`;
-- почему он не загружает registry;
+- почему он не загружает Registry;
 - почему он не создаёт operation attachment;
 - почему он не выполняет mutation, approval или publication.
 
 Вывод:
 
-- current clean Translator implementation закрыт на уровне application + infrastructure;
-- runtime wiring deferred;
-- следующий code step не разрешён без ownership-аудита clean consumer boundary.
+- текущая реализация чистого Translator закрыта на уровне слоя приложения и инфраструктурного адаптера;
+- подключение во время запуска отложено;
+- следующий code step не разрешён без аудита владения ответственностью за границу чистого потребителя.
 
-## Ownership-аудит Translator clean consumer boundary
+## Аудит владения ответственностью за границу чистого потребителя Translator
 
-После rejection premature runtime wiring проведён аудит clean consumer boundary для `TranslatePhrase`.
+После запрета преждевременного подключения во время запуска проведён аудит границы чистого потребителя для `TranslatePhrase`.
 
-Фактическое состояние legacy presentation:
+Фактическое состояние старого слоя представления:
 
-- legacy `TranslatorCubit` зависит от `TranslateCanonicalPhrase`;
-- legacy `TranslatorCubit` зависит от `AuditCanonicalClientRules`;
-- legacy `TranslatorCubit` зависит от `LoadRegistryTree`;
-- legacy `TranslatorCubit` зависит от persistence;
-- legacy `TranslatorCubit` работает с `RegistryNode`;
-- legacy `TranslatorCubit` хранит translation history;
-- legacy `TranslatorCubit` хранит audit results;
-- legacy `TranslatorCubit` хранит registry phrase statuses;
-- legacy `TranslatorPage` напрямую читает legacy `TranslatorCubit`;
-- legacy `TranslatorPage` содержит Registry tab, registry search/filter/status logic и Helpy-specific workflow.
+- старый `TranslatorCubit` зависит от `TranslateCanonicalPhrase`;
+- старый `TranslatorCubit` зависит от `AuditCanonicalClientRules`;
+- старый `TranslatorCubit` зависит от `LoadRegistryTree`;
+- старый `TranslatorCubit` зависит от persistence;
+- старый `TranslatorCubit` работает с `RegistryNode`;
+- старый `TranslatorCubit` хранит историю переводов;
+- старый `TranslatorCubit` хранит результаты аудита;
+- старый `TranslatorCubit` хранит статусы фраз Registry;
+- старый `TranslatorPage` напрямую читает старый `TranslatorCubit`;
+- старый `TranslatorPage` содержит вкладку Registry, поиск, фильтры, статусы и workflow, специфичный для Helpy.
 
-Вывод по legacy presentation:
+Вывод по старому слою представления:
 
-- legacy `TranslatorCubit` не может быть clean consumer для `TranslatePhrase`;
-- legacy `TranslatorState` не может быть clean state для Registry Studio Translator;
-- legacy `TranslatorPage` не может быть clean first presentation boundary;
-- перенос legacy presentation запрещён.
+- старый `TranslatorCubit` не может быть чистым потребителем `TranslatePhrase`;
+- старый `TranslatorState` не может быть чистым состоянием Registry Studio Translator;
+- старый `TranslatorPage` не может быть первой чистой границей слоя представления;
+- перенос старого слоя представления запрещён.
 
-Фактическое состояние clean Translator:
+Фактическое состояние чистого Translator:
 
 - `TranslatePhrase` уже реализован;
-- `TranslatorPhraseProvider` уже реализован как application boundary;
-- `TyphoonTranslatorPhraseProvider` уже реализован как infrastructure adapter;
-- production clean consumer отсутствует;
-- clean presentation directory отсутствует;
-- name collision для clean consumer names не найден.
+- `TranslatorPhraseProvider` уже реализован как граница слоя приложения;
+- `TyphoonTranslatorPhraseProvider` уже реализован как инфраструктурный адаптер;
+- рабочий чистый потребитель отсутствует;
+- директория чистого слоя представления отсутствует;
+- конфликт имён для чистого потребителя не найден.
 
 Решение:
 
-- first clean runtime consumer может быть только узкой presentation state boundary;
-- first clean runtime consumer не должен быть `main.dart`;
-- first clean runtime consumer не должен быть screen;
-- first clean runtime consumer не должен быть command;
-- first clean runtime consumer не должен быть diagnostic screen;
-- first clean runtime consumer не должен создавать provider;
-- first clean runtime consumer не должен выполнять runtime wiring.
+- первым чистым потребителем может быть только узкая граница состояния слоя представления;
+- первый чистый потребитель не должен быть `main.dart`;
+- первый чистый потребитель не должен быть экраном;
+- первый чистый потребитель не должен быть командой;
+- первый чистый потребитель не должен быть диагностическим экраном;
+- первый чистый потребитель не должен создавать provider;
+- первый чистый потребитель не должен выполнять подключение во время запуска.
 
-Допустимая first clean consumer boundary:
+Допустимая первая граница чистого потребителя:
 
 - `TranslatorPhraseCubit`;
 - `TranslatorPhraseState`.
 
-Placement:
+Размещение:
 
 - production: `lib/registry_studio/translator/presentation/cubit/...`;
 - tests: `test/registry_studio/translator/presentation/cubit/...`.
 
-Responsibility `TranslatorPhraseCubit`:
+Ответственность `TranslatorPhraseCubit`:
 
-- принять engineer-selected phrase/text;
+- принять выбранную инженером формулировку или текст;
 - вызвать `TranslatePhrase`;
-- выразить presentation loading/success/failure state;
-- сохранить только current `TranslatorPhraseResult`;
-- сохранить только current presentation error message;
-- allow clear/reset current phrase result.
+- выразить состояние загрузки, успеха или ошибки в слое представления;
+- хранить только текущий `TranslatorPhraseResult`;
+- хранить только текущее сообщение ошибки слоя представления;
+- сбрасывать текущий результат перевода формулировки.
 
-Responsibility `TranslatorPhraseState`:
+Ответственность `TranslatorPhraseState`:
 
-- immutable presentation state для single phrase translation flow;
-- current status;
-- current result;
-- current error message.
+- неизменяемое состояние слоя представления для сценария перевода одной формулировки;
+- текущий статус;
+- текущий результат;
+- текущее сообщение ошибки.
 
 `TranslatorPhraseCubit` может зависеть только от:
 
@@ -2435,8 +2435,8 @@ Responsibility `TranslatorPhraseState`:
 `TranslatorPhraseState` может зависеть только от:
 
 - `TranslatorPhraseResult`;
-- presentation status enum/value, если потребуется;
-- `Equatable`, если используется для value equality.
+- enum/value статуса слоя представления, если потребуется;
+- `Equatable`, если используется сравнение по значению.
 
 Запрещено для `TranslatorPhraseCubit`:
 
@@ -2444,16 +2444,16 @@ Responsibility `TranslatorPhraseState`:
 - зависеть от `TranslatorRemoteDataSource`;
 - зависеть от `RegistryRemoteDataSource`;
 - зависеть от `RegistryNode`;
-- зависеть от legacy `TranslatorCubit`;
-- зависеть от legacy `TranslatorState`;
-- зависеть от legacy `TranslatorPage`;
+- зависеть от старого `TranslatorCubit`;
+- зависеть от старого `TranslatorState`;
+- зависеть от старого `TranslatorPage`;
 - зависеть от persistence;
-- зависеть от registry phrase status persistence;
-- зависеть от background execution controller;
-- загружать registry;
-- refresh-ить registry;
-- хранить translation history;
-- хранить canonical audit results;
+- зависеть от хранилища статусов фраз Registry;
+- зависеть от контроллера фонового выполнения;
+- загружать Registry;
+- обновлять Registry;
+- хранить историю переводов;
+- хранить результаты canonical audit;
 - выполнять batch audit;
 - создавать operation attachment;
 - создавать audit package;
@@ -2467,35 +2467,35 @@ Responsibility `TranslatorPhraseState`:
 - `ApiClient`;
 - `AppConfig`;
 - Dio;
-- HTTP request shape;
-- model name;
-- prompt format;
-- raw response parsing;
+- форму HTTP request;
+- имя модели;
+- формат prompt;
+- parsing raw response;
 - infrastructure error mapping.
 
-Deferred:
+Отложено:
 
 - `TranslatorPhraseScreen`;
 - `RegistryStudioTranslatorScreen`;
-- runtime wiring;
-- `main.dart` changes;
-- composition root/bootstrap;
-- replacement of legacy `TranslatorPage`.
+- подключение во время запуска;
+- изменения `main.dart`;
+- корневая сборка приложения;
+- замена старого `TranslatorPage`.
 
 Вывод:
 
-- next code step может создать `TranslatorPhraseCubit` и `TranslatorPhraseState`;
-- next code step не должен создавать screen;
-- next code step не должен править `main.dart`;
-- next code step не должен создавать composition/root/bootstrap object;
-- next code step должен иметь targeted tests;
-- после code step нужен implementation checkpoint в Guard.
+- следующий code step может создать `TranslatorPhraseCubit` и `TranslatorPhraseState`;
+- следующий code step не должен создавать экран;
+- следующий code step не должен править `main.dart`;
+- следующий code step не должен создавать объект корневой сборки приложения;
+- следующий code step должен иметь целевые тесты;
+- после code step нужна контрольная точка реализации в Guard.
 
-## Checkpoint реализации TranslatorPhraseCubit
+## Контрольная точка реализации TranslatorPhraseCubit
 
-Clean Translator presentation consumer реализован.
+Чистый потребитель слоя представления Translator реализован.
 
-Implementation commits:
+Коммиты реализации:
 
 - `751deb4 feat: add translator phrase presentation cubit`;
 - `9c079be refactor: clean translator phrase state initializer`.
@@ -2508,44 +2508,44 @@ Implementation commits:
 
 Реализованная ответственность `TranslatorPhraseCubit`:
 
-- depends only on `TranslatePhrase`;
-- принимает engineer-selected `sourceText`;
+- зависит только от `TranslatePhrase`;
+- принимает выбранный инженером `sourceText`;
 - принимает optional `sourceLanguageHint`;
 - принимает optional `engineerContext`;
 - вызывает `TranslatePhrase`;
-- emits loading state before translation;
-- emits success state with current `TranslatorPhraseResult`;
-- emits failure state with current presentation error message;
-- supports clear/reset to initial state.
+- выставляет состояние загрузки перед переводом;
+- выставляет состояние успеха с текущим `TranslatorPhraseResult`;
+- выставляет состояние ошибки с текущим сообщением ошибки слоя представления;
+- поддерживает сброс в начальное состояние.
 
 Реализованная ответственность `TranslatorPhraseState`:
 
-- immutable presentation state для single phrase translation flow;
-- содержит current presentation status;
-- содержит current `TranslatorPhraseResult`;
-- содержит current presentation error message;
-- использует value equality.
+- неизменяемое состояние слоя представления для сценария перевода одной формулировки;
+- содержит текущий статус слоя представления;
+- содержит текущий `TranslatorPhraseResult`;
+- содержит текущее сообщение ошибки слоя представления;
+- использует сравнение по значению.
 
 Подтверждённые ограничения:
 
-- screen не создан;
+- экран не создан;
 - `main.dart` не изменён;
-- runtime wiring не добавлен;
-- composition root/bootstrap object не создан;
-- provider creation не добавлен;
-- legacy `TranslatorRepository` не используется;
-- legacy `TranslatorRemoteDataSource` не используется;
-- legacy `RegistryRemoteDataSource` не используется;
-- legacy `RegistryNode` не используется;
-- legacy `TranslatorCubit` не используется;
-- legacy `TranslatorState` не используется;
-- legacy `TranslatorPage` не используется;
+- подключение во время запуска не добавлено;
+- объект корневой сборки приложения не создан;
+- создание provider не добавлено;
+- старый `TranslatorRepository` не используется;
+- старый `TranslatorRemoteDataSource` не используется;
+- старый `RegistryRemoteDataSource` не используется;
+- старый `RegistryNode` не используется;
+- старый `TranslatorCubit` не используется;
+- старый `TranslatorState` не используется;
+- старый `TranslatorPage` не используется;
 - persistence не используется;
-- registry phrase status persistence не используется;
-- background execution controller не используется;
-- registry loading не добавлен;
-- translation history не добавлена;
-- canonical audit results не добавлены;
+- хранилище статусов фраз Registry не используется;
+- контроллер фонового выполнения не используется;
+- загрузка Registry не добавлена;
+- история переводов не добавлена;
+- результаты canonical audit не добавлены;
 - batch audit не добавлен;
 - operation attachment не создан;
 - audit package не создан;
@@ -2553,37 +2553,37 @@ Implementation commits:
 - approval path не создан;
 - publication path не создан.
 
-Infrastructure leakage отсутствует:
+Утечки инфраструктурных деталей отсутствуют:
 
 - `TranslatorPhraseCubit` не знает Typhoon;
 - `TranslatorPhraseCubit` не знает `ApiClient`;
 - `TranslatorPhraseCubit` не знает `AppConfig`;
 - `TranslatorPhraseCubit` не знает Dio;
-- `TranslatorPhraseCubit` не знает HTTP request shape;
-- `TranslatorPhraseCubit` не знает model name;
-- `TranslatorPhraseCubit` не знает prompt format;
-- `TranslatorPhraseCubit` не знает raw response parsing;
+- `TranslatorPhraseCubit` не знает форму HTTP request;
+- `TranslatorPhraseCubit` не знает имя модели;
+- `TranslatorPhraseCubit` не знает формат prompt;
+- `TranslatorPhraseCubit` не знает parsing raw response;
 - `TranslatorPhraseCubit` не знает infrastructure error mapping.
 
-Проверки implementation step:
+Проверки шага реализации:
 
-- targeted `dart analyze` для Cubit/State/test прошёл clean;
-- full `flutter analyze` прошёл clean;
-- architecture forbidden checks прошли;
+- целевой `dart analyze` для Cubit/State/test прошёл clean;
+- полный `flutter analyze` прошёл clean;
+- архитектурные forbidden checks прошли;
 - scope check прошёл;
-- lint cleanup commit `9c079be` закрыл `prefer_initializing_formals`.
+- коммит очистки `9c079be` закрыл `prefer_initializing_formals`.
 
-Следующий шаг не должен автоматически подключать Cubit в runtime.
+Следующий шаг не должен автоматически подключать Cubit во время запуска.
 
-Перед следующим code step требуется отдельный ownership-аудит:
+Перед следующим code step требуется отдельный аудит владения ответственностью:
 
 - нужен ли `TranslatorPhraseScreen`;
 - где он должен жить;
 - кто создаёт `TranslatorPhraseCubit`;
 - кто создаёт `TranslatePhrase`;
 - где создаётся `TyphoonTranslatorPhraseProvider`;
-- почему это не возвращает legacy `TranslatorPage`;
+- почему это не возвращает старый `TranslatorPage`;
 - почему это не правит `main.dart` преждевременно;
-- почему это не создаёт registry loading;
+- почему это не создаёт загрузку Registry;
 - почему это не создаёт operation attachment;
 - почему это не создаёт mutation, approval или publication.
