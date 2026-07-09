@@ -1948,3 +1948,120 @@ Future application use case должен оставаться:
 - `TranslatorRepository` остаётся запрещённым;
 - `TranslatorRemoteDataSource` не переносится в clean Translator boundary;
 - legacy provider/data source code остаётся evidence только по behavior shape, но не по architecture shape.
+
+## Ownership-аудит Translator use case boundary
+
+После ownership-аудита provider boundary подтверждён допустимый future consumer/use case boundary.
+
+Допустимое имя use case:
+
+- `TranslatePhrase`.
+
+Отклонённое имя:
+
+- `TranslateTranslatorPhrase`.
+
+Причина отклонения:
+
+- `translator` уже задан placement-ом `lib/registry_studio/translator/...`;
+- повторение `Translator` в имени use case создаёт лишний noise;
+- use case внутри Translator boundary должен называться по действию над объектом: translate phrase/text.
+
+Use case owner:
+
+- `registry_studio/translator`.
+
+Provider dependency:
+
+- `TranslatePhrase` может зависеть от `TranslatorPhraseProvider`.
+
+Provider interface placement:
+
+- внутри Translator application boundary;
+- вне Core;
+- без import-а в Core.
+
+Минимальный use case input:
+
+- required `sourceText`;
+- optional `sourceLanguageHint`;
+- optional `engineerContext`.
+
+Отдельный input object сейчас не создаётся.
+
+Причина:
+
+- input shape малый;
+- у input нет identity;
+- у input нет lifecycle;
+- у input нет самостоятельных invariants сверх trim / empty required source text;
+- object вроде `TranslatorPhraseInput`, `TranslatorPhraseRequest` или `TranslatorPhraseCommand` сейчас был бы premature modeling.
+
+Use case responsibility:
+
+- принять engineer-selected phrase/text;
+- normalize required source text;
+- normalize optional hints;
+- reject empty required source text;
+- вызвать `TranslatorPhraseProvider`;
+- вернуть `TranslatorPhraseResult`.
+
+Use case не является Repository, потому что он не должен:
+
+- хранить result;
+- загружать registry;
+- refresh-ить registry;
+- возвращать registry tree;
+- выполнять persistence/cache/store behavior.
+
+Use case не является DataSource, потому что он не должен:
+
+- знать HTTP/Dio;
+- знать vendor API;
+- знать prompt format;
+- знать model name;
+- парсить raw provider response;
+- маппить infrastructure errors.
+
+Use case не является registry operation, потому что он не должен:
+
+- создавать `RegistryEngineeringOperation`;
+- менять operation status;
+- прикреплять proposal/result к operation;
+- вычислять readiness;
+- создавать audit package.
+
+Use case output:
+
+- только `TranslatorPhraseResult`.
+
+Use case не должен возвращать:
+
+- mutation command;
+- approval decision;
+- publication instruction;
+- operation attachment;
+- verified audit package;
+- registry dictionary entry.
+
+Запрещено для first implementation step:
+
+- Core import;
+- registry loading;
+- registry dictionary snapshot;
+- source evidence object;
+- related context;
+- resolved context;
+- operation input;
+- audit package;
+- mutation;
+- approval;
+- publication.
+
+Вывод:
+
+- `TranslatePhrase` допустим как next code step;
+- `TranslatorPhraseProvider` допустим как dependency для `TranslatePhrase`;
+- separate input object не создаётся в этом step;
+- output остаётся `TranslatorPhraseResult`;
+- implementation должен остаться Translator-only, Core-independent, repository-free, data-source-free, mutation-free, publication-free.
