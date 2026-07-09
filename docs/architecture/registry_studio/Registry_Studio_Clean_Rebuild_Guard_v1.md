@@ -2280,3 +2280,81 @@ Implementation commit:
 - почему wiring не подключает registry loading;
 - почему wiring не создаёт operation attachment;
 - почему wiring не создаёт mutation, approval или publication.
+
+## Ownership-аудит Translator runtime wiring
+
+После checkpoint реализации `TyphoonTranslatorPhraseProvider` проведён ownership-аудит runtime wiring.
+
+Фактическое состояние `lib/main.dart`:
+
+- `main.dart` остаётся legacy app bootstrap;
+- он создаёт `TranslatorRemoteDataSourceImpl`;
+- он создаёт `RegistryRemoteDataSourceImpl`;
+- он создаёт `TranslatorRepositoryImpl`;
+- он создаёт legacy `TranslateCanonicalPhrase`;
+- он создаёт legacy `AuditCanonicalClientRules`;
+- он создаёт legacy `LoadRegistryTree`;
+- он создаёт `TranslatorCubit`;
+- он открывает legacy `TranslatorPage`.
+
+Фактическое состояние clean Translator:
+
+- `TranslatePhrase` существует только внутри `registry_studio/translator/application`;
+- `TranslatorPhraseProvider` существует только как application boundary;
+- `TyphoonTranslatorPhraseProvider` существует только как infrastructure adapter;
+- clean Translator сейчас используется только targeted tests и documentation;
+- production runtime consumer для clean `TranslatePhrase` сейчас отсутствует.
+
+Решение:
+
+- runtime wiring сейчас не разрешён;
+- `main.dart` сейчас не является clean Registry Studio composition source of truth;
+- direct wiring clean Translator в текущий `main.dart` запрещён;
+- создание composition/root/bootstrap object сейчас запрещено как premature modeling без clean runtime consumer.
+
+Причина запрета:
+
+- wiring создаёт новую responsibility;
+- текущий `main.dart` уже несёт legacy Translator architecture pressure;
+- direct wiring в `main.dart` смешал бы clean Translator с legacy Repository/DataSource/Cubit/Page;
+- wiring без clean consumer был бы unused composition layer;
+- wiring без presentation/application consumer ownership-аудита нарушил бы правило "один change = одна responsibility".
+
+Запрещено в следующем code step:
+
+- править `main.dart`;
+- подключать `TyphoonTranslatorPhraseProvider` в legacy bootstrap;
+- подключать `TranslatePhrase` в legacy `TranslatorCubit`;
+- возвращать `TranslatorRepository`;
+- возвращать `TranslatorRemoteDataSource`;
+- возвращать `RegistryRemoteDataSource`;
+- возвращать `RegistryNode`;
+- подключать registry loading;
+- подключать registry dictionary snapshot;
+- создавать operation attachment;
+- создавать audit package;
+- создавать mutation path;
+- создавать approval path;
+- создавать publication path.
+
+Следующая допустимая зона аудита:
+
+- clean runtime consumer / presentation boundary для `TranslatePhrase`.
+
+Перед любым runtime code step требуется отдельный ownership-аудит:
+
+- кто является clean consumer `TranslatePhrase`;
+- это UI, command, diagnostic screen или другой product boundary;
+- где живёт clean presentation/application consumer;
+- заменяет ли он legacy `TranslatorPage` или существует отдельно;
+- почему он не зависит от `TranslatorRepository`;
+- почему он не зависит от `TranslatorCubit`;
+- почему он не загружает registry;
+- почему он не создаёт operation attachment;
+- почему он не выполняет mutation, approval или publication.
+
+Вывод:
+
+- current clean Translator implementation закрыт на уровне application + infrastructure;
+- runtime wiring deferred;
+- следующий code step не разрешён без ownership-аудита clean consumer boundary.
