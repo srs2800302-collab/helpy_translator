@@ -1632,3 +1632,48 @@ Separate operation context/result не вводится в текущем step.
 - `RegistryEngineeringOperation` остаётся минимальным lifecycle snapshot;
 - read-only context остаётся в existing application results;
 - следующий безопасный audit может быть только вокруг derived readiness на базе `RegistryResolvedRelatedContext`, если коду нужен явный readiness marker.
+
+## Решение по readiness consumer audit
+
+После отклонения operation attachment boundary выполнен read-only audit реального consumer-а для derived readiness marker на базе `RegistryResolvedRelatedContext.missingRelatedEntityIds`.
+
+Проверены:
+
+- production application boundaries;
+- production domain operation boundaries;
+- related context results;
+- operation creation use case;
+- operation status transition use case;
+- tests around operation and related context;
+- guard rules around readiness, operation lifecycle и attachment boundary.
+
+Вывод аудита:
+
+- production consumer, который сейчас читает `missingRelatedEntityIds`, отсутствует;
+- production consumer, которому сейчас нужен explicit getter readiness внутри `RegistryResolvedRelatedContext`, отсутствует;
+- production consumer, который должен переводить `RegistryEngineeringOperation` в `readyForDecision` на основании resolved context, отсутствует;
+- текущие обращения к `missingRelatedEntityIds` находятся внутри самой result model и targeted tests;
+- test-only pressure не является основанием расширять production API.
+
+Следствие:
+
+- `RegistryResolvedRelatedContext` не получает readiness getter в текущем step;
+- `hasResolvedAllRelatedEntities` не добавляется до появления реального production consumer-а;
+- `RegistryContextReadiness` не создаётся;
+- `PrepareRegistryContextReadiness` не создаётся;
+- use case для status transition based on resolved context не создаётся;
+- composite use case для `create + prepare context + resolve context + transition` не создаётся;
+- Orchestrator, pipeline, manager, facade или workflow runner не вводятся.
+
+Текущее правило остаётся строгим:
+
+- `missingRelatedEntityIds` остаётся единственным source of truth для resolved related context completeness;
+- derived readiness marker может быть добавлен только тогда, когда появится реальный production consumer;
+- такой future step должен включать targeted test в том же change;
+- future getter не должен читать payload, выполнять assessment, создавать findings, определять ambiguity/contradiction/drift, менять operation status, выполнять registry mutation или publication.
+
+Вывод:
+
+- readiness consumer отсутствует;
+- readiness marker откладывается;
+- текущий Core остаётся на `RegistryResolvedRelatedContext.missingRelatedEntityIds` без дополнительного API.
