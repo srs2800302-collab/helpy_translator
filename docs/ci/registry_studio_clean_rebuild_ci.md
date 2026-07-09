@@ -12,3 +12,18 @@
 - Artifact: `helpy-translator-debug-apk`
 - CI checks passed: Analyze, Test, Build debug APK, Upload APK.
 - Annotation: GitHub Actions platform warning only — `actions/checkout@v4` and `actions/upload-artifact@v4` target deprecated Node.js 20 and are forced to Node.js 24. This is not a Flutter/Dart/application failure.
+
+## Build APK #100
+
+- Branch: `registry-studio/clean-rebuild`
+- Commit: `704b5b7`
+- Workflow: `build-apk.yml`
+- Run ID: `29052706699`
+- Job ID: `86237041000`
+- Trigger: `workflow_dispatch`
+- Status: `Success`
+- Job duration: `5m25s`
+- Total duration: `5m31s`
+- Artifact: `helpy-translator-debug-apk`
+- CI checks passed: Analyze, Test, Build debug APK, Upload APK.
+- Maintenance result: GitHub Actions Node.js 20 warning removed by updating `actions/checkout@v4` to `actions/checkout@v5` and `actions/upload-artifact@v4` to `actions/upload-artifact@v6`.
