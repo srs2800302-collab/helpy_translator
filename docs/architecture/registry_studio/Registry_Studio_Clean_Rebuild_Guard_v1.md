@@ -347,3 +347,25 @@ Legacy residue в текущем Core code/test не допускается.
 `package:helpy_translator/...` imports сейчас являются package identity текущего repository и не считаются Helpy adapter/domain leak. Переименование package identity является отдельной операцией и не входит в текущий clean rebuild step.
 
 Если carried primitive позже начнёт тянуть legacy responsibility, runtime adapter thinking, project-specific vocabulary или rejected workflow/execution semantics, он должен быть переписан, упрощён или удалён после отдельного ownership-аудита.
+
+## Test fixture boundary decision
+
+Test fixture допускается только как test-only средство для удаления повторяющегося технического setup в тестах.
+
+Test fixture должен находиться только внутри `test/` и не должен попадать в `lib/`.
+
+Test fixture не является production helper, wrapper, builder, factory, facade, bridge, locator, manager или magic utility shortcut.
+
+Test fixture не должен определять domain behavior, application behavior, runtime behavior или registry mutation behavior.
+
+Test fixture не должен скрывать проверяемый invariant.
+
+Если тест проверяет constructor invariants конкретной domain model, constructor call должен оставаться явно видимым в тесте, а fixture может использоваться только для технических зависимостей этого constructor call.
+
+Для `RegistryEntity` это означает:
+
+- в application tests допустимо использовать готовый `RegistryEntity` fixture, если сам `RegistryEntity` не является предметом проверки;
+- в `RegistryEntity` domain tests нельзя механически заменять `RegistryEntity(...)` на готовый entity fixture, если тест проверяет source evidence requirement, semantic contract compatibility, kind/schema compatibility или identity equality;
+- в `RegistryEntity` domain tests допустимо вынести только повторяющийся setup: semantic contract, entity kind, payload test implementation и source evidence.
+
+Если test fixture начинает содержать branching logic, скрытые scenario defaults, project-specific vocabulary, runtime lookup, service resolution или неочевидные invalid states, работу нужно остановить и заново провести boundary audit.
