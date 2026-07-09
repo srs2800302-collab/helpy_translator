@@ -1788,3 +1788,65 @@ Future operation attachment of Translator proposal не входит в перв
 - old Translator используется только как evidence по output shape;
 - Core остаётся независимым от Translator;
 - registry mutation, approval и publication остаются вне Translator.
+
+## Checkpoint реализации TranslatorPhraseResult
+
+Первый clean Translator code step реализован.
+
+Добавлены:
+
+- `lib/registry_studio/translator/translator_phrase_status.dart`;
+- `lib/registry_studio/translator/translator_phrase_result.dart`;
+- `test/registry_studio/translator/translator_phrase_result_test.dart`.
+
+Реализованная ответственность:
+
+- immutable read-only language-quality result для одной engineer-selected phrase/text;
+- typed status через `TranslatorPhraseStatus`;
+- normalized required source fields;
+- normalized optional translation / reverse-check / comment / candidate phrase fields;
+- value equality через Equatable.
+
+`TranslatorPhraseResult` не является entity.
+
+Он не имеет:
+
+- identity;
+- lifecycle;
+- operation ownership;
+- registry identity ownership;
+- dictionary mutation ownership;
+- approval ownership;
+- publication ownership.
+
+Подтверждённые ограничения:
+
+- Core не импортирует Translator;
+- Translator не импортируется в Registry Studio Core;
+- repository не создан;
+- data source не создан;
+- remote prompt adapter не создан;
+- manager/facade/helper не создан;
+- application use case не создан;
+- provider boundary не создан;
+- mutation/publication path не создан;
+- operation attachment не создан;
+- verified audit package не создан.
+
+Проверки implementation step:
+
+- `dart analyze` для новых Translator files прошёл;
+- `flutter analyze` прошёл;
+- temporary pure Dart smoke check прошёл;
+- targeted Flutter test сохранён, но локальный `flutter test` в Termux не используется как blocking verification из-за known `libvk_swiftshader.so` runner issue.
+
+Следующий шаг не должен автоматически создавать application use case.
+
+Перед future application use case требуется отдельный ownership-аудит:
+
+- кто вызывает actual translation provider;
+- как называется provider boundary;
+- почему provider boundary не является repository/data source;
+- какие inputs принимает use case;
+- почему result остаётся read-only;
+- почему use case не выполняет registry mutation, approval или publication.
