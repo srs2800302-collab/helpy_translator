@@ -1677,3 +1677,114 @@ Separate operation context/result не вводится в текущем step.
 - readiness consumer отсутствует;
 - readiness marker откладывается;
 - текущий Core остаётся на `RegistryResolvedRelatedContext.missingRelatedEntityIds` без дополнительного API.
+
+## Решение по first clean Translator proposal/result boundary
+
+После audit текущего Core и legacy `lib/features/translator` подтверждено, что следующий clean шаг Registry Studio не должен расширять Core.
+
+Текущий Core уже содержит:
+
+- source-backed registry identity;
+- registry relations;
+- related context;
+- resolved related context;
+- operation lifecycle;
+- operation creation;
+- operation status transition.
+
+Для Core сейчас отсутствует production consumer, который требует readiness getter, operation attachment, composite use case или assessment.
+
+Следующая допустимая зона — clean Translator capability внутри Registry Studio product boundary, но вне Core:
+
+- production: `lib/registry_studio/translator/...`;
+- tests: `test/registry_studio/translator/...`.
+
+Legacy `lib/features/translator` не принимается как architecture source of truth.
+
+Допустимое использование legacy Translator:
+
+- evidence для multilingual translation result;
+- evidence для reverse-check;
+- evidence для canonical wording status;
+- evidence для needs-review / drift signal;
+- evidence для comment / explanation;
+- evidence для candidate canonical phrase.
+
+Недопустимое использование legacy Translator:
+
+- перенос `TranslatorRepository`;
+- перенос `RegistryNode`;
+- перенос `LoadRegistryTree`;
+- перенос `LoadCanonicalClientRules`;
+- перенос `AuditCanonicalClientRules` как full Registry Studio audit flow;
+- перенос `TranslatorCubit` / `TranslatorState`;
+- перенос persistence state;
+- перенос prompt-driven source of truth;
+- перенос Helpy-specific client-rules workflow.
+
+Первая clean Translator boundary должна владеть только read-only language-quality output для одной engineer-selected phrase или text fragment.
+
+Эта boundary может выражать:
+
+- source language;
+- source text;
+- RU / EN / TH translated text values;
+- reverse-check evidence;
+- canonical wording status;
+- comment / explanation;
+- optional candidate canonical phrase for engineer review.
+
+Эта boundary не должна владеть:
+
+- registry identity;
+- registry path;
+- registry relation;
+- related context;
+- resolved related context;
+- operation lifecycle;
+- operation status transition;
+- registry dictionary mutation;
+- canonical phrase approval;
+- semantic decision;
+- ambiguity resolution;
+- approved change scope;
+- publication control.
+
+Первый implementation step в `lib/registry_studio/translator` не должен создавать:
+
+- repository;
+- data source;
+- remote prompt adapter;
+- manager;
+- facade;
+- helper;
+- capability catalog;
+- plugin registry;
+- mutation use case;
+- publication use case;
+- Registry Studio operation;
+- verified audit package.
+
+Первый implementation step может создать только immutable read-only result/proposal shape и targeted tests.
+
+Approved first code direction:
+
+- определить typed status для Translator phrase result;
+- определить immutable read-only result/proposal object для одной phrase/text;
+- нормализовать text fields через trim;
+- запретить empty required text fields;
+- сохранить result free of Core mutation, registry loading, repository, presentation и persistence;
+- не импортировать этот Translator boundary из Core.
+
+Future application use case, который будет вызывать actual translation provider, не входит в первый code step.
+
+Future dictionary mutation/publication path не входит в первый code step.
+
+Future operation attachment of Translator proposal не входит в первый code step.
+
+Вывод:
+
+- первый clean Translator step может быть только read-only result/proposal model outside Core;
+- old Translator используется только как evidence по output shape;
+- Core остаётся независимым от Translator;
+- registry mutation, approval и publication остаются вне Translator.
