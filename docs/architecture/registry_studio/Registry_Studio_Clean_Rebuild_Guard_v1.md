@@ -2220,3 +2220,63 @@ Output:
 - application boundary остаётся `TranslatorPhraseProvider`;
 - Core не импортирует Translator;
 - legacy DataSource/Repository architecture не переносится.
+
+## Checkpoint реализации TyphoonTranslatorPhraseProvider
+
+Translator infrastructure provider implementation реализована.
+
+Implementation commit:
+
+- `cac4461 feat: add typhoon translator phrase provider`.
+
+Добавлены:
+
+- `lib/registry_studio/translator/infrastructure/typhoon_translator_phrase_provider.dart`;
+- `test/registry_studio/translator/infrastructure/typhoon_translator_phrase_provider_test.dart`.
+
+Реализованная ответственность `TyphoonTranslatorPhraseProvider`:
+
+- implements `TranslatorPhraseProvider`;
+- вызывает Typhoon chat completions через existing `ApiClient`;
+- использует existing `AppConfig` только внутри infrastructure;
+- строит translation prompt внутри infrastructure;
+- строит audit prompt внутри infrastructure;
+- парсит raw Typhoon response внутри infrastructure;
+- маппит translation/audit output в `TranslatorPhraseResult`;
+- возвращает failed `TranslatorPhraseResult` при Dio/format failure.
+
+Подтверждённые ограничения:
+
+- Core не импортирует Translator;
+- application boundary не знает Typhoon;
+- `TranslatePhrase` не знает HTTP/Dio/model/prompt/raw response;
+- `TranslatorPhraseProvider` не знает HTTP/Dio/model/prompt/raw response;
+- legacy `TranslatorRepository` не перенесён;
+- legacy `TranslatorRemoteDataSource` не перенесён как architecture shape;
+- legacy `TranslationResultModel` не перенесён;
+- `RegistryNode` не перенесён;
+- registry loading не добавлен;
+- registry dictionary snapshot не добавлен;
+- operation attachment не создан;
+- audit package не создан;
+- mutation/approval/publication path не создан.
+
+Проверки implementation step:
+
+- `dart analyze` для infrastructure provider/test прошёл;
+- `flutter analyze` прошёл;
+- architecture forbidden checks прошли;
+- Core import boundary check прошёл;
+- targeted Flutter test сохранён, но локальный `flutter test` в Termux не используется как blocking verification из-за known `libvk_swiftshader.so` runner issue.
+
+Следующий шаг не должен автоматически подключать provider в runtime.
+
+Перед runtime wiring требуется отдельный ownership-аудит:
+
+- где создаётся `TyphoonTranslatorPhraseProvider`;
+- кто создаёт `TranslatePhrase`;
+- является ли wiring частью current app bootstrap или отдельной Registry Studio composition boundary;
+- почему wiring не возвращает legacy `TranslatorRepository`;
+- почему wiring не подключает registry loading;
+- почему wiring не создаёт operation attachment;
+- почему wiring не создаёт mutation, approval или publication.
