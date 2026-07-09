@@ -1380,3 +1380,110 @@ Translator capability не может владеть operation status transition
 
 - `flutter test` не используется как final local proof в Termux, потому что локальный `flutter_tester` падает из-за missing `libvk_swiftshader.so`;
 - domain/application runtime behavior проверялся временными pure Dart smoke checks.
+
+## Решение по creation boundary RegistryEngineeringOperation
+
+Перед созданием `CreateRegistryEngineeringOperation` выполнен existing-fit audit текущих candidates.
+
+`RegistryEngineeringOperation` factory не является creation application boundary.
+
+Причина: factory принадлежит domain entity и отвечает только за invariants entity: required id, required status, normalized non-empty `problemStatement` и immutable snapshot. Она не должна становиться application use case, workflow boundary или owner creation policy.
+
+`RegistryEngineeringOperationId` не может владеть созданием operation.
+
+Причина: id value object нормализует и валидирует уже переданную identity. Он не должен генерировать id, знать uuid policy, platform policy, repository policy или persistence boundary.
+
+`RegistryEngineeringOperationStatus` не может владеть созданием operation.
+
+Причина: status enum является lifecycle marker. Он не должен определять initial status policy или создавать operation.
+
+`TransitionRegistryEngineeringOperationStatus` не может владеть созданием operation.
+
+Причина: этот use case уже имеет отдельную responsibility: проверить status transition matrix и вернуть новый immutable operation snapshot. Добавление creation responsibility смешает creation и lifecycle transition.
+
+`RegistryEntity`, `RegistryRelation`, `SourceEvidence`, `RegistryRelatedContext`, `RegistryResolvedRelatedContext`, `PrepareRegistryRelatedContext` и `PrepareRegistryResolvedRelatedContext` не могут владеть созданием operation.
+
+Причина: эти модели и use cases закрывают registry identity, relation facts, provenance и related context. Они не являются owner operation creation, operation id, initial status или problem statement.
+
+Orchestrator не может владеть созданием operation.
+
+Причина: Orchestrator допускается только как узкая coordination boundary. Он не должен выполнять workflow steps, создавать operation, генерировать id или принимать lifecycle policy.
+
+Translator capability не может владеть созданием operation.
+
+Причина: Translator может быть read-only input/proposal source, но не является owner Registry Studio operation lifecycle или creation policy.
+
+Вывод:
+
+- ни один существующий candidate не может корректно нести creation responsibility без нарушения boundary;
+- отдельный application use case `CreateRegistryEngineeringOperation` допустим;
+- первый creation use case должен быть минимальным и не должен вводить persistence, id generation или status policy beyond initial `open`.
+
+Утверждённая прикладная граница:
+
+- имя: `CreateRegistryEngineeringOperation`;
+- слой: `lib/registry_studio/core/application/operation_creation/`;
+- production file: `lib/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart`;
+- test file: `test/registry_studio/core/application/operation_creation/create_registry_engineering_operation_test.dart`.
+
+Входы первого use case:
+
+- `RegistryEngineeringOperationId id`;
+- `String problemStatement`.
+
+Выход первого use case:
+
+- `RegistryEngineeringOperation`.
+
+Initial status policy:
+
+- created operation всегда получает `RegistryEngineeringOperationStatus.open`.
+
+Причина:
+
+- creation создаёт новую активную operation;
+- `awaitingContext`, `readyForDecision`, `decided` и `cancelled` должны достигаться через отдельный status transition boundary;
+- status parameter в creation use case смешал бы creation и lifecycle transition.
+
+Первый creation use case не должен принимать:
+
+- status parameter;
+- primary `RegistryEntity`;
+- `RegistryRelatedContext`;
+- `RegistryResolvedRelatedContext`;
+- Translator proposal;
+- assessment result;
+- decision evidence;
+- cancellation reason;
+- repository/store;
+- id generator;
+- uuid service;
+- Orchestrator;
+- mutation command;
+- publication command.
+
+Id generation не вводится в первом step.
+
+Причина:
+
+- id generation policy может зависеть от platform/runtime/persistence;
+- текущий clean boundary может оставаться repository-free, store-free, uuid-free и platform-free;
+- caller передаёт уже готовый `RegistryEngineeringOperationId`;
+- если id generation понадобится позже, она должна пройти отдельный ownership-аудит.
+
+Result object не вводится в первом step.
+
+Причина:
+
+- output содержит только одну operation;
+- нет partial success, warnings, attached facts или diagnostics;
+- отдельный result object сейчас был бы premature modeling.
+
+Первый test scope:
+
+- use case creates `RegistryEngineeringOperation`;
+- created operation preserves provided id;
+- created operation trims and preserves problem statement через domain entity invariant;
+- created operation always starts with `open`;
+- use case does not accept status;
+- use case does not require context, Translator, assessment, repository, store, uuid or Orchestrator.
