@@ -441,7 +441,8 @@ Test fixture не должен скрывать проверяемый invariant
 `RegistryContextAssessment` откладывается, потому что assessment должен выполняться только после подготовки source-backed related facts.
 
 
-## Решение по границе `RegistryContextReadiness`
+
+## Решение по readiness после ownership-аудита
 
 После `RegistryResolvedRelatedContext` Core уже может показать engineer/user:
 
@@ -449,57 +450,31 @@ Test fixture не должен скрывать проверяемый invariant
 - связанные registry entities, которые уже доступны как source-backed `RegistryEntity`;
 - связанные ids, для которых entity отсутствует в текущем context.
 
-Этого достаточно, чтобы проверить готовность context к следующему этапу анализа. Этого недостаточно, чтобы выполнять саму семантическую оценку.
+Повторный ownership-аудит показал, что отдельная model `RegistryContextReadiness` на текущем этапе не нужна.
 
-`RegistryEntityPayload` остаётся contract-specific payload. Core не должен читать его как универсальную semantic model и не должен самостоятельно выводить ambiguity, contradiction или drift из payload без отдельной contract-specific analysis boundary.
+Причина: текущая readiness полностью выводится из уже существующего `RegistryResolvedRelatedContext.missingRelatedEntityIds`.
 
-Следующая минимальная responsibility называется `PrepareRegistryContextReadiness`.
+Если `missingRelatedEntityIds` пустой, context готов к будущему assessment по критерию наличия source-backed related entities.
 
-Результат этой responsibility называется `RegistryContextReadiness`.
+Если `missingRelatedEntityIds` не пустой, context не готов к будущему assessment по критерию наличия source-backed related entities.
 
-`RegistryContextReadiness` является результатом application-слоя только для чтения.
+Это не новая lifecycle, не новый owner и не новая boundary. Отдельный `RegistryContextReadiness` был бы convenience layer поверх уже существующего result, что запрещено Clean Rebuild Guard.
 
-Он не является:
+`RegistryResolvedRelatedContext` может нести этот derived state без превращения в analyzer или finding, потому что он не читает `RegistryEntityPayload`, не определяет ambiguity, contradiction или drift и не принимает semantic decisions.
 
-- analyzer;
-- finding;
-- review context;
-- verified context;
-- change plan;
-- presenter;
-- view model;
-- mutation command.
+На текущем этапе запрещено вводить:
 
-Назначение `RegistryContextReadiness` — показать engineer/user, готов ли `RegistryResolvedRelatedContext` к будущей context assessment responsibility.
+- `RegistryContextReadiness` как отдельную model;
+- `PrepareRegistryContextReadiness` как отдельный use case;
+- `RegistryContextAssessmentIssue`;
+- `RegistryVerifiedContext`.
 
-`RegistryContextReadiness` отвечает только на вопрос готовности context:
+Допустимым минимальным развитием `RegistryResolvedRelatedContext` может быть только явный derived getter для readiness, если он нужен коду:
 
-- context не готов, если в `RegistryResolvedRelatedContext` есть отсутствующие related ids;
-- context готов к будущему assessment, если все related ids представлены source-backed `RegistryEntity`.
+- getter должен выводиться только из `missingRelatedEntityIds`;
+- getter не должен читать payload;
+- getter не должен создавать findings;
+- getter не должен определять ambiguity, contradiction или drift;
+- getter не должен утверждать достаточность context для semantic decision, canonicalization decision, change-scope decision или publication decision.
 
-`RegistryContextReadiness` не должен утверждать, что context достаточен для semantic decision, ambiguity resolution, drift decision, canonicalization decision или publication decision.
-
-`RegistryContextReadiness` не должен определять ambiguity, contradiction или drift.
-
-`RegistryContextReadiness` не должен создавать findings.
-
-`RegistryContextReadiness` не должен читать contract-specific payload как универсальную semantic model.
-
-`RegistryContextReadiness` должен содержать:
-
-- base `RegistryResolvedRelatedContext`;
-- состояние готовности;
-- blocking missing `RegistryEntityId`, если они есть.
-
-Минимальные invariants `RegistryContextReadiness`:
-
-- если blocking missing ids не пустые, состояние готовности не может быть ready;
-- если состояние готовности ready, blocking missing ids должны быть пустыми;
-- blocking missing ids должны выводиться из `base.missingRelatedEntityIds`;
-- collections внутри результата должны быть immutable.
-
-`RegistryContextAssessment` откладывается до отдельного ownership-аудита semantic assessment boundary.
-
-`RegistryContextAssessmentIssue` отклоняется на текущем этапе, потому что преждевременно тянет семантику finding.
-
-`RegistryVerifiedContext` остаётся отклонённым как слишком широкий result, который преждевременно заявляет готовность decision context.
+`RegistryContextAssessment` остаётся отложенным до отдельного ownership-аудита semantic assessment boundary.
