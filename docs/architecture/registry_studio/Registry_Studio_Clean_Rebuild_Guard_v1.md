@@ -1220,3 +1220,109 @@ Next safe step after this docs decision:
 - design a future application boundary for changing operation status;
 - prove its owner, inputs, outputs and invariants before code;
 - keep it repository-free, store-free, Translator-free, assessment-free and publication-free in its first step.
+
+## Решение по existing-fit audit перед status-change application boundary
+
+Перед созданием application boundary для изменения `RegistryEngineeringOperationStatus` выполнен existing-fit audit текущих Registry Studio Core сущностей, value objects, application results и use cases.
+
+Проверенные candidates:
+
+- `RegistryEngineeringOperation`;
+- `RegistryEngineeringOperationStatus`;
+- `RegistryEngineeringOperationId`;
+- `RegistryEntity`;
+- `RegistryRelation`;
+- `SourceEvidence`;
+- `RegistryRelatedContext`;
+- `RegistryResolvedRelatedContext`;
+- `PrepareRegistryRelatedContext`;
+- `PrepareRegistryResolvedRelatedContext`;
+- Orchestrator boundary;
+- Translator capability.
+
+`RegistryEngineeringOperation` не может владеть transition execution.
+
+Причина: operation entity уже определена как immutable lifecycle snapshot. Если добавить в неё `markAwaitingContext`, `markReadyForDecision`, `markDecided`, `cancel`, generic `changeStatus` или `copyWith`, entity начнёт принимать workflow responsibility и получит pressure стать workflow executor.
+
+`RegistryEngineeringOperationStatus` не может владеть transition matrix как behavior owner.
+
+Причина: status enum является lifecycle marker. Если enum начнёт принимать transition decisions, он станет policy object и начнёт смешивать marker, lifecycle policy, application facts и future decision/cancellation rules.
+
+`RegistryEngineeringOperationId` не может владеть transition responsibility.
+
+Причина: operation id является stable identity only. Identity не должна знать lifecycle direction, readiness, engineer decision или cancellation.
+
+`RegistryEntity` не может владеть operation status transition.
+
+Причина: registry entity является typed source-backed registry unit. Она не должна знать engineering operation lifecycle, audit status или engineer decision path.
+
+`RegistryRelation` не может владеть operation status transition.
+
+Причина: relation является atomic directional relation fact. Она не является operation, workflow state, readiness policy или audit boundary.
+
+`SourceEvidence` не может владеть operation status transition.
+
+Причина: source evidence фиксирует provenance and source coordinates. Оно не является lifecycle owner.
+
+`RegistryRelatedContext` и `RegistryResolvedRelatedContext` не могут владеть operation status transition.
+
+Причина: это read-only application results. Они могут быть inputs/facts для future use case, но не должны менять operation status, вычислять readiness policy или принимать engineer decision.
+
+`PrepareRegistryRelatedContext` и `PrepareRegistryResolvedRelatedContext` не могут владеть operation status transition.
+
+Причина: это stateless application use cases для подготовки related context. Они не должны расширяться до operation lifecycle transition use cases.
+
+Orchestrator не может владеть operation status transition.
+
+Причина: Orchestrator allowed only as narrow coordination boundary. Он не должен выполнять workflow steps, держать transition matrix или принимать lifecycle decisions.
+
+Translator capability не может владеть operation status transition.
+
+Причина: Translator supplies read-only language proposal/input only. Он не является owner registry operation lifecycle, readiness, decision, mutation или publication.
+
+Conclusion:
+
+- ни один существующий candidate не может корректно нести status-change responsibility без нарушения identity, lifecycle, owner или boundary;
+- отдельная application boundary для status transition допустима;
+- эта boundary должна быть operation-status specific;
+- эта boundary не должна быть repository, store, manager, facade, helper, Orchestrator, Translator adapter, assessment runner, mutation use case или publication use case.
+
+Future application boundary direction:
+
+- имя first candidate: `TransitionRegistryEngineeringOperationStatus`;
+- layer: `lib/registry_studio/core/application/operation_status/`;
+- input: current `RegistryEngineeringOperation`;
+- input: requested next `RegistryEngineeringOperationStatus`;
+- output: new immutable `RegistryEngineeringOperation` snapshot;
+- invalid transition: `ArgumentError`;
+- transition matrix: explicit inside this first application boundary;
+- no separate transition matrix value object yet.
+
+Reason against separate transition matrix value object now:
+
+- transition rules currently have a single consumer;
+- separate object would be premature modeling;
+- if transition policy becomes reused by multiple application boundaries, extracted policy/value object must pass a separate ownership audit.
+
+First status-change code step must not include:
+
+- repository/store;
+- persistence;
+- Orchestrator;
+- Translator;
+- assessment;
+- related context inspection;
+- readiness computation;
+- cancellation reason;
+- decision evidence;
+- registry mutation;
+- publication.
+
+First test scope for future code:
+
+- allowed transitions return a new immutable operation snapshot;
+- original operation remains unchanged;
+- forbidden transitions throw `ArgumentError`;
+- terminal statuses reject all outgoing transitions;
+- `open` -> `decided` is rejected;
+- use case does not require related context, Translator proposal, assessment result, repository or store.
