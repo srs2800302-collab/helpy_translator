@@ -2490,3 +2490,100 @@ Deferred:
 - next code step не должен создавать composition/root/bootstrap object;
 - next code step должен иметь targeted tests;
 - после code step нужен implementation checkpoint в Guard.
+
+## Checkpoint реализации TranslatorPhraseCubit
+
+Clean Translator presentation consumer реализован.
+
+Implementation commits:
+
+- `751deb4 feat: add translator phrase presentation cubit`;
+- `9c079be refactor: clean translator phrase state initializer`.
+
+Добавлены:
+
+- `lib/registry_studio/translator/presentation/cubit/translator_phrase_cubit.dart`;
+- `lib/registry_studio/translator/presentation/cubit/translator_phrase_state.dart`;
+- `test/registry_studio/translator/presentation/cubit/translator_phrase_cubit_test.dart`.
+
+Реализованная ответственность `TranslatorPhraseCubit`:
+
+- depends only on `TranslatePhrase`;
+- принимает engineer-selected `sourceText`;
+- принимает optional `sourceLanguageHint`;
+- принимает optional `engineerContext`;
+- вызывает `TranslatePhrase`;
+- emits loading state before translation;
+- emits success state with current `TranslatorPhraseResult`;
+- emits failure state with current presentation error message;
+- supports clear/reset to initial state.
+
+Реализованная ответственность `TranslatorPhraseState`:
+
+- immutable presentation state для single phrase translation flow;
+- содержит current presentation status;
+- содержит current `TranslatorPhraseResult`;
+- содержит current presentation error message;
+- использует value equality.
+
+Подтверждённые ограничения:
+
+- screen не создан;
+- `main.dart` не изменён;
+- runtime wiring не добавлен;
+- composition root/bootstrap object не создан;
+- provider creation не добавлен;
+- legacy `TranslatorRepository` не используется;
+- legacy `TranslatorRemoteDataSource` не используется;
+- legacy `RegistryRemoteDataSource` не используется;
+- legacy `RegistryNode` не используется;
+- legacy `TranslatorCubit` не используется;
+- legacy `TranslatorState` не используется;
+- legacy `TranslatorPage` не используется;
+- persistence не используется;
+- registry phrase status persistence не используется;
+- background execution controller не используется;
+- registry loading не добавлен;
+- translation history не добавлена;
+- canonical audit results не добавлены;
+- batch audit не добавлен;
+- operation attachment не создан;
+- audit package не создан;
+- mutation path не создан;
+- approval path не создан;
+- publication path не создан.
+
+Infrastructure leakage отсутствует:
+
+- `TranslatorPhraseCubit` не знает Typhoon;
+- `TranslatorPhraseCubit` не знает `ApiClient`;
+- `TranslatorPhraseCubit` не знает `AppConfig`;
+- `TranslatorPhraseCubit` не знает Dio;
+- `TranslatorPhraseCubit` не знает HTTP request shape;
+- `TranslatorPhraseCubit` не знает model name;
+- `TranslatorPhraseCubit` не знает prompt format;
+- `TranslatorPhraseCubit` не знает raw response parsing;
+- `TranslatorPhraseCubit` не знает infrastructure error mapping.
+
+Проверки implementation step:
+
+- targeted `dart analyze` для Cubit/State/test прошёл clean;
+- full `flutter analyze` прошёл clean;
+- architecture forbidden checks прошли;
+- scope check прошёл;
+- lint cleanup commit `9c079be` закрыл `prefer_initializing_formals`.
+
+Следующий шаг не должен автоматически подключать Cubit в runtime.
+
+Перед следующим code step требуется отдельный ownership-аудит:
+
+- нужен ли `TranslatorPhraseScreen`;
+- где он должен жить;
+- кто создаёт `TranslatorPhraseCubit`;
+- кто создаёт `TranslatePhrase`;
+- где создаётся `TyphoonTranslatorPhraseProvider`;
+- почему это не возвращает legacy `TranslatorPage`;
+- почему это не правит `main.dart` преждевременно;
+- почему это не создаёт registry loading;
+- почему это не создаёт operation attachment;
+- почему это не создаёт mutation, approval или publication.
