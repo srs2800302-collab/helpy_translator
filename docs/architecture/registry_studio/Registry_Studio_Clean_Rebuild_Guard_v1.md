@@ -2983,3 +2983,66 @@ CI run:
 - нельзя возвращать legacy Translator runtime;
 - нельзя создавать app shell/composition root без отдельного решения;
 - нельзя подключать mutation / approval / publication path через Translator.
+
+## Контрольная точка Build APK #100
+
+Clean rebuild ветка подтверждена финальным GitHub Actions build после удаления legacy Translator MVP, стабилизации presentation tests, удаления legacy GitHub registry config и обновления workflow actions.
+
+Подтверждённый финальный документационный commit:
+
+- `a1a5e13 docs: record build apk 100 success`.
+
+Подтверждённый workflow maintenance commit:
+
+- `704b5b7 ci: update artifact actions for node 24`.
+
+CI run:
+
+- workflow: `build-apk.yml`;
+- GitHub Actions title: `Build APK #100`;
+- run: `29052706699`;
+- job: `86237041000`;
+- branch: `registry-studio/clean-rebuild`;
+- commit under build: `704b5b7`;
+- status: `Success`;
+- artifact: `helpy-translator-debug-apk`.
+
+Что проверено в `Build APK #100`:
+
+- `Analyze` прошёл;
+- `Test` прошёл;
+- `Build debug APK` прошёл;
+- `Upload APK` прошёл;
+- debug APK artifact создан.
+
+Что закрыто этим build:
+
+- legacy `lib/features/translator/**` не возвращён;
+- legacy `TranslatorPage` не возвращён;
+- legacy `TranslatorCubit` не возвращён;
+- legacy Registry tree loading не возвращён;
+- old persistence/background execution не возвращены;
+- clean Registry Studio hierarchy остаётся в `lib/registry_studio/**`;
+- clean Translator stack остаётся в `lib/registry_studio/translator/**`;
+- `lib/main.dart` остаётся временной нейтральной заглушкой;
+- clean runtime composition всё ещё не подключён.
+
+Workflow warning status:
+
+- предупреждение Node.js 20 было закрыто workflow maintenance commit `704b5b7`;
+- `.github/workflows/build-apk.yml` обновлён с `actions/checkout@v4` на `actions/checkout@v5`;
+- `.github/workflows/build-apk.yml` обновлён с `actions/upload-artifact@v4` на `actions/upload-artifact@v6`.
+
+Локальные Termux build/test ограничения остаются внешними toolchain-ограничениями:
+
+- `flutter test` в Termux может падать из-за `libvk_swiftshader.so`;
+- `flutter build apk --debug` в Termux может падать из-за `aapt2` x86_64 vs AARCH64;
+- эти ограничения не являются ошибкой проекта;
+- GitHub Actions является подтверждающей средой для APK build.
+
+Следующее ограничение:
+
+- перед runtime step всё ещё требуется отдельный ownership-аудит clean runtime composition;
+- нельзя возвращать legacy Translator runtime;
+- нельзя создавать app shell/composition root без отдельного решения;
+- нельзя подключать mutation / approval / publication path через Translator.
