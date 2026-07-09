@@ -2716,3 +2716,112 @@ Implementation commit:
 - следующий code step не должен создавать подключение во время запуска;
 - следующий code step не должен создавать провайдер или корневую сборку приложения;
 - после code step нужна контрольная точка реализации в Guard.
+
+## Контрольная точка реализации TranslatorPhraseScreen
+
+Изолированный экран слоя представления Translator реализован.
+
+Коммит реализации:
+
+- `4cfcc48 feat: add translator phrase screen`.
+
+Добавлены:
+
+- `lib/registry_studio/translator/presentation/screens/translator_phrase_screen.dart`;
+- `test/registry_studio/translator/presentation/screens/translator_phrase_screen_test.dart`.
+
+Реализованная ответственность `TranslatorPhraseScreen`:
+
+- показывает поле для выбранной инженером формулировки или текста;
+- показывает optional поле для language hint;
+- показывает optional поле для engineering context;
+- вызывает `TranslatorPhraseCubit.translatePhrase`;
+- вызывает `TranslatorPhraseCubit.clear`;
+- показывает состояние загрузки;
+- показывает текущий `TranslatorPhraseResult`;
+- показывает текущее сообщение ошибки слоя представления;
+- показывает read-only результат по RU, EN, TH и reverse-check полям;
+- показывает статус `TranslatorPhraseStatus` в виде текста слоя представления.
+
+Подтверждённые ограничения:
+
+- `main.dart` не изменён;
+- подключение во время запуска не добавлено;
+- корневая сборка приложения не создана;
+- `TranslatorPhraseCubit` не создаётся внутри экрана;
+- `TranslatePhrase` не создаётся внутри экрана;
+- `TranslatorPhraseProvider` не создаётся внутри экрана;
+- `TyphoonTranslatorPhraseProvider` не создаётся внутри экрана;
+- `ApiClient` не создаётся внутри экрана;
+- `AppConfig` не создаётся внутри экрана;
+- экран получает `TranslatorPhraseCubit` извне через `BlocProvider` или context.
+
+Старый слой Translator не возвращён:
+
+- `features/translator` не импортирован;
+- старый `TranslatorPage` не импортирован;
+- старый `TranslatorCubit` не импортирован;
+- старый `TranslatorState` не импортирован;
+- старый `TranslationResult` не импортирован;
+- старый `CanonicalAuditResult` не импортирован;
+- `RegistryNode` не импортирован;
+- `TranslatorRepository` не импортирован;
+- `TranslatorRemoteDataSource` не импортирован;
+- `RegistryRemoteDataSource` не импортирован;
+- persistence не импортирован;
+- хранилище статусов фраз Registry не импортировано;
+- контроллер фонового выполнения не импортирован.
+
+Запрещённые функции не появились:
+
+- загрузка Registry не добавлена;
+- обновление Registry не добавлено;
+- вкладка Registry не добавлена;
+- дерево Registry не добавлено;
+- поиск, фильтры и статусы Registry не добавлены;
+- история переводов не добавлена;
+- результаты canonical audit не добавлены;
+- batch audit не добавлен;
+- operation attachment не создан;
+- audit package не создан;
+- mutation path не создан;
+- approval path не создан;
+- publication path не создан.
+
+Проверки шага реализации:
+
+- целевой `dart analyze` для screen/test прошёл clean;
+- полный `flutter analyze` прошёл clean;
+- production screen forbidden check прошёл;
+- test legacy forbidden check прошёл;
+- scope check прошёл;
+- widget tests созданы.
+
+Ограничение локальной проверки:
+
+- локальный `flutter test` не запускался из-за известного риска Termux `libvk_swiftshader.so`;
+- тестовый файл добавлен для CI или среды, где Flutter widget tests запускаются штатно.
+
+Текущее состояние после реализации:
+
+- чистый Translator имеет result object;
+- чистый Translator имеет use case;
+- чистый Translator имеет provider boundary;
+- чистый Translator имеет Typhoon infrastructure adapter;
+- чистый Translator имеет presentation Cubit/State;
+- чистый Translator имеет isolated presentation screen;
+- runtime wiring всё ещё отсутствует;
+- текущий `main.dart` всё ещё остаётся старым bootstrap и не является clean Registry Studio composition root.
+
+Перед следующим code step требуется отдельный аудит владения ответственностью:
+
+- кто создаёт `TranslatorPhraseCubit`;
+- кто создаёт `TranslatePhrase`;
+- где создаётся `TyphoonTranslatorPhraseProvider`;
+- где должна жить корневая сборка чистого Registry Studio Translator;
+- можно ли создавать отдельный clean app entry point;
+- нужно ли трогать текущий `main.dart`;
+- почему следующее подключение не возвращает старый `TranslatorPage`;
+- почему следующее подключение не создаёт загрузку Registry;
+- почему следующее подключение не создаёт operation attachment;
+- почему следующее подключение не создаёт mutation, approval или publication.
