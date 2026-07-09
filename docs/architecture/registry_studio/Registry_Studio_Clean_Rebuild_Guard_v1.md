@@ -557,3 +557,89 @@ Engineer/user остаётся владельцем:
 - почему это не mutation, не publication и не generic analyzer shortcut.
 
 До такого ownership-аудита Core должен остановиться на `RegistryResolvedRelatedContext` и derived readiness из `missingRelatedEntityIds`.
+
+## Решение по ownership Translator capability boundary
+
+Translator является обязательной assistant capability для engineer и product add-on к Registry Studio.
+
+Translator не является source of truth для Registry Studio Core и не является заменой registry domain model.
+
+Текущий `lib/features/translator` принимается только как prototype evidence того, какая capability нужна engineer:
+
+- multilingual translation;
+- reverse-check;
+- canonical wording audit;
+- consistency check;
+- translation drift signal;
+- candidate canonical phrase preparation.
+
+Текущий `lib/features/translator` не принимается как clean Registry Studio boundary as-is.
+
+Причины:
+
+- `RegistryNode` является source-format/tree-shaped model и не должен заменять `RegistryEntity`, `RegistryPath`, `RegistryRelation` или related context;
+- `LoadRegistryTree` не является Registry Studio registry domain boundary;
+- `loadCanonicalClientRules` фиксирует узкий client-rules workflow и не является универсальной registry dictionary boundary;
+- `TranslatorRepository` смешивает translation capability и registry loading;
+- data-layer prompts могут быть Helpy-specific и не должны попадать в Registry Studio Core;
+- translator workflow не должен определять registry identity, registry structure или publication path.
+
+Translator capability должна владеть:
+
+- multilingual phrase processing;
+- target language set;
+- translation result;
+- reverse-translation result;
+- canonical wording consistency check;
+- translation drift / needs-review signal;
+- explanation of language differences;
+- candidate canonical phrase output for engineer review.
+
+Translator capability не должна владеть:
+
+- `RegistryEntity` identity;
+- `RegistryPath`;
+- `RegistryRelation`;
+- related context ownership;
+- registry dictionary mutation;
+- canonical phrase approval;
+- semantic decision;
+- ambiguity resolution;
+- publication control;
+- registry change scope.
+
+Translator capability может получать input только как read-only engineering input:
+
+- phrase or text selected by engineer;
+- optional source evidence/provenance;
+- optional read-only registry dictionary snapshot;
+- optional target languages;
+- optional engineer-provided context.
+
+Translator capability не должна получать право самостоятельно искать registry, изменять registry или выбирать publication path.
+
+Translator capability может возвращать engineer только read-only output:
+
+- multilingual translation set;
+- reverse-check result;
+- canonical wording status;
+- drift / needs-review signal;
+- explanation/comment;
+- candidate canonical phrase.
+
+Candidate canonical phrase не является approved registry dictionary entry.
+
+Добавление candidate phrase в registry dictionary допускается только через отдельный approved engineer decision path и будущий registry mutation use case.
+
+Будущая clean implementation Translator capability должна находиться вне `Core`.
+
+Допустимое направление для будущего кода должно пройти отдельный ownership-аудит и не может механически переносить `lib/features/translator` как готовую architecture.
+
+До такого аудита запрещено:
+
+- переносить `RegistryNode` в Registry Studio Core;
+- делать translator repository частью Core;
+- делать translator prompt source of truth для registry semantics;
+- создавать generic translator manager/facade/helper;
+- давать Translator право approval/mutation/publication;
+- подменять registry dictionary domain model translator workflow.
