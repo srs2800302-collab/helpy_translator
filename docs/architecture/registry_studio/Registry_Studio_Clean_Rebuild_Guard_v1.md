@@ -2065,3 +2065,65 @@ Use case не должен возвращать:
 - separate input object не создаётся в этом step;
 - output остаётся `TranslatorPhraseResult`;
 - implementation должен остаться Translator-only, Core-independent, repository-free, data-source-free, mutation-free, publication-free.
+
+## Checkpoint реализации TranslatePhrase
+
+Translator application boundary реализована.
+
+Добавлены:
+
+- `lib/registry_studio/translator/application/translator_phrase_provider.dart`;
+- `lib/registry_studio/translator/application/translate_phrase.dart`;
+- `test/registry_studio/translator/application/translate_phrase_test.dart`.
+
+Реализованная ответственность `TranslatePhrase`:
+
+- принять engineer-selected phrase/text;
+- normalize required `sourceText`;
+- normalize optional `sourceLanguageHint`;
+- normalize optional `engineerContext`;
+- reject empty required `sourceText`;
+- вызвать `TranslatorPhraseProvider`;
+- вернуть `TranslatorPhraseResult` без изменения.
+
+Реализованная ответственность `TranslatorPhraseProvider`:
+
+- быть application boundary для actual translation capability;
+- принимать только phrase/text input;
+- возвращать только `TranslatorPhraseResult`.
+
+Подтверждённые ограничения:
+
+- Core не импортирует Translator;
+- Translator boundary не импортируется в Core;
+- repository не создан;
+- data source не создан;
+- infrastructure provider implementation не создан;
+- remote prompt adapter не создан;
+- Registry Studio operation не создана и не меняется;
+- operation attachment не создан;
+- registry loading не добавлен;
+- registry dictionary snapshot не добавлен;
+- source evidence input не добавлен;
+- related/resolved context input не добавлен;
+- audit package не создан;
+- mutation/approval/publication path не создан.
+
+Проверки implementation step:
+
+- `dart analyze` для новых Translator application files прошёл;
+- `flutter analyze` прошёл;
+- temporary pure Dart smoke check прошёл;
+- targeted Flutter test сохранён, но локальный `flutter test` в Termux не используется как blocking verification из-за known `libvk_swiftshader.so` runner issue.
+
+Следующий шаг не должен автоматически создавать infrastructure adapter.
+
+Перед infrastructure/provider implementation требуется отдельный ownership-аудит:
+
+- где живёт implementation `TranslatorPhraseProvider`;
+- как называется implementation;
+- какие infrastructure dependencies допустимы;
+- почему implementation не является Repository/DataSource;
+- почему prompt/vendor/model/raw response не становятся application language;
+- как implementation возвращает `TranslatorPhraseResult`;
+- почему implementation не получает registry loading, mutation, approval, publication или operation attachment.
