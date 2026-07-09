@@ -1487,3 +1487,70 @@ Result object не вводится в первом step.
 - created operation always starts with `open`;
 - use case does not accept status;
 - use case does not require context, Translator, assessment, repository, store, uuid or Orchestrator.
+
+## Контрольная точка реализации: прикладной сценарий создания operation
+
+Первый прикладной сценарий создания `RegistryEngineeringOperation` реализован.
+
+Коммит:
+
+- `e2b91b6 feat: add registry operation creation use case`.
+
+Реализованный production-файл:
+
+- `lib/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart`.
+
+Реализованный test-файл:
+
+- `test/registry_studio/core/application/operation_creation/create_registry_engineering_operation_test.dart`.
+
+Реализованная boundary:
+
+- `CreateRegistryEngineeringOperation`.
+
+Ответственность:
+
+- принимает готовый `RegistryEngineeringOperationId`;
+- принимает `String problemStatement`;
+- создаёт `RegistryEngineeringOperation`;
+- всегда устанавливает initial status `RegistryEngineeringOperationStatus.open`;
+- передаёт normalization и validation problem statement в domain entity invariant.
+
+Подтверждённые исключения:
+
+- no status parameter;
+- no id generator;
+- no uuid service;
+- no repository/store;
+- no persistence;
+- no Orchestrator;
+- no Translator;
+- no assessment;
+- no related context inspection;
+- no readiness computation;
+- no decision evidence;
+- no cancellation reason;
+- no registry mutation;
+- no publication.
+
+Проверки перед коммитом:
+
+- strict forbidden production import check passed;
+- status parameter check passed;
+- pure Dart operation creation smoke check passed;
+- `flutter analyze` passed;
+- staged diff check passed.
+
+Известное ограничение окружения:
+
+- `flutter test` не используется как final local proof в Termux, потому что локальный `flutter_tester` падает из-за missing `libvk_swiftshader.so`;
+- domain/application runtime behavior проверялся временными pure Dart smoke checks.
+
+Аудит после реализации:
+
+- `CreateRegistryEngineeringOperation` и `TransitionRegistryEngineeringOperationStatus` остаются двумя отдельными атомарными boundaries;
+- composite use case `create + transition` не вводится;
+- lifecycle Orchestrator не вводится;
+- id generation не вводится;
+- repository/store не вводятся;
+- readiness computation не смешивается с creation или transition.
