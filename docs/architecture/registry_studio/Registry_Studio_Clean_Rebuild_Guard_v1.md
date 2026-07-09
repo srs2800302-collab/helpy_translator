@@ -37,7 +37,7 @@ Flutter package name относится к repository identity и остаётс
 
 ## Решение по самостоятельности продукта
 
-Registry Studio — самостоятельный универсальный registry engineering tool.
+Registry Studio — самостоятельное универсальное registry engineering extension для engineer.
 
 Registry Studio должен уметь работать с разными проектами и не должен наследовать product identity, naming, business vocabulary, adapter boundaries или architectural ownership от первого проекта, на котором он проверяется.
 
@@ -92,11 +92,11 @@ Equality для `RegistryEntity` остаётся основанным на stab
 
 ## Решение по RegistryPath domain ownership
 
-Registry Studio не строит domain identity вокруг Markdown, source headings или source line positions.
+Registry Studio не строит domain identity вокруг source format, source headings или source line positions.
 
 `RegistryPath` является canonical domain path: он описывает semantic domain position конкретного `RegistryEntity` внутри registry domain model.
 
-`RegistryPath` не является Markdown navigation path, source document heading path, document locator, line-based identity, UI navigation path или runtime adapter path.
+`RegistryPath` не является source-format navigation path, source document heading path, document locator, line-based identity, UI navigation path или runtime adapter path.
 
 Source document coordinates принадлежат `SourceEvidence`.
 
@@ -104,7 +104,7 @@ Source document coordinates принадлежат `SourceEvidence`.
 
 `RegistryPath` сейчас фиксирует базовые универсальные инварианты: non-empty ordered segments, trim каждого segment, запрет пустых segments и immutable list.
 
-Это не MVP-сокращение и не временная слабая модель. Более строгая canonical path shape допускается только после отдельного ownership-аудита domain hierarchy, чтобы не зашить случайную adapter-shaped, Markdown-shaped или UI-shaped структуру как долгоживущий domain contract.
+Это не MVP-сокращение и не временная слабая модель. Более строгая canonical path shape допускается только после отдельного ownership-аудита domain hierarchy, чтобы не зашить случайную adapter-shaped, source-format-shaped или UI-shaped структуру как долгоживущий domain contract.
 
 ## Принцип engineer-centered top-down design
 
@@ -120,9 +120,19 @@ Registry Studio проектируется сверху вниз от основ
 
 Этот принцип не означает UI-first design.
 
-UI, Markdown, source document structure, runtime adapter, importer или presenter не должны определять domain identity.
+UI, source format, source markup, source document structure, runtime adapter, importer или presenter не должны определять domain identity.
 
-Engineer-centered framing определяет problem boundary; domain model определяет устойчивые contracts, identity, lifecycle, ownership и invariants.
+Source markup, source headings и source lines допускаются только как source evidence/provenance, если конкретный adapter читает registry из документа. Они не являются центром Registry Studio и не определяют domain model.
+
+Engineer-centered framing определяет problem boundary: Registry Studio проектируется как assistant/tool для engineer, который проверяет registry, видит связанные факты, понимает риск и принимает решение.
+
+Рабочий процесс Registry Studio должен рассматриваться глазами engineer: что engineer проверяет, какие факты ему нужны, где он видит рассинхрон, где он принимает решение и что должно быть подтверждено перед изменением registry.
+
+Engineer-centered framing не является основанием создавать view-only entities, visibility wrappers, presenter models или convenience context.
+
+Новая model допускается только если у неё есть собственные invariants, owner, lifecycle и boundary. Сущность ради того, чтобы "что-то показать engineer", запрещена.
+
+Domain model определяет устойчивые contracts, identity, lifecycle, ownership и invariants. Engineer workflow определяет, какие факты должны быть доступны для принятия решения, но не подменяет domain ownership.
 
 ## Принцип responsibility isolation и orchestration boundary
 
@@ -162,15 +172,33 @@ Engineer/user остаётся единственным владельцем sem
 
 ## Translator boundary note
 
-Исторически текущий repository начинался как трехъязычный translator.
+Текущий repository начался с трехъязычного translator, и именно из этой практической задачи появилась идея Registry Studio.
 
-Registry functionality была добавлена поверх translator prototype, что привело к смешению responsibilities и последующему clean rebuild.
+Translator не отклоняется и не считается ненужным legacy.
 
-В новой архитектуре Registry Studio является самостоятельным registry engineering tool.
+Translator является обязательной assistant capability / product add-on для engineer и по product priority стоит сразу после Registry Studio registry engineering workflow.
 
-Translator может быть будущей assistant capability для engineer/user, но не является владельцем registry identity, registry structure, semantic decisions, drift analysis или publication path.
+Причина: для Thailand-oriented projects multilingual registry quality является критичной частью инженерной проверки. Engineer должен иметь инструмент для проверки RU/EN/TH canonical wording, reverse-check, consistency и translation drift.
 
-Детальная translator boundary требует отдельного ownership-аудита и не принимается в рамках текущего clean rebuild шага.
+Translator может помогать engineer:
+
+- проверять канонические формулировки;
+- выполнять multilingual translation / reverse-check;
+- подсвечивать Exact / Equivalent / Needs Review / Canonical Drift / Failed status;
+- объяснять различия между языками;
+- готовить candidate canonical phrases для будущего registry dictionary.
+
+Engineer остаётся владельцем решения: какую формулировку считать канонической, что добавить в registry dictionary, какой drift принять как проблему и когда отправлять изменение в publication path.
+
+Историческим является только факт происхождения идеи и текущее смешение responsibilities в repository. Текущая translator implementation была недостаточно сильной как registry engineering foundation, поэтому Registry Studio вынесен в clean rebuild.
+
+В новой архитектуре Registry Studio остаётся самостоятельным registry engineering tool и assistant для engineer.
+
+Translator не является владельцем registry identity, registry structure, semantic decisions, drift analysis ownership или publication path.
+
+Translator не должен становиться source of truth для Registry Studio Core и не должен протаскивать Helpy-specific prompts, client-rule vocabulary или translation workflow внутрь Core.
+
+Интеграция translator capability с Registry Studio должна пройти отдельный ownership-аудит: owner, boundary, inputs, outputs, lifecycle, registry dictionary interaction и запрет на semantic/publication decisions за engineer.
 
 ## Решение по RegistryEntityKind / RegistryEntityPayload contract boundary
 
@@ -332,7 +360,7 @@ Carried but re-accepted clean primitives:
 
 - `RegistryEntity` переутверждён как typed source-backed registry unit;
 - `SourceEvidence` переутверждён как provenance/source coordinates;
-- `RegistryPath` переутверждён как canonical domain path, не source/Markdown/UI path;
+- `RegistryPath` переутверждён как canonical domain path, не source-format/source-document/UI path;
 - `RegistrySemanticContractIdentity` заменил rejected adapter/runtime naming;
 - `RegistryEntityKind` и `RegistryEntityPayload` переутверждены как semantic contract / kind / schema compatibility boundary.
 
