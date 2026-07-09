@@ -369,3 +369,73 @@ Test fixture не должен скрывать проверяемый invariant
 - в `RegistryEntity` domain tests допустимо вынести только повторяющийся setup: semantic contract, entity kind, payload test implementation и source evidence.
 
 Если test fixture начинает содержать branching logic, скрытые scenario defaults, project-specific vocabulary, runtime lookup, service resolution или неочевидные invalid states, работу нужно остановить и заново провести boundary audit.
+
+
+## Решение по границе `RegistryResolvedRelatedContext`
+
+`RegistryRelatedContext` намеренно хранит не сами связанные `RegistryEntity`, а только их `RegistryEntityId`.
+
+Такого результата достаточно, чтобы показать engineer/user наличие связанных registry мест. Но его недостаточно, чтобы честно оценивать неоднозначность, противоречия, полноту контекста или готовность проверяемого engineering context.
+
+Следующая ответственность application-слоя называется `PrepareRegistryResolvedRelatedContext`.
+
+Результат этой ответственности называется `RegistryResolvedRelatedContext`.
+
+`RegistryResolvedRelatedContext` является результатом application-слоя только для чтения.
+
+Он не является:
+
+- доменной примитивой;
+- результатом repository или store;
+- graph;
+- analyzer;
+- finding;
+- review context;
+- presenter;
+- view model;
+- mutation command.
+
+Назначение `RegistryResolvedRelatedContext` — показать engineer/user:
+
+- какие связанные ids из `RegistryRelatedContext` уже представлены source-backed `RegistryEntity`;
+- какие связанные ids пока не представлены entity и остаются отсутствующими в текущем контексте.
+
+`RegistryResolvedRelatedContext` должен содержать:
+
+- base `RegistryRelatedContext`;
+- связанные `RegistryEntity`, уже переданные вызывающей стороной;
+- связанные `RegistryEntityId`, для которых entity в текущем контексте отсутствует.
+
+`RegistryResolvedRelatedContext` не должен сам искать, загружать или получать registry entities.
+
+`RegistryResolvedRelatedContext` не должен принимать infrastructure, repository, store, runtime adapter или service resolution dependencies.
+
+`PrepareRegistryResolvedRelatedContext` может принимать только:
+
+- base `RegistryRelatedContext`;
+- связанные `RegistryEntity`, уже доступные вызывающей стороне.
+
+`PrepareRegistryResolvedRelatedContext` не должен:
+
+- искать или загружать registry entities;
+- выполнять graph traversal;
+- выполнять drift analysis;
+- создавать findings;
+- принимать review decisions;
+- принимать publication decisions;
+- изменять registry.
+
+Минимальные invariants `RegistryResolvedRelatedContext`:
+
+- каждый resolved related entity должен иметь id, который присутствует в `base.relatedEntityIds`;
+- resolved related entities не должны включать `base.primary`;
+- отсутствующие related ids должны выводиться из `base.relatedEntityIds` после исключения ids переданных related entities;
+- collections внутри результата должны быть immutable.
+
+`RegistryResolvedRelatedContext` сам по себе не решает ambiguity, contradiction или drift. Он только подготавливает source-backed related facts для будущей context assessment responsibility, которая должна пройти отдельный ownership-аудит.
+
+`RegistryHydratedRelatedContext` отклоняется как имя, потому что оно преждевременно тянет инфраструктурную семантику загрузки данных.
+
+`RegistryVerifiedContext` отклоняется как имя, потому что оно слишком широкое и преждевременно заявляет готовый verified decision context.
+
+`RegistryContextAssessment` откладывается, потому что assessment должен выполняться только после подготовки source-backed related facts.
