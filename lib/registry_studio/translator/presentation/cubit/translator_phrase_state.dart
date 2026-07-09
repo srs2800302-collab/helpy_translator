@@ -23,9 +23,8 @@ final class TranslatorPhraseState extends Equatable {
       result = null,
       errorMessage = '';
 
-  const TranslatorPhraseState.success({required TranslatorPhraseResult result})
+  const TranslatorPhraseState.success({required this.result})
     : status = TranslatorPhrasePresentationStatus.success,
-      result = result,
       errorMessage = '';
 
   const TranslatorPhraseState._({
