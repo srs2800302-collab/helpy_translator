@@ -5103,3 +5103,62 @@ Revision immutable.
 - создавать revision use case;
 - менять operation workspace;
 - создавать persistence.
+
+## Contract revision workingContent
+
+Утверждён минимальный contract рабочего содержания `RegistryEngineeringOperationRevision`.
+
+Каждая revision должна принимать обязательный явный:
+
+- `String workingContent`.
+
+Это правило действует для:
+
+- первой revision;
+- каждой последующей revision.
+
+`workingContent` не создаётся автоматически из `RegistryEngineeringOperation.problemStatement`.
+
+Причина:
+
+- `problemStatement` и `workingContent` имеют разные responsibilities;
+- `problemStatement` фиксирует исходную причину открытия operation;
+- `workingContent` фиксирует полную рабочую версию конкретной revision;
+- первая рабочая версия может отличаться от исходной формулировки проблемы;
+- Core не должен угадывать или неявно создавать содержание revision.
+
+Если первая revision должна повторять исходную формулировку, вызывающая сторона передаёт это значение явно.
+
+Domain invariant revision:
+
+- `workingContent` нормализуется через `trim()`;
+- пустое значение запрещено;
+- значение, содержащее только пробелы, запрещено;
+- после создания revision `workingContent` immutable.
+
+Отдельный value object для `workingContent` не вводится.
+
+Причина:
+
+- на текущем этапе самостоятельные domain facts и invariants сверх normalization и non-empty validation отсутствуют;
+- отдельный wrapper только повторил бы проверку `String`;
+- thin wrapper не создаёт нового владельца ответственности.
+
+Validation `workingContent` принадлежит factory или constructor `RegistryEngineeringOperationRevision`.
+
+На текущем этапе запрещено:
+
+- автоматически копировать `problemStatement` в первую revision;
+- делать `workingContent` optional;
+- подставлять default content;
+- хранить только diff;
+- создавать `RegistryEngineeringOperationWorkingContent` value object;
+- добавлять revision behavior в `RegistryEngineeringOperation`;
+- создавать use case, persistence или presentation flow до завершения минимального revision contract audit.
+
+Следующий аудит должен определить:
+
+- `RegistryEngineeringOperationRevisionId`;
+- representation порядка revisions;
+- representation lineage;
+- минимальный revision-level Registry context contract.
