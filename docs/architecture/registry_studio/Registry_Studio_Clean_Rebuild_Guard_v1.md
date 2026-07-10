@@ -3721,3 +3721,40 @@ Dependency direction:
 - текущий подход, где `RegistryStudioApp` переводит только top-level labels, недостаточен;
 - следующий code step должен сделать UI-язык общей presentation boundary для подключённых экранов;
 - code step нельзя коммитить, пока подключённые экраны остаются RU-only.
+
+## Build APK # registry studio multilingual app shell success
+
+После commit `ae77533 feat: add registry studio multilingual app shell` GitHub Actions сначала выявил нестабильность одного widget test в `RegistryStudioApp`.
+
+Исправляющие test-only commits:
+
+- `e29b0b4 test: stabilize registry studio app shell test`;
+- `24090c3 test: increase registry studio app shell viewport`.
+
+Финальная проверка GitHub Actions:
+
+- workflow: `Build APK`;
+- run: `29065196479`;
+- job: `86275136378`;
+- branch: `registry-studio/clean-rebuild`;
+- head commit: `24090c3`;
+- conclusion: `success`;
+- artifact: `helpy-translator-debug-apk`.
+
+Проверка подтверждает:
+
+- `Analyze` прошёл успешно;
+- `Test` прошёл успешно;
+- debug APK собран успешно;
+- artifact `helpy-translator-debug-apk` загружен успешно.
+
+Закрытый результат code step:
+
+- `RegistryStudioApp` заменил старый `RegistryStudioTranslatorApp`;
+- UI-язык Registry Studio вынесен в presentation-level boundary;
+- поддержаны RU, EN и TH;
+- выбранный UI-язык передаётся в `TranslatorPhraseScreen`;
+- выбранный UI-язык передаётся в `RegistryEngineeringOperationCreationScreen`;
+- Translator capability не владеет UI-языком;
+- Core не владеет UI-языком;
+- старый translator-only app shell удалён.
