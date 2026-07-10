@@ -90,6 +90,8 @@ final class _RegistryEngineeringOperationCreationScreenState
         _createdOperation = operation;
         _errorMessage = null;
       });
+
+      widget.onOperationCreated?.call(operation);
     } on ArgumentError catch (error) {
       setState(() {
         _createdOperation = null;
