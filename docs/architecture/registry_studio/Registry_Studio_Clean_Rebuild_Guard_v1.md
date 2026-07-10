@@ -4935,3 +4935,99 @@ Code step зафиксирован commit `277238f feat: add guard record presen
 - как revision связывается с primary и related Registry entities;
 - какие поля относятся к рабочему содержанию, а какие к audit metadata;
 - что остаётся за пределами persistence и presentation.
+
+## Ownership-решение RegistryEngineeringOperationRevision
+
+Existing-fit audit подтвердил, что существующие contracts не могут корректно владеть revision инженерной работы.
+
+`RegistryEngineeringOperation` не является владельцем revisions.
+
+Причина: entity остаётся immutable lifecycle snapshot и отвечает за stable operation identity, lifecycle status и исходную формулировку инженерной проблемы. Она не должна становиться контейнером истории, lineage, Registry context или audit package.
+
+`RegistryEngineeringOperationWorkspaceScreen` не является владельцем revisions.
+
+Причина: workspace владеет только временным in-memory presentation state текущего UI-сеанса. История инженерной работы должна сохраняться после закрытия экрана и приложения.
+
+`RegistryRelatedContext` и `RegistryResolvedRelatedContext` не являются владельцами revisions.
+
+Причина: это read-only application results, описывающие подготовленный Registry context, а не самостоятельную версию инженерной работы.
+
+Утверждён новый самостоятельный Core domain owner:
+
+- production name: `RegistryEngineeringOperationRevision`;
+- classification: domain entity;
+- boundary: `registry_studio/core/domain`;
+- responsibility: одна полная immutable рабочая версия одной инженерной операции.
+
+`RegistryEngineeringOperationRevision` должна иметь:
+
+- собственную stable identity;
+- принадлежность одной `RegistryEngineeringOperationId`;
+- полное актуальное рабочее содержание конкретной версии;
+- место в последовательности revisions;
+- проверяемую lineage-связь с предыдущей revision, когда предыдущая revision существует;
+- revision-level связи с Registry entities, к которым относилась именно эта версия.
+
+Revision является entity, а не value object.
+
+Две revisions могут иметь одинаковое рабочее содержание, но оставаться разными этапами инженерной работы. Их equality должна определяться собственной revision identity.
+
+Revision immutable.
+
+Изменение инженерной работы выполняется созданием новой revision. Уже существующая revision не изменяется и не удаляется как способ редактирования текущей работы.
+
+Новая revision может:
+
+- заменить предыдущую;
+- дополнить предыдущую;
+- расширить частное решение до более универсального;
+- изменить относящийся к версии Registry context.
+
+Утверждение этой entity не означает введение полного Event Sourcing.
+
+На текущем этапе в responsibility `RegistryEngineeringOperationRevision` не входят:
+
+- lifecycle status самой `RegistryEngineeringOperation`;
+- persistence;
+- repository или store;
+- serialization;
+- database schema;
+- presentation state;
+- navigation;
+- assessment;
+- ambiguity, contradiction или drift detection;
+- approval;
+- publication;
+- audit package;
+- workflow orchestration;
+- автоматическое semantic decision.
+
+На текущем этапе ещё не утверждены:
+
+- имя и contract revision identity value object;
+- формат revision identity;
+- точные поля полного рабочего содержания;
+- представление порядка revisions;
+- точное представление lineage;
+- отдельный тип связи replace/extend либо отсутствие такого типа;
+- форма primary и related Registry entity links;
+- необходимость timestamps;
+- необходимость author identity;
+- use case создания revision;
+- use case выбора актуальной revision;
+- persistence owner;
+- presentation flow.
+
+Следующий шаг должен быть узким ownership-аудитом минимального domain contract `RegistryEngineeringOperationRevision`.
+
+До завершения этого аудита запрещено:
+
+- создавать production-класс revision;
+- создавать revision identity value object;
+- добавлять revision fields в `RegistryEngineeringOperation`;
+- добавлять revisions в operation workspace;
+- создавать repository/store/persistence;
+- создавать history manager, orchestrator, facade или locator;
+- создавать application use case;
+- создавать presentation screen;
+- создавать audit package.
