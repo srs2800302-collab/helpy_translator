@@ -30,3 +30,4 @@ flutter:
 
   assets:
     - .env
+    - docs/architecture/registry_studio/Registry_Studio_Clean_Rebuild_Guard_v1.md
