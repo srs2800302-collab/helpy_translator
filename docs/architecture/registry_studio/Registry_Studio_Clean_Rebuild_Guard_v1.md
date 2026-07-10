@@ -4630,3 +4630,164 @@ Contract-specific adapter boundary является возможным future ow
 - source-backed related context input owner пока отсутствует;
 - direct code step после этого audit не разрешён;
 - следующий безопасный шаг — отдельный ownership-аудит source intake / registry graph read model.
+
+## Ownership-аудит source intake и registry graph read model
+
+После отклонения shortcut owner-а для source-backed related context inputs выполнен аудит следующей возможной границы: приём источника и read-only модель чтения registry graph.
+
+Проверенные candidates:
+
+- `Core`;
+- `RegistryEntity`;
+- `RegistryRelation`;
+- `SourceEvidence`;
+- `RegistryEntityPayload`;
+- `RegistryRelatedContextPreparationScreen`;
+- `RegistryEngineeringOperationWorkspaceScreen`;
+- `RegistryStudioApp`;
+- `lib/main.dart`;
+- generic source intake;
+- generic parser;
+- generic analyzer;
+- service locator / resolver / catalog;
+- repository/store/persistence;
+- registry graph read model;
+- contract-specific source intake boundary;
+- contract-specific payload construction boundary.
+
+`Core` не должен становиться owner-ом source intake.
+
+Причина: `Core` остаётся product-neutral. Он задаёт универсальные invariants для `RegistryEntity`, `RegistryRelation`, `SourceEvidence`, `RegistryPath`, semantic contract identity и application results, но не знает конкретные source documents, payload fields, adapter vocabulary или правила построения relation graph.
+
+`RegistryEntity` не является source intake boundary.
+
+Причина: `RegistryEntity` представляет уже созданный source-backed registry unit. Он не читает source, не создаёт payload, не выбирает contract-specific mapping и не строит relation graph.
+
+`RegistryRelation` не является graph read model.
+
+Причина: `RegistryRelation` представляет одну связь между двумя entity. Он не владеет collection lifecycle, indexing, source freshness, primary selection или available related entity set.
+
+`SourceEvidence` не является intake engine.
+
+Причина: `SourceEvidence` фиксирует provenance/source coordinates уже созданного факта. Он не читает документ, не парсит source, не создаёт payload и не принимает semantic decisions.
+
+`RegistryEntityPayload` не должен превращаться в generic payload container.
+
+Причина: payload остаётся compatibility boundary. Concrete payload fields должны принадлежать contract-specific boundary, а не универсальному Core.
+
+`RegistryRelatedContextPreparationScreen` не должен создавать source-backed registry graph.
+
+Причина: screen утверждён как isolated presentation consumer. Он получает primary entity, relations и available related entities извне. Если он начнёт создавать эти inputs, он станет source intake и fake/manual seed generator.
+
+`RegistryEngineeringOperationWorkspaceScreen` не должен становиться graph workspace.
+
+Причина: workspace сейчас владеет только nullable current `RegistryEngineeringOperation`. Добавление graph ownership расширит его до workflow container.
+
+`RegistryStudioApp` и `lib/main.dart` не должны создавать source-backed graph.
+
+Причина: app shell и runtime composition не владеют source documents, payload construction, relation construction или graph lifecycle. Создание graph там станет hidden seed/demo data.
+
+Generic source intake отклоняется.
+
+Причина: универсальный intake без contract-specific payload knowledge либо станет generic parser/analyzer, либо будет создавать слабые generic payloads без semantic ownership.
+
+Generic parser отклоняется.
+
+Причина: parser сам по себе не знает semantic contract, entity kind, payload schema, relation meaning или business boundary. Такой parser станет технической shortcut-абстракцией без доменного owner-а.
+
+Generic analyzer отклоняется.
+
+Причина: analyzer начнёт принимать semantic decisions за contract-specific boundary и нарушит правило, что engineer/user остаётся владельцем ambiguity resolution, canonicalization decision и publication control.
+
+Service locator / resolver / catalog отклоняются.
+
+Причина: выбор contract-specific intake implementation через locator/catalog создаст скрытую runtime execution boundary и вернёт запрещённый generic orchestration shape.
+
+Repository/store/persistence не вводятся.
+
+Причина: текущий аудит не закрывает durable storage, сохранённые registry snapshots, invalidation, source freshness, multi-session lifecycle или восстановление graph state. Введение repository/store сейчас преждевременно.
+
+Registry graph read model не может быть первым owner-ом source-backed inputs.
+
+Причина: read model может организовать уже созданные `RegistryEntity` и `RegistryRelation`, но не должен сам создавать concrete payloads или решать contract-specific source mapping. Если read model появится раньше source intake, он станет container-ом для fake/manual data.
+
+Contract-specific source intake boundary является правильным направлением, но не утверждается как code step в этом аудите.
+
+Причина: до кода нужно отдельно определить конкретный semantic contract, concrete payload types, source input shape, relation construction rules и provenance mapping.
+
+Contract-specific payload construction boundary является обязательной частью будущего source intake.
+
+Причина: только contract-specific boundary может знать payload fields и schema compatibility. Core не должен интерпретировать payload content.
+
+Правильное разделение будущих responsibilities:
+
+- contract-specific source intake создаёт source-backed `RegistryEntity`;
+- contract-specific source intake создаёт source-backed `RegistryRelation`;
+- contract-specific source intake создаёт concrete `RegistryEntityPayload`;
+- `SourceEvidence` остаётся обязательным provenance для созданных facts;
+- registry graph read model может позже принять уже созданные entities/relations;
+- read model может позже дать primary selection и available related entity set;
+- related context preparation остаётся consumer-ом already available facts.
+
+Нельзя объединять в один объект:
+
+- source intake;
+- graph read model;
+- operation workspace;
+- related context preparation;
+- assessment;
+- audit package;
+- mutation;
+- publication.
+
+Вывод existing-fit audit:
+
+- текущий `Core` достаточен для хранения source-backed facts после их создания;
+- текущий `Core` не должен получать generic source intake;
+- current presentation не должна расширяться;
+- graph read model без source intake преждевременен;
+- repository/store/persistence преждевременны;
+- следующий code step не разрешён.
+
+Следующий допустимый аудит:
+
+- contract-specific source intake boundary.
+
+Этот аудит должен решить:
+
+- какой semantic contract первым получает concrete source intake;
+- какие concrete payload types нужны;
+- где живут эти payload types;
+- какой source input shape используется;
+- как source input превращается в `RegistryEntity`;
+- как source input превращается в `RegistryRelation`;
+- как создаётся `SourceEvidence`;
+- кто владеет relation meaning;
+- почему boundary read-only;
+- почему boundary не выполняет assessment;
+- почему boundary не выполняет registry mutation;
+- почему boundary не выполняет approval или publication;
+- почему boundary не является generic parser/analyzer/service locator.
+
+Запрещено до отдельного ownership-аудита contract-specific source intake:
+
+- писать код source intake;
+- писать код registry graph read model;
+- подключать `RegistryRelatedContextPreparationScreen` к runtime;
+- менять `RegistryStudioApp`;
+- менять `RegistryEngineeringOperationWorkspaceScreen`;
+- менять `lib/main.dart`;
+- создавать generic parser/analyzer/resolver/catalog;
+- создавать repository/store/persistence;
+- создавать fake/demo/seed production registry entities;
+- создавать generic payload container;
+- создавать operation attachment;
+- создавать readiness marker/getter;
+- создавать assessment или audit package;
+- выполнять registry mutation, approval или publication.
+
+Вывод:
+
+- source intake и registry graph read model не утверждаются как текущий code step;
+- следующий безопасный шаг — отдельный ownership-аудит contract-specific source intake boundary;
+- код после этого аудита не разрешён.
