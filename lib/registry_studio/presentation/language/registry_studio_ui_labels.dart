@@ -9,6 +9,7 @@ final class RegistryStudioUiLabels {
     required this.translatorPhrase,
     required this.operationCreation,
     required this.operationStatusTransition,
+    required this.relatedContextPreparation,
   });
 
   factory RegistryStudioUiLabels.forLanguage(
@@ -60,6 +61,23 @@ final class RegistryStudioUiLabels {
               transitionedTitle: 'Статус изменён',
               transitionFailedTitle: 'Ошибка смены статуса',
             ),
+        relatedContextPreparation:
+            RegistryStudioRelatedContextPreparationLabels(
+              title: 'Подготовка related context',
+              primaryEntityTitle: 'Primary entity',
+              relatedContextTitle: 'Related context подготовлен',
+              resolvedContextTitle: 'Resolved related context подготовлен',
+              prepareButton: 'Подготовить context',
+              primaryEntityLabel: 'Primary entity ID',
+              pathLabel: 'Path',
+              kindLabel: 'Kind',
+              matchedRelationsLabel: 'Matched relations',
+              relatedEntityIdsLabel: 'Related entity ids',
+              resolvedRelatedEntitiesLabel: 'Resolved related entities',
+              missingRelatedEntityIdsLabel: 'Missing related entity ids',
+              noItemsLabel: 'Нет данных',
+              preparationFailedTitle: 'Ошибка подготовки context',
+            ),
       ),
       RegistryStudioUiLanguage.en => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
@@ -105,6 +123,23 @@ final class RegistryStudioUiLabels {
               transitionButton: 'Change status',
               transitionedTitle: 'Status changed',
               transitionFailedTitle: 'Status transition error',
+            ),
+        relatedContextPreparation:
+            RegistryStudioRelatedContextPreparationLabels(
+              title: 'Prepare related context',
+              primaryEntityTitle: 'Primary entity',
+              relatedContextTitle: 'Related context prepared',
+              resolvedContextTitle: 'Resolved related context prepared',
+              prepareButton: 'Prepare context',
+              primaryEntityLabel: 'Primary entity ID',
+              pathLabel: 'Path',
+              kindLabel: 'Kind',
+              matchedRelationsLabel: 'Matched relations',
+              relatedEntityIdsLabel: 'Related entity ids',
+              resolvedRelatedEntitiesLabel: 'Resolved related entities',
+              missingRelatedEntityIdsLabel: 'Missing related entity ids',
+              noItemsLabel: 'No items',
+              preparationFailedTitle: 'Context preparation error',
             ),
       ),
       RegistryStudioUiLanguage.th => const RegistryStudioUiLabels(
@@ -152,6 +187,23 @@ final class RegistryStudioUiLabels {
               transitionedTitle: 'เปลี่ยนสถานะแล้ว',
               transitionFailedTitle: 'ข้อผิดพลาดในการเปลี่ยนสถานะ',
             ),
+        relatedContextPreparation:
+            RegistryStudioRelatedContextPreparationLabels(
+              title: 'เตรียม related context',
+              primaryEntityTitle: 'Primary entity',
+              relatedContextTitle: 'เตรียม related context แล้ว',
+              resolvedContextTitle: 'เตรียม resolved related context แล้ว',
+              prepareButton: 'เตรียม context',
+              primaryEntityLabel: 'รหัส primary entity',
+              pathLabel: 'Path',
+              kindLabel: 'Kind',
+              matchedRelationsLabel: 'Matched relations',
+              relatedEntityIdsLabel: 'Related entity ids',
+              resolvedRelatedEntitiesLabel: 'Resolved related entities',
+              missingRelatedEntityIdsLabel: 'Missing related entity ids',
+              noItemsLabel: 'ไม่มีข้อมูล',
+              preparationFailedTitle: 'ข้อผิดพลาดในการเตรียม context',
+            ),
       ),
     };
   }
@@ -163,6 +215,7 @@ final class RegistryStudioUiLabels {
   final RegistryStudioTranslatorPhraseLabels translatorPhrase;
   final RegistryStudioOperationCreationLabels operationCreation;
   final RegistryStudioOperationStatusTransitionLabels operationStatusTransition;
+  final RegistryStudioRelatedContextPreparationLabels relatedContextPreparation;
 }
 
 final class RegistryStudioTranslatorPhraseLabels {
@@ -247,4 +300,38 @@ final class RegistryStudioOperationStatusTransitionLabels {
   final String transitionButton;
   final String transitionedTitle;
   final String transitionFailedTitle;
+}
+
+final class RegistryStudioRelatedContextPreparationLabels {
+  const RegistryStudioRelatedContextPreparationLabels({
+    required this.title,
+    required this.primaryEntityTitle,
+    required this.relatedContextTitle,
+    required this.resolvedContextTitle,
+    required this.prepareButton,
+    required this.primaryEntityLabel,
+    required this.pathLabel,
+    required this.kindLabel,
+    required this.matchedRelationsLabel,
+    required this.relatedEntityIdsLabel,
+    required this.resolvedRelatedEntitiesLabel,
+    required this.missingRelatedEntityIdsLabel,
+    required this.noItemsLabel,
+    required this.preparationFailedTitle,
+  });
+
+  final String title;
+  final String primaryEntityTitle;
+  final String relatedContextTitle;
+  final String resolvedContextTitle;
+  final String prepareButton;
+  final String primaryEntityLabel;
+  final String pathLabel;
+  final String kindLabel;
+  final String matchedRelationsLabel;
+  final String relatedEntityIdsLabel;
+  final String resolvedRelatedEntitiesLabel;
+  final String missingRelatedEntityIdsLabel;
+  final String noItemsLabel;
+  final String preparationFailedTitle;
 }
