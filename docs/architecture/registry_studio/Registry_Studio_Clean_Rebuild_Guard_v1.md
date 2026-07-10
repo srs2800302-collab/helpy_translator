@@ -3204,3 +3204,66 @@ Workflow warning status:
 - следующий code step должен добавить `RegistryStudioTranslatorApp`;
 - следующий code step не должен создавать Registry workflow, mutation, approval или publication path;
 - следующий code step не должен возвращать legacy Translator runtime.
+
+## Контрольная точка clean runtime composition CI
+
+Clean runtime composition подключён и подтверждён через GitHub Actions.
+
+Коммиты:
+
+- `28b5e20 feat: wire clean translator runtime composition`;
+- `6bf0bb6 test: stabilize clean translator app wiring test`.
+
+CI run:
+
+- workflow: `build-apk.yml`;
+- GitHub Actions title: `Build APK`;
+- run: `29059514146`;
+- job: `86258069547`;
+- branch: `registry-studio/clean-rebuild`;
+- head: `6bf0bb6`;
+- status: `Success`;
+- duration: `5m45s`;
+- artifact: `helpy-translator-debug-apk`.
+
+Что подтверждено:
+
+- `flutter analyze` прошёл;
+- `flutter test` прошёл;
+- `flutter build apk --debug` прошёл;
+- `Upload APK` прошёл;
+- debug APK artifact создан.
+
+Архитектурное состояние:
+
+- временная `lib/main.dart` заглушка заменена на clean runtime composition;
+- `RegistryStudioTranslatorApp` добавлен как малый Flutter app shell;
+- `TranslatorPhraseScreen` открывается через clean dependency graph;
+- `TranslatorPhraseCubit` создаётся в app shell через `BlocProvider`;
+- `TranslatePhrase` создаётся в runtime composition;
+- `TyphoonTranslatorPhraseProvider` создаётся в runtime composition;
+- `AppConfig` остаётся Typhoon-only;
+- `ApiClient` остаётся infrastructure client;
+- `Core` не зависит от `Translator`;
+- clean `Translator` не импортирует legacy runtime.
+
+Что не появилось:
+
+- legacy `features/translator`;
+- старый `TranslatorPage`;
+- старый `TranslatorCubit`;
+- старый `TranslatorRepository`;
+- старый `RegistryNode`;
+- Registry tree loading;
+- operation attachment;
+- audit package;
+- mutation path;
+- approval path;
+- publication path;
+- old persistence/background execution.
+
+Вывод:
+
+- clean runtime composition закрыт;
+- APK теперь открывает clean Translator runtime вместо временной заглушки;
+- следующий шаг должен снова начинаться с ownership-аудита, а не с расширения runtime по инерции.
