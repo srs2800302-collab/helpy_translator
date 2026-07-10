@@ -345,52 +345,107 @@ Legacy `lib/features/translator` можно использовать тольк�
 
 Текущий закрытый commit:
 
-- `cac4461 feat: add typhoon translator phrase provider`
+- `c751236 docs: record operation workspace ci success`
 
-До него закрыты:
+Закрытая рабочая цепочка operation workspace:
 
-- `14a6d2b docs: define translator infrastructure provider ownership`;
-- `dbdeec8 docs: record translator phrase use case implementation`;
-- `76da30c feat: add translator phrase use case boundary`;
-- `d977ae0 docs: define translator use case boundary ownership`;
-- `81a8fa9 docs: define translator provider boundary ownership`;
-- `6965024 docs: record translator phrase result implementation`;
-- `7d69068 feat: add translator phrase result model`.
+- `57c3dd3 feat: add operation workspace presentation flow`;
+- `3ee27ad test: stabilize operation workspace creation taps`;
+- `68abc6a fix: emit operation creation callback`;
+- `c751236 docs: record operation workspace ci success`.
+
+Последний подтверждённый CI:
+
+- workflow: `Build APK`;
+- run: `29069179505`;
+- job: `86286996069`;
+- branch: `registry-studio/clean-rebuild`;
+- head commit: `68abc6a`;
+- conclusion: `success`;
+- artifact: `helpy-translator-debug-apk`.
+
+Закрытый результат:
+
+- clean runtime composition подключён;
+- Registry Studio app shell подключён;
+- UI language RU/EN/TH вынесен в presentation-level state;
+- operation creation screen реализован;
+- operation status transition screen реализован;
+- operation workspace реализован как отдельная presentation boundary;
+- selected/current `RegistryEngineeringOperation` живёт только внутри operation workspace;
+- `RegistryStudioApp` не хранит selected/current operation;
+- `lib/main.dart` не создаёт operation;
+- Core operation entity/use cases/status/id не менялись;
+- repository/store/persistence/routing/Cubit/Bloc не вводились;
+- readiness, related context inspection, assessment, audit package, mutation, approval и publication не добавлялись.
 
 ---
 
 ## 13. Что сейчас ещё не закрыто
 
-После реализации `TyphoonTranslatorPhraseProvider` нужен отдельный docs checkpoint в Guard.
+После закрытия operation workspace ещё не закрыты:
 
-Нельзя сразу переходить к runtime wiring.
+- presentation consumer для `PrepareRegistryRelatedContext`;
+- presentation consumer для `PrepareRegistryResolvedRelatedContext`;
+- owner primary `RegistryEntity` selection;
+- owner relation source;
+- owner available related entities;
+- runtime connection related context к workspace;
+- operation attachment;
+- readiness marker/getter;
+- semantic assessment;
+- verified audit package;
+- registry mutation;
+- approval;
+- publication;
+- persistence/store/repository.
 
-Причина:
+Важно: existing Core related context contracts уже есть, но они не являются UI, presenter, view model или workflow container.
 
-- wiring создаёт новую responsibility;
-- wiring может вернуть legacy bootstrap shape;
-- wiring может случайно связать Translator с old repository/data source;
-- wiring может затронуть `main.dart`;
-- wiring может превратиться в composition/root ownership decision.
+`RegistryEngineeringOperationWorkspaceScreen` сейчас не должен расширяться до related context workflow без отдельного ownership-аудита.
 
 ---
 
 ## 14. Следующий правильный шаг
 
-Следующий шаг:
+Следующий шаг: отдельный docs-only ownership-аудит в Guard для related context presentation consumer.
 
-1. Зафиксировать в Guard checkpoint реализации `TyphoonTranslatorPhraseProvider`.
+Этот audit должен решить:
 
-После этого отдельно провести ownership-аудит runtime wiring:
+- достаточно ли существующих Core contracts;
+- почему Core менять не нужно;
+- почему `RegistryEngineeringOperationWorkspaceScreen` нельзя расширять прямо сейчас;
+- почему `RegistryStudioApp` и `lib/main.dart` нельзя трогать;
+- почему runtime connection ещё преждевременен;
+- какой isolated presentation consumer допустим;
+- какие inputs этот consumer получает извне;
+- почему он не создаёт fake/demo/seed registry entities;
+- почему он не делает readiness, assessment или audit package.
 
-- где создаётся `TyphoonTranslatorPhraseProvider`;
-- кто создаёт `TranslatePhrase`;
-- является ли wiring частью current app bootstrap;
-- нужна ли отдельная Registry Studio composition boundary;
-- почему wiring не возвращает `TranslatorRepository`;
-- почему wiring не подключает registry loading;
-- почему wiring не создаёт operation attachment;
-- почему wiring не создаёт mutation/approval/publication path.
+Вероятный безопасный следующий code step после такого audit:
+
+- isolated `RegistryRelatedContextPreparationScreen`.
+
+Этот screen может только:
+
+- получать `RegistryStudioUiLanguage` извне;
+- получать primary `RegistryEntity` извне;
+- получать `Iterable<RegistryRelation>` извне;
+- получать available related `Iterable<RegistryEntity>` извне;
+- получать `PrepareRegistryRelatedContext` извне;
+- получать `PrepareRegistryResolvedRelatedContext` извне;
+- показывать related/resolved/missing facts;
+- показывать presentation error.
+
+Этот screen не должен:
+
+- подключаться к runtime app shell;
+- подключаться к operation workspace;
+- attach-ить context к operation;
+- вычислять readiness;
+- выполнять assessment;
+- создавать audit package;
+- выполнять mutation, approval или publication.
 
 ---
 
