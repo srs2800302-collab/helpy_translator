@@ -126,7 +126,12 @@ void main() {
         find.byType(EditableText).first,
         'Проверить формулировку.',
       );
-      await tester.tap(find.text('Перевести'));
+      await tester.ensureVisible(
+        find.byKey(const Key('translator_phrase_translate_button')),
+      );
+      await tester.tap(
+        find.byKey(const Key('translator_phrase_translate_button')),
+      );
       await tester.pump();
       await tester.pump();
 
