@@ -4458,6 +4458,54 @@ Repository/store/persistence не вводятся в этом step.
 
 ## Ownership-аудит semantic source input для Registry Studio Guard record
 
+Первая concrete Guard source declaration явно предоставляет semantic facts. Source coordinates и snapshot fingerprint остаются provenance и принадлежат concrete adapter.
+
+<!-- registry-studio-guard-record:v1
+{
+  "entityId": "registry_studio.guard.source_contract_foundation",
+  "path": [
+    "registry_studio",
+    "guard",
+    "source_contract_foundation"
+  ],
+  "recordType": "ownershipAudit",
+  "heading": "Ownership-аудит semantic source input для Registry Studio Guard record",
+  "summary": "Текущий Core foundation полностью выражает минимальный semantic source contract Guard record; отдельная source-input model не требуется.",
+  "relations": []
+}
+-->
+
+### Concrete Guard source declaration contract
+
+`registry-studio-guard-record:v1` является concrete infrastructure annotation внутри Guard source document.
+
+Annotation явно предоставляет:
+
+- `entityId`;
+- canonical `path`;
+- `recordType`;
+- `heading`;
+- `summary`;
+- explicit `relations`.
+
+Она не является новой domain model и не заменяет существующие Core contracts.
+
+Ownership:
+
+- Guard document владеет явно записанными semantic facts;
+- concrete adapter владеет только чтением annotation и созданием `SourceEvidence`;
+- существующие Core contracts сохраняют собственные invariants.
+
+Adapter обязан:
+
+- использовать значения annotation без semantic inference;
+- создавать source coordinates только как provenance;
+- отклонять неполную или неизвестную declaration;
+- не выводить identity, canonical path или relations из Markdown structure.
+
+Одна declaration представляет один `RegistryEntity` и ноль или более явно объявленных `RegistryRelation`.
+
+
 После добавления первого concrete payload и удаления лишнего entity wrapper выполнен аудит владельца source-backed input для `Registry Studio Guard record`.
 
 Фактическое состояние:
