@@ -3385,3 +3385,75 @@ Dependency direction:
 - следующий code step должен использовать существующий `CreateRegistryEngineeringOperation`;
 - следующий code step не должен создавать новую domain/application model;
 - следующий code step не должен подключать screen в runtime.
+
+## Контрольная точка экрана создания инженерной операции
+
+Экран создания `RegistryEngineeringOperation` реализован и подтверждён через GitHub Actions.
+
+Связанные коммиты:
+
+- `c0b6623 docs: define operation creation presentation ownership`;
+- `bb57a5a feat: add registry operation creation screen`.
+
+Подтверждение CI:
+
+- workflow: `build-apk.yml`;
+- название workflow: `Build APK`;
+- run: `29061446439`;
+- job: `86263991599`;
+- branch: `registry-studio/clean-rebuild`;
+- head: `bb57a5a`;
+- результат: `Success`;
+- длительность: `5m7s`;
+- artifact: `helpy-translator-debug-apk`.
+
+CI подтвердил:
+
+- `flutter analyze` прошёл;
+- `flutter test` прошёл;
+- `flutter build apk --debug` прошёл;
+- загрузка artifact прошла;
+- artifact debug APK создан.
+
+Реализованные файлы:
+
+- экран: `lib/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart`;
+- тест: `test/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen_test.dart`.
+
+Закрытая ответственность экрана:
+
+- экран изолирован от среды выполнения и использует существующий `CreateRegistryEngineeringOperation`;
+- инженер вручную вводит `RegistryEngineeringOperationId`;
+- инженер вручную вводит `problemStatement`;
+- экран создаёт только временный объект `RegistryEngineeringOperation` в памяти;
+- экран показывает id операции;
+- экран показывает нормализованный problem statement;
+- экран показывает начальный status `open`;
+- экран показывает ошибку отображения при пустом id;
+- экран показывает ошибку отображения при пустом problem statement.
+
+Подтверждённые запреты:
+
+- новая domain entity не создана;
+- новая application model не создана;
+- Cubit/Bloc не создан;
+- repository/store/persistence не созданы;
+- id generator/uuid service не созданы;
+- routing/navigation не созданы;
+- подключение к среде выполнения не добавлено;
+- `main.dart` не изменён;
+- `RegistryStudioTranslatorApp` не изменён;
+- Translator не импортирован;
+- Typhoon не импортирован;
+- `AppConfig` не импортирован;
+- `ApiClient` не импортирован;
+- загрузка Registry tree не создана;
+- mutation path не создан;
+- approval path не создан;
+- publication path не создан.
+
+Вывод:
+
+- экран создания инженерной операции закрыт как первый изолированный слой отображения;
+- следующий шаг снова должен начинаться с аудита соответствия существующему контракту и ownership-аудита;
+- экран нельзя подключать к среде выполнения без отдельного ownership-аудита.
