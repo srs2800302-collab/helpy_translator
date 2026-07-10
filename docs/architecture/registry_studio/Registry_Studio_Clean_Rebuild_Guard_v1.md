@@ -4879,3 +4879,5 @@ Code step зафиксирован commit `277238f feat: add guard record presen
 Дополнительные revision id, working content, attachment, lineage, history, snapshot и context contracts не создаются.
 
 Если ответственность entity расширится, дополняется этот же единый контракт.
+
+`RegistryEngineeringOperation` и `RegistryEngineeringOperationRevision` сохраняются существующим `RegistryWorkSessionPersistence`; новые persistence entities, repository, store и manager не создаются.
