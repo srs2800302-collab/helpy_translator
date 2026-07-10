@@ -101,6 +101,9 @@ void main() {
   testWidgets(
     'keeps Translator dependency wiring available after switching back',
     (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       final _FakeTranslatorPhraseProvider provider =
           _FakeTranslatorPhraseProvider(_translatorResult());
 
