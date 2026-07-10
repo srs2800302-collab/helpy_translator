@@ -3929,3 +3929,73 @@ Code commit:
 - readiness, related context inspection, assessment, audit package, mutation, approval и publication не добавлены.
 
 Следующая точка требует отдельного ownership-аудита перед подключением status transition screen в runtime app shell или перед проектированием operation workspace.
+
+## Ownership-аудит runtime connection для operation status transition screen
+
+После реализации isolated `RegistryEngineeringOperationStatusTransitionScreen` выполнен audit возможности подключить этот экран напрямую в `RegistryStudioApp`.
+
+Проверенные candidates:
+
+- `RegistryStudioApp`;
+- `lib/main.dart`;
+- `RegistryEngineeringOperationCreationScreen`;
+- `RegistryEngineeringOperationStatusTransitionScreen`;
+- `CreateRegistryEngineeringOperation`;
+- `TransitionRegistryEngineeringOperationStatus`;
+- заранее созданная seed operation;
+- future selected operation state;
+- future operation workspace.
+
+`RegistryEngineeringOperationStatusTransitionScreen` не может быть подключён как независимый третий экран без входной operation.
+
+Причина: экран требует текущий `RegistryEngineeringOperation`. Без выбранной/current operation у него нет корректного runtime input.
+
+`RegistryStudioApp` не должен создавать seed `RegistryEngineeringOperation` для status transition screen.
+
+Причина: app shell уже утверждён как владелец top-level screen selection и UI-языка. Он не должен создавать `RegistryEngineeringOperation` до действия engineer, генерировать operation id или владеть operation lifecycle state.
+
+`lib/main.dart` не должен создавать seed `RegistryEngineeringOperation`.
+
+Причина: runtime composition создаёт dependencies и вызывает `runApp`, но не выполняет operation action и не создаёт domain operation до действия engineer.
+
+`RegistryEngineeringOperationCreationScreen` сейчас не является владельцем selected operation для всего runtime.
+
+Причина: экран является isolated consumer `CreateRegistryEngineeringOperation`; созданная operation хранится локально внутри экрана. Расширение экрана до передачи created operation наружу или до управления transition flow требует отдельного ownership-аудита.
+
+Hardcoded/fake operation для runtime connection отклоняется.
+
+Причина: fake operation сделает экран technically reachable, но не создаст реальный engineering workflow. Это нарушит clean rebuild contract и создаст ложную runtime readiness.
+
+Прямое добавление `TransitionRegistryEngineeringOperationStatus` dependency в `RegistryStudioApp` недостаточно.
+
+Причина: dependency можно передать экрану, но без корректного владельца текущей operation подключение остаётся неправильным. Проблема не в use case wiring, а в ownership selected operation state.
+
+Вывод:
+
+- прямое подключение `RegistryEngineeringOperationStatusTransitionScreen` в `RegistryStudioApp` сейчас отклоняется;
+- следующий code step не должен добавлять третью кнопку экрана для status transition;
+- следующий code step не должен создавать seed operation в `RegistryStudioApp` или `main.dart`;
+- следующий code step не должен менять `RegistryEngineeringOperationCreationScreen` для external callback без отдельного ownership-аудита;
+- следующий code step не должен вводить store/repository/persistence/routing/navigation.
+
+Нужная следующая boundary:
+
+- владелец selected/current `RegistryEngineeringOperation` должен быть определён отдельно;
+- возможное имя зоны аудита: operation workspace / selected operation presentation state;
+- эта boundary должна решить, где живёт created operation после `CreateRegistryEngineeringOperation`;
+- эта boundary должна решить, как status transition получает реальную operation;
+- эта boundary не должна становиться repository, persistence store, workflow runner, Orchestrator, manager, facade, helper, wrapper, bridge, locator или magic utility.
+
+До отдельного ownership-аудита operation workspace / selected operation state запрещено:
+
+- подключать status transition screen в runtime app shell;
+- создавать demo/fake/seed operation для runtime;
+- смешивать creation и transition в одном existing screen;
+- переносить operation lifecycle state в Core entity;
+- добавлять repository/store/persistence;
+- добавлять readiness, related context inspection, assessment, audit package, mutation, approval или publication.
+
+Вывод по следующему шагу:
+
+- следующая работа должна быть ownership-аудитом selected/current operation presentation state;
+- code step пока не разрешён.
