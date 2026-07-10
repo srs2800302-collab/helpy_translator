@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+import 'core/config/app_config.dart';
+import 'core/network/api_client.dart';
+import 'registry_studio/translator/application/translate_phrase.dart';
+import 'registry_studio/translator/infrastructure/typhoon_translator_phrase_provider.dart';
+import 'registry_studio/translator/presentation/app/registry_studio_translator_app.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: '.env');
+
+  final AppConfig appConfig = AppConfig.fromEnv();
+  final ApiClient apiClient = ApiClient(appConfig);
+  final TyphoonTranslatorPhraseProvider translatorPhraseProvider =
+      TyphoonTranslatorPhraseProvider(
+        apiClient: apiClient,
+        appConfig: appConfig,
+      );
+
   runApp(
-    const MaterialApp(
-      title: 'Registry Studio Clean Rebuild',
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: SelectableText(
-              'Registry Studio clean rebuild\n\n'
-              'Legacy Translator bootstrap removed.\n'
-              'Clean runtime composition is not wired yet.',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
+    RegistryStudioTranslatorApp(
+      translatePhrase: TranslatePhrase(provider: translatorPhraseProvider),
     ),
   );
 }
