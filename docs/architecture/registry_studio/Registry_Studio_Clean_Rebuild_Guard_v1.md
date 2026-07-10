@@ -3651,3 +3651,73 @@ Dependency direction:
 - следующий code step может переключить `main.dart` с `RegistryStudioTranslatorApp` на `RegistryStudioApp`;
 - следующий code step может удалить `RegistryStudioTranslatorApp`, если его ответственность полностью заменена;
 - следующий code step не должен создавать registry loading, repository/store, id generator, routing system, mutation, approval или publication path.
+
+## Уточнение ownership UI-языка Registry Studio
+
+После начала реализации `RegistryStudioApp` уточнено требование к языку интерфейса.
+
+Причина уточнения:
+
+- Registry Studio работает в Thailand context;
+- для Thailand context базовыми языками продукта являются RU, EN и TH;
+- engineer может работать на RU, EN или TH;
+- multilingual Translator capability существует именно из-за необходимости проверять RU/EN/TH wording, reverse-check, consistency и translation drift;
+- Typhoon translator provider используется как практический provider для RU/EN/TH translation capability;
+- наличие Translator capability не означает, что Translator владеет UI-языком Registry Studio;
+- верхняя оболочка приложения не должна быть RU-only;
+- выбор языка не должен применяться только к верхним кнопкам;
+- выбранный UI-язык должен применяться ко всему Registry Studio UI, который входит в текущую среду выполнения.
+
+Решение:
+
+- UI-язык Registry Studio является presentation-level runtime state;
+- UI-язык не является Core domain model;
+- UI-язык не является Translator capability;
+- UI-язык не является semantic language of registry content;
+- UI-язык не является source/original content language;
+- UI-язык не является spoken language matching;
+- UI-язык не должен использоваться для semantic decisions, canonicalization decisions, registry mutation, approval или publication;
+- `RegistryStudioApp` владеет выбором текущего UI-языка;
+- `RegistryStudioApp` должен передавать выбранный UI-язык во все Registry Studio screens, которые он открывает;
+- каждый screen должен получать UI-язык извне и показывать свои labels на выбранном языке.
+
+Разрешённые UI-языки первого шага:
+
+- RU;
+- EN;
+- TH.
+
+Разрешённая production responsibility следующего code step:
+
+- ввести presentation-level UI language value для Registry Studio;
+- ввести presentation-level labels для `RegistryStudioApp`;
+- ввести presentation-level labels для `TranslatorPhraseScreen`;
+- ввести presentation-level labels для `RegistryEngineeringOperationCreationScreen`;
+- передавать выбранный UI-язык из `RegistryStudioApp` в `TranslatorPhraseScreen`;
+- передавать выбранный UI-язык из `RegistryStudioApp` в `RegistryEngineeringOperationCreationScreen`.
+
+Запрещено в следующем code step:
+
+- создавать Core entity/model для UI-языка;
+- переносить UI-язык в Translator domain/application;
+- использовать Translator как source of truth для UI labels;
+- создавать полноценную localization/i18n architecture;
+- подключать `.arb`, generated localization или platform locale до отдельного ownership-аудита;
+- сохранять UI-язык в persistence/store;
+- создавать repository/service/provider для UI labels;
+- создавать Cubit/Bloc для UI-языка без отдельного ownership-аудита;
+- смешивать UI language с source language, target language, original content language или spoken language;
+- оставлять новый Registry Studio runtime UI только на русском языке;
+- переводить только верхние кнопки без передачи языка во внутренние экраны.
+
+Обязательное правило для следующего code step:
+
+- если `RegistryStudioApp` имеет выбор RU/EN/TH, то `TranslatorPhraseScreen` и `RegistryEngineeringOperationCreationScreen` должны получать выбранный UI-язык извне;
+- все новые и уже подключённые в runtime Registry Studio labels должны иметь RU/EN/TH варианты;
+- technical identifiers, ids, status enum names и code-level values могут оставаться на английском.
+
+Вывод:
+
+- текущий подход, где `RegistryStudioApp` переводит только top-level labels, недостаточен;
+- следующий code step должен сделать UI-язык общей presentation boundary для подключённых экранов;
+- code step нельзя коммитить, пока подключённые экраны остаются RU-only.
