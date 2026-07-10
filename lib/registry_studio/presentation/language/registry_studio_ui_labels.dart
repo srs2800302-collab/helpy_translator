@@ -8,6 +8,7 @@ final class RegistryStudioUiLabels {
     required this.operationCreationScreenTitle,
     required this.translatorPhrase,
     required this.operationCreation,
+    required this.operationStatusTransition,
   });
 
   factory RegistryStudioUiLabels.forLanguage(
@@ -47,6 +48,18 @@ final class RegistryStudioUiLabels {
           operationIdRequiredError: 'ID операции обязателен.',
           problemStatementRequiredError: 'Постановка проблемы обязательна.',
         ),
+        operationStatusTransition:
+            RegistryStudioOperationStatusTransitionLabels(
+              title: 'Смена статуса инженерной операции',
+              currentOperationTitle: 'Текущая операция',
+              operationIdLabel: 'ID операции',
+              problemStatementLabel: 'Постановка проблемы',
+              currentStatusLabel: 'Текущий статус',
+              requestedStatusLabel: 'Запрошенный статус',
+              transitionButton: 'Сменить статус',
+              transitionedTitle: 'Статус изменён',
+              transitionFailedTitle: 'Ошибка смены статуса',
+            ),
       ),
       RegistryStudioUiLanguage.en => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
@@ -81,6 +94,18 @@ final class RegistryStudioUiLabels {
           operationIdRequiredError: 'Operation ID is required.',
           problemStatementRequiredError: 'Problem statement is required.',
         ),
+        operationStatusTransition:
+            RegistryStudioOperationStatusTransitionLabels(
+              title: 'Engineering operation status transition',
+              currentOperationTitle: 'Current operation',
+              operationIdLabel: 'Operation ID',
+              problemStatementLabel: 'Problem statement',
+              currentStatusLabel: 'Current status',
+              requestedStatusLabel: 'Requested status',
+              transitionButton: 'Change status',
+              transitionedTitle: 'Status changed',
+              transitionFailedTitle: 'Status transition error',
+            ),
       ),
       RegistryStudioUiLanguage.th => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
@@ -115,6 +140,18 @@ final class RegistryStudioUiLabels {
           operationIdRequiredError: 'ต้องระบุรหัสงาน',
           problemStatementRequiredError: 'ต้องระบุคำอธิบายปัญหา',
         ),
+        operationStatusTransition:
+            RegistryStudioOperationStatusTransitionLabels(
+              title: 'เปลี่ยนสถานะงานวิศวกรรม',
+              currentOperationTitle: 'งานปัจจุบัน',
+              operationIdLabel: 'รหัสงาน',
+              problemStatementLabel: 'คำอธิบายปัญหา',
+              currentStatusLabel: 'สถานะปัจจุบัน',
+              requestedStatusLabel: 'สถานะที่ต้องการ',
+              transitionButton: 'เปลี่ยนสถานะ',
+              transitionedTitle: 'เปลี่ยนสถานะแล้ว',
+              transitionFailedTitle: 'ข้อผิดพลาดในการเปลี่ยนสถานะ',
+            ),
       ),
     };
   }
@@ -125,6 +162,7 @@ final class RegistryStudioUiLabels {
   final String operationCreationScreenTitle;
   final RegistryStudioTranslatorPhraseLabels translatorPhrase;
   final RegistryStudioOperationCreationLabels operationCreation;
+  final RegistryStudioOperationStatusTransitionLabels operationStatusTransition;
 }
 
 final class RegistryStudioTranslatorPhraseLabels {
@@ -185,4 +223,28 @@ final class RegistryStudioOperationCreationLabels {
   final String statusLabel;
   final String operationIdRequiredError;
   final String problemStatementRequiredError;
+}
+
+final class RegistryStudioOperationStatusTransitionLabels {
+  const RegistryStudioOperationStatusTransitionLabels({
+    required this.title,
+    required this.currentOperationTitle,
+    required this.operationIdLabel,
+    required this.problemStatementLabel,
+    required this.currentStatusLabel,
+    required this.requestedStatusLabel,
+    required this.transitionButton,
+    required this.transitionedTitle,
+    required this.transitionFailedTitle,
+  });
+
+  final String title;
+  final String currentOperationTitle;
+  final String operationIdLabel;
+  final String problemStatementLabel;
+  final String currentStatusLabel;
+  final String requestedStatusLabel;
+  final String transitionButton;
+  final String transitionedTitle;
+  final String transitionFailedTitle;
 }
