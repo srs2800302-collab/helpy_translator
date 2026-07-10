@@ -4594,3 +4594,185 @@ Generic Markdown parser не требуется.
 Однако имя и shape production abstraction пока не утверждаются.
 
 Первым должен быть определён semantic source contract Guard record. Только после этого можно решить, требуется ли один concrete infrastructure adapter, application boundary или другое минимальное решение без дополнительных слоёв.
+
+## Решение по структурной принадлежности RegistryEntityPayload к RegistryEntityKind
+
+После подтверждения достаточности текущего Core foundation выполнен existing-fit audit связки:
+
+- `RegistryEntityPayload`;
+- `RegistryEntityKind`;
+- `RegistryEntity`;
+- `RegistryStudioGuardRecordPayload`.
+
+### Фактическое состояние до решения
+
+`RegistryEntityPayload` отдельно предоставляет:
+
+- `semanticContract`;
+- `entityKindId`;
+- `payloadSchemaVersion`.
+
+`RegistryEntityKind` хранит те же contract facts:
+
+- `semanticContract`;
+- `kindId`;
+- `schemaVersion`.
+
+`RegistryEntity` принимает `RegistryEntityKind` и `RegistryEntityPayload` как два независимых аргумента, после чего проверяет совпадение semantic contract, entity kind id и schema version.
+
+Текущий public contract допускает противоречивое состояние:
+
+- вызывающая сторона может передать kind, который не соответствует payload;
+- вызывающая сторона обязана вручную собрать два объекта с одинаковыми contract facts;
+- concrete Guard boundary вынуждена повторно собирать `RegistryEntityKind` из уже известных payload constants;
+- повторная сборка создаёт давление в сторону thin factory или wrapper.
+
+Production implementation `RegistryEntityPayload` сейчас одна:
+
+- `RegistryStudioGuardRecordPayload`.
+
+Дополнительная implementation существует только как test fixture внутри `test/`.
+
+### Existing-fit audit
+
+`RegistryEntityKind` является полноценным существующим value object.
+
+Он владеет:
+
+- `RegistrySemanticContractIdentity`;
+- `kindId`;
+- `schemaVersion`;
+- validation invariants непустого kind id и schema version.
+
+Удалять `RegistryEntityKind` нельзя.
+
+`RegistryEntityPayload` уже обязан объявлять совместимость с конкретным semantic contract, entity kind и schema version.
+
+Предоставление payload собственного полного `RegistryEntityKind` не добавляет payload новую responsibility. Оно заменяет три разрозненных contract values одним существующим typed value object.
+
+`RegistryEntity` должен оставаться source-backed registry unit и не должен самостоятельно строить или угадывать entity kind.
+
+Отдельный Guard entity factory не требуется.
+
+Factory, который только повторно собирает `RegistryEntityKind` и вызывает `RegistryEntity`, является thin wrapper без самостоятельной responsibility.
+
+Новая entity, application use case, input model, result model, helper или builder не требуются.
+
+### Решение
+
+`RegistryEntityPayload` должен структурно предоставлять собственный `RegistryEntityKind`.
+
+Целевой contract:
+
+- `RegistryEntityPayload` предоставляет `RegistryEntityKind get kind`;
+- отдельные getters `semanticContract`, `entityKindId` и `payloadSchemaVersion` удаляются из `RegistryEntityPayload`;
+- `RegistryStudioGuardRecordPayload` предоставляет фиксированный Guard kind;
+- `RegistryEntity` больше не принимает отдельный `RegistryEntityKind` argument;
+- `RegistryEntity.kind` устанавливается из `payload.kind`.
+
+Фиксированный Guard kind содержит:
+
+- semantic contract id: `registry_studio.guard_record`;
+- semantic contract version: `1`;
+- kind id: `registry_studio.guard_record`;
+- schema version: `1`.
+
+Целевые constructor inputs `RegistryEntity`:
+
+- `RegistryEntityId`;
+- `RegistryPath`;
+- `RegistryEntityPayload`;
+- `Iterable<SourceEvidence>`.
+
+### Инварианты после изменения
+
+После изменения:
+
+- payload принадлежит одному typed `RegistryEntityKind` структурно;
+- невозможно передать kind, противоречащий payload;
+- semantic contract, kind и schema mismatch становятся unrepresentable state;
+- вызывающая сторона больше не повторяет contract metadata;
+- `RegistryEntityKind` сохраняет свою responsibility и validation invariants;
+- `RegistryEntity` сохраняет обязательный `SourceEvidence`;
+- equality `RegistryEntity` остаётся основанным на `RegistryEntityId`;
+- Guard-specific semantic content остаётся вне Core.
+
+### Удаляемые проверки
+
+Из `RegistryEntity` удаляются runtime-проверки совпадения:
+
+- payload semantic contract и отдельно переданного kind semantic contract;
+- payload entity kind id и отдельно переданного kind id;
+- payload schema version и отдельно переданного kind schema version.
+
+Причина: после структурного изменения несовместимую комбинацию нельзя создать через public contract.
+
+Тесты, существующие только для проверки этих противоречивых комбинаций, удаляются или заменяются тестами новой структурной гарантии.
+
+### Сохраняемые проверки
+
+Сохраняются проверки:
+
+- `RegistryEntityKind` отклоняет пустой `kindId`;
+- `RegistryEntityKind` отклоняет пустой `schemaVersion`;
+- `RegistryEntity` отклоняет пустой `sourceEvidence`;
+- `RegistryEntity` сохраняет immutable source evidence collection;
+- equality `RegistryEntity` определяется stable `RegistryEntityId`;
+- concrete payload предоставляет правильный `RegistryEntityKind`;
+- `RegistryEntity.kind` равен `payload.kind`.
+
+### Отклонённые варианты
+
+Отклоняется отдельный Guard entity factory, потому что это thin wrapper над существующими constructors.
+
+Отклоняется дополнительный constructor `RegistryEntity.fromPayload`, потому что он сохранит два конкурирующих способа создания entity.
+
+Отклоняется создание `RegistryEntityKind` внутри `RegistryEntity` из трёх строковых payload getters, потому что это сохранит раздробленный contract.
+
+Отклоняется удаление `RegistryEntityKind`, потому что value object имеет самостоятельные contract facts и invariants.
+
+### Разрешённый следующий code step
+
+Разрешённый production surface:
+
+- `lib/registry_studio/core/domain/contracts/registry_entity_payload.dart`;
+- `lib/registry_studio/core/domain/entities/registry_entity.dart`;
+- `lib/registry_studio/guard/domain/registry_studio_guard_record_payload.dart`.
+
+Разрешённый test surface:
+
+- `test/registry_studio/core/fixtures/registry_entity_fixture.dart`;
+- `test/registry_studio/core/domain/registry_entity_test.dart`;
+- `test/registry_studio/guard/domain/registry_studio_guard_record_payload_test.dart`;
+- application и presentation tests только для обязательной адаптации существующих fixture calls.
+
+### Запрещено в следующем code step
+
+Запрещено:
+
+- создавать новую entity;
+- создавать Guard entity factory;
+- создавать input/result wrapper;
+- создавать новый application use case;
+- создавать repository/store/persistence;
+- создавать parser или source adapter;
+- менять `RegistryEntityId`;
+- менять `RegistryPath`;
+- менять `SourceEvidence`;
+- менять `RegistryRelation`;
+- подключать related context screen к runtime;
+- менять `RegistryStudioApp`;
+- менять operation workspace;
+- менять `main.dart`;
+- выполнять registry mutation, approval или publication.
+
+### Вывод
+
+Текущий foundation достаточен.
+
+Правильное решение — точечно усилить существующий Core contract:
+
+- `RegistryEntityPayload` предоставляет typed `RegistryEntityKind`;
+- `RegistryEntity` получает kind только через payload;
+- дублирующая ручная сборка kind удаляется;
+- новый архитектурный слой не создаётся.
