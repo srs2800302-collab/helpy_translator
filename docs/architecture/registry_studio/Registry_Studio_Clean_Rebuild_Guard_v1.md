@@ -4773,3 +4773,72 @@ Factory, который только повторно собирает `Registry
 
 - Never run `flutter precache --linux --force`.
 - This command replaces the Android/Termux-adapted engine artifacts with standard Linux/glibc artifacts and breaks local `flutter test` and `flutter build bundle --debug`.
+
+## Решение по presentation ownership Guard record после code step `277238f`
+
+Ownership-аудит подтвердил необходимость отдельного contract-specific read-only presentation consumer для существующего `RegistryStudioGuardRecordPayload`.
+
+Утверждённый owner:
+
+- `lib/registry_studio/guard/presentation/screens/registry_studio_guard_record_screen.dart`;
+- production-класс `RegistryStudioGuardRecordScreen`;
+- boundary принадлежит `guard/presentation`, а не универсальному Core и не operation workflow.
+
+Ответственность `RegistryStudioGuardRecordScreen` ограничена отображением уже существующей source-backed `RegistryEntity`, payload которой имеет тип `RegistryStudioGuardRecordPayload`.
+
+Экран может показывать только уже подготовленные факты:
+
+- `RegistryEntityId`;
+- `RegistryPath`;
+- `RegistryEntityKind`;
+- `RegistryStudioGuardRecordType`;
+- `heading`;
+- `summary`;
+- существующий `SourceEvidence`, включая document path, snapshot fingerprint, heading path и line range.
+
+Экран не владеет:
+
+- загрузкой или разбором Guard source;
+- созданием `RegistryEntity`;
+- подготовкой или разрешением related context;
+- semantic assessment;
+- ambiguity, contradiction или drift detection;
+- созданием findings;
+- semantic decision;
+- mutation;
+- approval;
+- canonicalization decision;
+- publication control.
+
+`RegistryStudioApp` остаётся владельцем только top-level navigation и runtime presentation composition.
+
+`main.dart` передаёт в приложение уже загруженную `guardSource.entity`. Это не создаёт новый source owner, repository, provider, service locator или lookup boundary.
+
+Для этого шага не вводились:
+
+- новая domain entity;
+- новый use case;
+- новый Core contract;
+- repository;
+- store;
+- provider;
+- analyzer;
+- assessment service;
+- resolver;
+- orchestrator;
+- manager;
+- facade;
+- locator.
+
+Code step зафиксирован commit `277238f feat: add guard record presentation`.
+
+Подтверждённые проверки code step:
+
+- `flutter analyze` — без ошибок;
+- целевые widget tests — 8 из 8;
+- полный test suite — 99 из 99;
+- `flutter build bundle --debug` — успешно;
+- forbidden architecture pressure — отсутствует;
+- изменения Core — отсутствуют.
+
+Этот presentation consumer не является precedent для generic payload renderer, universal registry record screen или автоматического выбора presentation implementation по `semanticContract`.
