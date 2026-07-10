@@ -4311,3 +4311,73 @@ Repository/store/persistence не вводятся.
 - следующий code step может создать isolated `RegistryRelatedContextPreparationScreen`;
 - следующий code step не должен подключать этот экран к workspace или app shell;
 - runtime connection related context требует отдельного ownership-аудита после isolated presentation consumer.
+
+## Build APK # related context preparation screen success
+
+Related context preparation screen закрыт успешным GitHub Actions `Build APK`.
+
+Проверенная commit chain:
+
+- `c32e99c docs: define related context presentation ownership`;
+- `74c207e feat: add related context preparation screen`.
+
+CI proof:
+
+- workflow: `Build APK`;
+- run: `29070829494`;
+- job: `86291754635`;
+- branch: `registry-studio/clean-rebuild`;
+- head commit: `74c207e`;
+- conclusion: `success`;
+- artifact: `helpy-translator-debug-apk`;
+- artifact expired: `false`;
+- artifact size: `70997009`.
+
+Закрытый результат:
+
+- создан isolated `RegistryRelatedContextPreparationScreen`;
+- экран получает `RegistryStudioUiLanguage` извне;
+- экран получает primary `RegistryEntity` извне;
+- экран получает `Iterable<RegistryRelation>` извне;
+- экран получает available related `Iterable<RegistryEntity>` извне;
+- экран получает `PrepareRegistryRelatedContext` извне;
+- экран получает `PrepareRegistryResolvedRelatedContext` извне;
+- экран вызывает existing Core use cases только по explicit engineer action;
+- экран показывает prepared `RegistryRelatedContext`;
+- экран показывает prepared `RegistryResolvedRelatedContext`;
+- экран показывает matched relations;
+- экран показывает related entity ids;
+- экран показывает resolved related entities;
+- экран показывает missing related entity ids;
+- экран показывает presentation error для invalid input;
+- добавлены RU/EN/TH labels для related context preparation;
+- Core related context files не менялись;
+- Core operation entity/use cases/status enum/id не менялись;
+- `RegistryEngineeringOperationWorkspaceScreen` не менялся;
+- `RegistryStudioApp` не менялся;
+- `lib/main.dart` не менялся;
+- runtime app shell connection не добавлялся;
+- repository/store/persistence не вводились;
+- Cubit/Bloc/Navigator/routes не вводились;
+- fake/demo/seed registry entity в production не создавались;
+- operation context attachment не создавался;
+- readiness marker/getter не создавался;
+- assessment и audit package не создавались;
+- registry mutation, approval и publication не добавлялись;
+- Translator dependency в operation presentation не добавлялась.
+
+Проверки перед push:
+
+- scope matched ownership audit;
+- forbidden files были unchanged;
+- forbidden imports отсутствовали;
+- targeted `dart analyze` был clean;
+- full `flutter analyze` был clean;
+- `git diff --check` был clean;
+- targeted local `flutter test` был заблокирован известным Termux blocker `libvk_swiftshader.so`, поэтому authoritative verification выполнен через GitHub Actions.
+
+Вывод:
+
+- isolated related context preparation presentation consumer закрыт;
+- related context screen пока не подключён к workspace или app shell;
+- runtime connection related context требует отдельного ownership-аудита.
