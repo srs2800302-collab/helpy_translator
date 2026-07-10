@@ -3267,3 +3267,121 @@ CI run:
 - clean runtime composition закрыт;
 - APK теперь открывает clean Translator runtime вместо временной заглушки;
 - следующий шаг должен снова начинаться с ownership-аудита, а не с расширения runtime по инерции.
+
+## Ownership-аудит operation creation presentation existing-fit
+
+После clean runtime composition выполнен ownership-аудит первого Registry Studio operation creation presentation step.
+
+Проверенный вопрос:
+
+- нужна ли новая domain/application entity/model для первого screen skeleton создания `RegistryEngineeringOperation`.
+
+Ответ:
+
+- новая domain entity не нужна;
+- новая application model не нужна;
+- новая result model не нужна;
+- новая draft/input/context/view model не нужна;
+- существующий Core contract достаточен.
+
+Existing Core contract, который уже закрывает responsibility:
+
+- `RegistryEngineeringOperationId` владеет stable operation identity;
+- `RegistryEngineeringOperation` владеет lifecycle snapshot;
+- `RegistryEngineeringOperationStatus` владеет lifecycle marker;
+- `CreateRegistryEngineeringOperation` владеет application creation boundary.
+
+Достаточные inputs первого presentation step:
+
+- вручную введённый engineer `RegistryEngineeringOperationId`;
+- вручную введённый engineer `problemStatement`.
+
+Достаточный output первого presentation step:
+
+- in-memory `RegistryEngineeringOperation`.
+
+Почему новая model/entity отклонена:
+
+- `CreateRegistryEngineeringOperation` уже принимает `RegistryEngineeringOperationId` и `problemStatement`;
+- `CreateRegistryEngineeringOperation` уже возвращает `RegistryEngineeringOperation`;
+- `RegistryEngineeringOperation` уже нормализует `problemStatement`;
+- `RegistryEngineeringOperation` уже отклоняет empty `problemStatement`;
+- initial status policy уже утверждена как `RegistryEngineeringOperationStatus.open`;
+- отдельный result object был ранее отклонён как premature modeling;
+- operation attachment boundary ранее отклонён;
+- отдельный operation context/input/audit package ранее запрещён для текущего этапа.
+
+Разрешённый production surface следующего code step:
+
+- `lib/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart`.
+
+Разрешённый test surface следующего code step:
+
+- `test/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen_test.dart`.
+
+Ответственность `RegistryEngineeringOperationCreationScreen`:
+
+- быть isolated presentation consumer существующего `CreateRegistryEngineeringOperation`;
+- дать engineer поле для operation id;
+- дать engineer поле для problem statement;
+- вызвать переданный извне `CreateRegistryEngineeringOperation`;
+- создать in-memory `RegistryEngineeringOperation`;
+- показать operation id;
+- показать normalized problem statement;
+- показать initial status `open`;
+- показать presentation error при пустом id или пустом problem statement.
+
+`RegistryEngineeringOperationCreationScreen` не является:
+
+- domain entity;
+- application model;
+- application use case;
+- orchestrator;
+- workflow executor;
+- helper;
+- wrapper;
+- manager;
+- facade;
+- bridge;
+- locator;
+- runtime composition boundary.
+
+Запрещено в следующем code step:
+
+- создавать `RegistryEngineeringOperationInput`;
+- создавать `RegistryEngineeringOperationDraft`;
+- создавать `RegistryEngineeringOperationViewModel`;
+- создавать `RegistryEngineeringOperationContext`;
+- создавать `RegistryEngineeringOperationAuditPackage`;
+- создавать Cubit/Bloc без отдельного ownership-аудита;
+- создавать repository/store/persistence;
+- создавать id generator/uuid service;
+- создавать routing/navigation;
+- менять `main.dart`;
+- менять `RegistryStudioTranslatorApp`;
+- импортировать Translator;
+- импортировать Typhoon;
+- импортировать `ApiClient`;
+- импортировать `AppConfig`;
+- загружать Registry tree;
+- искать Registry items;
+- attach-ить primary entity;
+- attach-ить related context;
+- выполнять status transition;
+- выполнять mutation;
+- выполнять approval;
+- выполнять publication.
+
+Dependency direction:
+
+- operation presentation может импортировать Core application/domain;
+- Core не должен импортировать operation presentation;
+- Core не должен импортировать Translator;
+- operation presentation не должен импортировать Translator.
+
+Вывод:
+
+- следующий code step может создать только isolated `RegistryEngineeringOperationCreationScreen`;
+- следующий code step должен использовать существующий `CreateRegistryEngineeringOperation`;
+- следующий code step не должен создавать новую domain/application model;
+- следующий code step не должен подключать screen в runtime.
