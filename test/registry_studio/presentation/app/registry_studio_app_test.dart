@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
+import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
+import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/app/registry_studio_app.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translate_phrase.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_phrase_provider.dart';
@@ -16,15 +18,13 @@ void main() {
     final _FakeTranslatorPhraseProvider provider =
         _FakeTranslatorPhraseProvider(_translatorResult());
 
-    await tester.pumpWidget(
-      RegistryStudioApp(
-        translatePhrase: TranslatePhrase(provider: provider),
-        createRegistryEngineeringOperation:
-            CreateRegistryEngineeringOperation(),
-      ),
-    );
+    await tester.pumpWidget(_testApp(provider));
 
     expect(find.byType(TranslatorPhraseScreen), findsOneWidget);
+    expect(
+      find.byType(RegistryEngineeringOperationWorkspaceScreen),
+      findsNothing,
+    );
     expect(
       find.byType(RegistryEngineeringOperationCreationScreen),
       findsNothing,
@@ -38,13 +38,7 @@ void main() {
     final _FakeTranslatorPhraseProvider provider =
         _FakeTranslatorPhraseProvider(_translatorResult());
 
-    await tester.pumpWidget(
-      RegistryStudioApp(
-        translatePhrase: TranslatePhrase(provider: provider),
-        createRegistryEngineeringOperation:
-            CreateRegistryEngineeringOperation(),
-      ),
-    );
+    await tester.pumpWidget(_testApp(provider));
 
     expect(find.text('Язык'), findsOneWidget);
     expect(find.text('Перевод формулировки'), findsWidgets);
@@ -71,25 +65,23 @@ void main() {
     expect(find.text('สร้างงานวิศวกรรม'), findsOneWidget);
   });
 
-  testWidgets('switches to operation creation screen', (
+  testWidgets('switches to operation workspace screen', (
     WidgetTester tester,
   ) async {
     final _FakeTranslatorPhraseProvider provider =
         _FakeTranslatorPhraseProvider(_translatorResult());
 
-    await tester.pumpWidget(
-      RegistryStudioApp(
-        translatePhrase: TranslatePhrase(provider: provider),
-        createRegistryEngineeringOperation:
-            CreateRegistryEngineeringOperation(),
-      ),
-    );
+    await tester.pumpWidget(_testApp(provider));
 
     await tester.tap(
       find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
     );
     await tester.pump();
 
+    expect(
+      find.byType(RegistryEngineeringOperationWorkspaceScreen),
+      findsOneWidget,
+    );
     expect(
       find.byType(RegistryEngineeringOperationCreationScreen),
       findsOneWidget,
@@ -107,13 +99,7 @@ void main() {
       final _FakeTranslatorPhraseProvider provider =
           _FakeTranslatorPhraseProvider(_translatorResult());
 
-      await tester.pumpWidget(
-        RegistryStudioApp(
-          translatePhrase: TranslatePhrase(provider: provider),
-          createRegistryEngineeringOperation:
-              CreateRegistryEngineeringOperation(),
-        ),
-      );
+      await tester.pumpWidget(_testApp(provider));
 
       await tester.tap(
         find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
@@ -142,6 +128,15 @@ void main() {
       expect(provider.receivedSourceText, 'Проверить формулировку.');
       expect(find.text('Эквивалентная формулировка'), findsOneWidget);
     },
+  );
+}
+
+Widget _testApp(_FakeTranslatorPhraseProvider provider) {
+  return RegistryStudioApp(
+    translatePhrase: TranslatePhrase(provider: provider),
+    createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
+    transitionRegistryEngineeringOperationStatus:
+        TransitionRegistryEngineeringOperationStatus(),
   );
 }
 

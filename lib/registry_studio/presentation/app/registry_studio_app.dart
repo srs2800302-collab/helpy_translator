@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/application/operation_creation/create_registry_engineering_operation.dart';
-import '../../operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
+import '../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
+import '../../operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import '../../translator/application/translate_phrase.dart';
 import '../../translator/presentation/cubit/translator_phrase_cubit.dart';
 import '../../translator/presentation/screens/translator_phrase_screen.dart';
@@ -13,11 +14,14 @@ final class RegistryStudioApp extends StatefulWidget {
   const RegistryStudioApp({
     required this.translatePhrase,
     required this.createRegistryEngineeringOperation,
+    required this.transitionRegistryEngineeringOperationStatus,
     super.key,
   });
 
   final TranslatePhrase translatePhrase;
   final CreateRegistryEngineeringOperation createRegistryEngineeringOperation;
+  final TransitionRegistryEngineeringOperationStatus
+  transitionRegistryEngineeringOperationStatus;
 
   @override
   State<RegistryStudioApp> createState() => _RegistryStudioAppState();
@@ -25,7 +29,7 @@ final class RegistryStudioApp extends StatefulWidget {
 
 final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   static const int _translatorScreenIndex = 0;
-  static const int _operationCreationScreenIndex = 1;
+  static const int _operationWorkspaceScreenIndex = 1;
 
   int _selectedScreenIndex = _translatorScreenIndex;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
@@ -70,9 +74,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                           label: labels.operationCreationScreenTitle,
                           isSelected:
                               _selectedScreenIndex ==
-                              _operationCreationScreenIndex,
+                              _operationWorkspaceScreenIndex,
                           onPressed: () =>
-                              _selectScreen(_operationCreationScreenIndex),
+                              _selectScreen(_operationWorkspaceScreenIndex),
                         ),
                       ),
                     ],
@@ -100,11 +104,13 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   }
 
   Widget _currentScreen() {
-    if (_selectedScreenIndex == _operationCreationScreenIndex) {
-      return RegistryEngineeringOperationCreationScreen(
+    if (_selectedScreenIndex == _operationWorkspaceScreenIndex) {
+      return RegistryEngineeringOperationWorkspaceScreen(
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
+        transitionRegistryEngineeringOperationStatus:
+            widget.transitionRegistryEngineeringOperationStatus,
       );
     }
 

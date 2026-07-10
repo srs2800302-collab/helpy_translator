@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
+import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
 
@@ -91,14 +92,49 @@ void main() {
       );
       expect(find.text('Операция создана'), findsNothing);
     });
+
+    testWidgets('reports created operation through optional callback', (
+      WidgetTester tester,
+    ) async {
+      String? receivedOperationId;
+
+      await tester.pumpWidget(
+        _testApp(
+          onOperationCreated: (operation) {
+            receivedOperationId = operation.id.value;
+          },
+        ),
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('registry_engineering_operation_id_field')),
+        'registry-operation-001',
+      );
+      await tester.enterText(
+        find.byKey(
+          const Key('registry_engineering_operation_problem_statement_field'),
+        ),
+        'Check possible canonical wording drift.',
+      );
+
+      await tester.tap(
+        find.byKey(const Key('registry_engineering_operation_create_button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(receivedOperationId, 'registry-operation-001');
+    });
   });
 }
 
-Widget _testApp() {
+Widget _testApp({
+  ValueChanged<RegistryEngineeringOperation>? onOperationCreated,
+}) {
   return MaterialApp(
     home: RegistryEngineeringOperationCreationScreen(
       uiLanguage: RegistryStudioUiLanguage.ru,
       createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
+      onOperationCreated: onOperationCreated,
     ),
   );
 }

@@ -89,11 +89,48 @@ void main() {
       expect(find.text('สถานะที่ต้องการ'), findsOneWidget);
       expect(find.text('เปลี่ยนสถานะ'), findsOneWidget);
     });
+
+    testWidgets('reports transitioned operation through optional callback', (
+      WidgetTester tester,
+    ) async {
+      RegistryEngineeringOperationStatus? receivedStatus;
+
+      await tester.pumpWidget(
+        _testApp(
+          onOperationTransitioned: (operation) {
+            receivedStatus = operation.status;
+          },
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('readyForDecision').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        receivedStatus,
+        RegistryEngineeringOperationStatus.readyForDecision,
+      );
+    });
   });
 }
 
 Widget _testApp({
   RegistryStudioUiLanguage uiLanguage = RegistryStudioUiLanguage.ru,
+  ValueChanged<RegistryEngineeringOperation>? onOperationTransitioned,
 }) {
   return MaterialApp(
     home: RegistryEngineeringOperationStatusTransitionScreen(
@@ -101,6 +138,7 @@ Widget _testApp({
       operation: _operationWith(RegistryEngineeringOperationStatus.open),
       transitionRegistryEngineeringOperationStatus:
           TransitionRegistryEngineeringOperationStatus(),
+      onOperationTransitioned: onOperationTransitioned,
     ),
   );
 }

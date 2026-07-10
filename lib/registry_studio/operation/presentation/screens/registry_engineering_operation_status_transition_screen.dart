@@ -12,6 +12,7 @@ final class RegistryEngineeringOperationStatusTransitionScreen
     required this.uiLanguage,
     required this.operation,
     required this.transitionRegistryEngineeringOperationStatus,
+    this.onOperationTransitioned,
     super.key,
   });
 
@@ -19,6 +20,7 @@ final class RegistryEngineeringOperationStatusTransitionScreen
   final RegistryEngineeringOperation operation;
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
+  final ValueChanged<RegistryEngineeringOperation>? onOperationTransitioned;
 
   @override
   State<RegistryEngineeringOperationStatusTransitionScreen> createState() =>
@@ -87,6 +89,8 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
         _hasTransitioned = true;
         _errorMessage = null;
       });
+
+      widget.onOperationTransitioned?.call(transitionedOperation);
     } on ArgumentError catch (error) {
       setState(() {
         _hasTransitioned = false;

@@ -10,11 +10,13 @@ final class RegistryEngineeringOperationCreationScreen extends StatefulWidget {
   const RegistryEngineeringOperationCreationScreen({
     required this.uiLanguage,
     required this.createRegistryEngineeringOperation,
+    this.onOperationCreated,
     super.key,
   });
 
   final RegistryStudioUiLanguage uiLanguage;
   final CreateRegistryEngineeringOperation createRegistryEngineeringOperation;
+  final ValueChanged<RegistryEngineeringOperation>? onOperationCreated;
 
   @override
   State<RegistryEngineeringOperationCreationScreen> createState() =>
