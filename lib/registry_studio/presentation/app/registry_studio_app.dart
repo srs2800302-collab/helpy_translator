@@ -200,6 +200,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     if (_selectedScreenIndex == _operationWorkspaceScreenIndex) {
       return RegistryEngineeringOperationWorkspaceScreen(
         workSessionPersistence: widget.workSessionPersistence,
+        revisionPrimaryEntityId:
+            (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
