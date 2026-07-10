@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import '../../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../../core/domain/entities/registry_engineering_operation.dart';
 import '../../../core/domain/value_objects/registry_engineering_operation_id.dart';
+import '../../../presentation/language/registry_studio_ui_labels.dart';
+import '../../../presentation/language/registry_studio_ui_language.dart';
 
 final class RegistryEngineeringOperationCreationScreen extends StatefulWidget {
   const RegistryEngineeringOperationCreationScreen({
+    required this.uiLanguage,
     required this.createRegistryEngineeringOperation,
     super.key,
   });
 
+  final RegistryStudioUiLanguage uiLanguage;
   final CreateRegistryEngineeringOperation createRegistryEngineeringOperation;
 
   @override
@@ -52,11 +56,32 @@ final class _RegistryEngineeringOperationCreationScreenState
   void _createOperation() {
     FocusScope.of(context).unfocus();
 
+    final RegistryStudioOperationCreationLabels labels =
+        RegistryStudioUiLabels.forLanguage(widget.uiLanguage).operationCreation;
+    final String operationId = _operationIdController.text;
+    final String problemStatement = _problemStatementController.text;
+
+    if (operationId.trim().isEmpty) {
+      setState(() {
+        _createdOperation = null;
+        _errorMessage = labels.operationIdRequiredError;
+      });
+      return;
+    }
+
+    if (problemStatement.trim().isEmpty) {
+      setState(() {
+        _createdOperation = null;
+        _errorMessage = labels.problemStatementRequiredError;
+      });
+      return;
+    }
+
     try {
       final RegistryEngineeringOperation operation = widget
           .createRegistryEngineeringOperation(
-            id: RegistryEngineeringOperationId(_operationIdController.text),
-            problemStatement: _problemStatementController.text,
+            id: RegistryEngineeringOperationId(operationId),
+            problemStatement: problemStatement,
           );
 
       setState(() {
@@ -75,9 +100,11 @@ final class _RegistryEngineeringOperationCreationScreenState
   Widget build(BuildContext context) {
     final RegistryEngineeringOperation? operation = _createdOperation;
     final String? errorMessage = _errorMessage;
+    final RegistryStudioOperationCreationLabels labels =
+        RegistryStudioUiLabels.forLanguage(widget.uiLanguage).operationCreation;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Создание engineering operation')),
+      appBar: AppBar(title: Text(labels.title)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: <Widget>[
@@ -85,9 +112,9 @@ final class _RegistryEngineeringOperationCreationScreenState
             key: operationIdFieldKey,
             controller: _operationIdController,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
-              labelText: 'ID операции',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: labels.operationIdLabel,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -97,16 +124,16 @@ final class _RegistryEngineeringOperationCreationScreenState
             minLines: 3,
             maxLines: 6,
             textInputAction: TextInputAction.newline,
-            decoration: const InputDecoration(
-              labelText: 'Постановка проблемы',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: labels.problemStatementLabel,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
           FilledButton(
             key: createButtonKey,
             onPressed: _createOperation,
-            child: const Text('Создать operation'),
+            child: Text(labels.createButton),
           ),
           if (errorMessage != null) ...<Widget>[
             const SizedBox(height: 16),
@@ -114,7 +141,10 @@ final class _RegistryEngineeringOperationCreationScreenState
           ],
           if (operation != null) ...<Widget>[
             const SizedBox(height: 16),
-            _RegistryEngineeringOperationCard(operation: operation),
+            _RegistryEngineeringOperationCard(
+              labels: labels,
+              operation: operation,
+            ),
           ],
         ],
       ),
@@ -140,8 +170,12 @@ final class _OperationCreationErrorMessage extends StatelessWidget {
 }
 
 final class _RegistryEngineeringOperationCard extends StatelessWidget {
-  const _RegistryEngineeringOperationCard({required this.operation});
+  const _RegistryEngineeringOperationCard({
+    required this.labels,
+    required this.operation,
+  });
 
+  final RegistryStudioOperationCreationLabels labels;
   final RegistryEngineeringOperation operation;
 
   @override
@@ -154,16 +188,22 @@ final class _RegistryEngineeringOperationCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Operation создана',
+              labels.createdTitle,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
-            _TextValueRow(label: 'ID операции', value: operation.id.value),
             _TextValueRow(
-              label: 'Постановка проблемы',
+              label: labels.operationIdLabel,
+              value: operation.id.value,
+            ),
+            _TextValueRow(
+              label: labels.problemStatementLabel,
               value: operation.problemStatement,
             ),
-            _TextValueRow(label: 'Статус', value: operation.status.name),
+            _TextValueRow(
+              label: labels.statusLabel,
+              value: operation.status.name,
+            ),
           ],
         ),
       ),

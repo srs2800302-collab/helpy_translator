@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
+import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
 
 void main() {
   group('RegistryEngineeringOperationCreationScreen', () {
@@ -10,10 +11,10 @@ void main() {
     ) async {
       await tester.pumpWidget(_testApp());
 
-      expect(find.text('Создание engineering operation'), findsOneWidget);
+      expect(find.text('Создание инженерной операции'), findsOneWidget);
       expect(find.text('ID операции'), findsOneWidget);
       expect(find.text('Постановка проблемы'), findsOneWidget);
-      expect(find.text('Создать operation'), findsOneWidget);
+      expect(find.text('Создать операцию'), findsOneWidget);
     });
 
     testWidgets('creates in-memory operation through existing use case', (
@@ -37,7 +38,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Operation создана'), findsOneWidget);
+      expect(find.text('Операция создана'), findsOneWidget);
       expect(find.text('ID операции:\nregistry-operation-001'), findsOneWidget);
       expect(
         find.text(
@@ -65,13 +66,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining(
-          'Registry engineering operation identity must not be empty.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Operation создана'), findsNothing);
+      expect(find.textContaining('ID операции обязателен.'), findsOneWidget);
+      expect(find.text('Операция создана'), findsNothing);
     });
 
     testWidgets('shows presentation error for empty problem statement', (
@@ -90,12 +86,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.textContaining(
-          'Registry engineering operation problem statement must not be empty.',
-        ),
+        find.textContaining('Постановка проблемы обязательна.'),
         findsOneWidget,
       );
-      expect(find.text('Operation создана'), findsNothing);
+      expect(find.text('Операция создана'), findsNothing);
     });
   });
 }
@@ -103,6 +97,7 @@ void main() {
 Widget _testApp() {
   return MaterialApp(
     home: RegistryEngineeringOperationCreationScreen(
+      uiLanguage: RegistryStudioUiLanguage.ru,
       createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
     ),
   );

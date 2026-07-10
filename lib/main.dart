@@ -3,9 +3,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
+import 'registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
+import 'registry_studio/presentation/app/registry_studio_app.dart';
 import 'registry_studio/translator/application/translate_phrase.dart';
 import 'registry_studio/translator/infrastructure/typhoon_translator_phrase_provider.dart';
-import 'registry_studio/translator/presentation/app/registry_studio_translator_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,8 +22,9 @@ Future<void> main() async {
       );
 
   runApp(
-    RegistryStudioTranslatorApp(
+    RegistryStudioApp(
       translatePhrase: TranslatePhrase(provider: translatorPhraseProvider),
+      createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
     ),
   );
 }

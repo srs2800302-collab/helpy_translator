@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../presentation/language/registry_studio_ui_labels.dart';
+import '../../../presentation/language/registry_studio_ui_language.dart';
 import '../../translator_phrase_result.dart';
 import '../../translator_phrase_status.dart';
 import '../cubit/translator_phrase_cubit.dart';
 import '../cubit/translator_phrase_state.dart';
 
 final class TranslatorPhraseScreen extends StatefulWidget {
-  const TranslatorPhraseScreen({super.key});
+  const TranslatorPhraseScreen({required this.uiLanguage, super.key});
+
+  final RegistryStudioUiLanguage uiLanguage;
 
   @override
   State<TranslatorPhraseScreen> createState() => _TranslatorPhraseScreenState();
@@ -62,8 +66,11 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioTranslatorPhraseLabels labels =
+        RegistryStudioUiLabels.forLanguage(widget.uiLanguage).translatorPhrase;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Перевод формулировки')),
+      appBar: AppBar(title: Text(labels.title)),
       body: BlocBuilder<TranslatorPhraseCubit, TranslatorPhraseState>(
         builder: (BuildContext context, TranslatorPhraseState state) {
           final bool isLoading =
@@ -78,9 +85,9 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                 minLines: 3,
                 maxLines: 6,
                 textInputAction: TextInputAction.newline,
-                decoration: const InputDecoration(
-                  labelText: 'Формулировка или текст',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: labels.sourceTextLabel,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -88,10 +95,10 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                 key: languageHintFieldKey,
                 controller: _languageHintController,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Подсказка языка',
-                  helperText: 'Например: ru, en, th',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: labels.sourceLanguageHintLabel,
+                  helperText: labels.sourceLanguageHintHelper,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -101,9 +108,9 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                 minLines: 2,
                 maxLines: 5,
                 textInputAction: TextInputAction.newline,
-                decoration: const InputDecoration(
-                  labelText: 'Контекст инженера',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: labels.engineerContextLabel,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -114,12 +121,12 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                   FilledButton(
                     key: translateButtonKey,
                     onPressed: isLoading ? null : _translatePhrase,
-                    child: const Text('Перевести'),
+                    child: Text(labels.translateButton),
                   ),
                   OutlinedButton(
                     key: clearButtonKey,
                     onPressed: isLoading ? null : _clear,
-                    child: const Text('Очистить'),
+                    child: Text(labels.clearButton),
                   ),
                 ],
               ),
@@ -131,7 +138,10 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
               ],
               if (state.result != null) ...<Widget>[
                 const SizedBox(height: 16),
-                _TranslatorPhraseResultCard(result: state.result!),
+                _TranslatorPhraseResultCard(
+                  labels: labels,
+                  result: state.result!,
+                ),
               ],
             ],
           );
@@ -159,8 +169,12 @@ final class _ErrorMessage extends StatelessWidget {
 }
 
 final class _TranslatorPhraseResultCard extends StatelessWidget {
-  const _TranslatorPhraseResultCard({required this.result});
+  const _TranslatorPhraseResultCard({
+    required this.labels,
+    required this.result,
+  });
 
+  final RegistryStudioTranslatorPhraseLabels labels;
   final TranslatorPhraseResult result;
 
   @override
@@ -173,12 +187,18 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              _statusLabel(result.status),
+              _statusLabel(labels, result.status),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
-            _TextValueRow(label: 'Исходный язык', value: result.sourceLanguage),
-            _TextValueRow(label: 'Исходный текст', value: result.sourceText),
+            _TextValueRow(
+              label: labels.sourceLanguageRow,
+              value: result.sourceLanguage,
+            ),
+            _TextValueRow(
+              label: labels.sourceTextRow,
+              value: result.sourceText,
+            ),
             _OptionalTextValueRow(label: 'RU', value: result.ru),
             _OptionalTextValueRow(label: 'EN', value: result.en),
             _OptionalTextValueRow(label: 'TH', value: result.th),
@@ -186,9 +206,12 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
             _OptionalTextValueRow(label: 'TH → RU', value: result.thToRu),
             _OptionalTextValueRow(label: 'EN → TH', value: result.enToTh),
             _OptionalTextValueRow(label: 'TH → EN', value: result.thToEn),
-            _OptionalTextValueRow(label: 'Комментарий', value: result.comment),
             _OptionalTextValueRow(
-              label: 'Кандидат канонической формулировки',
+              label: labels.commentRow,
+              value: result.comment,
+            ),
+            _OptionalTextValueRow(
+              label: labels.canonicalCandidateRow,
               value: result.candidateCanonicalPhrase,
             ),
           ],
@@ -197,13 +220,16 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
     );
   }
 
-  static String _statusLabel(TranslatorPhraseStatus status) {
+  static String _statusLabel(
+    RegistryStudioTranslatorPhraseLabels labels,
+    TranslatorPhraseStatus status,
+  ) {
     return switch (status) {
-      TranslatorPhraseStatus.exact => 'Точное совпадение',
-      TranslatorPhraseStatus.equivalent => 'Эквивалентная формулировка',
-      TranslatorPhraseStatus.needsReview => 'Нужна проверка',
-      TranslatorPhraseStatus.canonicalDrift => 'Отклонение от канона',
-      TranslatorPhraseStatus.failed => 'Ошибка',
+      TranslatorPhraseStatus.exact => labels.exactStatus,
+      TranslatorPhraseStatus.equivalent => labels.equivalentStatus,
+      TranslatorPhraseStatus.needsReview => labels.needsReviewStatus,
+      TranslatorPhraseStatus.canonicalDrift => labels.canonicalDriftStatus,
+      TranslatorPhraseStatus.failed => labels.failedStatus,
     };
   }
 }

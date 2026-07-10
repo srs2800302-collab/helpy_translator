@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translate_phrase.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_phrase_provider.dart';
+import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
 import 'package:helpy_translator/registry_studio/translator/presentation/cubit/translator_phrase_cubit.dart';
 import 'package:helpy_translator/registry_studio/translator/presentation/screens/translator_phrase_screen.dart';
 import 'package:helpy_translator/registry_studio/translator/translator_phrase_result.dart';
@@ -186,7 +187,9 @@ Widget _testApp(TranslatorPhraseCubit cubit) {
   return MaterialApp(
     home: BlocProvider<TranslatorPhraseCubit>.value(
       value: cubit,
-      child: const TranslatorPhraseScreen(),
+      child: const TranslatorPhraseScreen(
+        uiLanguage: RegistryStudioUiLanguage.ru,
+      ),
     ),
   );
 }
