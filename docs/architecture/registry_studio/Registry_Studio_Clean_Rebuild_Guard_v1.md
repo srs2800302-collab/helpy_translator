@@ -4842,3 +4842,96 @@ Code step зафиксирован commit `277238f feat: add guard record presen
 - изменения Core — отсутствуют.
 
 Этот presentation consumer не является precedent для generic payload renderer, universal registry record screen или автоматического выбора presentation implementation по `semanticContract`.
+
+## Решение по revision-модели инженерной работы
+
+Утверждено, что история инженерной работы должна сохраняться после закрытия экрана и приложения.
+
+История должна позволять установить:
+
+- что происходило;
+- в какой последовательности;
+- с какими объектами Registry выполнялась работа;
+- какое решение или рабочая формулировка действовали на каждом этапе;
+- какая версия была заменена или дополнена следующей.
+
+Инженерная работа не является одним бесследно перезаписываемым текстом.
+
+Она развивается через последовательность revisions.
+
+Каждая revision должна содержать полную актуальную рабочую версию целиком, а не только diff относительно предыдущей revision.
+
+Полная revision необходима, чтобы:
+
+- восстановить её без вычисления всей предыдущей цепочки;
+- независимо проверить её содержимое;
+- показать конкретное состояние работы на выбранном этапе;
+- сохранить смысл версии при последующем развитии модели;
+- избежать зависимости доменной истины от diff-формата.
+
+Новая revision может:
+
+- заменить предыдущую revision;
+- дополнить предыдущую revision;
+- расширить частное решение до более универсального;
+- изменить набор относящихся к работе Registry entities.
+
+При этом должны сохраняться:
+
+- stable identity инженерной операции;
+- identity каждой revision;
+- порядок revisions;
+- связь происхождения между revisions;
+- предыдущие полные revisions;
+- связь каждой revision с относящимися к ней Registry entities.
+
+Предыдущая revision не обязана оставаться актуальной, но не должна бесследно исчезать.
+
+Актуальной считается последняя утверждённая рабочая revision, однако история происхождения сохраняется отдельно от текущего presentation state.
+
+Это решение не означает введение полного Event Sourcing.
+
+Допустима будущая модель, в которой отдельно существуют:
+
+- текущий operation snapshot;
+- полные operation revisions;
+- история переходов между revisions;
+- persistence для сохранения и восстановления;
+- audit trail, построенный на проверяемых фактах происхождения.
+
+На текущем этапе ещё не утверждены:
+
+- concrete production-класс revision;
+- revision id contract;
+- точный набор revision fields;
+- тип связи replace/extend;
+- persistence owner;
+- repository/store boundary;
+- serialization schema;
+- database structure;
+- application use cases создания или активации revision;
+- presentation flow редактирования revisions;
+- audit package.
+
+До отдельного ownership-аудита запрещено:
+
+- добавлять revision fields в `RegistryEngineeringOperation`;
+- хранить revisions внутри `RegistryEngineeringOperationWorkspaceScreen`;
+- создавать generic history manager;
+- создавать repository/store/persistence;
+- создавать event bus или Event Sourcing infrastructure;
+- создавать audit package;
+- связывать все Registry entities только с operation целиком без revision-level audit;
+- писать production-код revision boundary.
+
+Следующий шаг должен начинаться с existing-fit и ownership-аудита отдельной revision responsibility.
+
+Во время следующего аудита необходимо определить:
+
+- является ли revision новой domain entity;
+- какие минимальные факты принадлежат revision;
+- как revision связывается с `RegistryEngineeringOperationId`;
+- как представляется lineage;
+- как revision связывается с primary и related Registry entities;
+- какие поля относятся к рабочему содержанию, а какие к audit metadata;
+- что остаётся за пределами persistence и presentation.
