@@ -4181,3 +4181,133 @@ CI proof:
 - targeted `dart analyze` был clean;
 - full `flutter analyze` был clean;
 - `git diff --check` был clean.
+
+## Ownership-аудит related context presentation consumer
+
+После закрытия operation workspace presentation flow выполнен audit следующего безопасного шага вокруг related context.
+
+Проверенные candidates:
+
+- `RegistryEngineeringOperationWorkspaceScreen`;
+- `RegistryEngineeringOperation`;
+- `RegistryRelatedContext`;
+- `RegistryResolvedRelatedContext`;
+- `PrepareRegistryRelatedContext`;
+- `PrepareRegistryResolvedRelatedContext`;
+- `RegistryStudioApp`;
+- `lib/main.dart`;
+- repository/store/persistence;
+- isolated related context presentation consumer.
+
+Existing-fit audit:
+
+- `PrepareRegistryRelatedContext` уже существует как read-only application use case;
+- `RegistryRelatedContext` уже существует как read-only application result;
+- `PrepareRegistryResolvedRelatedContext` уже существует как read-only application use case;
+- `RegistryResolvedRelatedContext` уже существует как read-only application result;
+- новая Core entity/model/value object/use case не требуется;
+- существующие Core contracts достаточны для isolated presentation consumer.
+
+`RegistryEngineeringOperationWorkspaceScreen` не должен в следующем step получать related context responsibility.
+
+Причина: workspace сейчас владеет только nullable in-memory current `RegistryEngineeringOperation`. Для related context ему нужны отдельные owners input-ов: primary `RegistryEntity`, `Iterable<RegistryRelation>` и available related `RegistryEntity`. Эти owners ещё не определены. Прямое расширение workspace сейчас превратит его в широкий workflow container.
+
+`RegistryEngineeringOperation` не должен хранить `RegistryRelatedContext` или `RegistryResolvedRelatedContext`.
+
+Причина: operation entity остаётся immutable lifecycle snapshot. Related context является read-only application result и не должен превращать operation entity в audit package, context bundle или workflow container.
+
+`RegistryRelatedContext` и `RegistryResolvedRelatedContext` не являются presentation state.
+
+Причина: это application results. Они не должны знать UI-язык, screen state, selected operation, button actions, navigation или workspace lifecycle.
+
+`PrepareRegistryRelatedContext` и `PrepareRegistryResolvedRelatedContext` не должны становиться presenters.
+
+Причина: это stateless application use cases. Они не должны форматировать UI labels, владеть Flutter state, принимать engineer decision или запускать registry mutation/publication.
+
+`RegistryStudioApp` и `lib/main.dart` не должны подключать related context screen в этом step.
+
+Причина: нет утверждённого owner-а для primary entity selection, relation source, available related entities или operation-to-context connection.
+
+Repository/store/persistence не вводятся.
+
+Причина: текущий шаг не решает загрузку registry graph, entity search, saved context, multi-operation session или durable operation context.
+
+Разрешённая next presentation boundary:
+
+- isolated `RegistryRelatedContextPreparationScreen`.
+
+Ответственность `RegistryRelatedContextPreparationScreen`:
+
+- получать `RegistryStudioUiLanguage` извне;
+- получать primary `RegistryEntity` извне;
+- получать `Iterable<RegistryRelation>` извне;
+- получать available related `Iterable<RegistryEntity>` извне;
+- получать `PrepareRegistryRelatedContext` извне;
+- получать `PrepareRegistryResolvedRelatedContext` извне;
+- вызывать existing Core use cases только по explicit engineer action;
+- показывать prepared `RegistryRelatedContext`;
+- показывать prepared `RegistryResolvedRelatedContext`;
+- показывать matched relations;
+- показывать related entity ids;
+- показывать resolved related entities;
+- показывать missing related entity ids;
+- показывать presentation error для invalid input;
+- передавать selected UI language только в labels;
+- не создавать fake/demo/seed registry entities;
+- не загружать registry entities из storage/network;
+- не выбирать primary entity;
+- не искать relations;
+- не менять operation status;
+- не attach-ить context к operation;
+- не вычислять readiness;
+- не выполнять assessment;
+- не создавать audit package;
+- не выполнять registry mutation, approval или publication.
+
+Разрешённые production files следующего code step:
+
+- `lib/registry_studio/operation/presentation/screens/registry_related_context_preparation_screen.dart`;
+- `lib/registry_studio/presentation/language/registry_studio_ui_labels.dart`, только если нужны новые RU/EN/TH labels.
+
+Разрешённые test files следующего code step:
+
+- `test/registry_studio/operation/presentation/screens/registry_related_context_preparation_screen_test.dart`.
+
+Запрещено в следующем code step:
+
+- менять Core related context files;
+- менять Core operation entity/use cases/status enum/id;
+- менять `RegistryEngineeringOperationWorkspaceScreen`;
+- менять `RegistryStudioApp`;
+- менять `lib/main.dart`;
+- подключать related context screen в runtime app shell;
+- добавлять repository/store/persistence;
+- добавлять Cubit/Bloc без отдельного ownership-аудита;
+- добавлять Navigator/routes/onGenerateRoute;
+- добавлять manager/facade/helper/wrapper/bridge/locator/magic utility;
+- создавать fake/demo/seed registry entity в production;
+- создавать operation context attachment;
+- создавать readiness marker/getter;
+- создавать assessment;
+- создавать audit package;
+- выполнять registry mutation, approval или publication;
+- добавлять Translator dependency в operation presentation.
+
+Проверки следующего code step обязательны:
+
+- scope check только для разрешённых files;
+- check, что Core не изменён;
+- check, что `RegistryEngineeringOperationWorkspaceScreen` не изменён;
+- check, что `RegistryStudioApp` и `lib/main.dart` не изменены;
+- check, что related context screen не импортирует Translator/AppConfig/ApiClient/Typhoon/repository/store;
+- targeted `dart analyze`;
+- full `flutter analyze`;
+- targeted widget tests;
+- `git diff --check`;
+- GitHub Actions `Build APK` после push.
+
+Вывод:
+
+- следующий code step может создать isolated `RegistryRelatedContextPreparationScreen`;
+- следующий code step не должен подключать этот экран к workspace или app shell;
+- runtime connection related context требует отдельного ownership-аудита после isolated presentation consumer.
