@@ -3758,3 +3758,121 @@ Dependency direction:
 - Translator capability не владеет UI-языком;
 - Core не владеет UI-языком;
 - старый translator-only app shell удалён.
+
+## Ownership-аудит operation status transition presentation consumer
+
+После закрытия multilingual `RegistryStudioApp` выполнен audit следующей presentation responsibility вокруг уже существующего Core use case `TransitionRegistryEngineeringOperationStatus`.
+
+Проверенные candidates:
+
+- `TransitionRegistryEngineeringOperationStatus`;
+- `RegistryEngineeringOperation`;
+- `RegistryEngineeringOperationStatus`;
+- `RegistryEngineeringOperationCreationScreen`;
+- `RegistryStudioApp`;
+- `main.dart`;
+- future operation workspace;
+- repository/store;
+- operation attachment/readiness/audit package boundaries.
+
+`TransitionRegistryEngineeringOperationStatus` уже владеет application policy смены статуса.
+
+Он не является UI boundary.
+
+`RegistryEngineeringOperation` не должен получать transition methods.
+
+Причина: entity остаётся immutable lifecycle snapshot. Добавление `mark...`, `changeStatus`, `copyWith` или screen-driven behavior превратит entity в workflow executor.
+
+`RegistryEngineeringOperationStatus` не должен владеть UI labels или presentation policy.
+
+Причина: enum является lifecycle marker и не должен становиться UI model, policy object или localization owner.
+
+`RegistryEngineeringOperationCreationScreen` не должен расширяться до общего operation lifecycle workspace.
+
+Причина: экран был утверждён как isolated consumer `CreateRegistryEngineeringOperation`. Добавление lifecycle controls в этот экран смешает creation и status transition presentation responsibility.
+
+`RegistryStudioApp` не должен владеть status transition.
+
+Причина: app shell владеет top-level screen selection и UI-языком, но не выполняет operation action, не хранит operation workspace state и не принимает lifecycle decisions.
+
+`main.dart` не должен владеть status transition.
+
+Причина: runtime composition создаёт dependencies и вызывает `runApp`, но не выполняет operation action до действия engineer.
+
+Repository/store не вводятся в этом step.
+
+Причина: persistence ownership ещё не проходил audit. Следующий presentation consumer должен оставаться in-memory и isolated.
+
+Future operation workspace не вводится в этом step.
+
+Причина: workspace может объединить creation, selected operation, status transition, related context, readiness, audit package и future decision evidence. Это отдельная responsibility и требует отдельного ownership-аудита.
+
+Вывод existing-fit audit:
+
+- существующий Core use case `TransitionRegistryEngineeringOperationStatus` достаточен для application behavior;
+- новой Core entity/model/value object/use case не требуется;
+- нужен только isolated presentation consumer для existing use case;
+- presentation consumer не должен быть подключён в runtime app shell в этом step.
+
+Разрешённая production responsibility следующего code step:
+
+- создать isolated screen `RegistryEngineeringOperationStatusTransitionScreen`;
+- screen получает `RegistryStudioUiLanguage` извне;
+- screen получает текущий `RegistryEngineeringOperation` извне;
+- screen получает `TransitionRegistryEngineeringOperationStatus` извне;
+- screen показывает текущий operation snapshot;
+- screen позволяет выбрать requested next `RegistryEngineeringOperationStatus`;
+- screen вызывает existing `TransitionRegistryEngineeringOperationStatus`;
+- screen показывает новый immutable operation snapshot после successful transition;
+- screen показывает presentation error при invalid transition.
+
+Разрешённые production files следующего code step:
+
+- `lib/registry_studio/operation/presentation/screens/registry_engineering_operation_status_transition_screen.dart`;
+- `lib/registry_studio/presentation/language/registry_studio_ui_labels.dart`.
+
+Разрешённый test file следующего code step:
+
+- `test/registry_studio/operation/presentation/screens/registry_engineering_operation_status_transition_screen_test.dart`.
+
+Запрещено в следующем code step:
+
+- менять `RegistryEngineeringOperation`;
+- менять `RegistryEngineeringOperationStatus`;
+- менять `TransitionRegistryEngineeringOperationStatus`;
+- менять `CreateRegistryEngineeringOperation`;
+- менять `RegistryEngineeringOperationCreationScreen`;
+- менять `RegistryStudioApp`;
+- менять `lib/main.dart`;
+- добавлять repository/store/persistence;
+- добавлять operation workspace;
+- добавлять routing/navigation;
+- добавлять Orchestrator, manager, facade, helper, wrapper, bridge, locator или magic utility;
+- добавлять readiness computation;
+- добавлять related context inspection;
+- добавлять Translator dependency;
+- добавлять assessment;
+- добавлять audit package;
+- выполнять registry mutation, approval или publication.
+
+UI language requirement:
+
+- все labels нового screen должны иметь RU/EN/TH варианты;
+- UI-язык должен приходить через `RegistryStudioUiLanguage`;
+- technical enum values могут отображаться как code-level status names только если label responsibility для human-readable status names не вводится в этом step.
+
+Проверки следующего code step обязательны:
+
+- scope check только для разрешённых files;
+- check, что Core не изменён;
+- check, что screen не импортирует Translator, AppConfig, ApiClient, Typhoon, repository/store или app shell;
+- `dart analyze` для изменённых файлов;
+- full `flutter analyze`;
+- targeted widget test нового screen;
+- `git diff --check`.
+
+Вывод:
+
+- следующий code step может создать isolated presentation consumer для `TransitionRegistryEngineeringOperationStatus`;
+- следующий code step не должен подключать этот screen в `RegistryStudioApp`;
+- runtime connection требует отдельного ownership-аудита после успешной реализации isolated screen.
