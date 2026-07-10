@@ -4455,3 +4455,142 @@ Repository/store/persistence не вводятся в этом step.
 - direct runtime connection related context отклонён;
 - промежуточные отрицательные ownership-аудиты не нужны;
 - следующий рабочий шаг — рассмотреть `Registry Studio Guard record` как первый concrete semantic contract для source-backed input.
+
+## Ownership-аудит semantic source input для Registry Studio Guard record
+
+После добавления первого concrete payload и удаления лишнего entity wrapper выполнен аудит владельца source-backed input для `Registry Studio Guard record`.
+
+Фактическое состояние:
+
+- `RegistryStudioGuardRecordPayload` существует как concrete implementation `RegistryEntityPayload`;
+- payload владеет только Guard-specific semantic content:
+  - `recordType`;
+  - `heading`;
+  - `summary`;
+- `RegistryEntity` уже владеет source-backed registry entity envelope;
+- `RegistryEntityId` уже владеет stable entity identity;
+- `RegistryPath` уже владеет canonical domain position;
+- `RegistryEntityKind` уже владеет semantic contract / kind / schema identity;
+- `SourceEvidence` уже владеет provenance и координатами внешнего источника;
+- `RegistryRelation` уже представляет explicit directional relation fact;
+- отдельный Guard source-input contract, provider или adapter сейчас отсутствует.
+
+### Основное архитектурное решение
+
+Registry Studio не строится вокруг Markdown, структуры документа, headings, номеров строк или другого физического source format.
+
+`Registry Studio Guard record` является concrete semantic contract Registry Studio.
+
+Markdown или другой физический формат может использоваться конкретным infrastructure adapter как внешний источник, но не определяет:
+
+- `RegistryEntityId`;
+- `RegistryPath`;
+- Guard record identity;
+- semantic contract;
+- relation meaning;
+- related context;
+- архитектуру Registry Studio.
+
+`SourceEvidence` может фиксировать физическое происхождение записи, но provenance не является domain identity или canonical registry structure.
+
+### Отсутствующая ответственность
+
+Отсутствует Guard-specific source intake boundary, которая получает явно определённые semantic facts Guard source и представляет их через уже существующие Core contracts.
+
+Эта boundary должна отвечать только за:
+
+- применение concrete semantic contract `registry_studio.guard_record`;
+- создание `RegistryStudioGuardRecordPayload` из явно предоставленного semantic content;
+- представление Guard record как существующего `RegistryEntity`;
+- использование явно предоставленного stable `RegistryEntityId`;
+- использование явно предоставленного canonical `RegistryPath`;
+- добавление обязательного `SourceEvidence`;
+- создание только явно объявленных `RegistryRelation`;
+- отказ от преобразования при отсутствии обязательных semantic facts.
+
+Эта boundary не должна:
+
+- выводить `RegistryEntityId` из heading, номера строки, текста summary или source path;
+- выводить `RegistryPath` из Markdown heading hierarchy;
+- считать source heading path canonical registry path;
+- выводить relations из соседства разделов, порядка записей или текстового сходства;
+- принимать semantic, canonicalization, approval или publication decisions;
+- выбирать primary entity;
+- вызывать `PrepareRegistryRelatedContext`;
+- вызывать `PrepareRegistryResolvedRelatedContext`;
+- подключать presentation screen;
+- владеть operation workspace;
+- сохранять registry graph;
+- становиться repository, store, graph, resolver, manager, facade, bridge, locator или generic parser framework.
+
+### Existing-fit classification
+
+Новая Core entity не требуется.
+
+Причина: stable identity и source-backed entity invariants уже принадлежат `RegistryEntity`.
+
+Новый Core use case не требуется.
+
+Причина: concrete Guard source semantics не должны переноситься в product-neutral Core.
+
+Новая Guard entity не требуется.
+
+Причина: Guard record уже представляется через `RegistryEntity` и `RegistryStudioGuardRecordPayload`. Параллельная Guard entity дублировала бы identity и source-backed responsibility.
+
+Entity factory не требуется.
+
+Причина: объект, который только принимает готовые Core values и вызывает `RegistryEntity(...)`, является thin wrapper. Такой подход уже был отклонён и удалён.
+
+Repository, store и persistence не требуются.
+
+Причина: текущая responsibility не включает durable storage, saved sessions, registry graph lifecycle или восстановление состояния.
+
+Generic Markdown parser не требуется.
+
+Причина: физический source format не является Registry Studio domain boundary.
+
+### Обнаруженный блокер
+
+В текущем production и architecture surface не найден утверждённый semantic source contract, который явно предоставляет:
+
+- stable Guard record identity;
+- canonical Guard registry path;
+- Guard record semantic content;
+- source provenance;
+- explicit relation declarations.
+
+Без этих фактов implementation неизбежно начнёт:
+
+- вычислять identity из source format;
+- подменять `RegistryPath` document navigation;
+- предполагать relation semantics;
+- создавать очередной thin wrapper вокруг Core constructors.
+
+Поэтому следующий production code step пока запрещён.
+
+Сначала должен быть отдельно утверждён минимальный semantic source contract Guard record, независимый от физического формата источника.
+
+### Ограничения следующего шага
+
+До утверждения semantic source contract запрещено:
+
+- создавать Guard source adapter;
+- создавать parser;
+- создавать entity factory;
+- создавать source provider interface;
+- создавать input/result wrapper;
+- создавать repository/store;
+- создавать `RegistryRelation` на основании source layout;
+- подключать related context screen к runtime;
+- менять `Core`;
+- менять `RegistryStudioApp`;
+- менять operation workspace;
+- менять `main.dart`.
+
+### Вывод
+
+Законная ownership zone для будущего source intake находится внутри concrete `guard` boundary вне Core.
+
+Однако имя и shape production abstraction пока не утверждаются.
+
+Первым должен быть определён semantic source contract Guard record. Только после этого можно решить, требуется ли один concrete infrastructure adapter, application boundary или другое минимальное решение без дополнительных слоёв.
