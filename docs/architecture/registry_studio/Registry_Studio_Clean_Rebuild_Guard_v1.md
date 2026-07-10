@@ -5031,3 +5031,75 @@ Revision immutable.
 - создавать application use case;
 - создавать presentation screen;
 - создавать audit package.
+
+## Разделение operation problemStatement и revision workingContent
+
+Утверждено чистое разделение ответственности между исходным инженерным intent операции и развивающимся содержанием работы.
+
+`RegistryEngineeringOperation.problemStatement` принадлежит `RegistryEngineeringOperation`.
+
+Его ответственность:
+
+- фиксировать исходную причину открытия инженерной операции;
+- сохранять первоначальную формулировку проблемы;
+- оставаться immutable в течение lifecycle операции;
+- сохраняться при переходах operation status;
+- позволять установить, с какого инженерного intent началась работа.
+
+`problemStatement` не является:
+
+- текущей рабочей версией решения;
+- редактируемым планом;
+- накопленным результатом анализа;
+- container для revisions;
+- актуальной формулировкой, которая переписывается при развитии идеи.
+
+`RegistryEngineeringOperationRevision.workingContent` принадлежит `RegistryEngineeringOperationRevision`.
+
+Его ответственность:
+
+- содержать полную актуальную рабочую версию конкретной revision;
+- отражать текущее понимание задачи на данном этапе;
+- включать переписанные, дополненные или обобщённые инженерные идеи;
+- сохраняться полностью, а не только как diff;
+- оставаться immutable после создания revision.
+
+Изменение `workingContent` выполняется созданием новой `RegistryEngineeringOperationRevision`.
+
+Создание новой revision:
+
+- не изменяет `RegistryEngineeringOperation.problemStatement`;
+- не удаляет предыдущую revision;
+- сохраняет lineage;
+- позволяет расширить частное решение до более универсального;
+- позволяет изменить рабочее содержание и относящийся к revision Registry context.
+
+Это разделение не является дублированием ответственности.
+
+`problemStatement` отвечает на вопрос:
+
+- почему операция была открыта изначально.
+
+`workingContent` отвечает на вопрос:
+
+- как инженерная работа понимается и формулируется в конкретной revision.
+
+На текущем этапе ещё не утверждены:
+
+- конкретный Dart-тип `workingContent`;
+- внутренняя структура полного рабочего содержания;
+- должна ли первая revision автоматически получать содержание из `problemStatement`;
+- должен ли initial `workingContent` передаваться явно;
+- use case создания первой revision;
+- use case создания следующей revision.
+
+До отдельного аудита запрещено:
+
+- удалять `problemStatement` из `RegistryEngineeringOperation`;
+- переписывать `problemStatement` при создании revision;
+- считать `problemStatement` alias для `workingContent`;
+- автоматически копировать `problemStatement` в первую revision;
+- создавать production-класс revision;
+- создавать revision use case;
+- менять operation workspace;
+- создавать persistence.
