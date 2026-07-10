@@ -4843,322 +4843,39 @@ Code step зафиксирован commit `277238f feat: add guard record presen
 
 Этот presentation consumer не является precedent для generic payload renderer, universal registry record screen или автоматического выбора presentation implementation по `semanticContract`.
 
-## Решение по revision-модели инженерной работы
+## Минимальный контракт RegistryEngineeringOperationRevision
 
-Утверждено, что история инженерной работы должна сохраняться после закрытия экрана и приложения.
+`RegistryEngineeringOperationRevision` — одна самостоятельная immutable Core domain entity.
 
-История должна позволять установить:
+Её ответственность — хранить одну полную версию инженерной работы и её место в истории одной `RegistryEngineeringOperation`.
 
-- что происходило;
-- в какой последовательности;
-- с какими объектами Registry выполнялась работа;
-- какое решение или рабочая формулировка действовали на каждом этапе;
-- какая версия была заменена или дополнена следующей.
+Минимальный контракт entity:
 
-Инженерная работа не является одним бесследно перезаписываемым текстом.
+- `String id`;
+- `RegistryEngineeringOperationId operationId`;
+- `int revisionNumber`;
+- `String workingContent`;
+- `String? previousRevisionId`;
+- `RegistryEntityId primaryEntityId`;
+- immutable `List<RegistryEntityId> relatedEntityIds`.
 
-Она развивается через последовательность revisions.
+Инварианты:
 
-Каждая revision должна содержать полную актуальную рабочую версию целиком, а не только diff относительно предыдущей revision.
+- `id` нормализуется через `trim()` и не может быть пустым;
+- `revisionNumber` начинается с `1`;
+- первая revision не имеет `previousRevisionId`;
+- каждая последующая revision имеет `previousRevisionId`;
+- `previousRevisionId` нормализуется и не может быть пустым;
+- `workingContent` содержит полную рабочую версию, нормализуется и не может быть пустым;
+- `relatedEntityIds` уникальны;
+- `relatedEntityIds` не содержат `primaryEntityId`;
+- `relatedEntityIds` immutable;
+- equality определяется только `id`.
 
-Полная revision необходима, чтобы:
+`RegistryEngineeringOperation.problemStatement` остаётся исходной immutable причиной открытия operation.
 
-- восстановить её без вычисления всей предыдущей цепочки;
-- независимо проверить её содержимое;
-- показать конкретное состояние работы на выбранном этапе;
-- сохранить смысл версии при последующем развитии модели;
-- избежать зависимости доменной истины от diff-формата.
+Новая revision не изменяет `problemStatement` и предыдущие revisions.
 
-Новая revision может:
+Дополнительные revision id, working content, attachment, lineage, history, snapshot и context contracts не создаются.
 
-- заменить предыдущую revision;
-- дополнить предыдущую revision;
-- расширить частное решение до более универсального;
-- изменить набор относящихся к работе Registry entities.
-
-При этом должны сохраняться:
-
-- stable identity инженерной операции;
-- identity каждой revision;
-- порядок revisions;
-- связь происхождения между revisions;
-- предыдущие полные revisions;
-- связь каждой revision с относящимися к ней Registry entities.
-
-Предыдущая revision не обязана оставаться актуальной, но не должна бесследно исчезать.
-
-Актуальной считается последняя утверждённая рабочая revision, однако история происхождения сохраняется отдельно от текущего presentation state.
-
-Это решение не означает введение полного Event Sourcing.
-
-Допустима будущая модель, в которой отдельно существуют:
-
-- текущий operation snapshot;
-- полные operation revisions;
-- история переходов между revisions;
-- persistence для сохранения и восстановления;
-- audit trail, построенный на проверяемых фактах происхождения.
-
-На текущем этапе ещё не утверждены:
-
-- concrete production-класс revision;
-- revision id contract;
-- точный набор revision fields;
-- тип связи replace/extend;
-- persistence owner;
-- repository/store boundary;
-- serialization schema;
-- database structure;
-- application use cases создания или активации revision;
-- presentation flow редактирования revisions;
-- audit package.
-
-До отдельного ownership-аудита запрещено:
-
-- добавлять revision fields в `RegistryEngineeringOperation`;
-- хранить revisions внутри `RegistryEngineeringOperationWorkspaceScreen`;
-- создавать generic history manager;
-- создавать repository/store/persistence;
-- создавать event bus или Event Sourcing infrastructure;
-- создавать audit package;
-- связывать все Registry entities только с operation целиком без revision-level audit;
-- писать production-код revision boundary.
-
-Следующий шаг должен начинаться с existing-fit и ownership-аудита отдельной revision responsibility.
-
-Во время следующего аудита необходимо определить:
-
-- является ли revision новой domain entity;
-- какие минимальные факты принадлежат revision;
-- как revision связывается с `RegistryEngineeringOperationId`;
-- как представляется lineage;
-- как revision связывается с primary и related Registry entities;
-- какие поля относятся к рабочему содержанию, а какие к audit metadata;
-- что остаётся за пределами persistence и presentation.
-
-## Ownership-решение RegistryEngineeringOperationRevision
-
-Existing-fit audit подтвердил, что существующие contracts не могут корректно владеть revision инженерной работы.
-
-`RegistryEngineeringOperation` не является владельцем revisions.
-
-Причина: entity остаётся immutable lifecycle snapshot и отвечает за stable operation identity, lifecycle status и исходную формулировку инженерной проблемы. Она не должна становиться контейнером истории, lineage, Registry context или audit package.
-
-`RegistryEngineeringOperationWorkspaceScreen` не является владельцем revisions.
-
-Причина: workspace владеет только временным in-memory presentation state текущего UI-сеанса. История инженерной работы должна сохраняться после закрытия экрана и приложения.
-
-`RegistryRelatedContext` и `RegistryResolvedRelatedContext` не являются владельцами revisions.
-
-Причина: это read-only application results, описывающие подготовленный Registry context, а не самостоятельную версию инженерной работы.
-
-Утверждён новый самостоятельный Core domain owner:
-
-- production name: `RegistryEngineeringOperationRevision`;
-- classification: domain entity;
-- boundary: `registry_studio/core/domain`;
-- responsibility: одна полная immutable рабочая версия одной инженерной операции.
-
-`RegistryEngineeringOperationRevision` должна иметь:
-
-- собственную stable identity;
-- принадлежность одной `RegistryEngineeringOperationId`;
-- полное актуальное рабочее содержание конкретной версии;
-- место в последовательности revisions;
-- проверяемую lineage-связь с предыдущей revision, когда предыдущая revision существует;
-- revision-level связи с Registry entities, к которым относилась именно эта версия.
-
-Revision является entity, а не value object.
-
-Две revisions могут иметь одинаковое рабочее содержание, но оставаться разными этапами инженерной работы. Их equality должна определяться собственной revision identity.
-
-Revision immutable.
-
-Изменение инженерной работы выполняется созданием новой revision. Уже существующая revision не изменяется и не удаляется как способ редактирования текущей работы.
-
-Новая revision может:
-
-- заменить предыдущую;
-- дополнить предыдущую;
-- расширить частное решение до более универсального;
-- изменить относящийся к версии Registry context.
-
-Утверждение этой entity не означает введение полного Event Sourcing.
-
-На текущем этапе в responsibility `RegistryEngineeringOperationRevision` не входят:
-
-- lifecycle status самой `RegistryEngineeringOperation`;
-- persistence;
-- repository или store;
-- serialization;
-- database schema;
-- presentation state;
-- navigation;
-- assessment;
-- ambiguity, contradiction или drift detection;
-- approval;
-- publication;
-- audit package;
-- workflow orchestration;
-- автоматическое semantic decision.
-
-На текущем этапе ещё не утверждены:
-
-- имя и contract revision identity value object;
-- формат revision identity;
-- точные поля полного рабочего содержания;
-- представление порядка revisions;
-- точное представление lineage;
-- отдельный тип связи replace/extend либо отсутствие такого типа;
-- форма primary и related Registry entity links;
-- необходимость timestamps;
-- необходимость author identity;
-- use case создания revision;
-- use case выбора актуальной revision;
-- persistence owner;
-- presentation flow.
-
-Следующий шаг должен быть узким ownership-аудитом минимального domain contract `RegistryEngineeringOperationRevision`.
-
-До завершения этого аудита запрещено:
-
-- создавать production-класс revision;
-- создавать revision identity value object;
-- добавлять revision fields в `RegistryEngineeringOperation`;
-- добавлять revisions в operation workspace;
-- создавать repository/store/persistence;
-- создавать history manager, orchestrator, facade или locator;
-- создавать application use case;
-- создавать presentation screen;
-- создавать audit package.
-
-## Разделение operation problemStatement и revision workingContent
-
-Утверждено чистое разделение ответственности между исходным инженерным intent операции и развивающимся содержанием работы.
-
-`RegistryEngineeringOperation.problemStatement` принадлежит `RegistryEngineeringOperation`.
-
-Его ответственность:
-
-- фиксировать исходную причину открытия инженерной операции;
-- сохранять первоначальную формулировку проблемы;
-- оставаться immutable в течение lifecycle операции;
-- сохраняться при переходах operation status;
-- позволять установить, с какого инженерного intent началась работа.
-
-`problemStatement` не является:
-
-- текущей рабочей версией решения;
-- редактируемым планом;
-- накопленным результатом анализа;
-- container для revisions;
-- актуальной формулировкой, которая переписывается при развитии идеи.
-
-`RegistryEngineeringOperationRevision.workingContent` принадлежит `RegistryEngineeringOperationRevision`.
-
-Его ответственность:
-
-- содержать полную актуальную рабочую версию конкретной revision;
-- отражать текущее понимание задачи на данном этапе;
-- включать переписанные, дополненные или обобщённые инженерные идеи;
-- сохраняться полностью, а не только как diff;
-- оставаться immutable после создания revision.
-
-Изменение `workingContent` выполняется созданием новой `RegistryEngineeringOperationRevision`.
-
-Создание новой revision:
-
-- не изменяет `RegistryEngineeringOperation.problemStatement`;
-- не удаляет предыдущую revision;
-- сохраняет lineage;
-- позволяет расширить частное решение до более универсального;
-- позволяет изменить рабочее содержание и относящийся к revision Registry context.
-
-Это разделение не является дублированием ответственности.
-
-`problemStatement` отвечает на вопрос:
-
-- почему операция была открыта изначально.
-
-`workingContent` отвечает на вопрос:
-
-- как инженерная работа понимается и формулируется в конкретной revision.
-
-На текущем этапе ещё не утверждены:
-
-- конкретный Dart-тип `workingContent`;
-- внутренняя структура полного рабочего содержания;
-- должна ли первая revision автоматически получать содержание из `problemStatement`;
-- должен ли initial `workingContent` передаваться явно;
-- use case создания первой revision;
-- use case создания следующей revision.
-
-До отдельного аудита запрещено:
-
-- удалять `problemStatement` из `RegistryEngineeringOperation`;
-- переписывать `problemStatement` при создании revision;
-- считать `problemStatement` alias для `workingContent`;
-- автоматически копировать `problemStatement` в первую revision;
-- создавать production-класс revision;
-- создавать revision use case;
-- менять operation workspace;
-- создавать persistence.
-
-## Contract revision workingContent
-
-Утверждён минимальный contract рабочего содержания `RegistryEngineeringOperationRevision`.
-
-Каждая revision должна принимать обязательный явный:
-
-- `String workingContent`.
-
-Это правило действует для:
-
-- первой revision;
-- каждой последующей revision.
-
-`workingContent` не создаётся автоматически из `RegistryEngineeringOperation.problemStatement`.
-
-Причина:
-
-- `problemStatement` и `workingContent` имеют разные responsibilities;
-- `problemStatement` фиксирует исходную причину открытия operation;
-- `workingContent` фиксирует полную рабочую версию конкретной revision;
-- первая рабочая версия может отличаться от исходной формулировки проблемы;
-- Core не должен угадывать или неявно создавать содержание revision.
-
-Если первая revision должна повторять исходную формулировку, вызывающая сторона передаёт это значение явно.
-
-Domain invariant revision:
-
-- `workingContent` нормализуется через `trim()`;
-- пустое значение запрещено;
-- значение, содержащее только пробелы, запрещено;
-- после создания revision `workingContent` immutable.
-
-Отдельный value object для `workingContent` не вводится.
-
-Причина:
-
-- на текущем этапе самостоятельные domain facts и invariants сверх normalization и non-empty validation отсутствуют;
-- отдельный wrapper только повторил бы проверку `String`;
-- thin wrapper не создаёт нового владельца ответственности.
-
-Validation `workingContent` принадлежит factory или constructor `RegistryEngineeringOperationRevision`.
-
-На текущем этапе запрещено:
-
-- автоматически копировать `problemStatement` в первую revision;
-- делать `workingContent` optional;
-- подставлять default content;
-- хранить только diff;
-- создавать `RegistryEngineeringOperationWorkingContent` value object;
-- добавлять revision behavior в `RegistryEngineeringOperation`;
-- создавать use case, persistence или presentation flow до завершения минимального revision contract audit.
-
-Следующий аудит должен определить:
-
-- `RegistryEngineeringOperationRevisionId`;
-- representation порядка revisions;
-- representation lineage;
-- минимальный revision-level Registry context contract.
+Если ответственность entity расширится, дополняется этот же единый контракт.
