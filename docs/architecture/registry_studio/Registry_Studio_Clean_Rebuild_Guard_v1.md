@@ -3876,3 +3876,56 @@ UI language requirement:
 - следующий code step может создать isolated presentation consumer для `TransitionRegistryEngineeringOperationStatus`;
 - следующий code step не должен подключать этот screen в `RegistryStudioApp`;
 - runtime connection требует отдельного ownership-аудита после успешной реализации isolated screen.
+
+## Build APK # operation status transition screen success
+
+Isolated presentation consumer для `TransitionRegistryEngineeringOperationStatus` реализован и подтверждён через GitHub Actions.
+
+Code commit:
+
+- `fa66cb2 feat: add operation status transition screen`.
+
+Финальная проверка GitHub Actions:
+
+- workflow: `Build APK`;
+- run: `29066716696`;
+- job: `86279715466`;
+- branch: `registry-studio/clean-rebuild`;
+- head commit: `fa66cb2`;
+- conclusion: `success`;
+- artifact: `helpy-translator-debug-apk`.
+
+Проверка подтверждает:
+
+- `Analyze` прошёл успешно;
+- `Test` прошёл успешно;
+- debug APK собран успешно;
+- artifact `helpy-translator-debug-apk` загружен успешно.
+
+Закрытый результат code step:
+
+- создан isolated screen `RegistryEngineeringOperationStatusTransitionScreen`;
+- screen использует существующий Core use case `TransitionRegistryEngineeringOperationStatus`;
+- screen получает `RegistryStudioUiLanguage` извне;
+- screen получает `RegistryEngineeringOperation` извне;
+- screen получает `TransitionRegistryEngineeringOperationStatus` извне;
+- screen показывает текущий operation snapshot;
+- screen позволяет выбрать requested next `RegistryEngineeringOperationStatus`;
+- screen показывает новый immutable operation snapshot после successful transition;
+- screen показывает presentation error при invalid transition;
+- labels нового screen имеют RU/EN/TH варианты.
+
+Подтверждённые ограничения:
+
+- `Core` не изменён;
+- `RegistryEngineeringOperationCreationScreen` не изменён;
+- `RegistryStudioApp` не изменён;
+- `lib/main.dart` не изменён;
+- runtime connection не добавлен;
+- repository/store/persistence не добавлены;
+- operation workspace не добавлен;
+- routing/navigation не добавлены;
+- Translator dependency не добавлена;
+- readiness, related context inspection, assessment, audit package, mutation, approval и publication не добавлены.
+
+Следующая точка требует отдельного ownership-аудита перед подключением status transition screen в runtime app shell или перед проектированием operation workspace.
