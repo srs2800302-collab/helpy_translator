@@ -34,6 +34,9 @@ void main() {
         '  Check possible canonical wording drift.  ',
       );
 
+      await tester.ensureVisible(
+        find.byKey(const Key('registry_engineering_operation_create_button')),
+      );
       await tester.tap(
         find.byKey(const Key('registry_engineering_operation_create_button')),
       );
@@ -62,6 +65,9 @@ void main() {
         'Check possible canonical wording drift.',
       );
 
+      await tester.ensureVisible(
+        find.byKey(const Key('registry_engineering_operation_create_button')),
+      );
       await tester.tap(
         find.byKey(const Key('registry_engineering_operation_create_button')),
       );
@@ -81,6 +87,9 @@ void main() {
         'registry-operation-001',
       );
 
+      await tester.ensureVisible(
+        find.byKey(const Key('registry_engineering_operation_create_button')),
+      );
       await tester.tap(
         find.byKey(const Key('registry_engineering_operation_create_button')),
       );
@@ -117,6 +126,9 @@ void main() {
         'Check possible canonical wording drift.',
       );
 
+      await tester.ensureVisible(
+        find.byKey(const Key('registry_engineering_operation_create_button')),
+      );
       await tester.tap(
         find.byKey(const Key('registry_engineering_operation_create_button')),
       );
