@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - registry-studio/v1
+      - registry-studio/clean-rebuild
 
 jobs:
   build:
