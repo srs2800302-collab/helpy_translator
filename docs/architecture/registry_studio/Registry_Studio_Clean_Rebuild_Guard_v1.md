@@ -3457,3 +3457,197 @@ CI подтвердил:
 - экран создания инженерной операции закрыт как первый изолированный слой отображения;
 - следующий шаг снова должен начинаться с аудита соответствия существующему контракту и ownership-аудита;
 - экран нельзя подключать к среде выполнения без отдельного ownership-аудита.
+
+## Ownership-аудит верхней оболочки приложения Registry Studio
+
+После закрытия экрана создания инженерной операции выполнен аудит владельца подключения нескольких экранов Registry Studio к среде выполнения.
+
+Фактическое состояние перед решением:
+
+- HEAD: `cf93e65 docs: record operation creation screen ci success`;
+- ветка синхронизирована с `origin/registry-studio/clean-rebuild`;
+- рабочее дерево clean;
+- `dart analyze` прошёл;
+- `flutter analyze` прошёл;
+- `Core` не импортирует presentation или Translator;
+- operation presentation не импортирует Translator, Typhoon, `AppConfig` или `ApiClient`;
+- translator app shell не импортирует operation;
+- текущий `lib/main.dart` запускает только `RegistryStudioTranslatorApp`;
+- общего app shell для Registry Studio сейчас нет;
+- `RegistryEngineeringOperationCreationScreen` существует, но намеренно не подключён к среде выполнения.
+
+Проверенные кандидаты на владение подключением экранов:
+
+1. `lib/main.dart`.
+
+Вывод:
+
+- подходит как точка запуска Flutter;
+- подходит как место создания infrastructure/application dependency graph;
+- не подходит как владелец экранов;
+- не подходит как владелец верхнего UI-переключения;
+- не должен становиться workflow executor, orchestrator, generic composition service или navigation owner.
+
+2. `RegistryStudioTranslatorApp`.
+
+Вывод:
+
+- подходит только как утверждённый малый shell clean Translator runtime;
+- владеет только созданием `TranslatorPhraseCubit` и открытием `TranslatorPhraseScreen`;
+- не подходит как владелец operation screen;
+- не должен создавать operation;
+- не должен становиться общей оболочкой Registry Studio.
+
+3. `TranslatorPhraseScreen`.
+
+Вывод:
+
+- подходит только как изолированный экран Translator;
+- не является корневой сборкой приложения;
+- не создаёт dependency graph;
+- не подходит как владелец подключения других экранов.
+
+4. `RegistryEngineeringOperationCreationScreen`.
+
+Вывод:
+
+- подходит только как изолированный экран создания `RegistryEngineeringOperation`;
+- не является runtime composition boundary;
+- не должен создавать routing/navigation;
+- не должен подключать себя к среде выполнения.
+
+5. `CreateRegistryEngineeringOperation` и `RegistryEngineeringOperation`.
+
+Вывод:
+
+- подходят только как Core application/domain responsibility;
+- не должны знать Flutter;
+- не должны импортировать presentation;
+- не подходят как владельцы UI-подключения.
+
+6. Существующий общий Registry Studio app shell.
+
+Вывод:
+
+- не найден;
+- совпадения поиска по `application` являются шумом;
+- единственный существующий app shell — `RegistryStudioTranslatorApp`, и он Translator-specific.
+
+Решение:
+
+- прямое подключение `RegistryEngineeringOperationCreationScreen` в `RegistryStudioTranslatorApp` отклонено;
+- прямое превращение `lib/main.dart` в владельца экранов отклонено;
+- для следующего code step требуется отдельная верхняя Flutter-оболочка приложения Registry Studio;
+- имя разрешённой оболочки: `RegistryStudioApp`;
+- `RegistryStudioApp` является presentation boundary, а не domain/application model;
+- `RegistryStudioApp` не является helper, wrapper, manager, facade, bridge, locator, bootstrap или composition root;
+- `RegistryStudioApp` владеет только верхним Flutter отображением и переключением между уже утверждёнными экранами.
+
+Разрешённый production surface следующего code step:
+
+- `lib/main.dart`;
+- `lib/registry_studio/presentation/app/registry_studio_app.dart`;
+- удаление `lib/registry_studio/translator/presentation/app/registry_studio_translator_app.dart`, если его ответственность полностью заменена `RegistryStudioApp`.
+
+Разрешённый test surface следующего code step:
+
+- `test/registry_studio/presentation/app/registry_studio_app_test.dart`;
+- удаление `test/registry_studio/translator/presentation/app/registry_studio_translator_app_test.dart`, если `RegistryStudioTranslatorApp` удалён.
+
+Ответственность `RegistryStudioApp`:
+
+- быть верхней Flutter-оболочкой Registry Studio;
+- принимать готовый `TranslatePhrase`;
+- принимать готовый `CreateRegistryEngineeringOperation`;
+- создавать `TranslatorPhraseCubit` только для `TranslatorPhraseScreen`;
+- передавать `CreateRegistryEngineeringOperation` в `RegistryEngineeringOperationCreationScreen`;
+- открывать `TranslatorPhraseScreen`;
+- открывать `RegistryEngineeringOperationCreationScreen`;
+- владеть только локальным UI-состоянием выбора текущего экрана;
+- показывать engineer понятный выбор между Translator и созданием инженерной операции.
+
+`RegistryStudioApp` не должен:
+
+- читать `.env`;
+- создавать `AppConfig`;
+- создавать `ApiClient`;
+- создавать `TyphoonTranslatorPhraseProvider`;
+- выполнять HTTP;
+- знать Typhoon request/response/prompt details;
+- создавать `RegistryEngineeringOperation` до действия engineer;
+- генерировать operation id;
+- создавать repository/store/persistence;
+- загружать Registry tree;
+- искать Registry items;
+- attach-ить primary entity;
+- attach-ить related context;
+- выполнять status transition;
+- выполнять mutation;
+- выполнять approval;
+- выполнять publication;
+- принимать semantic decisions;
+- принимать canonicalization decisions;
+- создавать `Navigator`, `routes` или `onGenerateRoute` в первом шаге;
+- создавать Cubit/Bloc для верхнего выбора экрана без отдельного ownership-аудита.
+
+Ответственность `lib/main.dart` после следующего code step:
+
+- остаться точкой запуска Flutter;
+- загрузить `.env`;
+- создать `AppConfig`;
+- создать `ApiClient`;
+- создать `TyphoonTranslatorPhraseProvider`;
+- создать `TranslatePhrase`;
+- создать stateless `CreateRegistryEngineeringOperation`;
+- передать готовые dependencies в `RegistryStudioApp`;
+- вызвать `runApp`.
+
+`lib/main.dart` не должен:
+
+- создавать `RegistryEngineeringOperation`;
+- выполнять `CreateRegistryEngineeringOperation` до действия engineer;
+- владеть экранным переключением;
+- владеть UI-state;
+- загружать Registry tree;
+- выполнять mutation;
+- выполнять approval;
+- выполнять publication;
+- становиться generic composition abstraction.
+
+Причина замены `RegistryStudioTranslatorApp`:
+
+- прежний app shell был корректен для одного Translator screen;
+- после появления operation screen он становится слишком узким владельцем среды выполнения;
+- расширять `RegistryStudioTranslatorApp` до operation responsibility нельзя, потому что это смешивает Translator capability и Registry Studio operation capability;
+- сохранять два публичных app shell без необходимости нельзя, потому что это создаёт ложную точку владения;
+- `RegistryStudioApp` заменяет только верхнюю presentation responsibility, не меняя Core contracts.
+
+Dependency direction:
+
+- `main.dart` может импортировать `RegistryStudioApp`;
+- `RegistryStudioApp` может импортировать Translator presentation/application;
+- `RegistryStudioApp` может импортировать operation presentation/application;
+- `Core` не должен импортировать `RegistryStudioApp`;
+- `Core` не должен импортировать Translator;
+- operation presentation не должен импортировать Translator;
+- Translator screen не должен импортировать operation screen.
+
+Проверки следующего code step обязательны:
+
+- scope check только для разрешённых production/test files;
+- forbidden legacy checks;
+- check, что `Core` не импортирует presentation или Translator;
+- check, что operation presentation не импортирует Translator;
+- check, что Translator screen не импортирует operation;
+- check, что `RegistryStudioApp` не создаёт Typhoon infrastructure;
+- `dart analyze` для изменённых файлов;
+- full `flutter analyze`;
+- targeted widget test для `RegistryStudioApp`;
+- GitHub Actions `Build APK` после push.
+
+Вывод:
+
+- следующий code step может ввести `RegistryStudioApp`;
+- следующий code step может переключить `main.dart` с `RegistryStudioTranslatorApp` на `RegistryStudioApp`;
+- следующий code step может удалить `RegistryStudioTranslatorApp`, если его ответственность полностью заменена;
+- следующий code step не должен создавать registry loading, repository/store, id generator, routing system, mutation, approval или publication path.
