@@ -4768,3 +4768,8 @@ Factory, который только повторно собирает `Registry
 - `RegistryEntity` получает kind только через payload;
 - дублирующая ручная сборка kind удаляется;
 - новый архитектурный слой не создаётся.
+
+## Termux Flutter environment restriction
+
+- Never run `flutter precache --linux --force`.
+- This command replaces the Android/Termux-adapted engine artifacts with standard Linux/glibc artifacts and breaks local `flutter test` and `flutter build bundle --debug`.

@@ -464,3 +464,8 @@ Legacy `lib/features/translator` можно использовать тольк�
 9. Фиксируем docs checkpoint, если был code step.
 
 Работа по памяти запрещена.
+
+## Ограничение Flutter в Termux
+
+- Не запускать `flutter precache --linux --force`.
+- Эта команда заменяет адаптированные Android/Termux engine-бинарники стандартными Linux/glibc-бинарниками и ломает локальные `flutter test` и `flutter build bundle --debug`.
