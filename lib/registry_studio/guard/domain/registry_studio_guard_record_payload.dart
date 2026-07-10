@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../core/domain/contracts/registry_entity_payload.dart';
+import '../../core/domain/value_objects/registry_entity_kind.dart';
 import '../../core/domain/value_objects/registry_semantic_contract_identity.dart';
 
 enum RegistryStudioGuardRecordType {
@@ -59,29 +60,19 @@ final class RegistryStudioGuardRecordPayload extends Equatable
 
   static const String schemaVersion = '1';
 
+  static final RegistryEntityKind entityKind = RegistryEntityKind(
+    semanticContract: semanticContractIdentity,
+    kindId: entityKindIdentifier,
+    schemaVersion: schemaVersion,
+  );
+
   final RegistryStudioGuardRecordType recordType;
-
   final String heading;
-
   final String summary;
 
   @override
-  RegistrySemanticContractIdentity get semanticContract =>
-      semanticContractIdentity;
+  RegistryEntityKind get kind => entityKind;
 
   @override
-  String get entityKindId => entityKindIdentifier;
-
-  @override
-  String get payloadSchemaVersion => schemaVersion;
-
-  @override
-  List<Object?> get props => <Object?>[
-    semanticContract,
-    entityKindId,
-    payloadSchemaVersion,
-    recordType,
-    heading,
-    summary,
-  ];
+  List<Object?> get props => <Object?>[kind, recordType, heading, summary];
 }

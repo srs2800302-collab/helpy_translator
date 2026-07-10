@@ -9,16 +9,14 @@ import 'package:helpy_translator/registry_studio/core/domain/value_objects/regis
 RegistryEntity registryEntityFixture({required String id}) {
   final RegistrySemanticContractIdentity semanticContract =
       registrySemanticContractFixture();
+  final RegistryEntityKind kind = registryEntityKindFixture(
+    semanticContract: semanticContract,
+  );
 
   return RegistryEntity(
     id: RegistryEntityId(id),
     path: RegistryPath(<String>['sample_scope', id]),
-    kind: registryEntityKindFixture(semanticContract: semanticContract),
-    payload: registryEntityPayloadFixture(
-      semanticContract: semanticContract,
-      entityKindId: 'sample.entity',
-      payloadSchemaVersion: '1',
-    ),
+    payload: registryEntityPayloadFixture(kind: kind),
     sourceEvidence: <SourceEvidence>[
       sourceEvidenceFixture(
         sourceSnapshotFingerprint: 'sha256:$id',
@@ -51,15 +49,9 @@ RegistryEntityKind registryEntityKindFixture({
 }
 
 RegistryEntityPayload registryEntityPayloadFixture({
-  required RegistrySemanticContractIdentity semanticContract,
-  String entityKindId = 'sample.entity',
-  String payloadSchemaVersion = '1',
+  required RegistryEntityKind kind,
 }) {
-  return _FixtureRegistryEntityPayload(
-    semanticContract: semanticContract,
-    entityKindId: entityKindId,
-    payloadSchemaVersion: payloadSchemaVersion,
-  );
+  return _FixtureRegistryEntityPayload(kind: kind);
 }
 
 SourceEvidence sourceEvidenceFixture({
@@ -82,18 +74,8 @@ SourceEvidence sourceEvidenceFixture({
 }
 
 final class _FixtureRegistryEntityPayload implements RegistryEntityPayload {
-  const _FixtureRegistryEntityPayload({
-    required this.semanticContract,
-    required this.entityKindId,
-    required this.payloadSchemaVersion,
-  });
+  const _FixtureRegistryEntityPayload({required this.kind});
 
   @override
-  final RegistrySemanticContractIdentity semanticContract;
-
-  @override
-  final String entityKindId;
-
-  @override
-  final String payloadSchemaVersion;
+  final RegistryEntityKind kind;
 }

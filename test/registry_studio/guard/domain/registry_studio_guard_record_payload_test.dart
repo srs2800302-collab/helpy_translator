@@ -3,7 +3,7 @@ import 'package:helpy_translator/registry_studio/guard/domain/registry_studio_gu
 
 void main() {
   group('RegistryStudioGuardRecordPayload', () {
-    test('exposes RegistryEntityPayload contract values', () {
+    test('exposes its typed RegistryEntityKind contract', () {
       final RegistryStudioGuardRecordPayload payload =
           RegistryStudioGuardRecordPayload(
             recordType: RegistryStudioGuardRecordType.decision,
@@ -12,12 +12,13 @@ void main() {
           );
 
       expect(
-        payload.semanticContract.contractId,
+        payload.kind.semanticContract.contractId,
         'registry_studio.guard_record',
       );
-      expect(payload.semanticContract.version, '1');
-      expect(payload.entityKindId, 'registry_studio.guard_record');
-      expect(payload.payloadSchemaVersion, '1');
+      expect(payload.kind.semanticContract.version, '1');
+      expect(payload.kind.kindId, 'registry_studio.guard_record');
+      expect(payload.kind.schemaVersion, '1');
+      expect(payload.kind, same(RegistryStudioGuardRecordPayload.entityKind));
     });
 
     test('keeps guard record content as read-only payload fields', () {

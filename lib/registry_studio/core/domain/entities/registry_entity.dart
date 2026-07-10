@@ -10,12 +10,12 @@ final class RegistryEntity extends Equatable {
   factory RegistryEntity({
     required RegistryEntityId id,
     required RegistryPath path,
-    required RegistryEntityKind kind,
     required RegistryEntityPayload payload,
     required Iterable<SourceEvidence> sourceEvidence,
   }) {
-    final List<SourceEvidence> normalizedSourceEvidence = sourceEvidence
-        .toList(growable: false);
+    final List<SourceEvidence> normalizedSourceEvidence = sourceEvidence.toList(
+      growable: false,
+    );
 
     if (normalizedSourceEvidence.isEmpty) {
       throw ArgumentError.value(
@@ -25,23 +25,7 @@ final class RegistryEntity extends Equatable {
       );
     }
 
-    if (payload.semanticContract != kind.semanticContract) {
-      throw ArgumentError(
-        'Registry entity payload semantic contract must match entity kind.',
-      );
-    }
-
-    if (payload.entityKindId != kind.kindId) {
-      throw ArgumentError(
-        'Registry entity payload kind must match entity primary kind.',
-      );
-    }
-
-    if (payload.payloadSchemaVersion != kind.schemaVersion) {
-      throw ArgumentError(
-        'Registry entity payload schema version must match entity kind.',
-      );
-    }
+    final RegistryEntityKind kind = payload.kind;
 
     return RegistryEntity._(
       id: id,
