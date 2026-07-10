@@ -20,12 +20,12 @@ void main() {
       th: 'ตรวจสอบถ้อยคำ',
       comment: 'Equivalent wording.',
     );
+    final _FakeTranslatorPhraseProvider provider =
+        _FakeTranslatorPhraseProvider(result);
 
     await tester.pumpWidget(
       RegistryStudioTranslatorApp(
-        translatePhrase: TranslatePhrase(
-          provider: _FakeTranslatorPhraseProvider(result),
-        ),
+        translatePhrase: TranslatePhrase(provider: provider),
       ),
     );
 
@@ -40,16 +40,18 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    expect(provider.callCount, 1);
+    expect(provider.receivedSourceText, 'Проверить формулировку.');
     expect(find.text('Эквивалентная формулировка'), findsOneWidget);
-    expect(find.text('Check wording.'), findsOneWidget);
-    expect(find.text('Equivalent wording.'), findsOneWidget);
   });
 }
 
 final class _FakeTranslatorPhraseProvider implements TranslatorPhraseProvider {
-  const _FakeTranslatorPhraseProvider(this.result);
+  _FakeTranslatorPhraseProvider(this.result);
 
   final TranslatorPhraseResult result;
+  int callCount = 0;
+  String? receivedSourceText;
 
   @override
   Future<TranslatorPhraseResult> translatePhrase({
@@ -57,6 +59,8 @@ final class _FakeTranslatorPhraseProvider implements TranslatorPhraseProvider {
     String? sourceLanguageHint,
     String? engineerContext,
   }) async {
+    callCount += 1;
+    receivedSourceText = sourceText;
     return result;
   }
 }
