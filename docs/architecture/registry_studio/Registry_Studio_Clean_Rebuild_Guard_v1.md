@@ -4381,3 +4381,88 @@ CI proof:
 - isolated related context preparation presentation consumer закрыт;
 - related context screen пока не подключён к workspace или app shell;
 - runtime connection related context требует отдельного ownership-аудита.
+
+## Ownership-аудит related context runtime connection
+
+После закрытия isolated `RegistryRelatedContextPreparationScreen` выполнен audit возможности подключить экран в runtime flow.
+
+Проверенные candidates:
+
+- `RegistryStudioApp`;
+- `lib/main.dart`;
+- `RegistryEngineeringOperationWorkspaceScreen`;
+- `RegistryEngineeringOperation`;
+- `RegistryRelatedContextPreparationScreen`;
+- fake/demo/seed production registry entities;
+- repository/store/persistence;
+- separate source-backed related context input owner.
+
+`RegistryStudioApp` не должен подключать `RegistryRelatedContextPreparationScreen` как top-level screen в текущем step.
+
+Причина: app shell владеет только top-level screen selection и UI language. Он не владеет primary `RegistryEntity`, relation source или available related entities. Если app shell начнёт создавать эти inputs, он станет registry graph/input owner.
+
+`lib/main.dart` не должен создавать inputs для `RegistryRelatedContextPreparationScreen`.
+
+Причина: runtime composition создаёт dependencies и запускает app. Создание primary entity, relations или available related entities в `main.dart` было бы production seed/demo data или hidden registry input construction.
+
+`RegistryEngineeringOperationWorkspaceScreen` не должен подключать `RegistryRelatedContextPreparationScreen` в текущем step.
+
+Причина: workspace сейчас владеет только nullable in-memory current `RegistryEngineeringOperation`. Он не владеет source-backed primary entity selection, relation source или available related entities. Прямое добавление related context flow расширит workspace до workflow container.
+
+`RegistryEngineeringOperation` не должен становиться source для related context inputs.
+
+Причина: operation entity остаётся immutable lifecycle snapshot и не хранит primary/context/relation graph.
+
+`RegistryRelatedContextPreparationScreen` не должен сам создавать missing inputs.
+
+Причина: isolated screen уже утверждён как presentation consumer existing Core use cases. Он получает inputs извне и не выбирает primary entity, не ищет relations, не загружает entities и не создаёт fake/demo/seed data.
+
+Fake/demo/seed production registry entities отклоняются.
+
+Причина: они создадут видимость runtime connection без настоящего owner-а source-backed input. Это нарушит clean rebuild boundary и замаскирует нерешённую registry input responsibility.
+
+Repository/store/persistence не вводятся в этом step.
+
+Причина: текущий audit не решает durable registry graph loading, saved sessions, multi-operation storage или persistence lifecycle.
+
+Вывод existing-fit audit:
+
+- isolated related context screen готов;
+- runtime connection пока не готов;
+- existing runtime boundaries не владеют required inputs;
+- новый code step для connection запрещён до ownership-аудита input owner-а.
+
+Следующий допустимый audit:
+
+- source-backed related context input owner.
+
+Этот audit должен отдельно решить:
+
+- кто выбирает primary `RegistryEntity`;
+- откуда приходят `Iterable<RegistryRelation>`;
+- откуда приходят available related `Iterable<RegistryEntity>`;
+- является ли это manual engineer input, source intake, registry graph read model или другой boundary;
+- где живёт lifecycle этих inputs;
+- почему это не repository/store/persistence shortcut;
+- почему это не fake/demo/seed data;
+- почему это не operation attachment;
+- почему это не assessment/audit package;
+- почему это не registry mutation, approval или publication.
+
+Запрещено в следующем code step без нового ownership-аудита:
+
+- подключать `RegistryRelatedContextPreparationScreen` к `RegistryStudioApp`;
+- подключать `RegistryRelatedContextPreparationScreen` к `RegistryEngineeringOperationWorkspaceScreen`;
+- менять `lib/main.dart` для related context runtime inputs;
+- создавать production fixtures/seeds/demo registry entities;
+- добавлять registry repository/store/persistence;
+- добавлять operation context attachment;
+- добавлять readiness marker/getter;
+- добавлять assessment или audit package;
+- выполнять registry mutation, approval или publication.
+
+Вывод:
+
+- direct runtime connection related context отклонён;
+- следующий безопасный шаг — отдельный ownership-аудит source-backed related context input owner;
+- код после текущего audit не разрешён.
