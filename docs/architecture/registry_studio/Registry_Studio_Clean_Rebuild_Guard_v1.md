@@ -4473,7 +4473,7 @@ Repository/store/persistence не вводятся в этом step.
 - `RegistryEntityKind` уже владеет semantic contract / kind / schema identity;
 - `SourceEvidence` уже владеет provenance и координатами внешнего источника;
 - `RegistryRelation` уже представляет explicit directional relation fact;
-- отдельный Guard source-input contract, provider или adapter сейчас отсутствует.
+- отдельная Guard source-input model не требуется; concrete source adapter пока отсутствует.
 
 ### Основное архитектурное решение
 
@@ -4493,107 +4493,51 @@ Markdown или другой физический формат может исп
 
 `SourceEvidence` может фиксировать физическое происхождение записи, но provenance не является domain identity или canonical registry structure.
 
-### Отсутствующая ответственность
+### Результат повторного existing-fit audit
 
-Отсутствует Guard-specific source intake boundary, которая получает явно определённые semantic facts Guard source и представляет их через уже существующие Core contracts.
+Минимальный semantic source contract Guard record уже выражен существующими owners:
 
-Эта boundary должна отвечать только за:
+- `RegistryEntityId` — stable identity;
+- `RegistryPath` — canonical semantic position;
+- `RegistryStudioGuardRecordPayload` — Guard-specific semantic content и typed `RegistryEntityKind`;
+- `SourceEvidence` — обязательное source provenance;
+- `RegistryEntity` — source-backed registry unit;
+- `RegistryRelation` — отдельно объявленный directional relation fact.
 
-- применение concrete semantic contract `registry_studio.guard_record`;
-- создание `RegistryStudioGuardRecordPayload` из явно предоставленного semantic content;
-- представление Guard record как существующего `RegistryEntity`;
-- использование явно предоставленного stable `RegistryEntityId`;
-- использование явно предоставленного canonical `RegistryPath`;
-- добавление обязательного `SourceEvidence`;
-- создание только явно объявленных `RegistryRelation`;
-- отказ от преобразования при отсутствии обязательных semantic facts.
+Для создания Guard record достаточно существующего constructor contract `RegistryEntity`:
 
-Эта boundary не должна:
+- `RegistryEntityId`;
+- `RegistryPath`;
+- `RegistryStudioGuardRecordPayload`;
+- `Iterable<SourceEvidence>`.
 
-- выводить `RegistryEntityId` из heading, номера строки, текста summary или source path;
-- выводить `RegistryPath` из Markdown heading hierarchy;
-- считать source heading path canonical registry path;
-- выводить relations из соседства разделов, порядка записей или текстового сходства;
-- принимать semantic, canonicalization, approval или publication decisions;
-- выбирать primary entity;
-- вызывать `PrepareRegistryRelatedContext`;
-- вызывать `PrepareRegistryResolvedRelatedContext`;
-- подключать presentation screen;
-- владеть operation workspace;
-- сохранять registry graph;
-- становиться repository, store, graph, resolver, manager, facade, bridge, locator или generic parser framework.
+Relations не входят в entity envelope и передаются отдельно как `Iterable<RegistryRelation>` только при подготовке related context.
 
-### Existing-fit classification
+Новая entity, value object, input/result model, application use case, factory, builder, provider, repository или store не требуются.
 
-Новая Core entity не требуется.
+Объект, который только принимает эти typed values и вызывает `RegistryEntity(...)`, снова был бы thin wrapper.
 
-Причина: stable identity и source-backed entity invariants уже принадлежат `RegistryEntity`.
+### Оставшаяся незакрытая ответственность
 
-Новый Core use case не требуется.
+Не закрыто только получение уже определённых semantic facts из конкретного внешнего источника.
 
-Причина: concrete Guard source semantics не должны переноситься в product-neutral Core.
+Это infrastructure responsibility, а не отсутствующий domain contract.
 
-Новая Guard entity не требуется.
+До выбора и отдельного аудита concrete source запрещено:
 
-Причина: Guard record уже представляется через `RegistryEntity` и `RegistryStudioGuardRecordPayload`. Параллельная Guard entity дублировала бы identity и source-backed responsibility.
-
-Entity factory не требуется.
-
-Причина: объект, который только принимает готовые Core values и вызывает `RegistryEntity(...)`, является thin wrapper. Такой подход уже был отклонён и удалён.
-
-Repository, store и persistence не требуются.
-
-Причина: текущая responsibility не включает durable storage, saved sessions, registry graph lifecycle или восстановление состояния.
-
-Generic Markdown parser не требуется.
-
-Причина: физический source format не является Registry Studio domain boundary.
-
-### Обнаруженный блокер
-
-В текущем production и architecture surface не найден утверждённый semantic source contract, который явно предоставляет:
-
-- stable Guard record identity;
-- canonical Guard registry path;
-- Guard record semantic content;
-- source provenance;
-- explicit relation declarations.
-
-Без этих фактов implementation неизбежно начнёт:
-
-- вычислять identity из source format;
-- подменять `RegistryPath` document navigation;
-- предполагать relation semantics;
-- создавать очередной thin wrapper вокруг Core constructors.
-
-Поэтому следующий production code step пока запрещён.
-
-Сначала должен быть отдельно утверждён минимальный semantic source contract Guard record, независимый от физического формата источника.
-
-### Ограничения следующего шага
-
-До утверждения semantic source contract запрещено:
-
-- создавать Guard source adapter;
-- создавать parser;
-- создавать entity factory;
-- создавать source provider interface;
-- создавать input/result wrapper;
-- создавать repository/store;
-- создавать `RegistryRelation` на основании source layout;
+- создавать generic parser или importer;
+- выводить identity, canonical path или relations из физической структуры источника;
+- добавлять source provider interface без реального consumer;
 - подключать related context screen к runtime;
-- менять `Core`;
-- менять `RegistryStudioApp`;
-- менять operation workspace;
-- менять `main.dart`.
+- менять `Core`, `RegistryStudioApp`, operation workspace или `main.dart`.
 
 ### Вывод
 
-Законная ownership zone для будущего source intake находится внутри concrete `guard` boundary вне Core.
+Текущий foundation достаточен.
 
-Однако имя и shape production abstraction пока не утверждаются.
+Минимальный semantic source contract Guard record не требует нового слоя.
 
-Первым должен быть определён semantic source contract Guard record. Только после этого можно решить, требуется ли один concrete infrastructure adapter, application boundary или другое минимальное решение без дополнительных слоёв.
+Следующий production step возможен только после отдельного ownership-аудита concrete source acquisition boundary.
 
 ## Решение по структурной принадлежности RegistryEntityPayload к RegistryEntityKind
 
