@@ -3999,3 +3999,139 @@ Hardcoded/fake operation для runtime connection отклоняется.
 
 - следующая работа должна быть ownership-аудитом selected/current operation presentation state;
 - code step пока не разрешён.
+
+## Ownership-аудит selected/current operation presentation state
+
+После отклонения прямого runtime connection для `RegistryEngineeringOperationStatusTransitionScreen` выполнен audit selected/current operation presentation state.
+
+Проверенные candidates:
+
+- `RegistryStudioApp`;
+- `lib/main.dart`;
+- `RegistryEngineeringOperationCreationScreen`;
+- `RegistryEngineeringOperationStatusTransitionScreen`;
+- `RegistryEngineeringOperation`;
+- `CreateRegistryEngineeringOperation`;
+- `TransitionRegistryEngineeringOperationStatus`;
+- callback из creation screen напрямую в app shell;
+- `RegistryEngineeringOperationState`;
+- repository/store/persistence;
+- отдельная presentation boundary operation workspace.
+
+`RegistryStudioApp` не должен владеть selected/current `RegistryEngineeringOperation`.
+
+Причина: app shell уже утверждён как владелец top-level screen selection и UI-языка. Если app shell начнёт хранить current operation, он станет operation workspace state owner и начнёт смешивать top-level shell responsibility с operation lifecycle presentation responsibility.
+
+`lib/main.dart` не должен владеть selected/current `RegistryEngineeringOperation`.
+
+Причина: runtime composition создаёт dependencies и вызывает `runApp`, но не хранит operation lifecycle state и не выполняет operation action.
+
+`RegistryEngineeringOperationCreationScreen` не должен расширяться до общего lifecycle workspace.
+
+Причина: screen утверждён как isolated consumer `CreateRegistryEngineeringOperation`. Он может создать operation, но не должен сам становиться owner всего дальнейшего flow: status transition, related context, readiness, audit package или future decision evidence.
+
+`RegistryEngineeringOperationStatusTransitionScreen` не должен становиться owner creation flow.
+
+Причина: screen утверждён как isolated consumer `TransitionRegistryEngineeringOperationStatus`. Он получает текущую operation извне и выполняет только presentation flow смены статуса.
+
+`RegistryEngineeringOperation` не должен становиться state holder, workflow executor или mutable object.
+
+Причина: entity остаётся immutable lifecycle snapshot. Добавление mutable lifecycle state, callbacks, screen behavior или presentation flags нарушит Core boundary.
+
+`RegistryEngineeringOperationState` отклоняется.
+
+Причина: отдельный state model выглядит как удобная промежуточная модель, но уже был отклонён как лишний shortcut. Current operation в этом шаге является presentation state, а не новой Core/domain entity/model/value object.
+
+Callback из `RegistryEngineeringOperationCreationScreen` напрямую в `RegistryStudioApp` отклоняется.
+
+Причина: callback сам по себе только переносит created operation наружу. Если получателем становится app shell, selected/current operation ownership попадает в неправильную boundary.
+
+Repository/store/persistence не вводятся.
+
+Причина: текущий workflow остаётся in-memory presentation flow. Долговременное хранение operation, восстановление сессии, загрузка operation и multi-operation selection требуют отдельного ownership-аудита.
+
+Вывод existing-fit audit:
+
+- существующие Core use cases достаточны;
+- новая Core entity/model/value object/use case не требуется;
+- selected/current operation должна жить в отдельной presentation boundary;
+- минимальная корректная boundary — `RegistryEngineeringOperationWorkspaceScreen`.
+
+Ответственность `RegistryEngineeringOperationWorkspaceScreen`:
+
+- получать `RegistryStudioUiLanguage` извне;
+- получать `CreateRegistryEngineeringOperation` извне;
+- получать `TransitionRegistryEngineeringOperationStatus` извне;
+- владеть nullable in-memory current `RegistryEngineeringOperation`;
+- показывать creation flow, когда current operation отсутствует;
+- получать created operation после successful creation;
+- показывать status transition flow, когда current operation существует;
+- обновлять current operation после successful status transition;
+- передавать выбранный UI-язык во внутренние operation screens;
+- не создавать operation id самостоятельно;
+- не создавать seed/demo/fake operation;
+- не выполнять registry mutation, approval или publication.
+
+Разрешённая production responsibility следующего code step:
+
+- создать `RegistryEngineeringOperationWorkspaceScreen`;
+- добавить optional presentation callback в `RegistryEngineeringOperationCreationScreen` для передачи created `RegistryEngineeringOperation` после successful creation;
+- добавить optional presentation callback в `RegistryEngineeringOperationStatusTransitionScreen` для передачи transitioned `RegistryEngineeringOperation` после successful transition;
+- подключить `RegistryEngineeringOperationWorkspaceScreen` в `RegistryStudioApp` вместо прямого открытия `RegistryEngineeringOperationCreationScreen`;
+- передать `TransitionRegistryEngineeringOperationStatus` dependency через `main.dart` → `RegistryStudioApp` → `RegistryEngineeringOperationWorkspaceScreen`;
+- добавить RU/EN/TH labels только если workspace вводит собственные visible labels.
+
+Разрешённые production files следующего code step:
+
+- `lib/main.dart`;
+- `lib/registry_studio/presentation/app/registry_studio_app.dart`;
+- `lib/registry_studio/presentation/language/registry_studio_ui_labels.dart`, только если нужны workspace labels;
+- `lib/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart`;
+- `lib/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart`;
+- `lib/registry_studio/operation/presentation/screens/registry_engineering_operation_status_transition_screen.dart`.
+
+Разрешённые test files следующего code step:
+
+- `test/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen_test.dart`;
+- `test/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen_test.dart`, только если меняется callback contract;
+- `test/registry_studio/operation/presentation/screens/registry_engineering_operation_status_transition_screen_test.dart`, только если меняется callback contract;
+- `test/registry_studio/presentation/app/registry_studio_app_test.dart`.
+
+Запрещено в следующем code step:
+
+- менять Core operation entity/use cases/status enum/id;
+- создавать `RegistryEngineeringOperationState`;
+- создавать repository/store/persistence;
+- создавать Cubit/Bloc для operation workspace без отдельного ownership-аудита;
+- создавать Navigator/routes/onGenerateRoute;
+- создавать manager/facade/helper/wrapper/bridge/locator/magic utility;
+- создавать seed/demo/fake operation;
+- генерировать operation id в `RegistryStudioApp`, workspace или `main.dart`;
+- переносить operation lifecycle state в `RegistryStudioApp`;
+- переносить operation lifecycle state в `lib/main.dart`;
+- добавлять readiness computation;
+- добавлять related context inspection;
+- добавлять assessment;
+- добавлять audit package;
+- выполнять registry mutation, approval или publication;
+- добавлять Translator dependency в operation presentation.
+
+Проверки следующего code step обязательны:
+
+- scope check только для разрешённых files;
+- check, что Core не изменён;
+- check, что `RegistryStudioApp` не хранит `RegistryEngineeringOperation`;
+- check, что `main.dart` не создаёт `RegistryEngineeringOperation`;
+- check, что operation presentation не импортирует Translator/AppConfig/ApiClient/Typhoon/repository/store;
+- `dart analyze` для изменённых файлов;
+- full `flutter analyze`;
+- targeted widget tests для workspace и app shell;
+- `git diff --check`;
+- GitHub Actions `Build APK` после push.
+
+Вывод:
+
+- следующий code step может ввести `RegistryEngineeringOperationWorkspaceScreen`;
+- следующий code step может подключить workspace в `RegistryStudioApp` как operation entry screen;
+- следующий code step не должен подключать `RegistryEngineeringOperationStatusTransitionScreen` напрямую как третий top-level screen;
+- selected/current operation state должен остаться внутри operation workspace presentation boundary.
