@@ -4466,3 +4466,167 @@ Repository/store/persistence не вводятся в этом step.
 - direct runtime connection related context отклонён;
 - следующий безопасный шаг — отдельный ownership-аудит source-backed related context input owner;
 - код после текущего audit не разрешён.
+
+## Ownership-аудит source-backed related context input owner
+
+После отклонения direct runtime connection для `RegistryRelatedContextPreparationScreen` выполнен audit owner-а для required source-backed inputs.
+
+Проверенные candidates:
+
+- `RegistryStudioApp`;
+- `lib/main.dart`;
+- `RegistryEngineeringOperationWorkspaceScreen`;
+- `RegistryRelatedContextPreparationScreen`;
+- `RegistryEngineeringOperation`;
+- `RegistryEntity`;
+- `RegistryRelation`;
+- `SourceEvidence`;
+- `RegistryRelatedContext`;
+- `RegistryResolvedRelatedContext`;
+- `PrepareRegistryRelatedContext`;
+- `PrepareRegistryResolvedRelatedContext`;
+- manual engineer input screen;
+- `RegistryRelatedContextInput`;
+- `RegistryRelatedContextInputSet`;
+- fake/demo/seed production registry entities;
+- repository/store/persistence;
+- source intake boundary;
+- registry graph read model;
+- contract-specific adapter boundary.
+
+Required inputs for `RegistryRelatedContextPreparationScreen`:
+
+- primary `RegistryEntity`;
+- `Iterable<RegistryRelation>`;
+- available related `Iterable<RegistryEntity>`;
+- `PrepareRegistryRelatedContext`;
+- `PrepareRegistryResolvedRelatedContext`.
+
+Use cases уже имеют owner-а через runtime dependency injection. Нерешёнными остаются только source-backed data inputs.
+
+`RegistryStudioApp` не является owner source-backed related context inputs.
+
+Причина: app shell владеет top-level screen selection и UI language. Он не знает source documents, semantic payload types, relation source или available registry graph.
+
+`lib/main.dart` не является owner source-backed related context inputs.
+
+Причина: runtime composition создаёт dependencies и запускает app. Если `main.dart` начнёт создавать primary entity, relations или available related entities, это станет hidden production seed/demo data.
+
+`RegistryEngineeringOperationWorkspaceScreen` не является owner source-backed related context inputs.
+
+Причина: workspace владеет только nullable in-memory current `RegistryEngineeringOperation`. Он не владеет registry graph, source intake, relation source или payload construction.
+
+`RegistryRelatedContextPreparationScreen` не является owner source-backed related context inputs.
+
+Причина: screen уже утверждён как isolated presentation consumer. Он получает inputs извне, вызывает existing Core use cases и показывает read-only facts. Он не выбирает primary entity, не ищет relations, не загружает entities и не создаёт source-backed registry data.
+
+`RegistryEngineeringOperation` не является source-backed input owner.
+
+Причина: operation entity остаётся immutable lifecycle snapshot. Она не должна хранить primary entity, context, relation graph или available related entities.
+
+`RegistryEntity` не является owner input set.
+
+Причина: `RegistryEntity` представляет один source-backed registry unit. Он не владеет выбором primary entity, collection of relations или available related entity set.
+
+`RegistryRelation` не является owner input set.
+
+Причина: `RegistryRelation` представляет одну domain relation. Он не владеет registry graph selection, source intake или available related entity set.
+
+`SourceEvidence` не является owner input set.
+
+Причина: `SourceEvidence` фиксирует provenance/source coordinates. Он не создаёт entity, не выбирает primary, не собирает relations и не управляет lifecycle related context inputs.
+
+`RegistryRelatedContext` и `RegistryResolvedRelatedContext` не являются input owners.
+
+Причина: это read-only application results после подготовки context. Они не должны становиться source intake, registry graph read model, repository result или workflow container.
+
+`PrepareRegistryRelatedContext` и `PrepareRegistryResolvedRelatedContext` не являются input owners.
+
+Причина: это stateless application use cases. Они валидируют и подготавливают already available inputs, но не ищут, не загружают и не создают registry entities или relations.
+
+Manual engineer input screen отклоняется как следующий code step.
+
+Причина: для production создания `RegistryEntity` нужны source-backed payload implementation, semantic contract, kind, source evidence и relation provenance. Текущий UI не имеет утверждённого owner-а payload construction и может легко превратиться в fake/manual seed generator.
+
+`RegistryRelatedContextInput` и `RegistryRelatedContextInputSet` отклоняются.
+
+Причина: отдельный bundle/container из `primary + relations + availableRelatedEntities` не решает source-backed происхождение inputs. Без source intake owner-а такая model станет convenience wrapper поверх нерешённой responsibility.
+
+Fake/demo/seed production registry entities отклоняются.
+
+Причина: они создают видимость connected runtime без реального source-backed input owner-а и нарушают clean rebuild boundary.
+
+Repository/store/persistence не вводятся.
+
+Причина: текущий audit не закрывает durable storage lifecycle, registry graph loading, saved sessions или multi-operation state. Введение repository/store сейчас было бы преждевременным shortcut.
+
+Source intake boundary является вероятным будущим owner-ом, но не утверждается в этом step.
+
+Причина: source intake должен отдельно доказать:
+
+- какие source documents он читает или получает;
+- кто создаёт concrete `RegistryEntityPayload`;
+- где живут contract-specific payload types;
+- как создаются `RegistryEntity`;
+- как создаются `RegistryRelation`;
+- как сохраняется provenance через `SourceEvidence`;
+- почему это read-only intake, а не mutation/publication;
+- почему это не repository/store/persistence shortcut;
+- почему это не generic parser/analyzer/service locator.
+
+Registry graph read model является возможным future consumer/output source, но не утверждается в этом step.
+
+Причина: read model требует отдельного lifecycle-аудита: in-memory vs durable, source freshness, graph ownership, relation indexing, invalidation и ownership of available related entities.
+
+Contract-specific adapter boundary является возможным future owner-ом concrete payload construction, но не утверждается в этом step.
+
+Причина: Core остаётся product-neutral и не должен знать contract-specific payload fields. Payload construction должен быть доказан отдельно и не должен превращаться в generic semantic analyzer.
+
+Вывод existing-fit audit:
+
+- existing isolated `RegistryRelatedContextPreparationScreen` корректен;
+- required source-backed data inputs пока не имеют runtime owner-а;
+- текущий Core не требует изменения;
+- текущая presentation не должна расширяться;
+- новый code step для source-backed input owner-а пока запрещён.
+
+Следующий допустимый audit:
+
+- source intake / registry graph read model ownership.
+
+Этот audit должен решить:
+
+- где создаются source-backed `RegistryEntity`;
+- где создаются `RegistryRelation`;
+- где создаются concrete `RegistryEntityPayload`;
+- кто владеет available related entity set;
+- кто владеет lifecycle registry graph read model;
+- как source evidence остаётся обязательным;
+- почему boundary read-only;
+- почему это не mutation, approval или publication;
+- почему это не fake/demo/seed data;
+- почему это не operation attachment;
+- почему это не assessment или audit package.
+
+Запрещено до отдельного ownership-аудита:
+
+- писать code для source-backed related context input owner-а;
+- подключать `RegistryRelatedContextPreparationScreen` к runtime;
+- менять `RegistryStudioApp`;
+- менять `RegistryEngineeringOperationWorkspaceScreen`;
+- менять `lib/main.dart`;
+- создавать `RegistryRelatedContextInput`;
+- создавать `RegistryRelatedContextInputSet`;
+- создавать production fake/demo/seed registry entities;
+- добавлять repository/store/persistence;
+- добавлять generic parser/analyzer/resolver/service locator;
+- добавлять operation context attachment;
+- добавлять readiness marker/getter;
+- добавлять assessment или audit package;
+- выполнять registry mutation, approval или publication.
+
+Вывод:
+
+- source-backed related context input owner пока отсутствует;
+- direct code step после этого audit не разрешён;
+- следующий безопасный шаг — отдельный ownership-аудит source intake / registry graph read model.
