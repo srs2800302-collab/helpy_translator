@@ -12,6 +12,7 @@ import 'registry_studio/guard/infrastructure/registry_studio_guard_asset_source.
 import 'registry_studio/presentation/app/registry_studio_app.dart';
 import 'registry_studio/translator/application/translate_phrase.dart';
 import 'registry_studio/translator/infrastructure/typhoon_translator_phrase_provider.dart';
+import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,7 @@ Future<void> main() async {
 
   runApp(
     RegistryStudioApp(
+      workSessionPersistence: const RegistryWorkSessionPersistence(),
       translatePhrase: TranslatePhrase(provider: translatorPhraseProvider),
       createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
       transitionRegistryEngineeringOperationStatus:

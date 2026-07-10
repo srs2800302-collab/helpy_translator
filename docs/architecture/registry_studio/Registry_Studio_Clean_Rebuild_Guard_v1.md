@@ -4880,4 +4880,4 @@ Code step зафиксирован commit `277238f feat: add guard record presen
 
 Если ответственность entity расширится, дополняется этот же единый контракт.
 
-`RegistryEngineeringOperation` и `RegistryEngineeringOperationRevision` сохраняются существующим `RegistryWorkSessionPersistence`; новые persistence entities, repository, store и manager не создаются.
+`RegistryEngineeringOperation` и `RegistryEngineeringOperationRevision` сохраняются существующим `RegistryWorkSessionPersistence`; новые persistence entities, repository, store и manager не создаются. Экземпляр persistence создаётся в composition root `main.dart`, явно передаётся через `RegistryStudioApp` в operation workspace и не создаётся внутри UI.

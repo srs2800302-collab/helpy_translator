@@ -15,12 +15,14 @@ import '../../translator/presentation/cubit/translator_phrase_cubit.dart';
 import '../../translator/presentation/screens/translator_phrase_screen.dart';
 import '../language/registry_studio_ui_labels.dart';
 import '../language/registry_studio_ui_language.dart';
+import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
 
 final class RegistryStudioApp extends StatefulWidget {
   const RegistryStudioApp({
     required this.translatePhrase,
     required this.createRegistryEngineeringOperation,
     required this.transitionRegistryEngineeringOperationStatus,
+    this.workSessionPersistence,
     this.guardRecordEntity,
     this.relatedContextPrimary,
     this.relatedContextRelations = const <RegistryRelation>[],
@@ -39,6 +41,7 @@ final class RegistryStudioApp extends StatefulWidget {
   final CreateRegistryEngineeringOperation createRegistryEngineeringOperation;
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
+  final RegistryWorkSessionPersistence? workSessionPersistence;
 
   final RegistryEntity? guardRecordEntity;
   final RegistryEntity? relatedContextPrimary;
@@ -196,6 +199,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
     if (_selectedScreenIndex == _operationWorkspaceScreenIndex) {
       return RegistryEngineeringOperationWorkspaceScreen(
+        workSessionPersistence: widget.workSessionPersistence,
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
