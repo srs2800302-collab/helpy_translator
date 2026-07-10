@@ -36,6 +36,7 @@ Future<void> main() async {
       createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
       transitionRegistryEngineeringOperationStatus:
           TransitionRegistryEngineeringOperationStatus(),
+      guardRecordEntity: guardSource.entity,
       relatedContextPrimary: guardSource.entity,
       relatedContextRelations: guardSource.relations,
       prepareRegistryRelatedContext: PrepareRegistryRelatedContext(),

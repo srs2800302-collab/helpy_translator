@@ -10,6 +10,7 @@ final class RegistryStudioUiLabels {
     required this.operationCreation,
     required this.operationStatusTransition,
     required this.relatedContextPreparation,
+    required this.guardRecord,
   });
 
   factory RegistryStudioUiLabels.forLanguage(
@@ -78,6 +79,21 @@ final class RegistryStudioUiLabels {
               noItemsLabel: 'Нет данных',
               preparationFailedTitle: 'Ошибка подготовки context',
             ),
+        guardRecord: RegistryStudioGuardRecordLabels(
+          title: 'Guard record',
+          entityTitle: 'Registry entity',
+          entityIdLabel: 'Entity ID',
+          pathLabel: 'Path',
+          kindLabel: 'Kind',
+          recordTypeLabel: 'Тип записи',
+          headingLabel: 'Заголовок',
+          summaryLabel: 'Краткое описание',
+          sourceEvidenceTitle: 'Source evidence',
+          sourceDocumentPathLabel: 'Путь к источнику',
+          sourceSnapshotFingerprintLabel: 'Fingerprint источника',
+          headingPathLabel: 'Путь заголовков',
+          lineRangeLabel: 'Диапазон строк',
+        ),
       ),
       RegistryStudioUiLanguage.en => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
@@ -141,6 +157,21 @@ final class RegistryStudioUiLabels {
               noItemsLabel: 'No items',
               preparationFailedTitle: 'Context preparation error',
             ),
+        guardRecord: RegistryStudioGuardRecordLabels(
+          title: 'Guard record',
+          entityTitle: 'Registry entity',
+          entityIdLabel: 'Entity ID',
+          pathLabel: 'Path',
+          kindLabel: 'Kind',
+          recordTypeLabel: 'Record type',
+          headingLabel: 'Heading',
+          summaryLabel: 'Summary',
+          sourceEvidenceTitle: 'Source evidence',
+          sourceDocumentPathLabel: 'Source document path',
+          sourceSnapshotFingerprintLabel: 'Source snapshot fingerprint',
+          headingPathLabel: 'Heading path',
+          lineRangeLabel: 'Line range',
+        ),
       ),
       RegistryStudioUiLanguage.th => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
@@ -204,6 +235,21 @@ final class RegistryStudioUiLabels {
               noItemsLabel: 'ไม่มีข้อมูล',
               preparationFailedTitle: 'ข้อผิดพลาดในการเตรียม context',
             ),
+        guardRecord: RegistryStudioGuardRecordLabels(
+          title: 'ระเบียน Guard',
+          entityTitle: 'Registry entity',
+          entityIdLabel: 'Entity ID',
+          pathLabel: 'Path',
+          kindLabel: 'Kind',
+          recordTypeLabel: 'ประเภทระเบียน',
+          headingLabel: 'หัวข้อ',
+          summaryLabel: 'สรุป',
+          sourceEvidenceTitle: 'หลักฐานแหล่งที่มา',
+          sourceDocumentPathLabel: 'พาธเอกสารต้นทาง',
+          sourceSnapshotFingerprintLabel: 'Fingerprint ของ snapshot',
+          headingPathLabel: 'พาธหัวข้อ',
+          lineRangeLabel: 'ช่วงบรรทัด',
+        ),
       ),
     };
   }
@@ -216,6 +262,7 @@ final class RegistryStudioUiLabels {
   final RegistryStudioOperationCreationLabels operationCreation;
   final RegistryStudioOperationStatusTransitionLabels operationStatusTransition;
   final RegistryStudioRelatedContextPreparationLabels relatedContextPreparation;
+  final RegistryStudioGuardRecordLabels guardRecord;
 }
 
 final class RegistryStudioTranslatorPhraseLabels {
@@ -334,4 +381,36 @@ final class RegistryStudioRelatedContextPreparationLabels {
   final String missingRelatedEntityIdsLabel;
   final String noItemsLabel;
   final String preparationFailedTitle;
+}
+
+final class RegistryStudioGuardRecordLabels {
+  const RegistryStudioGuardRecordLabels({
+    required this.title,
+    required this.entityTitle,
+    required this.entityIdLabel,
+    required this.pathLabel,
+    required this.kindLabel,
+    required this.recordTypeLabel,
+    required this.headingLabel,
+    required this.summaryLabel,
+    required this.sourceEvidenceTitle,
+    required this.sourceDocumentPathLabel,
+    required this.sourceSnapshotFingerprintLabel,
+    required this.headingPathLabel,
+    required this.lineRangeLabel,
+  });
+
+  final String title;
+  final String entityTitle;
+  final String entityIdLabel;
+  final String pathLabel;
+  final String kindLabel;
+  final String recordTypeLabel;
+  final String headingLabel;
+  final String summaryLabel;
+  final String sourceEvidenceTitle;
+  final String sourceDocumentPathLabel;
+  final String sourceSnapshotFingerprintLabel;
+  final String headingPathLabel;
+  final String lineRangeLabel;
 }

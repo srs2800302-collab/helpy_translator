@@ -7,6 +7,7 @@ import '../../core/application/related_context/prepare_registry_related_context.
 import '../../core/application/related_context/prepare_registry_resolved_related_context.dart';
 import '../../core/domain/entities/registry_entity.dart';
 import '../../core/domain/value_objects/registry_relation.dart';
+import '../../guard/presentation/screens/registry_studio_guard_record_screen.dart';
 import '../../operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import '../../operation/presentation/screens/registry_related_context_preparation_screen.dart';
 import '../../translator/application/translate_phrase.dart';
@@ -20,6 +21,7 @@ final class RegistryStudioApp extends StatefulWidget {
     required this.translatePhrase,
     required this.createRegistryEngineeringOperation,
     required this.transitionRegistryEngineeringOperationStatus,
+    this.guardRecordEntity,
     this.relatedContextPrimary,
     this.relatedContextRelations = const <RegistryRelation>[],
     this.availableRelatedEntities = const <RegistryEntity>[],
@@ -38,6 +40,7 @@ final class RegistryStudioApp extends StatefulWidget {
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
 
+  final RegistryEntity? guardRecordEntity;
   final RegistryEntity? relatedContextPrimary;
   final Iterable<RegistryRelation> relatedContextRelations;
   final Iterable<RegistryEntity> availableRelatedEntities;
@@ -53,13 +56,19 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   static const int _translatorScreenIndex = 0;
   static const int _operationWorkspaceScreenIndex = 1;
   static const int _relatedContextScreenIndex = 2;
+  static const int _guardRecordScreenIndex = 3;
 
   static const Key _relatedContextScreenButtonKey = Key(
     'registry_studio_related_context_screen_button',
   );
+  static const Key _guardRecordScreenButtonKey = Key(
+    'registry_studio_guard_record_screen_button',
+  );
 
   int _selectedScreenIndex = _translatorScreenIndex;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
+
+  bool get _hasGuardRecordInput => widget.guardRecordEntity != null;
 
   bool get _hasRelatedContextInput {
     return widget.relatedContextPrimary != null &&
@@ -112,6 +121,19 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                               _selectScreen(_operationWorkspaceScreenIndex),
                         ),
                       ),
+                      if (_hasGuardRecordInput) ...<Widget>[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ScreenSelectionButton(
+                            key: _guardRecordScreenButtonKey,
+                            label: labels.guardRecord.title,
+                            isSelected:
+                                _selectedScreenIndex == _guardRecordScreenIndex,
+                            onPressed: () =>
+                                _selectScreen(_guardRecordScreenIndex),
+                          ),
+                        ),
+                      ],
                       if (_hasRelatedContextInput) ...<Widget>[
                         const SizedBox(width: 12),
                         Expanded(
@@ -151,6 +173,14 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   }
 
   Widget _currentScreen() {
+    if (_selectedScreenIndex == _guardRecordScreenIndex &&
+        _hasGuardRecordInput) {
+      return RegistryStudioGuardRecordScreen(
+        uiLanguage: _selectedLanguage,
+        entity: widget.guardRecordEntity!,
+      );
+    }
+
     if (_selectedScreenIndex == _relatedContextScreenIndex &&
         _hasRelatedContextInput) {
       return RegistryRelatedContextPreparationScreen(

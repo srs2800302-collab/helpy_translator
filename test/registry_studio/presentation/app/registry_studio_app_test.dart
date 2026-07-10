@@ -5,6 +5,11 @@ import 'package:helpy_translator/registry_studio/core/application/operation_stat
 import 'package:helpy_translator/registry_studio/core/application/related_context/prepare_registry_related_context.dart';
 import 'package:helpy_translator/registry_studio/core/application/related_context/prepare_registry_resolved_related_context.dart';
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_entity.dart';
+import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
+import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
+import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
+import 'package:helpy_translator/registry_studio/guard/domain/registry_studio_guard_record_payload.dart';
+import 'package:helpy_translator/registry_studio/guard/presentation/screens/registry_studio_guard_record_screen.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_relation.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
@@ -122,6 +127,41 @@ void main() {
     );
   });
 
+  testWidgets('switches to Guard record screen', (WidgetTester tester) async {
+    final _FakeTranslatorPhraseProvider provider =
+        _FakeTranslatorPhraseProvider(_translatorResult());
+
+    await tester.pumpWidget(_testApp(provider));
+
+    await tester.tap(
+      find.byKey(const Key('registry_studio_guard_record_screen_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RegistryStudioGuardRecordScreen), findsOneWidget);
+    expect(
+      find.byKey(RegistryStudioGuardRecordScreen.recordCardKey),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Заголовок:\nOwnership-аудит Guard record'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Краткое описание:\n'
+        'Guard-specific semantic content.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(TranslatorPhraseScreen), findsNothing);
+    expect(
+      find.byType(RegistryEngineeringOperationWorkspaceScreen),
+      findsNothing,
+    );
+    expect(find.byType(RegistryRelatedContextPreparationScreen), findsNothing);
+  });
+
   testWidgets(
     'keeps Translator dependency wiring available after switching back',
     (WidgetTester tester) async {
@@ -173,12 +213,40 @@ Widget _testApp(_FakeTranslatorPhraseProvider provider) {
     createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
     transitionRegistryEngineeringOperationStatus:
         TransitionRegistryEngineeringOperationStatus(),
+    guardRecordEntity: _guardRecordEntity(),
     relatedContextPrimary: primary,
     relatedContextRelations: const <RegistryRelation>[],
     availableRelatedEntities: const <RegistryEntity>[],
     prepareRegistryRelatedContext: PrepareRegistryRelatedContext(),
     prepareRegistryResolvedRelatedContext:
         PrepareRegistryResolvedRelatedContext(),
+  );
+}
+
+RegistryEntity _guardRecordEntity() {
+  return RegistryEntity(
+    id: RegistryEntityId('registry-studio-guard-record'),
+    path: RegistryPath(const <String>[
+      'registry_studio',
+      'guard',
+      'source_contract_foundation',
+    ]),
+    payload: RegistryStudioGuardRecordPayload(
+      recordType: RegistryStudioGuardRecordType.ownershipAudit,
+      heading: 'Ownership-аудит Guard record',
+      summary: 'Guard-specific semantic content.',
+    ),
+    sourceEvidence: <SourceEvidence>[
+      SourceEvidence(
+        sourceDocumentPath:
+            'docs/architecture/registry_studio/'
+            'Registry_Studio_Clean_Rebuild_Guard_v1.md',
+        sourceSnapshotFingerprint: 'fnv1a64:0123456789abcdef',
+        headingPath: const <String>['Ownership-аудит Guard record'],
+        startLine: 4459,
+        endLine: 4588,
+      ),
+    ],
   );
 }
 
