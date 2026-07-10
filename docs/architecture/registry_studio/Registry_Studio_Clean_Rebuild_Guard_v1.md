@@ -4135,3 +4135,49 @@ Repository/store/persistence не вводятся.
 - следующий code step может подключить workspace в `RegistryStudioApp` как operation entry screen;
 - следующий code step не должен подключать `RegistryEngineeringOperationStatusTransitionScreen` напрямую как третий top-level screen;
 - selected/current operation state должен остаться внутри operation workspace presentation boundary.
+
+## Build APK # operation workspace presentation flow success
+
+Operation workspace presentation flow закрыт успешным GitHub Actions `Build APK`.
+
+Проверенная commit chain:
+
+- `57c3dd3 feat: add operation workspace presentation flow`;
+- `3ee27ad test: stabilize operation workspace creation taps`;
+- `68abc6a fix: emit operation creation callback`.
+
+CI proof:
+
+- workflow: `Build APK`;
+- run: `29069179505`;
+- job: `86286996069`;
+- branch: `registry-studio/clean-rebuild`;
+- head commit: `68abc6a`;
+- conclusion: `success`;
+- artifact: `helpy-translator-debug-apk`.
+
+Закрытый результат:
+
+- `RegistryEngineeringOperationWorkspaceScreen` введён как отдельная presentation boundary;
+- workspace владеет только nullable in-memory current `RegistryEngineeringOperation`;
+- `RegistryStudioApp` не хранит selected/current operation entity;
+- `lib/main.dart` не создаёт `RegistryEngineeringOperation`;
+- `RegistryEngineeringOperationCreationScreen` отдаёт created operation через optional presentation callback;
+- `RegistryEngineeringOperationStatusTransitionScreen` отдаёт transitioned operation через optional presentation callback;
+- `RegistryStudioApp` открывает operation workspace вместо прямого creation screen;
+- `TransitionRegistryEngineeringOperationStatus` передаётся как dependency через runtime composition;
+- Core operation entity/use cases/status enum/id не менялись;
+- repository/store/persistence/routing/navigation/Cubit/Bloc не вводились;
+- readiness, related context inspection, assessment, audit package, registry mutation, approval и publication не добавлялись.
+
+Проверки перед push:
+
+- scope matched ownership audit;
+- Core diff был пустой;
+- `RegistryStudioApp` не импортировал и не хранил `RegistryEngineeringOperation`;
+- `main.dart` не импортировал и не создавал `RegistryEngineeringOperation`;
+- operation presentation не импортировал Translator/AppConfig/ApiClient/Typhoon/repository/store;
+- forbidden workspace abstractions отсутствовали;
+- targeted `dart analyze` был clean;
+- full `flutter analyze` был clean;
+- `git diff --check` был clean.
