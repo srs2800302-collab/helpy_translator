@@ -19,7 +19,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     required this.transitionRegistryEngineeringOperationStatus,
     this.workSessionPersistence,
     this.revisionPrimaryEntityId,
-    this.revisionRelatedEntityIds = const <RegistryEntityId>[],
+    this.revisionRelatedEntityIds,
     this.initialProblemStatement,
     this.onInitialProblemStatementConsumed,
     super.key,
@@ -32,7 +32,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   final RegistryWorkSessionPersistence? workSessionPersistence;
   final RegistryEntityId? revisionPrimaryEntityId;
 
-  final Iterable<RegistryEntityId> revisionRelatedEntityIds;
+  final Iterable<RegistryEntityId>? revisionRelatedEntityIds;
   final String? initialProblemStatement;
   final VoidCallback? onInitialProblemStatementConsumed;
 
@@ -250,7 +250,15 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     }
 
     final RegistryEngineeringOperation? operation = _currentOperation;
-    final RegistryEntityId? primaryEntityId = widget.revisionPrimaryEntityId;
+    final RegistryEngineeringOperationRevision? previous = _revisions.isEmpty
+        ? null
+        : _revisions.last;
+    final RegistryEntityId? primaryEntityId =
+        previous?.primaryEntityId ?? widget.revisionPrimaryEntityId;
+    final Iterable<RegistryEntityId> relatedEntityIds =
+        widget.revisionRelatedEntityIds ??
+        previous?.relatedEntityIds ??
+        const <RegistryEntityId>[];
     final String workingContent = _workingContentController.text.trim();
 
     if (operation == null ||
@@ -261,9 +269,6 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       return;
     }
 
-    final RegistryEngineeringOperationRevision? previous = _revisions.isEmpty
-        ? null
-        : _revisions.last;
     final int revisionNumber = (previous?.revisionNumber ?? 0) + 1;
 
     final RegistryEngineeringOperationRevision revision =
@@ -274,7 +279,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           workingContent: workingContent,
           previousRevisionId: previous?.id,
           primaryEntityId: primaryEntityId,
-          relatedEntityIds: widget.revisionRelatedEntityIds,
+          relatedEntityIds: relatedEntityIds,
         );
 
     final List<RegistryEngineeringOperationRevision> next =

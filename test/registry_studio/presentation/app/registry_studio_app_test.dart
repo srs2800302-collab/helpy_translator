@@ -156,7 +156,7 @@ void main() {
           find.byType(RegistryEngineeringOperationWorkspaceScreen),
         );
 
-    expect(workspace.revisionRelatedEntityIds.toList(), <RegistryEntityId>[
+    expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
       RegistryEntityId('related-001'),
     ]);
   });

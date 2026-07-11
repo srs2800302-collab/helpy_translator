@@ -82,7 +82,7 @@ void main() {
       revisions: const [],
     );
 
-    Widget workspace() {
+    Widget workspace({Iterable<RegistryEntityId>? revisionRelatedEntityIds}) {
       return MaterialApp(
         home: RegistryEngineeringOperationWorkspaceScreen(
           uiLanguage: RegistryStudioUiLanguage.ru,
@@ -92,14 +92,18 @@ void main() {
               TransitionRegistryEngineeringOperationStatus(),
           workSessionPersistence: persistence,
           revisionPrimaryEntityId: RegistryEntityId('primary'),
-          revisionRelatedEntityIds: <RegistryEntityId>[
-            RegistryEntityId('related-001'),
-          ],
+          revisionRelatedEntityIds: revisionRelatedEntityIds,
         ),
       );
     }
 
-    await tester.pumpWidget(workspace());
+    await tester.pumpWidget(
+      workspace(
+        revisionRelatedEntityIds: <RegistryEntityId>[
+          RegistryEntityId('related-001'),
+        ],
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -148,6 +152,28 @@ void main() {
     );
 
     expect(editor.controller?.text, 'Вторая расширенная версия.');
+
+    await tester.enterText(
+      find.byKey(const Key('registry_operation_revision_content')),
+      'Третья версия после восстановления.',
+    );
+    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    await tester.pumpAndSettle();
+
+    final List<RegistryEngineeringOperationRevision> restoredRevisions =
+        await persistence.loadEngineeringOperationRevisions();
+
+    expect(restoredRevisions, hasLength(3));
+
+    final RegistryEngineeringOperationRevision inheritedRevision =
+        restoredRevisions.last;
+
+    expect(inheritedRevision.revisionNumber, 3);
+    expect(inheritedRevision.previousRevisionId, restoredRevisions[1].id);
+    expect(inheritedRevision.primaryEntityId, RegistryEntityId('primary'));
+    expect(inheritedRevision.relatedEntityIds, <RegistryEntityId>[
+      RegistryEntityId('related-001'),
+    ]);
   });
 
   for (final RegistryEngineeringOperationStatus terminalStatus

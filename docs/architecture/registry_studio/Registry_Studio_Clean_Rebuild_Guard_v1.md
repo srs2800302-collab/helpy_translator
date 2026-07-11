@@ -4912,3 +4912,32 @@ Workspace не становится owner Translator result и не сохран
 Этот flow заменяет только одну текущую локальную work session. Multi-operation archive, новая entity, use case, repository, store, manager или persistence model не вводятся до появления отдельного end-user requirement.
 
 `RegistryEngineeringOperation` и `RegistryEngineeringOperationRevision` сохраняются существующим `RegistryWorkSessionPersistence`; новые persistence entities, repository, store и manager не создаются. Экземпляр persistence создаётся в composition root `main.dart`, явно передаётся через `RegistryStudioApp` в operation workspace и не создаётся внутри UI.
+
+## Continuity revision context после восстановления workspace
+
+Каждая `RegistryEngineeringOperationRevision` уже сохраняет полный context своей рабочей версии:
+
+- `primaryEntityId`;
+- immutable `relatedEntityIds`.
+
+Поэтому отдельный operation-context persistence contract не требуется.
+
+Правило создания следующей revision:
+
+- первая revision получает primary и related ids из текущего подготовленного presentation context;
+- после восстановления workspace следующая revision наследует `primaryEntityId` и `relatedEntityIds` последней persisted revision, если новый related context не был подготовлен;
+- nullable `revisionRelatedEntityIds` означает отсутствие нового presentation context;
+- non-null collection означает явно подготовленный текущий related context и используется вместо предыдущей collection;
+- lineage через `previousRevisionId` и полная `workingContent` сохраняются без изменений.
+
+Context continuity реализуется внутри существующего operation workspace с использованием уже восстановленных revisions.
+
+Для этого flow не вводятся:
+
+- новая entity;
+- новый use case;
+- context wrapper;
+- repository;
+- store;
+- manager;
+- дополнительный persistence payload.

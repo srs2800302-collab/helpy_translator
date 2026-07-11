@@ -17,7 +17,6 @@ import '../language/registry_studio_ui_labels.dart';
 import '../language/registry_studio_ui_language.dart';
 import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
 import '../../core/application/related_context/registry_resolved_related_context.dart';
-import '../../core/domain/value_objects/registry_entity_id.dart';
 import '../../translator/translator_phrase_result.dart';
 
 final class RegistryStudioApp extends StatefulWidget {
@@ -246,11 +245,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         workSessionPersistence: widget.workSessionPersistence,
         revisionPrimaryEntityId:
             (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,
-        revisionRelatedEntityIds:
-            _resolvedRelatedContext?.resolvedRelatedEntities.map(
-              (RegistryEntity entity) => entity.id,
-            ) ??
-            const <RegistryEntityId>[],
+        revisionRelatedEntityIds: _resolvedRelatedContext
+            ?.resolvedRelatedEntities
+            .map((RegistryEntity entity) => entity.id),
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
