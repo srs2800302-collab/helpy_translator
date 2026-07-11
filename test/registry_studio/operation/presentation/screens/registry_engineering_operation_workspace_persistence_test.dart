@@ -7,6 +7,7 @@ import 'package:helpy_translator/registry_studio/core/application/operation_crea
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation.dart';
+import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation_revision.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_status_transition_screen.dart';
@@ -140,4 +141,75 @@ void main() {
 
     expect(editor.controller?.text, 'Вторая расширенная версия.');
   });
+
+  for (final RegistryEngineeringOperationStatus terminalStatus
+      in <RegistryEngineeringOperationStatus>[
+        RegistryEngineeringOperationStatus.decided,
+        RegistryEngineeringOperationStatus.cancelled,
+      ]) {
+    testWidgets(
+      'restores ${terminalStatus.name} workspace as revision read-only',
+      (WidgetTester tester) async {
+        const RegistryWorkSessionPersistence persistence =
+            RegistryWorkSessionPersistence();
+
+        final RegistryEngineeringOperation operation =
+            RegistryEngineeringOperation(
+              id: RegistryEngineeringOperationId('operation-1'),
+              status: terminalStatus,
+              problemStatement: 'Original problem.',
+              decisionStatement:
+                  terminalStatus == RegistryEngineeringOperationStatus.decided
+                  ? 'Approve canonical wording.'
+                  : null,
+            );
+
+        final RegistryEngineeringOperationRevision revision =
+            RegistryEngineeringOperationRevision(
+              id: 'operation-1-revision-1',
+              operationId: operation.id,
+              revisionNumber: 1,
+              workingContent: 'Final working version.',
+              previousRevisionId: null,
+              primaryEntityId: RegistryEntityId('primary'),
+              relatedEntityIds: const <RegistryEntityId>[],
+            );
+
+        await persistence.saveEngineeringOperationWorkspace(
+          operation: operation,
+          revisions: <RegistryEngineeringOperationRevision>[revision],
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: RegistryEngineeringOperationWorkspaceScreen(
+              uiLanguage: RegistryStudioUiLanguage.ru,
+              createRegistryEngineeringOperation:
+                  CreateRegistryEngineeringOperation(),
+              transitionRegistryEngineeringOperationStatus:
+                  TransitionRegistryEngineeringOperationStatus(),
+              workSessionPersistence: persistence,
+              revisionPrimaryEntityId: RegistryEntityId('primary'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final TextField revisionEditor = tester.widget<TextField>(
+          find.byKey(const Key('registry_operation_revision_content')),
+        );
+        final FilledButton saveRevisionButton = tester.widget<FilledButton>(
+          find.byKey(const Key('registry_operation_save_revision')),
+        );
+
+        expect(
+          find.byKey(const ValueKey<String>('registry_operation_revision_1')),
+          findsOneWidget,
+        );
+        expect(revisionEditor.controller?.text, 'Final working version.');
+        expect(revisionEditor.readOnly, isTrue);
+        expect(saveRevisionButton.onPressed, isNull);
+      },
+    );
+  }
 }

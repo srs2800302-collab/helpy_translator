@@ -4881,6 +4881,12 @@ Code step зафиксирован commit `277238f feat: add guard record presen
 
 Новая revision не изменяет `problemStatement` и предыдущие revisions.
 
+После перехода operation в terminal status `decided` или `cancelled` сохранённые revisions и последняя working version остаются доступными для чтения, но создание новой revision запрещено.
+
+Существующий workspace применяет этот lifecycle invariant без нового domain contract: revision editor становится read-only, save action отключается, а `_saveRevision` дополнительно отклоняет terminal operation.
+
+Новая entity, use case, repository, store, manager или persistence boundary для этого не создаются.
+
 Дополнительные revision id, working content, attachment, lineage, history, snapshot и context contracts не создаются.
 
 Если ответственность entity расширится, дополняется этот же единый контракт.

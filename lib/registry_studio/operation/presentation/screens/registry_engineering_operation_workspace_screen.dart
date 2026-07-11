@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../../core/domain/entities/registry_engineering_operation.dart';
+import '../../../core/domain/value_objects/registry_engineering_operation_status.dart';
 import '../../../presentation/language/registry_studio_ui_language.dart';
 import 'registry_engineering_operation_creation_screen.dart';
 import 'registry_engineering_operation_status_transition_screen.dart';
@@ -123,6 +124,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     final String workingContent = _workingContentController.text.trim();
 
     if (operation == null ||
+        operation.status == RegistryEngineeringOperationStatus.decided ||
+        operation.status == RegistryEngineeringOperationStatus.cancelled ||
         primaryEntityId == null ||
         workingContent.isEmpty) {
       return;
@@ -205,6 +208,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       );
     }
 
+    final bool revisionsReadOnly =
+        currentOperation.status == RegistryEngineeringOperationStatus.decided ||
+        currentOperation.status == RegistryEngineeringOperationStatus.cancelled;
+
     final Widget statusScreen =
         RegistryEngineeringOperationStatusTransitionScreen(
           uiLanguage: widget.uiLanguage,
@@ -264,6 +271,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                   TextField(
                     key: const Key('registry_operation_revision_content'),
                     controller: _workingContentController,
+                    readOnly: revisionsReadOnly,
                     minLines: 2,
                     maxLines: 4,
                     decoration: InputDecoration(
@@ -279,7 +287,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                       ),
                       FilledButton(
                         key: const Key('registry_operation_save_revision'),
-                        onPressed: _isSavingRevision ? null : _saveRevision,
+                        onPressed: revisionsReadOnly || _isSavingRevision
+                            ? null
+                            : _saveRevision,
                         child: Text(
                           _isSavingRevision ? labels.saving : labels.save,
                         ),
