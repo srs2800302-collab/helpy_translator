@@ -83,6 +83,76 @@ void main() {
           _expectNoDirectionSymbols(_systemContent(request));
           _expectNoDirectionSymbols(_userContent(request));
         }
+
+        expect(
+          _systemContent(requests[0]),
+          contains(
+            'Возвращай кратчайший естественный и общепринятый эквивалент',
+          ),
+        );
+        expect(
+          _systemContent(requests[0]),
+          contains('Не заменяй перевод толкованием назначения'),
+        );
+
+        for (final int index in <int>[1, 2]) {
+          expect(
+            _systemContent(requests[index]),
+            contains(
+              'Возвращай кратчайший естественный и общепринятый эквивалент',
+            ),
+          );
+          expect(
+            _systemContent(requests[index]),
+            contains('Не заменяй перевод описанием назначения'),
+          );
+          expect(
+            _systemContent(requests[index]),
+            contains('Не добавляй конструкции `для...`'),
+          );
+        }
+      },
+    );
+
+    test(
+      'accepts technical preamble before complete literal sections',
+      () async {
+        final List<RequestOptions> requests = <RequestOptions>[];
+        final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+          responses: <String>[
+            _directTranslationContent,
+            _englishLiteralContent,
+            '''
+Конечно, вот дословный перевод.
+
+$_thaiLiteralContent
+''',
+            _exactAuditContent,
+          ],
+          requests: requests,
+        );
+
+        final TranslatorPhraseResult result = await provider.translatePhrase(
+          sourceText: 'Check wording.',
+        );
+
+        expect(result.status, TranslatorPhraseStatus.exact);
+        expect(result.sourceLanguage, 'EN');
+        expect(result.sourceText, 'Check wording.');
+        expect(result.enToRu, 'Проверить формулировку.');
+        expect(result.enToTh, 'ตรวจสอบข้อความ');
+        expect(result.thToRu, 'Проверить текст.');
+        expect(result.thToEn, 'Check the text.');
+        expect(
+          result.comment,
+          contains(
+            'Ответ дословной проверки тайской версии содержит '
+            'технический текст до первой обязательной секции',
+          ),
+        );
+        expect(result.comment, contains('Конечно, вот дословный перевод.'));
+        expect(result.comment, contains('Полное смысловое совпадение.'));
+        expect(requests, hasLength(4));
       },
     );
 

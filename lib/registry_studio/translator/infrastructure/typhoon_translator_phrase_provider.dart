@@ -36,6 +36,7 @@ final class TyphoonTranslatorPhraseProvider
     Map<String, String>? englishLiteralTranslation;
     Map<String, String>? thaiLiteralTranslation;
     final List<String> semanticDiagnostics = <String>[];
+    final List<String> technicalDiagnostics = <String>[];
 
     try {
       final String directContent = await _request(
@@ -52,6 +53,7 @@ final class TyphoonTranslatorPhraseProvider
         content: directContent,
         labels: _directTranslationLabels,
         responseName: 'Ответ прямого перевода Typhoon',
+        diagnostics: technicalDiagnostics,
       );
       directTranslation = parsedDirectTranslation;
 
@@ -98,6 +100,7 @@ $returnedSourceText
             content: englishLiteralContent,
             labels: _englishLiteralLabels,
             responseName: 'Ответ дословной проверки английской версии',
+            diagnostics: technicalDiagnostics,
           );
       englishLiteralTranslation = parsedEnglishLiteralTranslation;
 
@@ -112,6 +115,7 @@ $returnedSourceText
             content: thaiLiteralContent,
             labels: _thaiLiteralLabels,
             responseName: 'Ответ дословной проверки тайской версии',
+            diagnostics: technicalDiagnostics,
           );
       thaiLiteralTranslation = parsedThaiLiteralTranslation;
 
@@ -139,14 +143,19 @@ $returnedSourceText
         content: auditContent,
         labels: _auditLabels,
         responseName: 'Ответ независимого аудита',
+        diagnostics: technicalDiagnostics,
       );
 
       _validateAudit(audit);
 
       final String auditComment = _buildComment(audit);
-      final String comment = semanticDiagnostics.isEmpty
+      final List<String> diagnostics = <String>[
+        ...technicalDiagnostics,
+        ...semanticDiagnostics,
+      ];
+      final String comment = diagnostics.isEmpty
           ? auditComment
-          : '${semanticDiagnostics.join('\n\n')}\n\n$auditComment';
+          : '${diagnostics.join('\n\n')}\n\n$auditComment';
 
       return TranslatorPhraseResult(
         sourceLanguage: translation['SOURCE LANGUAGE']!,
@@ -170,7 +179,7 @@ $returnedSourceText
         directTranslation: directTranslation,
         englishLiteralTranslation: englishLiteralTranslation,
         thaiLiteralTranslation: thaiLiteralTranslation,
-        semanticDiagnostics: semanticDiagnostics,
+        diagnostics: <String>[...technicalDiagnostics, ...semanticDiagnostics],
         comment: _mapDioError(error),
       );
     } on FormatException catch (error) {
@@ -180,7 +189,7 @@ $returnedSourceText
         directTranslation: directTranslation,
         englishLiteralTranslation: englishLiteralTranslation,
         thaiLiteralTranslation: thaiLiteralTranslation,
-        semanticDiagnostics: semanticDiagnostics,
+        diagnostics: <String>[...technicalDiagnostics, ...semanticDiagnostics],
         comment: error.message,
       );
     }
@@ -216,11 +225,11 @@ $returnedSourceText
     Map<String, String>? directTranslation,
     Map<String, String>? englishLiteralTranslation,
     Map<String, String>? thaiLiteralTranslation,
-    required List<String> semanticDiagnostics,
+    required List<String> diagnostics,
   }) {
-    final String combinedComment = semanticDiagnostics.isEmpty
+    final String combinedComment = diagnostics.isEmpty
         ? comment
-        : '${semanticDiagnostics.join('\n\n')}\n\n$comment';
+        : '${diagnostics.join('\n\n')}\n\n$comment';
 
     return TranslatorPhraseResult(
       sourceLanguage:
@@ -296,6 +305,7 @@ $returnedSourceText
     required String content,
     required List<String> labels,
     required String responseName,
+    List<String>? diagnostics,
   }) {
     final String normalized = content
         .replaceAll('\r\n', '\n')
@@ -310,9 +320,19 @@ $returnedSourceText
         .allMatches(normalized)
         .toList(growable: false);
 
-    if (matches.isEmpty || matches.first.start != 0) {
-      throw FormatException(
-        '$responseName содержит текст до первой обязательной секции.',
+    if (matches.isEmpty) {
+      throw FormatException('$responseName не содержит обязательных секций.');
+    }
+
+    final String preamble = normalized.substring(0, matches.first.start).trim();
+
+    if (preamble.isNotEmpty) {
+      diagnostics?.add(
+        '''
+$responseName содержит технический текст до первой обязательной секции:
+$preamble
+'''
+            .trim(),
       );
     }
 
@@ -653,9 +673,13 @@ ${audit['REASON']}
 15. Не заменяй конкретные термины более общими.
 16. Не смягчай и не усиливай инструкцию.
 17. Не добавляй пояснения.
-18. Не выполняй аудит.
-19. Не утверждай каноничность формулировки.
-20. Не изменяй содержимое registry.
+18. Возвращай кратчайший естественный и общепринятый эквивалент на целевом языке.
+19. Не заменяй перевод толкованием назначения предмета или действия.
+20. Не добавляй конструкции `для...`, `используемый для...`, `предназначенный для...`, если соответствующего смысла нет в исходном тексте.
+21. Если точного эквивалента нет, используй ближайший общепринятый термин без пояснительного расширения.
+22. Не выполняй аудит.
+23. Не утверждай каноничность формулировки.
+24. Не изменяй содержимое registry.
 
 Верни результат строго с этими ASCII labels:
 
@@ -705,8 +729,12 @@ TH:
 12. Не приводи формулировку к каноническому стилю.
 13. Не устраняй неоднозначность.
 14. Не добавляй отсутствующий контекст.
-15. Не объясняй результат.
-16. Не выполняй аудит.
+15. Возвращай кратчайший естественный и общепринятый эквивалент на целевом языке.
+16. Не заменяй перевод описанием назначения предмета или действия.
+17. Не добавляй конструкции `для...`, `используемый для...`, `предназначенный для...`, если соответствующего смысла нет в переданном тексте.
+18. Если точного эквивалента нет, используй ближайший общепринятый термин без пояснительного расширения.
+19. Не объясняй результат.
+20. Не выполняй аудит.
 
 Верни результат строго с этими ASCII labels:
 
@@ -747,8 +775,12 @@ EN_TO_TH:
 12. Не приводи формулировку к каноническому стилю.
 13. Не устраняй неоднозначность.
 14. Не добавляй отсутствующий контекст.
-15. Не объясняй результат.
-16. Не выполняй аудит.
+15. Возвращай кратчайший естественный и общепринятый эквивалент на целевом языке.
+16. Не заменяй перевод описанием назначения предмета или действия.
+17. Не добавляй конструкции `для...`, `используемый для...`, `предназначенный для...`, если соответствующего смысла нет в переданном тексте.
+18. Если точного эквивалента нет, используй ближайший общепринятый термин без пояснительного расширения.
+19. Не объясняй результат.
+20. Не выполняй аудит.
 
 Верни результат строго с этими ASCII labels:
 
