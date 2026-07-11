@@ -23,7 +23,7 @@ void main() {
 
       await tester.pumpWidget(_testApp(cubit));
 
-      expect(find.text('Перевод формулировки'), findsOneWidget);
+      expect(find.text('Адаптивный переводчик'), findsNothing);
       expect(find.text('Каноническая формулировка'), findsOneWidget);
       expect(find.text('Дополнительные параметры'), findsOneWidget);
       expect(find.text('Перевести'), findsOneWidget);
@@ -47,7 +47,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Подсказка языка'), findsOneWidget);
+      expect(find.text('Исходный язык — необязательно'), findsOneWidget);
       expect(find.text('Контекст инженера'), findsOneWidget);
     });
 
@@ -69,10 +69,12 @@ void main() {
         find.byKey(const Key('translator_phrase_source_text_field')),
         ' Check wording. ',
       );
-      await tester.enterText(
+      await tester.tap(
         find.byKey(const Key('translator_phrase_language_hint_field')),
-        ' en ',
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('EN').last);
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('translator_phrase_engineer_context_field')),
         ' Registry wording review. ',
@@ -163,10 +165,12 @@ void main() {
         find.byKey(const Key('translator_phrase_source_text_field')),
         'Check wording.',
       );
-      await tester.enterText(
+      await tester.tap(
         find.byKey(const Key('translator_phrase_language_hint_field')),
-        'en',
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('EN').last);
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('translator_phrase_engineer_context_field')),
         'Registry wording review.',
@@ -191,15 +195,7 @@ void main() {
             ?.text,
         isEmpty,
       );
-      expect(
-        tester
-            .widget<TextField>(
-              find.byKey(const Key('translator_phrase_language_hint_field')),
-            )
-            .controller
-            ?.text,
-        isEmpty,
-      );
+      expect(find.text('Авто'), findsOneWidget);
       expect(
         tester
             .widget<TextField>(

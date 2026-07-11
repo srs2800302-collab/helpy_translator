@@ -11,6 +11,7 @@ import 'registry_studio/core/application/related_context/prepare_registry_resolv
 import 'registry_studio/guard/infrastructure/registry_studio_guard_asset_source.dart';
 import 'registry_studio/presentation/app/registry_studio_app.dart';
 import 'registry_studio/translator/application/translate_phrase.dart';
+import 'registry_studio/translator/infrastructure/shared_preferences_translator_phrase_history_persistence.dart';
 import 'registry_studio/translator/infrastructure/typhoon_translator_phrase_provider.dart';
 import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
 
@@ -34,6 +35,8 @@ Future<void> main() async {
   runApp(
     RegistryStudioApp(
       workSessionPersistence: const RegistryWorkSessionPersistence(),
+      translatorPhraseHistoryPersistence:
+          const SharedPreferencesTranslatorPhraseHistoryPersistence(),
       translatePhrase: TranslatePhrase(provider: translatorPhraseProvider),
       createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
       transitionRegistryEngineeringOperationStatus:

@@ -44,7 +44,7 @@ void main() {
       findsNothing,
     );
     expect(find.byType(RegistryRelatedContextPreparationScreen), findsNothing);
-    expect(find.text('Перевод формулировки'), findsWidgets);
+    expect(find.text('Адаптивный переводчик'), findsWidgets);
   });
 
   testWidgets('switches top-level labels between RU EN and TH', (
@@ -72,7 +72,7 @@ void main() {
       find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
       findsNothing,
     );
-    expect(find.text('Перевод формулировки'), findsWidgets);
+    expect(find.text('Адаптивный переводчик'), findsWidgets);
 
     await tester.tap(
       find.byKey(const Key('registry_studio_language_selector')),
@@ -86,7 +86,7 @@ void main() {
     await tester.tap(find.text('English'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Phrase translation'), findsWidgets);
+    expect(find.text('Adaptive translator'), findsWidgets);
 
     await tester.tap(
       find.byKey(const Key('registry_studio_language_selector')),
@@ -96,7 +96,7 @@ void main() {
     await tester.tap(find.text('ไทย'));
     await tester.pumpAndSettle();
 
-    expect(find.text('แปลถ้อยคำ'), findsWidgets);
+    expect(find.text('ตัวแปลแบบปรับตามบริบท'), findsWidgets);
   });
 
   testWidgets('switches to operation workspace screen', (
@@ -226,7 +226,7 @@ void main() {
 
       await _selectAppScreen(tester, 'Создание инженерной операции');
 
-      await _selectAppScreen(tester, 'Перевод формулировки');
+      await _selectAppScreen(tester, 'Адаптивный переводчик');
 
       await tester.enterText(
         find.byType(EditableText).first,
@@ -330,7 +330,7 @@ void main() {
       findsNothing,
     );
 
-    await _selectAppScreen(tester, 'Перевод формулировки');
+    await _selectAppScreen(tester, 'Адаптивный переводчик');
 
     await _selectAppScreen(tester, 'Создание инженерной операции');
 

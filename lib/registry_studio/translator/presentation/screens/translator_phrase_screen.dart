@@ -46,7 +46,7 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
   static const Key errorTextKey = Key('translator_phrase_error_text');
 
   final TextEditingController _sourceTextController = TextEditingController();
-  final TextEditingController _languageHintController = TextEditingController();
+  String _sourceLanguageHint = '';
   final TextEditingController _engineerContextController =
       TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -55,7 +55,6 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
   @override
   void dispose() {
     _sourceTextController.dispose();
-    _languageHintController.dispose();
     _engineerContextController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -66,7 +65,9 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
 
     context.read<TranslatorPhraseCubit>().translatePhrase(
       sourceText: _sourceTextController.text,
-      sourceLanguageHint: _languageHintController.text,
+      sourceLanguageHint: _sourceLanguageHint.isEmpty
+          ? null
+          : _sourceLanguageHint,
       engineerContext: _engineerContextController.text,
     );
   }
@@ -75,8 +76,10 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
 
     _sourceTextController.clear();
-    _languageHintController.clear();
     _engineerContextController.clear();
+    setState(() {
+      _sourceLanguageHint = '';
+    });
     context.read<TranslatorPhraseCubit>().clear();
 
     if (_scrollController.hasClients) {
@@ -116,10 +119,9 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
     return BlocConsumer<TranslatorPhraseCubit, TranslatorPhraseState>(
       listenWhen:
           (TranslatorPhraseState previous, TranslatorPhraseState current) {
-            return current.result != null &&
+            return current.history.isNotEmpty &&
                 current.status == TranslatorPhrasePresentationStatus.success &&
-                (previous.status != current.status ||
-                    previous.result != current.result);
+                previous.history != current.history;
           },
       listener: (BuildContext context, TranslatorPhraseState state) {
         _showResult();
@@ -127,16 +129,14 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
       builder: (BuildContext context, TranslatorPhraseState state) {
         final bool isLoading =
             state.status == TranslatorPhrasePresentationStatus.loading;
-        final TranslatorPhraseResult? result = state.result;
+        final List<TranslatorPhraseResult> history = state.history;
 
         return ListView(
           controller: _scrollController,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: <Widget>[
-            Text(labels.title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            _StatusSummary(result: result),
+            _StatusSummary(history: history),
             const SizedBox(height: 16),
             TextField(
               key: sourceTextFieldKey,
@@ -157,15 +157,39 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
               leading: const Icon(Icons.tune),
               title: Text(labels.additionalParametersLabel),
               children: <Widget>[
-                TextField(
+                DropdownButtonFormField<String>(
                   key: languageHintFieldKey,
-                  controller: _languageHintController,
-                  textInputAction: TextInputAction.next,
+                  initialValue: _sourceLanguageHint,
+                  isDense: true,
                   decoration: InputDecoration(
                     labelText: labels.sourceLanguageHintLabel,
-                    helperText: labels.sourceLanguageHintHelper,
                     border: const OutlineInputBorder(),
                   ),
+                  items: <DropdownMenuItem<String>>[
+                    DropdownMenuItem<String>(
+                      value: '',
+                      child: Text(labels.sourceLanguageAutoOption),
+                    ),
+                    const DropdownMenuItem<String>(
+                      value: 'ru',
+                      child: Text('RU'),
+                    ),
+                    const DropdownMenuItem<String>(
+                      value: 'en',
+                      child: Text('EN'),
+                    ),
+                    const DropdownMenuItem<String>(
+                      value: 'th',
+                      child: Text('TH'),
+                    ),
+                  ],
+                  onChanged: isLoading
+                      ? null
+                      : (String? value) {
+                          setState(() {
+                            _sourceLanguageHint = value ?? '';
+                          });
+                        },
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -213,7 +237,7 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
               const SizedBox(height: 16),
               _ErrorMessage(message: state.errorMessage),
             ],
-            if (result != null) ...<Widget>[
+            if (history.isNotEmpty) ...<Widget>[
               const SizedBox(height: 20),
               Column(
                 key: _resultSectionKey,
@@ -224,20 +248,40 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
-                  _TranslatorPhraseResultCard(labels: labels, result: result),
-                  if (result.candidateCanonicalPhrase != null &&
-                      widget.onOperationRequested != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.tonal(
-                        key: requestOperationButtonKey,
-                        onPressed: () {
-                          widget.onOperationRequested?.call(result);
-                        },
-                        child: Text(uiLabels.operationCreationScreenTitle),
-                      ),
+                  for (
+                    int index = 0;
+                    index < history.length;
+                    index++
+                  ) ...<Widget>[
+                    _TranslatorPhraseResultCard(
+                      key: index == 0
+                          ? resultCardKey
+                          : ValueKey<String>(
+                              'translator_phrase_result_card_$index',
+                            ),
+                      labels: labels,
+                      result: history[index],
                     ),
+                    if (history[index].candidateCanonicalPhrase != null &&
+                        widget.onOperationRequested != null) ...<Widget>[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.tonal(
+                          key: index == 0
+                              ? requestOperationButtonKey
+                              : ValueKey<String>(
+                                  'translator_phrase_request_operation_'
+                                  'button_$index',
+                                ),
+                          onPressed: () {
+                            widget.onOperationRequested?.call(history[index]);
+                          },
+                          child: Text(uiLabels.operationCreationScreenTitle),
+                        ),
+                      ),
+                    ],
+                    if (index < history.length - 1) const SizedBox(height: 8),
                   ],
                 ],
               ),
@@ -250,14 +294,12 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
 }
 
 final class _StatusSummary extends StatelessWidget {
-  const _StatusSummary({required this.result});
+  const _StatusSummary({required this.history});
 
-  final TranslatorPhraseResult? result;
+  final List<TranslatorPhraseResult> history;
 
   @override
   Widget build(BuildContext context) {
-    final TranslatorPhraseStatus? status = result?.status;
-
     return Wrap(
       spacing: 12,
       runSpacing: 8,
@@ -265,30 +307,36 @@ final class _StatusSummary extends StatelessWidget {
         _StatusValue(
           icon: '✅',
           label: 'Exact',
-          count: status == TranslatorPhraseStatus.exact ? 1 : 0,
+          count: _count(TranslatorPhraseStatus.exact),
         ),
         _StatusValue(
           icon: '🟢',
           label: 'Equivalent',
-          count: status == TranslatorPhraseStatus.equivalent ? 1 : 0,
+          count: _count(TranslatorPhraseStatus.equivalent),
         ),
         _StatusValue(
           icon: '🟡',
           label: 'Review',
-          count: status == TranslatorPhraseStatus.needsReview ? 1 : 0,
+          count: _count(TranslatorPhraseStatus.needsReview),
         ),
         _StatusValue(
           icon: '🔴',
           label: 'Drift',
-          count: status == TranslatorPhraseStatus.canonicalDrift ? 1 : 0,
+          count: _count(TranslatorPhraseStatus.canonicalDrift),
         ),
         _StatusValue(
           icon: '❌',
           label: 'Failed',
-          count: status == TranslatorPhraseStatus.failed ? 1 : 0,
+          count: _count(TranslatorPhraseStatus.failed),
         ),
       ],
     );
+  }
+
+  int _count(TranslatorPhraseStatus status) {
+    return history
+        .where((TranslatorPhraseResult result) => result.status == status)
+        .length;
   }
 }
 
@@ -330,6 +378,7 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
   const _TranslatorPhraseResultCard({
     required this.labels,
     required this.result,
+    super.key,
   });
 
   final RegistryStudioTranslatorPhraseLabels labels;
@@ -338,7 +387,6 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      key: _TranslatorPhraseScreenState.resultCardKey,
       color: _statusBackgroundColor(result.status),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(

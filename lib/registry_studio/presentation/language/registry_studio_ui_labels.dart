@@ -20,13 +20,13 @@ final class RegistryStudioUiLabels {
       RegistryStudioUiLanguage.ru => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
         languageLabel: 'Язык',
-        translatorScreenTitle: 'Перевод формулировки',
+        translatorScreenTitle: 'Адаптивный переводчик',
         operationCreationScreenTitle: 'Создание инженерной операции',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
-          title: 'Перевод формулировки',
+          title: 'Адаптивный переводчик',
           sourceTextLabel: 'Каноническая формулировка',
-          sourceLanguageHintLabel: 'Подсказка языка',
-          sourceLanguageHintHelper: 'Например: ru, en, th',
+          sourceLanguageHintLabel: 'Исходный язык — необязательно',
+          sourceLanguageAutoOption: 'Авто',
           engineerContextLabel: 'Контекст инженера',
           translateButton: 'Перевести',
           clearButton: 'Очистить',
@@ -104,13 +104,13 @@ final class RegistryStudioUiLabels {
       RegistryStudioUiLanguage.en => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
         languageLabel: 'Language',
-        translatorScreenTitle: 'Phrase translation',
+        translatorScreenTitle: 'Adaptive translator',
         operationCreationScreenTitle: 'Create engineering operation',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
-          title: 'Phrase translation',
+          title: 'Adaptive translator',
           sourceTextLabel: 'Canonical wording',
-          sourceLanguageHintLabel: 'Language hint',
-          sourceLanguageHintHelper: 'Example: ru, en, th',
+          sourceLanguageHintLabel: 'Source language — optional',
+          sourceLanguageAutoOption: 'Auto',
           engineerContextLabel: 'Engineer context',
           translateButton: 'Translate',
           clearButton: 'Clear',
@@ -188,13 +188,13 @@ final class RegistryStudioUiLabels {
       RegistryStudioUiLanguage.th => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
         languageLabel: 'ภาษา',
-        translatorScreenTitle: 'แปลถ้อยคำ',
+        translatorScreenTitle: 'ตัวแปลแบบปรับตามบริบท',
         operationCreationScreenTitle: 'สร้างงานวิศวกรรม',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
-          title: 'แปลถ้อยคำ',
+          title: 'ตัวแปลแบบปรับตามบริบท',
           sourceTextLabel: 'ถ้อยคำมาตรฐาน',
-          sourceLanguageHintLabel: 'คำใบ้ภาษา',
-          sourceLanguageHintHelper: 'เช่น: ru, en, th',
+          sourceLanguageHintLabel: 'ภาษาต้นทาง — ไม่บังคับ',
+          sourceLanguageAutoOption: 'อัตโนมัติ',
           engineerContextLabel: 'บริบทของวิศวกร',
           translateButton: 'แปล',
           clearButton: 'ล้าง',
@@ -288,7 +288,7 @@ final class RegistryStudioTranslatorPhraseLabels {
     required this.title,
     required this.sourceTextLabel,
     required this.sourceLanguageHintLabel,
-    required this.sourceLanguageHintHelper,
+    required this.sourceLanguageAutoOption,
     required this.engineerContextLabel,
     required this.translateButton,
     required this.clearButton,
@@ -308,7 +308,7 @@ final class RegistryStudioTranslatorPhraseLabels {
   final String title;
   final String sourceTextLabel;
   final String sourceLanguageHintLabel;
-  final String sourceLanguageHintHelper;
+  final String sourceLanguageAutoOption;
   final String engineerContextLabel;
   final String translateButton;
   final String clearButton;

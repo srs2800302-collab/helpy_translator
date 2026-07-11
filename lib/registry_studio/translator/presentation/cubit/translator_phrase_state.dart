@@ -5,37 +5,53 @@ import '../../translator_phrase_result.dart';
 enum TranslatorPhrasePresentationStatus { initial, loading, success, failure }
 
 final class TranslatorPhraseState extends Equatable {
-  factory TranslatorPhraseState.failure({required String errorMessage}) {
+  const TranslatorPhraseState.initial({
+    this.history = const <TranslatorPhraseResult>[],
+  }) : status = TranslatorPhrasePresentationStatus.initial,
+       errorMessage = '';
+
+  const TranslatorPhraseState.loading({
+    this.history = const <TranslatorPhraseResult>[],
+  }) : status = TranslatorPhrasePresentationStatus.loading,
+       errorMessage = '';
+
+  factory TranslatorPhraseState.success({
+    required TranslatorPhraseResult result,
+    List<TranslatorPhraseResult>? history,
+  }) {
+    return TranslatorPhraseState._(
+      status: TranslatorPhrasePresentationStatus.success,
+      history: List<TranslatorPhraseResult>.unmodifiable(
+        history ?? <TranslatorPhraseResult>[result],
+      ),
+      errorMessage: '',
+    );
+  }
+
+  factory TranslatorPhraseState.failure({
+    required String errorMessage,
+    List<TranslatorPhraseResult> history = const <TranslatorPhraseResult>[],
+  }) {
     return TranslatorPhraseState._(
       status: TranslatorPhrasePresentationStatus.failure,
-      result: null,
+      history: List<TranslatorPhraseResult>.unmodifiable(history),
       errorMessage: _normalizedError(errorMessage),
     );
   }
 
-  const TranslatorPhraseState.initial()
-    : status = TranslatorPhrasePresentationStatus.initial,
-      result = null,
-      errorMessage = '';
-
-  const TranslatorPhraseState.loading()
-    : status = TranslatorPhrasePresentationStatus.loading,
-      result = null,
-      errorMessage = '';
-
-  const TranslatorPhraseState.success({required this.result})
-    : status = TranslatorPhrasePresentationStatus.success,
-      errorMessage = '';
-
   const TranslatorPhraseState._({
     required this.status,
-    required this.result,
+    required this.history,
     required this.errorMessage,
   });
 
   final TranslatorPhrasePresentationStatus status;
-  final TranslatorPhraseResult? result;
+  final List<TranslatorPhraseResult> history;
   final String errorMessage;
+
+  TranslatorPhraseResult? get result {
+    return history.isEmpty ? null : history.first;
+  }
 
   static String _normalizedError(String value) {
     final String normalized = value.trim();
@@ -48,5 +64,5 @@ final class TranslatorPhraseState extends Equatable {
   }
 
   @override
-  List<Object?> get props => <Object?>[status, result, errorMessage];
+  List<Object?> get props => <Object?>[status, history, errorMessage];
 }

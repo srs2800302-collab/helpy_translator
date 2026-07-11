@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -11,6 +13,7 @@ import '../../guard/presentation/screens/registry_studio_guard_record_screen.dar
 import '../../operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import '../../operation/presentation/screens/registry_related_context_preparation_screen.dart';
 import '../../translator/application/translate_phrase.dart';
+import '../../translator/application/translator_phrase_history_persistence.dart';
 import '../../translator/presentation/cubit/translator_phrase_cubit.dart';
 import '../../translator/presentation/screens/translator_phrase_screen.dart';
 import '../language/registry_studio_ui_labels.dart';
@@ -24,6 +27,7 @@ final class RegistryStudioApp extends StatefulWidget {
     required this.translatePhrase,
     required this.createRegistryEngineeringOperation,
     required this.transitionRegistryEngineeringOperationStatus,
+    this.translatorPhraseHistoryPersistence,
     this.workSessionPersistence,
     this.guardRecordEntity,
     this.relatedContextPrimary,
@@ -40,6 +44,7 @@ final class RegistryStudioApp extends StatefulWidget {
        );
 
   final TranslatePhrase translatePhrase;
+  final TranslatorPhraseHistoryPersistence? translatorPhraseHistoryPersistence;
   final CreateRegistryEngineeringOperation createRegistryEngineeringOperation;
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
@@ -75,6 +80,25 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   RegistryResolvedRelatedContext? _resolvedRelatedContext;
   String? _initialOperationProblemStatement;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
+  late final TranslatorPhraseCubit _translatorPhraseCubit;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _translatorPhraseCubit = TranslatorPhraseCubit(
+      translatePhrase: widget.translatePhrase,
+      historyPersistence: widget.translatorPhraseHistoryPersistence,
+    );
+
+    unawaited(_translatorPhraseCubit.restore());
+  }
+
+  @override
+  void dispose() {
+    unawaited(_translatorPhraseCubit.close());
+    super.dispose();
+  }
 
   bool get _hasGuardRecordInput => widget.guardRecordEntity != null;
 
@@ -293,9 +317,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       );
     }
 
-    return BlocProvider<TranslatorPhraseCubit>(
-      create: (_) =>
-          TranslatorPhraseCubit(translatePhrase: widget.translatePhrase),
+    return BlocProvider<TranslatorPhraseCubit>.value(
+      value: _translatorPhraseCubit,
       child: TranslatorPhraseScreen(
         uiLanguage: _selectedLanguage,
         onOperationRequested: _requestOperationFromTranslator,
