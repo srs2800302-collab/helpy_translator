@@ -150,6 +150,83 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Tooltip(
+                message: labels.sourceLanguageHintLabel,
+                child: MenuAnchor(
+                  menuChildren: <Widget>[
+                    MenuItemButton(
+                      onPressed: () {
+                        setState(() {
+                          _sourceLanguageHint = '';
+                        });
+                      },
+                      child: Text(labels.sourceLanguageAutoOption),
+                    ),
+                    MenuItemButton(
+                      onPressed: () {
+                        setState(() {
+                          _sourceLanguageHint = 'ru';
+                        });
+                      },
+                      child: const Text('RU'),
+                    ),
+                    MenuItemButton(
+                      onPressed: () {
+                        setState(() {
+                          _sourceLanguageHint = 'en';
+                        });
+                      },
+                      child: const Text('EN'),
+                    ),
+                    MenuItemButton(
+                      onPressed: () {
+                        setState(() {
+                          _sourceLanguageHint = 'th';
+                        });
+                      },
+                      child: const Text('TH'),
+                    ),
+                  ],
+                  builder:
+                      (
+                        BuildContext context,
+                        MenuController controller,
+                        Widget? child,
+                      ) {
+                        return OutlinedButton.icon(
+                          key: languageHintFieldKey,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(0, 36),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: isLoading
+                              ? null
+                              : () {
+                                  if (controller.isOpen) {
+                                    controller.close();
+                                  } else {
+                                    controller.open();
+                                  }
+                                },
+                          icon: const Icon(Icons.translate, size: 18),
+                          label: Text(
+                            _sourceLanguageHint.isEmpty
+                                ? labels.sourceLanguageAutoOption
+                                : _sourceLanguageHint.toUpperCase(),
+                          ),
+                        );
+                      },
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
             ExpansionTile(
               key: advancedOptionsTileKey,
               tilePadding: EdgeInsets.zero,
@@ -157,41 +234,6 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
               leading: const Icon(Icons.tune),
               title: Text(labels.additionalParametersLabel),
               children: <Widget>[
-                DropdownButtonFormField<String>(
-                  key: languageHintFieldKey,
-                  initialValue: _sourceLanguageHint,
-                  isDense: true,
-                  decoration: InputDecoration(
-                    labelText: labels.sourceLanguageHintLabel,
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: <DropdownMenuItem<String>>[
-                    DropdownMenuItem<String>(
-                      value: '',
-                      child: Text(labels.sourceLanguageAutoOption),
-                    ),
-                    const DropdownMenuItem<String>(
-                      value: 'ru',
-                      child: Text('RU'),
-                    ),
-                    const DropdownMenuItem<String>(
-                      value: 'en',
-                      child: Text('EN'),
-                    ),
-                    const DropdownMenuItem<String>(
-                      value: 'th',
-                      child: Text('TH'),
-                    ),
-                  ],
-                  onChanged: isLoading
-                      ? null
-                      : (String? value) {
-                          setState(() {
-                            _sourceLanguageHint = value ?? '';
-                          });
-                        },
-                ),
-                const SizedBox(height: 12),
                 TextField(
                   key: engineerContextFieldKey,
                   controller: _engineerContextController,

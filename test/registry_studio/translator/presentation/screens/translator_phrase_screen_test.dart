@@ -35,7 +35,7 @@ void main() {
       expect(find.text('❌ Failed: 0'), findsOneWidget);
       expect(
         find.byKey(const Key('translator_phrase_language_hint_field')),
-        findsNothing,
+        findsOneWidget,
       );
       expect(
         find.byKey(const Key('translator_phrase_engineer_context_field')),
@@ -47,7 +47,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Исходный язык — необязательно'), findsOneWidget);
+      expect(find.text('Исходный язык — необязательно'), findsNothing);
+      expect(
+        find.byKey(const Key('translator_phrase_language_hint_field')),
+        findsOneWidget,
+      );
+      expect(find.text('Авто'), findsOneWidget);
       expect(find.text('Контекст инженера'), findsOneWidget);
     });
 
