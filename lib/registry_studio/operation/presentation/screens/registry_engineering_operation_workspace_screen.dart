@@ -101,12 +101,11 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     }
   }
 
-  Future<void> _persistWorkspace() async {
+  Future<void> _persistOperation(RegistryEngineeringOperation operation) async {
     final RegistryWorkSessionPersistence? persistence =
         widget.workSessionPersistence;
-    final RegistryEngineeringOperation? operation = _currentOperation;
 
-    if (persistence == null || operation == null) {
+    if (persistence == null) {
       return;
     }
 
@@ -116,12 +115,18 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     );
   }
 
-  void _setCurrentOperation(RegistryEngineeringOperation operation) {
+  Future<void> _setCurrentOperation(
+    RegistryEngineeringOperation operation,
+  ) async {
+    await _persistOperation(operation);
+
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _currentOperation = operation;
     });
-
-    unawaited(_persistWorkspace());
   }
 
   void _consumeInitialProblemStatement() {
@@ -134,8 +139,15 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     widget.onInitialProblemStatementConsumed?.call();
   }
 
-  void _setCreatedOperation(RegistryEngineeringOperation operation) {
-    _setCurrentOperation(operation);
+  Future<void> _setCreatedOperation(
+    RegistryEngineeringOperation operation,
+  ) async {
+    await _setCurrentOperation(operation);
+
+    if (!mounted) {
+      return;
+    }
+
     _consumeInitialProblemStatement();
   }
 

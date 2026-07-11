@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
@@ -20,7 +22,8 @@ final class RegistryEngineeringOperationStatusTransitionScreen
   final RegistryEngineeringOperation operation;
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
-  final ValueChanged<RegistryEngineeringOperation>? onOperationTransitioned;
+  final FutureOr<void> Function(RegistryEngineeringOperation)?
+  onOperationTransitioned;
 
   @override
   State<RegistryEngineeringOperationStatusTransitionScreen> createState() =>
@@ -52,6 +55,7 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
   late RegistryEngineeringOperationStatus _requestedStatus;
   bool _hasTransitioned = false;
   String? _errorMessage;
+  bool _isTransitioning = false;
   late final TextEditingController _decisionStatementController;
 
   @override
@@ -83,17 +87,24 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
           widget.operation.decisionStatement ?? '';
       _hasTransitioned = false;
       _errorMessage = null;
+      _isTransitioning = false;
     }
   }
 
-  void _transitionStatus() {
+  Future<void> _transitionStatus() async {
+    if (_isTransitioning) {
+      return;
+    }
+
     final RegistryStudioOperationStatusTransitionLabels labels =
         RegistryStudioUiLabels.forLanguage(
           widget.uiLanguage,
         ).operationStatusTransition;
 
+    final RegistryEngineeringOperation transitionedOperation;
+
     try {
-      final RegistryEngineeringOperation transitionedOperation = widget
+      transitionedOperation = widget
           .transitionRegistryEngineeringOperationStatus(
             operation: _currentOperation,
             nextStatus: _requestedStatus,
@@ -102,24 +113,51 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
                 ? _decisionStatementController.text
                 : null,
           );
-
-      _decisionStatementController.text =
-          transitionedOperation.decisionStatement ?? '';
-
-      setState(() {
-        _currentOperation = transitionedOperation;
-        _hasTransitioned = true;
-        _errorMessage = null;
-      });
-
-      widget.onOperationTransitioned?.call(transitionedOperation);
     } on ArgumentError catch (error) {
       setState(() {
         _hasTransitioned = false;
         _errorMessage =
             '${labels.transitionFailedTitle}: ${error.message.toString()}';
       });
+      return;
     }
+
+    setState(() {
+      _isTransitioning = true;
+      _hasTransitioned = false;
+      _errorMessage = null;
+    });
+
+    try {
+      await widget.onOperationTransitioned?.call(transitionedOperation);
+    } on Object {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isTransitioning = false;
+        _hasTransitioned = false;
+        _errorMessage =
+            '${labels.transitionFailedTitle}: '
+            '${labels.persistenceFailedError}';
+      });
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    _decisionStatementController.text =
+        transitionedOperation.decisionStatement ?? '';
+
+    setState(() {
+      _currentOperation = transitionedOperation;
+      _isTransitioning = false;
+      _hasTransitioned = true;
+      _errorMessage = null;
+    });
   }
 
   @override
@@ -184,7 +222,7 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
           const SizedBox(height: 16),
           FilledButton(
             key: transitionButtonKey,
-            onPressed: _transitionStatus,
+            onPressed: _isTransitioning ? null : _transitionStatus,
             child: Text(labels.transitionButton),
           ),
           if (errorMessage != null) ...<Widget>[

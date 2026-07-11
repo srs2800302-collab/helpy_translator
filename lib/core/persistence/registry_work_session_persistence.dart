@@ -148,7 +148,14 @@ final class RegistryWorkSessionPersistence {
           .toList(growable: false),
     };
 
-    await preferences.setString(_engineeringOperationKey, jsonEncode(payload));
+    final bool saved = await preferences.setString(
+      _engineeringOperationKey,
+      jsonEncode(payload),
+    );
+
+    if (!saved) {
+      throw StateError('Failed to save the engineering operation workspace.');
+    }
   }
 
   Future<RegistryEngineeringOperation?> loadEngineeringOperation() async {

@@ -49,6 +49,7 @@ final class RegistryStudioUiLabels {
           statusLabel: 'Статус',
           operationIdRequiredError: 'ID операции обязателен.',
           problemStatementRequiredError: 'Постановка проблемы обязательна.',
+          persistenceFailedError: 'Не удалось сохранить инженерную операцию.',
         ),
         operationStatusTransition:
             RegistryStudioOperationStatusTransitionLabels(
@@ -62,6 +63,8 @@ final class RegistryStudioUiLabels {
               transitionButton: 'Сменить статус',
               transitionedTitle: 'Статус изменён',
               transitionFailedTitle: 'Ошибка смены статуса',
+              persistenceFailedError:
+                  'Не удалось сохранить новый статус инженерной операции.',
             ),
         relatedContextPreparation:
             RegistryStudioRelatedContextPreparationLabels(
@@ -128,6 +131,7 @@ final class RegistryStudioUiLabels {
           statusLabel: 'Status',
           operationIdRequiredError: 'Operation ID is required.',
           problemStatementRequiredError: 'Problem statement is required.',
+          persistenceFailedError: 'Failed to save the engineering operation.',
         ),
         operationStatusTransition:
             RegistryStudioOperationStatusTransitionLabels(
@@ -141,6 +145,8 @@ final class RegistryStudioUiLabels {
               transitionButton: 'Change status',
               transitionedTitle: 'Status changed',
               transitionFailedTitle: 'Status transition error',
+              persistenceFailedError:
+                  'Failed to save the new engineering operation status.',
             ),
         relatedContextPreparation:
             RegistryStudioRelatedContextPreparationLabels(
@@ -207,6 +213,7 @@ final class RegistryStudioUiLabels {
           statusLabel: 'สถานะ',
           operationIdRequiredError: 'ต้องระบุรหัสงาน',
           problemStatementRequiredError: 'ต้องระบุคำอธิบายปัญหา',
+          persistenceFailedError: 'ไม่สามารถบันทึกงานวิศวกรรมได้',
         ),
         operationStatusTransition:
             RegistryStudioOperationStatusTransitionLabels(
@@ -220,6 +227,8 @@ final class RegistryStudioUiLabels {
               transitionButton: 'เปลี่ยนสถานะ',
               transitionedTitle: 'เปลี่ยนสถานะแล้ว',
               transitionFailedTitle: 'ข้อผิดพลาดในการเปลี่ยนสถานะ',
+              persistenceFailedError:
+                  'ไม่สามารถบันทึกสถานะใหม่ของงานวิศวกรรมได้',
             ),
         relatedContextPreparation:
             RegistryStudioRelatedContextPreparationLabels(
@@ -316,6 +325,7 @@ final class RegistryStudioOperationCreationLabels {
     required this.statusLabel,
     required this.operationIdRequiredError,
     required this.problemStatementRequiredError,
+    required this.persistenceFailedError,
   });
 
   final String title;
@@ -326,6 +336,7 @@ final class RegistryStudioOperationCreationLabels {
   final String statusLabel;
   final String operationIdRequiredError;
   final String problemStatementRequiredError;
+  final String persistenceFailedError;
 }
 
 final class RegistryStudioOperationStatusTransitionLabels {
@@ -340,6 +351,7 @@ final class RegistryStudioOperationStatusTransitionLabels {
     required this.transitionButton,
     required this.transitionedTitle,
     required this.transitionFailedTitle,
+    required this.persistenceFailedError,
   });
 
   final String title;
@@ -352,6 +364,7 @@ final class RegistryStudioOperationStatusTransitionLabels {
   final String transitionButton;
   final String transitionedTitle;
   final String transitionFailedTitle;
+  final String persistenceFailedError;
 }
 
 final class RegistryStudioRelatedContextPreparationLabels {

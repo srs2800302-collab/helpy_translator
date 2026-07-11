@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/application/operation_creation/create_registry_engineering_operation.dart';
@@ -18,7 +20,8 @@ final class RegistryEngineeringOperationCreationScreen extends StatefulWidget {
   final RegistryStudioUiLanguage uiLanguage;
   final CreateRegistryEngineeringOperation createRegistryEngineeringOperation;
   final String? initialProblemStatement;
-  final ValueChanged<RegistryEngineeringOperation>? onOperationCreated;
+  final FutureOr<void> Function(RegistryEngineeringOperation)?
+  onOperationCreated;
 
   @override
   State<RegistryEngineeringOperationCreationScreen> createState() =>
@@ -48,6 +51,7 @@ final class _RegistryEngineeringOperationCreationScreenState
 
   RegistryEngineeringOperation? _createdOperation;
   String? _errorMessage;
+  bool _isCreating = false;
 
   @override
   void initState() {
@@ -64,7 +68,11 @@ final class _RegistryEngineeringOperationCreationScreenState
     super.dispose();
   }
 
-  void _createOperation() {
+  Future<void> _createOperation() async {
+    if (_isCreating) {
+      return;
+    }
+
     FocusScope.of(context).unfocus();
 
     final RegistryStudioOperationCreationLabels labels =
@@ -88,25 +96,51 @@ final class _RegistryEngineeringOperationCreationScreenState
       return;
     }
 
+    final RegistryEngineeringOperation operation;
+
     try {
-      final RegistryEngineeringOperation operation = widget
-          .createRegistryEngineeringOperation(
-            id: RegistryEngineeringOperationId(operationId),
-            problemStatement: problemStatement,
-          );
-
-      setState(() {
-        _createdOperation = operation;
-        _errorMessage = null;
-      });
-
-      widget.onOperationCreated?.call(operation);
+      operation = widget.createRegistryEngineeringOperation(
+        id: RegistryEngineeringOperationId(operationId),
+        problemStatement: problemStatement,
+      );
     } on ArgumentError catch (error) {
       setState(() {
         _createdOperation = null;
         _errorMessage = error.message.toString();
       });
+      return;
     }
+
+    setState(() {
+      _isCreating = true;
+      _createdOperation = null;
+      _errorMessage = null;
+    });
+
+    try {
+      await widget.onOperationCreated?.call(operation);
+    } on Object {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isCreating = false;
+        _createdOperation = null;
+        _errorMessage = labels.persistenceFailedError;
+      });
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isCreating = false;
+      _createdOperation = operation;
+      _errorMessage = null;
+    });
   }
 
   @override
@@ -145,7 +179,7 @@ final class _RegistryEngineeringOperationCreationScreenState
           const SizedBox(height: 16),
           FilledButton(
             key: createButtonKey,
-            onPressed: _createOperation,
+            onPressed: _isCreating ? null : _createOperation,
             child: Text(labels.createButton),
           ),
           if (errorMessage != null) ...<Widget>[

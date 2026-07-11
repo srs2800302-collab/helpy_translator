@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
@@ -24,6 +26,124 @@ void main() {
         findsNothing,
       );
       expect(find.text('Создание инженерной операции'), findsOneWidget);
+    });
+
+    testWidgets('keeps operation unchanged when persistence write fails', (
+      WidgetTester tester,
+    ) async {
+      const MethodChannel channel = MethodChannel(
+        'plugins.flutter.io/shared_preferences',
+      );
+      bool failWrites = true;
+      bool initialProblemStatementConsumed = false;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall call) async {
+            if (call.method == 'getAll' ||
+                call.method == 'getAllWithParameters') {
+              return <String, Object>{};
+            }
+
+            if (call.method == 'setString') {
+              return !failWrites;
+            }
+
+            return true;
+          });
+
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      await tester.pumpWidget(
+        _testApp(
+          workSessionPersistence: const RegistryWorkSessionPersistence(),
+          initialProblemStatement: 'Candidate wording review.',
+          onInitialProblemStatementConsumed: () {
+            initialProblemStatementConsumed = true;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('registry_engineering_operation_id_field')),
+        'registry-operation-001',
+      );
+
+      final Finder createButton = find.byKey(
+        const Key('registry_engineering_operation_create_button'),
+      );
+
+      await tester.tap(createButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byType(RegistryEngineeringOperationCreationScreen),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Не удалось сохранить инженерную операцию.'),
+        findsOneWidget,
+      );
+      expect(
+        find.byType(RegistryEngineeringOperationStatusTransitionScreen),
+        findsNothing,
+      );
+      expect(initialProblemStatementConsumed, isFalse);
+
+      final TextField retainedProblemStatement = tester.widget<TextField>(
+        find.byKey(
+          const Key('registry_engineering_operation_problem_statement_field'),
+        ),
+      );
+
+      expect(
+        retainedProblemStatement.controller?.text,
+        'Candidate wording review.',
+      );
+
+      failWrites = false;
+
+      await tester.tap(createButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byType(RegistryEngineeringOperationStatusTransitionScreen),
+        findsOneWidget,
+      );
+      expect(find.text('Текущий статус:\nopen'), findsOneWidget);
+      expect(initialProblemStatementConsumed, isTrue);
+
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('readyForDecision').last);
+      await tester.pumpAndSettle();
+
+      failWrites = true;
+
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Текущий статус:\nopen'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'Не удалось сохранить новый статус '
+          'инженерной операции.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Статус изменён'), findsNothing);
     });
 
     testWidgets('switches to status transition flow after operation creation', (
@@ -255,6 +375,8 @@ Widget _testApp({
   RegistryStudioUiLanguage uiLanguage = RegistryStudioUiLanguage.ru,
   RegistryEntityId? revisionPrimaryEntityId,
   String? initialProblemStatement,
+  RegistryWorkSessionPersistence? workSessionPersistence,
+  VoidCallback? onInitialProblemStatementConsumed,
 }) {
   return MaterialApp(
     home: RegistryEngineeringOperationWorkspaceScreen(
@@ -264,6 +386,8 @@ Widget _testApp({
           TransitionRegistryEngineeringOperationStatus(),
       revisionPrimaryEntityId: revisionPrimaryEntityId,
       initialProblemStatement: initialProblemStatement,
+      workSessionPersistence: workSessionPersistence,
+      onInitialProblemStatementConsumed: onInitialProblemStatementConsumed,
     ),
   );
 }
