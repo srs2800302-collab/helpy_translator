@@ -69,6 +69,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   static const Key _guardRecordScreenButtonKey = Key(
     'registry_studio_guard_record_screen_button',
   );
+  static const Key _screenSelectorKey = Key('registry_studio_screen_selector');
 
   int _selectedScreenIndex = _translatorScreenIndex;
   RegistryResolvedRelatedContext? _resolvedRelatedContext;
@@ -89,75 +90,100 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _selectedLanguage,
     );
 
+    final String selectedScreenLabel = switch (_selectedScreenIndex) {
+      _operationWorkspaceScreenIndex => labels.operationCreationScreenTitle,
+      _relatedContextScreenIndex => labels.relatedContextPreparation.title,
+      _guardRecordScreenIndex => labels.guardRecord.title,
+      _ => labels.translatorScreenTitle,
+    };
+
     return MaterialApp(
       title: labels.appTitle,
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        appBar: AppBar(title: Text(labels.appTitle)),
+        appBar: AppBar(
+          title: Text(labels.appTitle),
+          actions: <Widget>[
+            _LanguageSelector(
+              label: labels.languageLabel,
+              selectedLanguage: _selectedLanguage,
+              onChanged: _selectLanguage,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
         body: Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: <Widget>[
-                  _LanguageSelector(
-                    label: labels.languageLabel,
-                    selectedLanguage: _selectedLanguage,
-                    onChanged: _selectLanguage,
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+              child: PopupMenuButton<int>(
+                key: _screenSelectorKey,
+                initialValue: _selectedScreenIndex,
+                position: PopupMenuPosition.under,
+                onSelected: _selectScreen,
+                itemBuilder: (BuildContext context) {
+                  return <PopupMenuEntry<int>>[
+                    CheckedPopupMenuItem<int>(
+                      value: _translatorScreenIndex,
+                      checked: _selectedScreenIndex == _translatorScreenIndex,
+                      child: Text(labels.translatorScreenTitle),
+                    ),
+                    CheckedPopupMenuItem<int>(
+                      value: _operationWorkspaceScreenIndex,
+                      checked:
+                          _selectedScreenIndex ==
+                          _operationWorkspaceScreenIndex,
+                      child: Text(labels.operationCreationScreenTitle),
+                    ),
+                    if (_hasRelatedContextInput)
+                      CheckedPopupMenuItem<int>(
+                        key: _relatedContextScreenButtonKey,
+                        value: _relatedContextScreenIndex,
+                        checked:
+                            _selectedScreenIndex == _relatedContextScreenIndex,
+                        child: Text(labels.relatedContextPreparation.title),
+                      ),
+                    if (_hasGuardRecordInput)
+                      CheckedPopupMenuItem<int>(
+                        key: _guardRecordScreenButtonKey,
+                        value: _guardRecordScreenIndex,
+                        checked:
+                            _selectedScreenIndex == _guardRecordScreenIndex,
+                        child: Text(labels.guardRecord.title),
+                      ),
+                  ];
+                },
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
                   ),
-                  const SizedBox(height: 12),
-                  Row(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
                     children: <Widget>[
-                      Expanded(
-                        child: _ScreenSelectionButton(
-                          label: labels.translatorScreenTitle,
-                          isSelected:
-                              _selectedScreenIndex == _translatorScreenIndex,
-                          onPressed: () =>
-                              _selectScreen(_translatorScreenIndex),
-                        ),
+                      Icon(
+                        Icons.view_list_outlined,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _ScreenSelectionButton(
-                          label: labels.operationCreationScreenTitle,
-                          isSelected:
-                              _selectedScreenIndex ==
-                              _operationWorkspaceScreenIndex,
-                          onPressed: () =>
-                              _selectScreen(_operationWorkspaceScreenIndex),
+                        child: Text(
+                          selectedScreenLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
-                      if (_hasGuardRecordInput) ...<Widget>[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _ScreenSelectionButton(
-                            key: _guardRecordScreenButtonKey,
-                            label: labels.guardRecord.title,
-                            isSelected:
-                                _selectedScreenIndex == _guardRecordScreenIndex,
-                            onPressed: () =>
-                                _selectScreen(_guardRecordScreenIndex),
-                          ),
-                        ),
-                      ],
-                      if (_hasRelatedContextInput) ...<Widget>[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _ScreenSelectionButton(
-                            key: _relatedContextScreenButtonKey,
-                            label: labels.relatedContextPreparation.title,
-                            isSelected:
-                                _selectedScreenIndex ==
-                                _relatedContextScreenIndex,
-                            onPressed: () =>
-                                _selectScreen(_relatedContextScreenIndex),
-                          ),
-                        ),
-                      ],
+                      const Icon(Icons.arrow_drop_down),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
             Expanded(child: _currentScreen()),
@@ -285,53 +311,40 @@ final class _LanguageSelector extends StatelessWidget {
     required this.onChanged,
   });
 
+  static const Key selectorKey = Key('registry_studio_language_selector');
+
   final String label;
   final RegistryStudioUiLanguage selectedLanguage;
   final ValueChanged<RegistryStudioUiLanguage> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<RegistryStudioUiLanguage>(
+    return PopupMenuButton<RegistryStudioUiLanguage>(
+      key: selectorKey,
+      tooltip: label,
       initialValue: selectedLanguage,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
-      items: RegistryStudioUiLanguage.values
-          .map(
-            (language) => DropdownMenuItem<RegistryStudioUiLanguage>(
-              value: language,
-              child: Text(language.code),
-            ),
-          )
-          .toList(growable: false),
-      onChanged: (value) {
-        if (value != null) {
-          onChanged(value);
-        }
+      position: PopupMenuPosition.under,
+      onSelected: onChanged,
+      icon: Icon(Icons.language, color: Theme.of(context).colorScheme.primary),
+      itemBuilder: (BuildContext context) {
+        return RegistryStudioUiLanguage.values
+            .map((RegistryStudioUiLanguage language) {
+              return CheckedPopupMenuItem<RegistryStudioUiLanguage>(
+                value: language,
+                checked: language == selectedLanguage,
+                child: Text(_languageName(language)),
+              );
+            })
+            .toList(growable: false);
       },
     );
   }
-}
 
-final class _ScreenSelectionButton extends StatelessWidget {
-  const _ScreenSelectionButton({
-    required this.label,
-    required this.isSelected,
-    required this.onPressed,
-    super.key,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    if (isSelected) {
-      return FilledButton(onPressed: onPressed, child: Text(label));
-    }
-
-    return OutlinedButton(onPressed: onPressed, child: Text(label));
+  static String _languageName(RegistryStudioUiLanguage language) {
+    return switch (language) {
+      RegistryStudioUiLanguage.ru => 'Русский',
+      RegistryStudioUiLanguage.en => 'English',
+      RegistryStudioUiLanguage.th => 'ไทย',
+    };
   }
 }

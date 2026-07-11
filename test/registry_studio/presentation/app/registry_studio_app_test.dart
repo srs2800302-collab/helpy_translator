@@ -15,6 +15,7 @@ import 'package:helpy_translator/registry_studio/operation/presentation/screens/
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_related_context_preparation_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/app/registry_studio_app.dart';
+import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translate_phrase.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_phrase_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/presentation/screens/translator_phrase_screen.dart';
@@ -54,29 +55,48 @@ void main() {
 
     await tester.pumpWidget(_testApp(provider));
 
-    expect(find.text('Язык'), findsOneWidget);
+    expect(
+      find.byKey(const Key('registry_studio_language_selector')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('registry_studio_screen_selector')),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.language), findsOneWidget);
+    expect(
+      find.byType(DropdownButtonFormField<RegistryStudioUiLanguage>),
+      findsNothing,
+    );
+    expect(
+      find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
+      findsNothing,
+    );
     expect(find.text('Перевод формулировки'), findsWidgets);
-    expect(find.text('Создание инженерной операции'), findsOneWidget);
 
-    await tester.tap(find.text('RU'));
+    await tester.tap(
+      find.byKey(const Key('registry_studio_language_selector')),
+    );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('EN').last);
+    expect(find.text('Русский'), findsOneWidget);
+    expect(find.text('English'), findsOneWidget);
+    expect(find.text('ไทย'), findsOneWidget);
+
+    await tester.tap(find.text('English'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Language'), findsOneWidget);
     expect(find.text('Phrase translation'), findsWidgets);
-    expect(find.text('Create engineering operation'), findsOneWidget);
 
-    await tester.tap(find.text('EN'));
+    await tester.tap(
+      find.byKey(const Key('registry_studio_language_selector')),
+    );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('TH').last);
+    await tester.tap(find.text('ไทย'));
     await tester.pumpAndSettle();
 
-    expect(find.text('ภาษา'), findsOneWidget);
     expect(find.text('แปลถ้อยคำ'), findsWidgets);
-    expect(find.text('สร้างงานวิศวกรรม'), findsOneWidget);
   });
 
   testWidgets('switches to operation workspace screen', (
@@ -87,10 +107,7 @@ void main() {
 
     await tester.pumpWidget(_testApp(provider));
 
-    await tester.tap(
-      find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
-    );
-    await tester.pump();
+    await _selectAppScreen(tester, 'Создание инженерной операции');
 
     expect(
       find.byType(RegistryEngineeringOperationWorkspaceScreen),
@@ -112,10 +129,7 @@ void main() {
 
     await tester.pumpWidget(_testApp(provider));
 
-    await tester.tap(
-      find.byKey(const Key('registry_studio_related_context_screen_button')),
-    );
-    await tester.pump();
+    await _selectAppScreen(tester, 'Подготовка related context');
 
     expect(
       find.byType(RegistryRelatedContextPreparationScreen),
@@ -136,20 +150,14 @@ void main() {
 
     await tester.pumpWidget(_testApp(provider));
 
-    await tester.tap(
-      find.byKey(const Key('registry_studio_related_context_screen_button')),
-    );
-    await tester.pump();
+    await _selectAppScreen(tester, 'Подготовка related context');
 
     await tester.tap(
       find.byKey(const Key('registry_related_context_prepare_button')),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
-    );
-    await tester.pump();
+    await _selectAppScreen(tester, 'Создание инженерной операции');
 
     final RegistryEngineeringOperationWorkspaceScreen workspace = tester
         .widget<RegistryEngineeringOperationWorkspaceScreen>(
@@ -179,10 +187,7 @@ void main() {
 
     await tester.pumpWidget(_testApp(provider));
 
-    await tester.tap(
-      find.byKey(const Key('registry_studio_guard_record_screen_button')),
-    );
-    await tester.pumpAndSettle();
+    await _selectAppScreen(tester, 'Guard record');
 
     expect(find.byType(RegistryStudioGuardRecordScreen), findsOneWidget);
     expect(
@@ -219,15 +224,9 @@ void main() {
 
       await tester.pumpWidget(_testApp(provider));
 
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
-      );
-      await tester.pump();
+      await _selectAppScreen(tester, 'Создание инженерной операции');
 
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, 'Перевод формулировки'),
-      );
-      await tester.pump();
+      await _selectAppScreen(tester, 'Перевод формулировки');
 
       await tester.enterText(
         find.byType(EditableText).first,
@@ -331,15 +330,9 @@ void main() {
       findsNothing,
     );
 
-    await tester.tap(
-      find.widgetWithText(OutlinedButton, 'Перевод формулировки'),
-    );
-    await tester.pump();
+    await _selectAppScreen(tester, 'Перевод формулировки');
 
-    await tester.tap(
-      find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
-    );
-    await tester.pumpAndSettle();
+    await _selectAppScreen(tester, 'Создание инженерной операции');
 
     expect(
       find.byType(RegistryEngineeringOperationCreationScreen),
@@ -354,6 +347,14 @@ void main() {
 
     expect(remountedProblemStatement.controller?.text, isEmpty);
   });
+}
+
+Future<void> _selectAppScreen(WidgetTester tester, String label) async {
+  await tester.tap(find.byKey(const Key('registry_studio_screen_selector')));
+  await tester.pumpAndSettle();
+
+  await tester.tap(find.text(label).last);
+  await tester.pumpAndSettle();
 }
 
 Widget _testApp(_FakeTranslatorPhraseProvider provider) {
