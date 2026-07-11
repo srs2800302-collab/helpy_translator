@@ -4941,3 +4941,31 @@ Context continuity реализуется внутри существующег�
 - store;
 - manager;
 - дополнительный persistence payload.
+
+## Очистка related context для новой work session
+
+`RegistryStudioApp` владеет текущим подготовленным `RegistryResolvedRelatedContext`.
+
+Этот presentation context относится только к текущей локальной work session и не должен автоматически переходить в следующую operation.
+
+После подтверждённого действия `Начать новую операцию`:
+
+- workspace успешно очищает persisted operation workspace через существующий `clearEngineeringOperationWorkspace()`;
+- workspace очищает текущие in-memory operation, revisions и editor state;
+- только после успешного завершения очистки workspace вызывает optional `onWorkSessionCleared`;
+- `RegistryStudioApp` обрабатывает callback и очищает `_resolvedRelatedContext`;
+- первая revision следующей operation не получает related ids завершённой work session.
+
+Если persistence-очистка завершилась ошибкой, callback не вызывается, terminal operation и app-level related context сохраняются.
+
+Workspace не становится owner `RegistryResolvedRelatedContext`. App не передаёт context через новый repository или persistence payload.
+
+Для этого lifecycle не вводятся:
+
+- новая entity;
+- новый use case;
+- context wrapper;
+- repository;
+- store;
+- manager;
+- новый persistence contract.

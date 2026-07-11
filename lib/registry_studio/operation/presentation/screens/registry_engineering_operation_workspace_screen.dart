@@ -22,6 +22,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     this.revisionRelatedEntityIds,
     this.initialProblemStatement,
     this.onInitialProblemStatementConsumed,
+    this.onWorkSessionCleared,
     super.key,
   });
 
@@ -35,6 +36,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   final Iterable<RegistryEntityId>? revisionRelatedEntityIds;
   final String? initialProblemStatement;
   final VoidCallback? onInitialProblemStatementConsumed;
+  final VoidCallback? onWorkSessionCleared;
 
   @override
   State<RegistryEngineeringOperationWorkspaceScreen> createState() =>
@@ -241,7 +243,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           content: Text('Не удалось начать новую инженерную операцию.'),
         ),
       );
+      return;
     }
+
+    widget.onWorkSessionCleared?.call();
   }
 
   Future<void> _saveRevision() async {

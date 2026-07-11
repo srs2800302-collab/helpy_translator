@@ -184,6 +184,8 @@ void main() {
     testWidgets(
       'restores ${terminalStatus.name} workspace as revision read-only',
       (WidgetTester tester) async {
+        bool workSessionCleared = false;
+
         const RegistryWorkSessionPersistence persistence =
             RegistryWorkSessionPersistence();
 
@@ -223,6 +225,9 @@ void main() {
               transitionRegistryEngineeringOperationStatus:
                   TransitionRegistryEngineeringOperationStatus(),
               workSessionPersistence: persistence,
+              onWorkSessionCleared: () {
+                workSessionCleared = true;
+              },
               revisionPrimaryEntityId: RegistryEntityId('primary'),
             ),
           ),
@@ -255,6 +260,7 @@ void main() {
         await tester.tap(find.text('Начать'));
         await tester.pumpAndSettle();
 
+        expect(workSessionCleared, isTrue);
         expect(
           find.byType(RegistryEngineeringOperationCreationScreen),
           findsOneWidget,

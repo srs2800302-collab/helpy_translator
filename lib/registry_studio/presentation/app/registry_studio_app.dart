@@ -188,6 +188,16 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     });
   }
 
+  void _clearResolvedRelatedContext() {
+    if (_resolvedRelatedContext == null) {
+      return;
+    }
+
+    setState(() {
+      _resolvedRelatedContext = null;
+    });
+  }
+
   void _consumeInitialOperationProblemStatement() {
     if (_initialOperationProblemStatement == null) {
       return;
@@ -242,6 +252,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         initialProblemStatement: _initialOperationProblemStatement,
         onInitialProblemStatementConsumed:
             _consumeInitialOperationProblemStatement,
+        onWorkSessionCleared: _clearResolvedRelatedContext,
         workSessionPersistence: widget.workSessionPersistence,
         revisionPrimaryEntityId:
             (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,

@@ -159,6 +159,18 @@ void main() {
     expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
       RegistryEntityId('related-001'),
     ]);
+
+    expect(workspace.onWorkSessionCleared, isNotNull);
+
+    workspace.onWorkSessionCleared!();
+    await tester.pump();
+
+    final RegistryEngineeringOperationWorkspaceScreen clearedWorkspace = tester
+        .widget<RegistryEngineeringOperationWorkspaceScreen>(
+          find.byType(RegistryEngineeringOperationWorkspaceScreen),
+        );
+
+    expect(clearedWorkspace.revisionRelatedEntityIds, isNull);
   });
 
   testWidgets('switches to Guard record screen', (WidgetTester tester) async {
