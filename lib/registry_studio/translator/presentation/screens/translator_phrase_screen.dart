@@ -447,6 +447,10 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: <Widget>[
           _TextValueRow(
+            label: labels.verdictRow,
+            value: _statusLabel(labels, result.status),
+          ),
+          _TextValueRow(
             label: labels.sourceLanguageRow,
             value: result.sourceLanguage,
           ),
@@ -454,10 +458,10 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
           _OptionalTextValueRow(label: 'RU', value: result.ru),
           _OptionalTextValueRow(label: 'EN', value: result.en),
           _OptionalTextValueRow(label: 'TH', value: result.th),
-          _OptionalTextValueRow(label: 'EN → RU', value: result.enToRu),
-          _OptionalTextValueRow(label: 'TH → RU', value: result.thToRu),
-          _OptionalTextValueRow(label: 'EN → TH', value: result.enToTh),
-          _OptionalTextValueRow(label: 'TH → EN', value: result.thToEn),
+          _OptionalTextValueRow(label: 'EN_TO_RU', value: result.enToRu),
+          _OptionalTextValueRow(label: 'TH_TO_RU', value: result.thToRu),
+          _OptionalTextValueRow(label: 'EN_TO_TH', value: result.enToTh),
+          _OptionalTextValueRow(label: 'TH_TO_EN', value: result.thToEn),
           _OptionalTextValueRow(
             label: labels.commentRow,
             value: result.comment,

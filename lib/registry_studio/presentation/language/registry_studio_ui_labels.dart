@@ -32,9 +32,10 @@ final class RegistryStudioUiLabels {
           clearButton: 'Очистить',
           additionalParametersLabel: 'Дополнительные параметры',
           resultsTitle: 'Результаты переводов',
-          sourceLanguageRow: 'Исходный язык',
-          sourceTextRow: 'Исходный текст',
-          commentRow: 'Комментарий',
+          sourceLanguageRow: 'SOURCE LANGUAGE',
+          sourceTextRow: 'SOURCE TEXT',
+          verdictRow: 'Вердикт',
+          commentRow: 'Аудит и диагностика',
           canonicalCandidateRow: 'Кандидат канонической формулировки',
           exactStatus: 'Точное совпадение',
           equivalentStatus: 'Эквивалентная формулировка',
@@ -116,9 +117,10 @@ final class RegistryStudioUiLabels {
           clearButton: 'Clear',
           additionalParametersLabel: 'Additional parameters',
           resultsTitle: 'Translation results',
-          sourceLanguageRow: 'Source language',
-          sourceTextRow: 'Source text',
-          commentRow: 'Comment',
+          sourceLanguageRow: 'SOURCE LANGUAGE',
+          sourceTextRow: 'SOURCE TEXT',
+          verdictRow: 'Verdict',
+          commentRow: 'Audit and diagnostics',
           canonicalCandidateRow: 'Candidate canonical phrase',
           exactStatus: 'Exact match',
           equivalentStatus: 'Equivalent wording',
@@ -200,9 +202,10 @@ final class RegistryStudioUiLabels {
           clearButton: 'ล้าง',
           additionalParametersLabel: 'พารามิเตอร์เพิ่มเติม',
           resultsTitle: 'ผลการแปล',
-          sourceLanguageRow: 'ภาษาต้นทาง',
-          sourceTextRow: 'ข้อความต้นทาง',
-          commentRow: 'ความคิดเห็น',
+          sourceLanguageRow: 'SOURCE LANGUAGE',
+          sourceTextRow: 'SOURCE TEXT',
+          verdictRow: 'ผลการตัดสิน',
+          commentRow: 'การตรวจสอบและการวินิจฉัย',
           canonicalCandidateRow: 'ถ้อยคำมาตรฐานที่เสนอ',
           exactStatus: 'ตรงกันทุกประการ',
           equivalentStatus: 'ถ้อยคำเทียบเท่า',
@@ -296,6 +299,7 @@ final class RegistryStudioTranslatorPhraseLabels {
     required this.resultsTitle,
     required this.sourceLanguageRow,
     required this.sourceTextRow,
+    required this.verdictRow,
     required this.commentRow,
     required this.canonicalCandidateRow,
     required this.exactStatus,
@@ -316,6 +320,7 @@ final class RegistryStudioTranslatorPhraseLabels {
   final String resultsTitle;
   final String sourceLanguageRow;
   final String sourceTextRow;
+  final String verdictRow;
   final String commentRow;
   final String canonicalCandidateRow;
   final String exactStatus;

@@ -115,6 +115,91 @@ void main() {
       expect(find.text('✅ Exact: 1'), findsOneWidget);
     });
 
+    testWidgets('shows verdict, all nine sections, audit criteria and reason', (
+      WidgetTester tester,
+    ) async {
+      final TranslatorPhraseResult result = TranslatorPhraseResult(
+        sourceLanguage: 'en',
+        sourceText: 'SOURCE TEXT value',
+        status: TranslatorPhraseStatus.needsReview,
+        ru: 'RU value',
+        en: 'EN value',
+        th: 'TH value',
+        enToRu: 'EN_TO_RU value',
+        thToRu: 'TH_TO_RU value',
+        enToTh: 'EN_TO_TH value',
+        thToEn: 'TH_TO_EN value',
+        comment: '''
+MEANING_PRESERVED: YES
+TERMINOLOGY_PRESERVED: NO
+CANONICAL_STYLE_PRESERVED: NO
+AMBIGUOUS_WORDING: YES
+
+REASON
+Full audit reason.
+''',
+      );
+      final _FakeTranslatorPhraseProvider provider =
+          _FakeTranslatorPhraseProvider(result: result);
+      final TranslatorPhraseCubit cubit = _cubitFor(provider);
+      addTearDown(cubit.close);
+
+      await tester.pumpWidget(_testApp(cubit));
+
+      await tester.enterText(
+        find.byKey(const Key('translator_phrase_source_text_field')),
+        'Submitted wording.',
+      );
+      await tester.tap(
+        find.byKey(const Key('translator_phrase_translate_button')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Нужна проверка'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Вердикт'), findsOneWidget);
+      expect(find.text('Нужна проверка'), findsNWidgets(2));
+
+      for (final String sectionLabel in <String>[
+        'SOURCE LANGUAGE',
+        'SOURCE TEXT',
+        'RU',
+        'EN',
+        'TH',
+        'EN_TO_RU',
+        'TH_TO_RU',
+        'EN_TO_TH',
+        'TH_TO_EN',
+      ]) {
+        expect(
+          find.text(sectionLabel),
+          findsOneWidget,
+          reason: 'Missing result section: $sectionLabel',
+        );
+      }
+
+      expect(find.text('en'), findsOneWidget);
+      expect(find.text('SOURCE TEXT value'), findsOneWidget);
+      expect(find.text('RU value'), findsNWidgets(2));
+      expect(find.text('EN value'), findsOneWidget);
+      expect(find.text('TH value'), findsOneWidget);
+      expect(find.text('EN_TO_RU value'), findsOneWidget);
+      expect(find.text('TH_TO_RU value'), findsOneWidget);
+      expect(find.text('EN_TO_TH value'), findsOneWidget);
+      expect(find.text('TH_TO_EN value'), findsOneWidget);
+
+      expect(find.text('Аудит и диагностика'), findsOneWidget);
+      expect(find.textContaining('MEANING_PRESERVED: YES'), findsOneWidget);
+      expect(find.textContaining('TERMINOLOGY_PRESERVED: NO'), findsOneWidget);
+      expect(
+        find.textContaining('CANONICAL_STYLE_PRESERVED: NO'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('AMBIGUOUS_WORDING: YES'), findsOneWidget);
+      expect(find.textContaining('REASON\nFull audit reason.'), findsOneWidget);
+    });
+
     testWidgets('shows loading state while translation is pending', (
       WidgetTester tester,
     ) async {
