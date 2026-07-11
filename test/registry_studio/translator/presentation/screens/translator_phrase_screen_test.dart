@@ -50,6 +50,13 @@ void main() {
       expect(find.byIcon(Icons.translate), findsNothing);
       expect(find.byIcon(Icons.tune), findsNothing);
       expect(find.byIcon(Icons.expand_more), findsNothing);
+      expect(find.byType(ExpansionTile), findsNothing);
+
+      final Text parametersText = tester.widget<Text>(parametersLabel);
+      expect(parametersText.maxLines, 1);
+      expect(parametersText.softWrap, isFalse);
+      expect(parametersText.overflow, TextOverflow.clip);
+
       expect(
         (tester.getCenter(languageControl).dy -
                 tester.getCenter(parametersLabel).dy)

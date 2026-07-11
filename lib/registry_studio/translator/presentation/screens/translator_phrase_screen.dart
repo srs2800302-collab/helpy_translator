@@ -47,6 +47,7 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
 
   final TextEditingController _sourceTextController = TextEditingController();
   String _sourceLanguageHint = '';
+  bool _advancedOptionsExpanded = false;
   final TextEditingController _engineerContextController =
       TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -150,103 +151,128 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            ExpansionTile(
-              key: advancedOptionsTileKey,
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(bottom: 12),
-              trailing: const SizedBox.shrink(),
-              shape: const Border(),
-              collapsedShape: const Border(),
-              title: Row(
-                children: <Widget>[
-                  Tooltip(
-                    message: labels.sourceLanguageHintLabel,
-                    child: MenuAnchor(
-                      menuChildren: <Widget>[
-                        MenuItemButton(
-                          onPressed: () {
-                            setState(() {
-                              _sourceLanguageHint = '';
-                            });
-                          },
-                          child: Text(labels.sourceLanguageAutoOption),
-                        ),
-                        MenuItemButton(
-                          onPressed: () {
-                            setState(() {
-                              _sourceLanguageHint = 'ru';
-                            });
-                          },
-                          child: const Text('RU'),
-                        ),
-                        MenuItemButton(
-                          onPressed: () {
-                            setState(() {
-                              _sourceLanguageHint = 'en';
-                            });
-                          },
-                          child: const Text('EN'),
-                        ),
-                        MenuItemButton(
-                          onPressed: () {
-                            setState(() {
-                              _sourceLanguageHint = 'th';
-                            });
-                          },
-                          child: const Text('TH'),
-                        ),
-                      ],
-                      builder:
-                          (
-                            BuildContext context,
-                            MenuController controller,
-                            Widget? child,
-                          ) {
-                            return OutlinedButton(
-                              key: languageHintFieldKey,
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size(0, 34),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Tooltip(
+                      message: labels.sourceLanguageHintLabel,
+                      child: MenuAnchor(
+                        menuChildren: <Widget>[
+                          MenuItemButton(
+                            onPressed: () {
+                              setState(() {
+                                _sourceLanguageHint = '';
+                              });
+                            },
+                            child: Text(labels.sourceLanguageAutoOption),
+                          ),
+                          MenuItemButton(
+                            onPressed: () {
+                              setState(() {
+                                _sourceLanguageHint = 'ru';
+                              });
+                            },
+                            child: const Text('RU'),
+                          ),
+                          MenuItemButton(
+                            onPressed: () {
+                              setState(() {
+                                _sourceLanguageHint = 'en';
+                              });
+                            },
+                            child: const Text('EN'),
+                          ),
+                          MenuItemButton(
+                            onPressed: () {
+                              setState(() {
+                                _sourceLanguageHint = 'th';
+                              });
+                            },
+                            child: const Text('TH'),
+                          ),
+                        ],
+                        builder:
+                            (
+                              BuildContext context,
+                              MenuController controller,
+                              Widget? child,
+                            ) {
+                              return OutlinedButton(
+                                key: languageHintFieldKey,
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(0, 34),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                visualDensity: VisualDensity.compact,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              onPressed: isLoading
-                                  ? null
-                                  : () {
-                                      if (controller.isOpen) {
-                                        controller.close();
-                                      } else {
-                                        controller.open();
-                                      }
-                                    },
-                              child: Text(
-                                _sourceLanguageHint.isEmpty
-                                    ? labels.sourceLanguageAutoOption
-                                    : _sourceLanguageHint.toUpperCase(),
-                              ),
-                            );
-                          },
+                                onPressed: isLoading
+                                    ? null
+                                    : () {
+                                        if (controller.isOpen) {
+                                          controller.close();
+                                        } else {
+                                          controller.open();
+                                        }
+                                      },
+                                child: Text(
+                                  _sourceLanguageHint.isEmpty
+                                      ? labels.sourceLanguageAutoOption
+                                      : _sourceLanguageHint.toUpperCase(),
+                                ),
+                              );
+                            },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 34,
+                        child: InkWell(
+                          key: advancedOptionsTileKey,
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: isLoading
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _advancedOptionsExpanded =
+                                        !_advancedOptionsExpanded;
+                                  });
+                                },
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              labels.additionalParametersLabel,
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.clip,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_advancedOptionsExpanded) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: engineerContextFieldKey,
+                    controller: _engineerContextController,
+                    minLines: 2,
+                    maxLines: 5,
+                    textInputAction: TextInputAction.newline,
+                    decoration: InputDecoration(
+                      labelText: labels.engineerContextLabel,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(labels.additionalParametersLabel)),
+                  const SizedBox(height: 12),
                 ],
-              ),
-              children: <Widget>[
-                TextField(
-                  key: engineerContextFieldKey,
-                  controller: _engineerContextController,
-                  minLines: 2,
-                  maxLines: 5,
-                  textInputAction: TextInputAction.newline,
-                  decoration: InputDecoration(
-                    labelText: labels.engineerContextLabel,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
               ],
             ),
             Row(
