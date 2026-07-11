@@ -58,6 +58,7 @@ final class RegistryStudioUiLabels {
               problemStatementLabel: 'Постановка проблемы',
               currentStatusLabel: 'Текущий статус',
               requestedStatusLabel: 'Запрошенный статус',
+              decisionStatementLabel: 'Решение инженера',
               transitionButton: 'Сменить статус',
               transitionedTitle: 'Статус изменён',
               transitionFailedTitle: 'Ошибка смены статуса',
@@ -136,6 +137,7 @@ final class RegistryStudioUiLabels {
               problemStatementLabel: 'Problem statement',
               currentStatusLabel: 'Current status',
               requestedStatusLabel: 'Requested status',
+              decisionStatementLabel: 'Engineer decision',
               transitionButton: 'Change status',
               transitionedTitle: 'Status changed',
               transitionFailedTitle: 'Status transition error',
@@ -214,6 +216,7 @@ final class RegistryStudioUiLabels {
               problemStatementLabel: 'คำอธิบายปัญหา',
               currentStatusLabel: 'สถานะปัจจุบัน',
               requestedStatusLabel: 'สถานะที่ต้องการ',
+              decisionStatementLabel: 'การตัดสินใจของวิศวกร',
               transitionButton: 'เปลี่ยนสถานะ',
               transitionedTitle: 'เปลี่ยนสถานะแล้ว',
               transitionFailedTitle: 'ข้อผิดพลาดในการเปลี่ยนสถานะ',
@@ -333,6 +336,7 @@ final class RegistryStudioOperationStatusTransitionLabels {
     required this.problemStatementLabel,
     required this.currentStatusLabel,
     required this.requestedStatusLabel,
+    required this.decisionStatementLabel,
     required this.transitionButton,
     required this.transitionedTitle,
     required this.transitionFailedTitle,
@@ -344,6 +348,7 @@ final class RegistryStudioOperationStatusTransitionLabels {
   final String problemStatementLabel;
   final String currentStatusLabel;
   final String requestedStatusLabel;
+  final String decisionStatementLabel;
   final String transitionButton;
   final String transitionedTitle;
   final String transitionFailedTitle;

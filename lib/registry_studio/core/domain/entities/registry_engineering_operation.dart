@@ -8,8 +8,15 @@ final class RegistryEngineeringOperation extends Equatable {
     required RegistryEngineeringOperationId id,
     required RegistryEngineeringOperationStatus status,
     required String problemStatement,
+    String? decisionStatement,
   }) {
     final String normalizedProblemStatement = problemStatement.trim();
+    final String normalizedDecisionStatementValue =
+        decisionStatement?.trim() ?? '';
+    final String? normalizedDecisionStatement =
+        normalizedDecisionStatementValue.isEmpty
+        ? null
+        : normalizedDecisionStatementValue;
 
     if (normalizedProblemStatement.isEmpty) {
       throw ArgumentError.value(
@@ -19,10 +26,31 @@ final class RegistryEngineeringOperation extends Equatable {
       );
     }
 
+    if (status == RegistryEngineeringOperationStatus.decided &&
+        normalizedDecisionStatement == null) {
+      throw ArgumentError.value(
+        decisionStatement,
+        'decisionStatement',
+        'Decided registry engineering operation must contain '
+            'a decision statement.',
+      );
+    }
+
+    if (status != RegistryEngineeringOperationStatus.decided &&
+        normalizedDecisionStatement != null) {
+      throw ArgumentError.value(
+        decisionStatement,
+        'decisionStatement',
+        'Registry engineering operation decision statement is only '
+            'allowed for decided status.',
+      );
+    }
+
     return RegistryEngineeringOperation._(
       id: id,
       status: status,
       problemStatement: normalizedProblemStatement,
+      decisionStatement: normalizedDecisionStatement,
     );
   }
 
@@ -30,11 +58,13 @@ final class RegistryEngineeringOperation extends Equatable {
     required this.id,
     required this.status,
     required this.problemStatement,
+    required this.decisionStatement,
   });
 
   final RegistryEngineeringOperationId id;
   final RegistryEngineeringOperationStatus status;
   final String problemStatement;
+  final String? decisionStatement;
 
   @override
   List<Object?> get props => <Object?>[id];

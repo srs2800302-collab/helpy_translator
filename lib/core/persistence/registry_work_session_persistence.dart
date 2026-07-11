@@ -128,6 +128,7 @@ final class RegistryWorkSessionPersistence {
         'id': operation.id.value,
         'status': operation.status.name,
         'problemStatement': operation.problemStatement,
+        'decisionStatement': operation.decisionStatement,
       },
       'revisions': revisions
           .map(
@@ -183,6 +184,7 @@ final class RegistryWorkSessionPersistence {
           operationJson['status'] as String,
         ),
         problemStatement: operationJson['problemStatement'] as String,
+        decisionStatement: operationJson['decisionStatement'] as String?,
       );
     } on Object {
       return null;

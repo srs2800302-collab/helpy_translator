@@ -20,8 +20,9 @@ void main() {
 
     final RegistryEngineeringOperation operation = RegistryEngineeringOperation(
       id: RegistryEngineeringOperationId('operation-1'),
-      status: RegistryEngineeringOperationStatus.open,
+      status: RegistryEngineeringOperationStatus.decided,
       problemStatement: 'Original problem.',
+      decisionStatement: 'Approve canonical wording.',
     );
 
     final RegistryEngineeringOperationRevision revision =
@@ -49,6 +50,7 @@ void main() {
     expect(restoredOperation!.id, operation.id);
     expect(restoredOperation.status, operation.status);
     expect(restoredOperation.problemStatement, operation.problemStatement);
+    expect(restoredOperation.decisionStatement, operation.decisionStatement);
 
     expect(restoredRevisions, hasLength(1));
     expect(restoredRevisions.single.id, revision.id);

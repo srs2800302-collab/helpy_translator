@@ -5,6 +5,7 @@ final class TransitionRegistryEngineeringOperationStatus {
   RegistryEngineeringOperation call({
     required RegistryEngineeringOperation operation,
     required RegistryEngineeringOperationStatus nextStatus,
+    String? decisionStatement,
   }) {
     if (!_isAllowedTransition(operation.status, nextStatus)) {
       throw ArgumentError(
@@ -17,6 +18,7 @@ final class TransitionRegistryEngineeringOperationStatus {
       id: operation.id,
       status: nextStatus,
       problemStatement: operation.problemStatement,
+      decisionStatement: decisionStatement,
     );
   }
 

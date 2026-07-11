@@ -72,6 +72,11 @@ void main() {
         final RegistryEngineeringOperation transitioned = transition(
           operation: _operationWith(allowedTransition.currentStatus),
           nextStatus: allowedTransition.nextStatus,
+          decisionStatement:
+              allowedTransition.nextStatus ==
+                  RegistryEngineeringOperationStatus.decided
+              ? 'Approve canonical wording.'
+              : null,
         );
 
         expect(transitioned.status, allowedTransition.nextStatus);
@@ -157,6 +162,42 @@ void main() {
         );
       },
     );
+
+    test('requires engineer decision for decided transition', () {
+      final RegistryEngineeringOperation ready = _operationWith(
+        RegistryEngineeringOperationStatus.readyForDecision,
+      );
+
+      expect(
+        () => transition(
+          operation: ready,
+          nextStatus: RegistryEngineeringOperationStatus.decided,
+        ),
+        throwsArgumentError,
+      );
+
+      expect(
+        () => transition(
+          operation: ready,
+          nextStatus: RegistryEngineeringOperationStatus.decided,
+          decisionStatement: '   ',
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('stores normalized engineer decision', () {
+      final RegistryEngineeringOperation transitioned = transition(
+        operation: _operationWith(
+          RegistryEngineeringOperationStatus.readyForDecision,
+        ),
+        nextStatus: RegistryEngineeringOperationStatus.decided,
+        decisionStatement: '  Approve canonical wording.  ',
+      );
+
+      expect(transitioned.status, RegistryEngineeringOperationStatus.decided);
+      expect(transitioned.decisionStatement, 'Approve canonical wording.');
+    });
   });
 }
 
@@ -167,6 +208,9 @@ RegistryEngineeringOperation _operationWith(
     id: RegistryEngineeringOperationId('registry-operation-001'),
     status: status,
     problemStatement: 'Check possible canonical wording drift.',
+    decisionStatement: status == RegistryEngineeringOperationStatus.decided
+        ? 'Approved canonical wording.'
+        : null,
   );
 }
 

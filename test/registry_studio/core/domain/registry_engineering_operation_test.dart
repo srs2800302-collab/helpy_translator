@@ -95,5 +95,49 @@ void main() {
       );
       expect(operation.problemStatement, 'Find affected registry places.');
     });
+    test('normalizes decision statement for decided operation', () {
+      final RegistryEngineeringOperation operation =
+          RegistryEngineeringOperation(
+            id: RegistryEngineeringOperationId('registry-operation-001'),
+            status: RegistryEngineeringOperationStatus.decided,
+            problemStatement: 'Check wording drift.',
+            decisionStatement: '  Approve canonical wording.  ',
+          );
+
+      expect(operation.decisionStatement, 'Approve canonical wording.');
+    });
+
+    test('requires decision statement for decided status', () {
+      expect(
+        () => RegistryEngineeringOperation(
+          id: RegistryEngineeringOperationId('registry-operation-001'),
+          status: RegistryEngineeringOperationStatus.decided,
+          problemStatement: 'Check wording drift.',
+        ),
+        throwsArgumentError,
+      );
+
+      expect(
+        () => RegistryEngineeringOperation(
+          id: RegistryEngineeringOperationId('registry-operation-001'),
+          status: RegistryEngineeringOperationStatus.decided,
+          problemStatement: 'Check wording drift.',
+          decisionStatement: '   ',
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects decision statement before decided status', () {
+      expect(
+        () => RegistryEngineeringOperation(
+          id: RegistryEngineeringOperationId('registry-operation-001'),
+          status: RegistryEngineeringOperationStatus.readyForDecision,
+          problemStatement: 'Check wording drift.',
+          decisionStatement: 'Approve canonical wording.',
+        ),
+        throwsArgumentError,
+      );
+    });
   });
 }

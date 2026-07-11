@@ -125,17 +125,72 @@ void main() {
         RegistryEngineeringOperationStatus.readyForDecision,
       );
     });
+    testWidgets('records engineer decision for decided transition', (
+      WidgetTester tester,
+    ) async {
+      RegistryEngineeringOperation? receivedOperation;
+
+      await tester.pumpWidget(
+        _testApp(
+          operationStatus: RegistryEngineeringOperationStatus.readyForDecision,
+          onOperationTransitioned: (operation) {
+            receivedOperation = operation;
+          },
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('decided').last);
+      await tester.pumpAndSettle();
+
+      final Finder decisionField = find.byKey(
+        const Key('registry_engineering_operation_decision_statement_field'),
+      );
+
+      expect(decisionField, findsOneWidget);
+
+      await tester.enterText(decisionField, '  Approve canonical wording.  ');
+
+      final Finder transitionButton = find.byKey(
+        const Key('registry_engineering_operation_status_transition_button'),
+      );
+
+      await tester.ensureVisible(transitionButton);
+      await tester.tap(transitionButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        receivedOperation?.status,
+        RegistryEngineeringOperationStatus.decided,
+      );
+      expect(
+        receivedOperation?.decisionStatement,
+        'Approve canonical wording.',
+      );
+      expect(
+        find.text('Решение инженера:\nApprove canonical wording.'),
+        findsOneWidget,
+      );
+    });
   });
 }
 
 Widget _testApp({
   RegistryStudioUiLanguage uiLanguage = RegistryStudioUiLanguage.ru,
+  RegistryEngineeringOperationStatus operationStatus =
+      RegistryEngineeringOperationStatus.open,
   ValueChanged<RegistryEngineeringOperation>? onOperationTransitioned,
 }) {
   return MaterialApp(
     home: RegistryEngineeringOperationStatusTransitionScreen(
       uiLanguage: uiLanguage,
-      operation: _operationWith(RegistryEngineeringOperationStatus.open),
+      operation: _operationWith(operationStatus),
       transitionRegistryEngineeringOperationStatus:
           TransitionRegistryEngineeringOperationStatus(),
       onOperationTransitioned: onOperationTransitioned,

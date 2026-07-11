@@ -35,6 +35,9 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
   static const Key transitionButtonKey = Key(
     'registry_engineering_operation_status_transition_button',
   );
+  static const Key decisionStatementFieldKey = Key(
+    'registry_engineering_operation_decision_statement_field',
+  );
   static const Key currentOperationCardKey = Key(
     'registry_engineering_operation_current_status_card',
   );
@@ -49,12 +52,22 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
   late RegistryEngineeringOperationStatus _requestedStatus;
   bool _hasTransitioned = false;
   String? _errorMessage;
+  late final TextEditingController _decisionStatementController;
 
   @override
   void initState() {
     super.initState();
     _currentOperation = widget.operation;
     _requestedStatus = widget.operation.status;
+    _decisionStatementController = TextEditingController(
+      text: widget.operation.decisionStatement,
+    );
+  }
+
+  @override
+  void dispose() {
+    _decisionStatementController.dispose();
+    super.dispose();
   }
 
   @override
@@ -66,6 +79,8 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
     if (!identical(oldWidget.operation, widget.operation)) {
       _currentOperation = widget.operation;
       _requestedStatus = widget.operation.status;
+      _decisionStatementController.text =
+          widget.operation.decisionStatement ?? '';
       _hasTransitioned = false;
       _errorMessage = null;
     }
@@ -82,7 +97,14 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
           .transitionRegistryEngineeringOperationStatus(
             operation: _currentOperation,
             nextStatus: _requestedStatus,
+            decisionStatement:
+                _requestedStatus == RegistryEngineeringOperationStatus.decided
+                ? _decisionStatementController.text
+                : null,
           );
+
+      _decisionStatementController.text =
+          transitionedOperation.decisionStatement ?? '';
 
       setState(() {
         _currentOperation = transitionedOperation;
@@ -144,6 +166,21 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
               }
             },
           ),
+          if (_requestedStatus ==
+              RegistryEngineeringOperationStatus.decided) ...<Widget>[
+            const SizedBox(height: 16),
+            TextField(
+              key: decisionStatementFieldKey,
+              controller: _decisionStatementController,
+              minLines: 3,
+              maxLines: 6,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                labelText: labels.decisionStatementLabel,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           FilledButton(
             key: transitionButtonKey,
@@ -221,6 +258,11 @@ final class _RegistryEngineeringOperationStatusCard extends StatelessWidget {
               label: labels.currentStatusLabel,
               value: operation.status.name,
             ),
+            if (operation.decisionStatement != null)
+              _TextValueRow(
+                label: labels.decisionStatementLabel,
+                value: operation.decisionStatement!,
+              ),
           ],
         ),
       ),

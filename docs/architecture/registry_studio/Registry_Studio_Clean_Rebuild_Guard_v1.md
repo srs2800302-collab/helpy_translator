@@ -1043,7 +1043,7 @@ Before production code, lifecycle state naming and minimal invariants must be ch
 - `open` — operation создана и активна;
 - `awaitingContext` — operation ожидает обязательный read-only context/input;
 - `readyForDecision` — operation готова к решению engineer;
-- `decided` — engineer уже принял решение вне operation;
+- `decided` — engineer принял решение, а его human-facing текст зафиксирован в operation;
 - `cancelled` — operation остановлена без движения к mutation/publication.
 
 `collectingContext` не входит в первый status set.
@@ -1069,9 +1069,12 @@ Derived readiness facts не являются statuses:
 
 - `RegistryEngineeringOperationId id`;
 - `RegistryEngineeringOperationStatus status`;
-- normalized non-empty `problemStatement`.
+- normalized non-empty `problemStatement`;
+- optional normalized non-empty `decisionStatement`, обязательный только для `decided`.
 
 `problemStatement` является product-neutral description of engineering problem/intent. Он не является semantic decision, canonical wording approval или change scope.
+
+`decisionStatement` является human-facing текстом решения engineer. Он не является registry mutation command, publication instruction, approved change scope или автоматическим решением программы.
 
 Первый production code не должен включать:
 
@@ -1202,17 +1205,19 @@ Cancellation reason пока не входит в `RegistryEngineeringOperation`
 
 Decision evidence пока не входит в `RegistryEngineeringOperation` entity.
 
+Human-facing `decisionStatement` не является decision evidence package и не требует отдельной entity, пока у решения нет собственной identity, автора, времени, evidence, нескольких версий или supersession policy.
+
 Причины:
 
 - cancellation reason требует отдельного ownership-аудита: value object, required/optional policy, owner и persistence boundary;
 - decision evidence требует отдельного ownership-аудита: engineer decision record, audit package, approved change scope и publication boundary;
-- добавление этих полей сейчас расширило бы operation entity за пределы текущей ответственности lifecycle marker.
+- эти responsibilities остаются вне текущей operation lifecycle entity.
 
 Смена статуса operation не означает registry mutation.
 
 Смена статуса operation не означает publication.
 
-`decided` означает только то, что engineer принял решение вне operation lifecycle entity. Это не означает, что registry был изменён или опубликован.
+`decided` означает, что engineer принял решение и его нормализованный human-facing текст сохранён в operation lifecycle entity. Это не означает, что registry был изменён, утверждён к mutation или опубликован.
 
 Следующий безопасный шаг после этого docs-решения:
 
