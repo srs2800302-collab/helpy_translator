@@ -140,23 +140,45 @@ void main() {
       });
     }
 
-    final Map<String, String> invalidDirectSemantics = <String, String>{
-      'rejects an unsupported source language': _directTranslationContent
-          .replaceFirst('SOURCE LANGUAGE:\nEN', 'SOURCE LANGUAGE:\nDE'),
-      'rejects a changed source text': _directTranslationContent.replaceFirst(
-        'SOURCE TEXT:\nCheck wording.',
-        'SOURCE TEXT:\nChanged wording.',
-      ),
-      'rejects a changed source-language section': _directTranslationContent
-          .replaceFirst('EN:\nCheck wording.', 'EN:\nChanged wording.'),
-    };
+    test('rejects an unsupported source language as failed', () async {
+      final List<RequestOptions> requests = <RequestOptions>[];
+      final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+        responses: <String>[
+          _directTranslationContent.replaceFirst(
+            'SOURCE LANGUAGE:\nEN',
+            'SOURCE LANGUAGE:\nDE',
+          ),
+        ],
+        requests: requests,
+      );
 
-    for (final MapEntry<String, String> entry
-        in invalidDirectSemantics.entries) {
-      test(entry.key, () async {
+      final TranslatorPhraseResult result = await provider.translatePhrase(
+        sourceText: 'Check wording.',
+      );
+
+      expect(result.status, TranslatorPhraseStatus.failed);
+      expect(result.sourceLanguage, 'DE');
+      expect(result.sourceText, 'Check wording.');
+      expect(result.ru, 'Проверить формулировку.');
+      expect(result.en, 'Check wording.');
+      expect(result.th, 'ตรวจสอบข้อความ');
+      expect(requests, hasLength(1));
+    });
+
+    test(
+      'preserves changed SOURCE TEXT and classifies it as canonicalDrift',
+      () async {
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-          responses: <String>[entry.value],
+          responses: <String>[
+            _directTranslationContent.replaceFirst(
+              'SOURCE TEXT:\nCheck wording.',
+              'SOURCE TEXT:\nChanged wording.',
+            ),
+            _englishLiteralContent,
+            _thaiLiteralContent,
+            _exactAuditContent,
+          ],
           requests: requests,
         );
 
@@ -164,10 +186,98 @@ void main() {
           sourceText: 'Check wording.',
         );
 
-        expect(result.status, TranslatorPhraseStatus.failed);
-        expect(requests, hasLength(1));
-      });
-    }
+        expect(result.status, TranslatorPhraseStatus.canonicalDrift);
+        expect(result.sourceLanguage, 'EN');
+        expect(result.sourceText, 'Changed wording.');
+        expect(result.ru, 'Проверить формулировку.');
+        expect(result.en, 'Check wording.');
+        expect(result.th, 'ตรวจสอบข้อความ');
+        expect(result.enToRu, 'Проверить формулировку.');
+        expect(result.thToRu, 'Проверить текст.');
+        expect(result.enToTh, 'ตรวจสอบข้อความ');
+        expect(result.thToEn, 'Check the text.');
+        expect(result.comment, contains('Переданный исходный текст:'));
+        expect(result.comment, contains('Check wording.'));
+        expect(result.comment, contains('SOURCE TEXT из ответа Typhoon:'));
+        expect(result.comment, contains('Changed wording.'));
+        expect(result.comment, contains('Полное смысловое совпадение.'));
+        expect(requests, hasLength(4));
+      },
+    );
+
+    test('preserves mismatch evidence when a later audit fails', () async {
+      final List<RequestOptions> requests = <RequestOptions>[];
+      final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+        responses: <String>[
+          _directTranslationContent.replaceFirst(
+            'SOURCE TEXT:\nCheck wording.',
+            'SOURCE TEXT:\nChanged wording.',
+          ),
+          _englishLiteralContent,
+          _thaiLiteralContent,
+          _exactAuditContent.replaceFirst(
+            'MEANING_PRESERVED:\nYES',
+            'MEANING_PRESERVED:\nMAYBE',
+          ),
+        ],
+        requests: requests,
+      );
+
+      final TranslatorPhraseResult result = await provider.translatePhrase(
+        sourceText: 'Check wording.',
+      );
+
+      expect(result.status, TranslatorPhraseStatus.failed);
+      expect(result.sourceLanguage, 'EN');
+      expect(result.sourceText, 'Changed wording.');
+      expect(result.ru, 'Проверить формулировку.');
+      expect(result.en, 'Check wording.');
+      expect(result.th, 'ตรวจสอบข้อความ');
+      expect(result.enToRu, 'Проверить формулировку.');
+      expect(result.thToRu, 'Проверить текст.');
+      expect(result.enToTh, 'ตรวจสอบข้อความ');
+      expect(result.thToEn, 'Check the text.');
+      expect(result.comment, contains('Переданный исходный текст:'));
+      expect(result.comment, contains('Check wording.'));
+      expect(result.comment, contains('SOURCE TEXT из ответа Typhoon:'));
+      expect(result.comment, contains('Changed wording.'));
+      expect(result.comment, contains('должна содержать только YES или NO'));
+      expect(requests, hasLength(4));
+    });
+
+    test(
+      'preserves changed source-language section and classifies drift',
+      () async {
+        final List<RequestOptions> requests = <RequestOptions>[];
+        final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+          responses: <String>[
+            _directTranslationContent.replaceFirst(
+              'EN:\nCheck wording.',
+              'EN:\nChanged wording.',
+            ),
+            _englishLiteralContent,
+            _thaiLiteralContent,
+            _exactAuditContent,
+          ],
+          requests: requests,
+        );
+
+        final TranslatorPhraseResult result = await provider.translatePhrase(
+          sourceText: 'Check wording.',
+        );
+
+        expect(result.status, TranslatorPhraseStatus.canonicalDrift);
+        expect(result.sourceText, 'Check wording.');
+        expect(result.en, 'Changed wording.');
+        expect(
+          result.comment,
+          contains('Секция исходного языка EN из ответа Typhoon:'),
+        );
+        expect(result.comment, contains('Changed wording.'));
+        expect(result.comment, contains('Полное смысловое совпадение.'));
+        expect(requests, hasLength(4));
+      },
+    );
 
     test(
       'does not request Thai literal translation or audit after English literal failure',
@@ -186,6 +296,13 @@ void main() {
         );
 
         expect(result.status, TranslatorPhraseStatus.failed);
+        expect(result.sourceLanguage, 'EN');
+        expect(result.sourceText, 'Check wording.');
+        expect(result.ru, 'Проверить формулировку.');
+        expect(result.en, 'Check wording.');
+        expect(result.th, 'ตรวจสอบข้อความ');
+        expect(result.enToRu, isNull);
+        expect(result.enToTh, isNull);
         expect(result.comment, contains('EN_TO_TH'));
         expect(requests, hasLength(2));
       },
@@ -210,6 +327,15 @@ void main() {
       );
 
       expect(result.status, TranslatorPhraseStatus.failed);
+      expect(result.sourceLanguage, 'EN');
+      expect(result.sourceText, 'Check wording.');
+      expect(result.ru, 'Проверить формулировку.');
+      expect(result.en, 'Check wording.');
+      expect(result.th, 'ตรวจสอบข้อความ');
+      expect(result.enToRu, 'Проверить формулировку.');
+      expect(result.enToTh, 'ตรวจสอบข้อความ');
+      expect(result.thToRu, isNull);
+      expect(result.thToEn, isNull);
       expect(result.comment, contains('значение-заглушку'));
       expect(requests, hasLength(3));
     });
@@ -248,6 +374,15 @@ void main() {
         );
 
         expect(result.status, TranslatorPhraseStatus.failed);
+        expect(result.sourceLanguage, 'EN');
+        expect(result.sourceText, 'Check wording.');
+        expect(result.ru, 'Проверить формулировку.');
+        expect(result.en, 'Check wording.');
+        expect(result.th, 'ตรวจสอบข้อความ');
+        expect(result.enToRu, 'Проверить формулировку.');
+        expect(result.thToRu, 'Проверить текст.');
+        expect(result.enToTh, 'ตรวจสอบข้อความ');
+        expect(result.thToEn, 'Check the text.');
         expect(result.comment, isNotEmpty);
         expect(requests, hasLength(4));
       });

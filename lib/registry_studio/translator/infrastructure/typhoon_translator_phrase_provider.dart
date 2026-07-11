@@ -32,6 +32,11 @@ final class TyphoonTranslatorPhraseProvider
     );
     final String? normalizedEngineerContext = _optionalText(engineerContext);
 
+    Map<String, String>? directTranslation;
+    Map<String, String>? englishLiteralTranslation;
+    Map<String, String>? thaiLiteralTranslation;
+    final List<String> semanticDiagnostics = <String>[];
+
     try {
       final String directContent = await _request(
         systemPrompt: _directTranslationPrompt,
@@ -43,16 +48,44 @@ final class TyphoonTranslatorPhraseProvider
         maxTokens: 700,
       );
 
-      final Map<String, String> directTranslation = _parseStrictSections(
+      final Map<String, String> parsedDirectTranslation = _parseStrictSections(
         content: directContent,
         labels: _directTranslationLabels,
         responseName: 'Ответ прямого перевода Typhoon',
       );
+      directTranslation = parsedDirectTranslation;
 
-      _validateDirectTranslation(
-        translation: directTranslation,
-        normalizedSourceText: normalizedSourceText,
-      );
+      _validateDirectTranslation(translation: parsedDirectTranslation);
+
+      final String returnedSourceText = parsedDirectTranslation['SOURCE TEXT']!;
+      final String sourceLanguage = parsedDirectTranslation['SOURCE LANGUAGE']!;
+      final String sourceLanguageText =
+          parsedDirectTranslation[sourceLanguage]!;
+      if (returnedSourceText != normalizedSourceText) {
+        semanticDiagnostics.add(
+          '''
+Переданный исходный текст:
+$normalizedSourceText
+
+SOURCE TEXT из ответа Typhoon:
+$returnedSourceText
+'''
+              .trim(),
+        );
+      }
+
+      if (sourceLanguageText != returnedSourceText) {
+        semanticDiagnostics.add(
+          '''
+Секция исходного языка $sourceLanguage из ответа Typhoon:
+$sourceLanguageText
+
+SOURCE TEXT из ответа Typhoon:
+$returnedSourceText
+'''
+              .trim(),
+        );
+      }
 
       final String englishLiteralContent = await _request(
         systemPrompt: _englishLiteralTranslationPrompt,
@@ -60,12 +93,13 @@ final class TyphoonTranslatorPhraseProvider
         maxTokens: 350,
       );
 
-      final Map<String, String> englishLiteralTranslation =
+      final Map<String, String> parsedEnglishLiteralTranslation =
           _parseStrictSections(
             content: englishLiteralContent,
             labels: _englishLiteralLabels,
             responseName: 'Ответ дословной проверки английской версии',
           );
+      englishLiteralTranslation = parsedEnglishLiteralTranslation;
 
       final String thaiLiteralContent = await _request(
         systemPrompt: _thaiLiteralTranslationPrompt,
@@ -73,22 +107,24 @@ final class TyphoonTranslatorPhraseProvider
         maxTokens: 350,
       );
 
-      final Map<String, String> thaiLiteralTranslation = _parseStrictSections(
-        content: thaiLiteralContent,
-        labels: _thaiLiteralLabels,
-        responseName: 'Ответ дословной проверки тайской версии',
-      );
+      final Map<String, String> parsedThaiLiteralTranslation =
+          _parseStrictSections(
+            content: thaiLiteralContent,
+            labels: _thaiLiteralLabels,
+            responseName: 'Ответ дословной проверки тайской версии',
+          );
+      thaiLiteralTranslation = parsedThaiLiteralTranslation;
 
       final Map<String, String> translation = <String, String>{
-        'SOURCE LANGUAGE': directTranslation['SOURCE LANGUAGE']!,
-        'SOURCE TEXT': directTranslation['SOURCE TEXT']!,
-        'RU': directTranslation['RU']!,
-        'EN': directTranslation['EN']!,
-        'TH': directTranslation['TH']!,
-        'EN_TO_RU': englishLiteralTranslation['EN_TO_RU']!,
-        'TH_TO_RU': thaiLiteralTranslation['TH_TO_RU']!,
-        'EN_TO_TH': englishLiteralTranslation['EN_TO_TH']!,
-        'TH_TO_EN': thaiLiteralTranslation['TH_TO_EN']!,
+        'SOURCE LANGUAGE': parsedDirectTranslation['SOURCE LANGUAGE']!,
+        'SOURCE TEXT': parsedDirectTranslation['SOURCE TEXT']!,
+        'RU': parsedDirectTranslation['RU']!,
+        'EN': parsedDirectTranslation['EN']!,
+        'TH': parsedDirectTranslation['TH']!,
+        'EN_TO_RU': parsedEnglishLiteralTranslation['EN_TO_RU']!,
+        'TH_TO_RU': parsedThaiLiteralTranslation['TH_TO_RU']!,
+        'EN_TO_TH': parsedEnglishLiteralTranslation['EN_TO_TH']!,
+        'TH_TO_EN': parsedThaiLiteralTranslation['TH_TO_EN']!,
       };
 
       _validateCompleteTranslation(translation);
@@ -107,10 +143,17 @@ final class TyphoonTranslatorPhraseProvider
 
       _validateAudit(audit);
 
+      final String auditComment = _buildComment(audit);
+      final String comment = semanticDiagnostics.isEmpty
+          ? auditComment
+          : '${semanticDiagnostics.join('\n\n')}\n\n$auditComment';
+
       return TranslatorPhraseResult(
         sourceLanguage: translation['SOURCE LANGUAGE']!,
         sourceText: translation['SOURCE TEXT']!,
-        status: _resolveStatus(audit),
+        status: semanticDiagnostics.isEmpty
+            ? _resolveStatus(audit)
+            : TranslatorPhraseStatus.canonicalDrift,
         ru: translation['RU'],
         en: translation['EN'],
         th: translation['TH'],
@@ -118,18 +161,26 @@ final class TyphoonTranslatorPhraseProvider
         thToRu: translation['TH_TO_RU'],
         enToTh: translation['EN_TO_TH'],
         thToEn: translation['TH_TO_EN'],
-        comment: _buildComment(audit),
+        comment: comment,
       );
     } on DioException catch (error) {
       return _failedResult(
-        sourceText: normalizedSourceText,
+        submittedSourceText: normalizedSourceText,
         sourceLanguageHint: normalizedSourceLanguageHint,
+        directTranslation: directTranslation,
+        englishLiteralTranslation: englishLiteralTranslation,
+        thaiLiteralTranslation: thaiLiteralTranslation,
+        semanticDiagnostics: semanticDiagnostics,
         comment: _mapDioError(error),
       );
     } on FormatException catch (error) {
       return _failedResult(
-        sourceText: normalizedSourceText,
+        submittedSourceText: normalizedSourceText,
         sourceLanguageHint: normalizedSourceLanguageHint,
+        directTranslation: directTranslation,
+        englishLiteralTranslation: englishLiteralTranslation,
+        thaiLiteralTranslation: thaiLiteralTranslation,
+        semanticDiagnostics: semanticDiagnostics,
         comment: error.message,
       );
     }
@@ -159,15 +210,33 @@ final class TyphoonTranslatorPhraseProvider
   }
 
   static TranslatorPhraseResult _failedResult({
-    required String sourceText,
+    required String submittedSourceText,
     required String? sourceLanguageHint,
     required String comment,
+    Map<String, String>? directTranslation,
+    Map<String, String>? englishLiteralTranslation,
+    Map<String, String>? thaiLiteralTranslation,
+    required List<String> semanticDiagnostics,
   }) {
+    final String combinedComment = semanticDiagnostics.isEmpty
+        ? comment
+        : '${semanticDiagnostics.join('\n\n')}\n\n$comment';
+
     return TranslatorPhraseResult(
-      sourceLanguage: sourceLanguageHint ?? 'unknown',
-      sourceText: sourceText,
+      sourceLanguage:
+          directTranslation?['SOURCE LANGUAGE'] ??
+          sourceLanguageHint ??
+          'unknown',
+      sourceText: directTranslation?['SOURCE TEXT'] ?? submittedSourceText,
       status: TranslatorPhraseStatus.failed,
-      comment: comment,
+      ru: directTranslation?['RU'],
+      en: directTranslation?['EN'],
+      th: directTranslation?['TH'],
+      enToRu: englishLiteralTranslation?['EN_TO_RU'],
+      thToRu: thaiLiteralTranslation?['TH_TO_RU'],
+      enToTh: englishLiteralTranslation?['EN_TO_TH'],
+      thToEn: thaiLiteralTranslation?['TH_TO_EN'],
+      comment: combinedComment,
     );
   }
 
@@ -327,25 +396,12 @@ final class TyphoonTranslatorPhraseProvider
 
   static void _validateDirectTranslation({
     required Map<String, String> translation,
-    required String normalizedSourceText,
   }) {
     final String sourceLanguage = translation['SOURCE LANGUAGE']!;
 
     if (!_sourceLanguages.contains(sourceLanguage)) {
       throw const FormatException(
         'SOURCE LANGUAGE должен содержать только RU, EN или TH.',
-      );
-    }
-
-    if (translation['SOURCE TEXT'] != normalizedSourceText) {
-      throw const FormatException(
-        'SOURCE TEXT не совпадает с переданным исходным текстом.',
-      );
-    }
-
-    if (translation[sourceLanguage] != normalizedSourceText) {
-      throw FormatException(
-        'Секция исходного языка $sourceLanguage не совпадает с SOURCE TEXT.',
       );
     }
   }
