@@ -37,6 +37,8 @@ void main() {
       revisions: const [],
     );
 
+    bool initialProblemStatementConsumed = false;
+
     await tester.pumpWidget(
       MaterialApp(
         home: RegistryEngineeringOperationWorkspaceScreen(
@@ -46,6 +48,10 @@ void main() {
           transitionRegistryEngineeringOperationStatus:
               TransitionRegistryEngineeringOperationStatus(),
           workSessionPersistence: persistence,
+          initialProblemStatement: 'Translator candidate.',
+          onInitialProblemStatementConsumed: () {
+            initialProblemStatementConsumed = true;
+          },
         ),
       ),
     );
@@ -57,6 +63,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(initialProblemStatementConsumed, isTrue);
   });
 
   testWidgets('creates linked revisions and restores them', (

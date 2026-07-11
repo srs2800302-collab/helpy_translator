@@ -21,6 +21,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     this.revisionPrimaryEntityId,
     this.revisionRelatedEntityIds = const <RegistryEntityId>[],
     this.initialProblemStatement,
+    this.onInitialProblemStatementConsumed,
     super.key,
   });
 
@@ -33,6 +34,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
 
   final Iterable<RegistryEntityId> revisionRelatedEntityIds;
   final String? initialProblemStatement;
+  final VoidCallback? onInitialProblemStatementConsumed;
 
   @override
   State<RegistryEngineeringOperationWorkspaceScreen> createState() =>
@@ -91,6 +93,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           : revisions.last.workingContent;
       _isRestoring = false;
     });
+
+    if (operation != null) {
+      _consumeInitialProblemStatement();
+    }
   }
 
   Future<void> _persistWorkspace() async {
@@ -111,10 +117,24 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
   void _setCurrentOperation(RegistryEngineeringOperation operation) {
     setState(() {
       _currentOperation = operation;
-      _initialProblemStatementConsumed = true;
     });
 
     unawaited(_persistWorkspace());
+  }
+
+  void _consumeInitialProblemStatement() {
+    if (_initialProblemStatementConsumed ||
+        widget.initialProblemStatement == null) {
+      return;
+    }
+
+    _initialProblemStatementConsumed = true;
+    widget.onInitialProblemStatementConsumed?.call();
+  }
+
+  void _setCreatedOperation(RegistryEngineeringOperation operation) {
+    _setCurrentOperation(operation);
+    _consumeInitialProblemStatement();
   }
 
   Future<void> _startNewOperation() async {
@@ -316,7 +336,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         uiLanguage: widget.uiLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
-        onOperationCreated: _setCurrentOperation,
+        onOperationCreated: _setCreatedOperation,
       );
     }
 

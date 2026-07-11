@@ -4897,6 +4897,18 @@ Terminal operation остаётся текущей рабочей сессией
 
 После подтверждения workspace вызывает существующий `clearEngineeringOperationWorkspace()`, очищает текущие in-memory operation и revisions и возвращает пользователя в чистый operation creation flow. Исходный Translator candidate повторно не подставляется.
 
+App-level owner одноразового Translator candidate — `RegistryStudioApp`.
+
+`RegistryEngineeringOperationWorkspaceScreen` получает candidate как presentation input и сообщает существующему owner о фактическом потреблении через optional callback:
+
+- после успешного создания operation;
+- после восстановления уже существующей persisted operation.
+
+После callback `RegistryStudioApp` очищает `_initialOperationProblemStatement`. Поэтому переключение экранов и повторный mount operation workspace не могут снова подставить уже использованный Translator candidate.
+
+Workspace не становится owner Translator result и не сохраняет candidate в domain или persistence. Для этого lifecycle не вводятся новая entity, use case, repository, store, manager или persistence contract.
+
+
 Этот flow заменяет только одну текущую локальную work session. Multi-operation archive, новая entity, use case, repository, store, manager или persistence model не вводятся до появления отдельного end-user requirement.
 
 `RegistryEngineeringOperation` и `RegistryEngineeringOperationRevision` сохраняются существующим `RegistryWorkSessionPersistence`; новые persistence entities, repository, store и manager не создаются. Экземпляр persistence создаётся в composition root `main.dart`, явно передаётся через `RegistryStudioApp` в operation workspace и не создаётся внутри UI.

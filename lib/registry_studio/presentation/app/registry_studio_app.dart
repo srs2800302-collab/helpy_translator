@@ -189,6 +189,16 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     });
   }
 
+  void _consumeInitialOperationProblemStatement() {
+    if (_initialOperationProblemStatement == null) {
+      return;
+    }
+
+    setState(() {
+      _initialOperationProblemStatement = null;
+    });
+  }
+
   void _selectLanguage(RegistryStudioUiLanguage language) {
     setState(() {
       _selectedLanguage = language;
@@ -231,6 +241,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     if (_selectedScreenIndex == _operationWorkspaceScreenIndex) {
       return RegistryEngineeringOperationWorkspaceScreen(
         initialProblemStatement: _initialOperationProblemStatement,
+        onInitialProblemStatementConsumed:
+            _consumeInitialOperationProblemStatement,
         workSessionPersistence: widget.workSessionPersistence,
         revisionPrimaryEntityId:
             (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,

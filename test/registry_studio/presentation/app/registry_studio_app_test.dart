@@ -304,6 +304,43 @@ void main() {
       problemStatement.controller?.text,
       contains(result.candidateCanonicalPhrase!),
     );
+
+    await tester.enterText(
+      find.byKey(const Key('registry_engineering_operation_id_field')),
+      'operation-from-translator',
+    );
+    await tester.tap(
+      find.byKey(const Key('registry_engineering_operation_create_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(RegistryEngineeringOperationCreationScreen),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.widgetWithText(OutlinedButton, 'Перевод формулировки'),
+    );
+    await tester.pump();
+
+    await tester.tap(
+      find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(RegistryEngineeringOperationCreationScreen),
+      findsOneWidget,
+    );
+
+    final TextField remountedProblemStatement = tester.widget<TextField>(
+      find.byKey(
+        const Key('registry_engineering_operation_problem_statement_field'),
+      ),
+    );
+
+    expect(remountedProblemStatement.controller?.text, isEmpty);
   });
 }
 
