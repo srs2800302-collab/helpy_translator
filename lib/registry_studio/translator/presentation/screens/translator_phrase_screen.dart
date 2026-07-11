@@ -149,90 +149,92 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                 border: const OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Tooltip(
-                message: labels.sourceLanguageHintLabel,
-                child: MenuAnchor(
-                  menuChildren: <Widget>[
-                    MenuItemButton(
-                      onPressed: () {
-                        setState(() {
-                          _sourceLanguageHint = '';
-                        });
-                      },
-                      child: Text(labels.sourceLanguageAutoOption),
-                    ),
-                    MenuItemButton(
-                      onPressed: () {
-                        setState(() {
-                          _sourceLanguageHint = 'ru';
-                        });
-                      },
-                      child: const Text('RU'),
-                    ),
-                    MenuItemButton(
-                      onPressed: () {
-                        setState(() {
-                          _sourceLanguageHint = 'en';
-                        });
-                      },
-                      child: const Text('EN'),
-                    ),
-                    MenuItemButton(
-                      onPressed: () {
-                        setState(() {
-                          _sourceLanguageHint = 'th';
-                        });
-                      },
-                      child: const Text('TH'),
-                    ),
-                  ],
-                  builder:
-                      (
-                        BuildContext context,
-                        MenuController controller,
-                        Widget? child,
-                      ) {
-                        return OutlinedButton.icon(
-                          key: languageHintFieldKey,
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(0, 36),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          onPressed: isLoading
-                              ? null
-                              : () {
-                                  if (controller.isOpen) {
-                                    controller.close();
-                                  } else {
-                                    controller.open();
-                                  }
-                                },
-                          icon: const Icon(Icons.translate, size: 18),
-                          label: Text(
-                            _sourceLanguageHint.isEmpty
-                                ? labels.sourceLanguageAutoOption
-                                : _sourceLanguageHint.toUpperCase(),
-                          ),
-                        );
-                      },
-                ),
-              ),
-            ),
             const SizedBox(height: 4),
             ExpansionTile(
               key: advancedOptionsTileKey,
               tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(bottom: 12),
-              leading: const Icon(Icons.tune),
-              title: Text(labels.additionalParametersLabel),
+              trailing: const SizedBox.shrink(),
+              shape: const Border(),
+              collapsedShape: const Border(),
+              title: Row(
+                children: <Widget>[
+                  Tooltip(
+                    message: labels.sourceLanguageHintLabel,
+                    child: MenuAnchor(
+                      menuChildren: <Widget>[
+                        MenuItemButton(
+                          onPressed: () {
+                            setState(() {
+                              _sourceLanguageHint = '';
+                            });
+                          },
+                          child: Text(labels.sourceLanguageAutoOption),
+                        ),
+                        MenuItemButton(
+                          onPressed: () {
+                            setState(() {
+                              _sourceLanguageHint = 'ru';
+                            });
+                          },
+                          child: const Text('RU'),
+                        ),
+                        MenuItemButton(
+                          onPressed: () {
+                            setState(() {
+                              _sourceLanguageHint = 'en';
+                            });
+                          },
+                          child: const Text('EN'),
+                        ),
+                        MenuItemButton(
+                          onPressed: () {
+                            setState(() {
+                              _sourceLanguageHint = 'th';
+                            });
+                          },
+                          child: const Text('TH'),
+                        ),
+                      ],
+                      builder:
+                          (
+                            BuildContext context,
+                            MenuController controller,
+                            Widget? child,
+                          ) {
+                            return OutlinedButton(
+                              key: languageHintFieldKey,
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 34),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              onPressed: isLoading
+                                  ? null
+                                  : () {
+                                      if (controller.isOpen) {
+                                        controller.close();
+                                      } else {
+                                        controller.open();
+                                      }
+                                    },
+                              child: Text(
+                                _sourceLanguageHint.isEmpty
+                                    ? labels.sourceLanguageAutoOption
+                                    : _sourceLanguageHint.toUpperCase(),
+                              ),
+                            );
+                          },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(labels.additionalParametersLabel)),
+                ],
+              ),
               children: <Widget>[
                 TextField(
                   key: engineerContextFieldKey,

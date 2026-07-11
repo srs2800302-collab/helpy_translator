@@ -42,6 +42,21 @@ void main() {
         findsNothing,
       );
 
+      final Finder languageControl = find.byKey(
+        const Key('translator_phrase_language_hint_field'),
+      );
+      final Finder parametersLabel = find.text('Дополнительные параметры');
+
+      expect(find.byIcon(Icons.translate), findsNothing);
+      expect(find.byIcon(Icons.tune), findsNothing);
+      expect(find.byIcon(Icons.expand_more), findsNothing);
+      expect(
+        (tester.getCenter(languageControl).dy -
+                tester.getCenter(parametersLabel).dy)
+            .abs(),
+        lessThan(2),
+      );
+
       await tester.tap(
         find.byKey(const Key('translator_phrase_advanced_options_tile')),
       );
