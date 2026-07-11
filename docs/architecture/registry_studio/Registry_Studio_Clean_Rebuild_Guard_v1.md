@@ -4891,4 +4891,12 @@ Code step зафиксирован commit `277238f feat: add guard record presen
 
 Если ответственность entity расширится, дополняется этот же единый контракт.
 
+Terminal operation остаётся текущей рабочей сессией до явного действия инженера `Начать новую операцию`.
+
+Действие доступно только для statuses `decided` и `cancelled`. Workspace предварительно показывает confirmation о том, что текущая завершённая operation и её локальные revisions будут удалены из рабочей сессии.
+
+После подтверждения workspace вызывает существующий `clearEngineeringOperationWorkspace()`, очищает текущие in-memory operation и revisions и возвращает пользователя в чистый operation creation flow. Исходный Translator candidate повторно не подставляется.
+
+Этот flow заменяет только одну текущую локальную work session. Multi-operation archive, новая entity, use case, repository, store, manager или persistence model не вводятся до появления отдельного end-user requirement.
+
 `RegistryEngineeringOperation` и `RegistryEngineeringOperationRevision` сохраняются существующим `RegistryWorkSessionPersistence`; новые persistence entities, repository, store и manager не создаются. Экземпляр persistence создаётся в composition root `main.dart`, явно передаётся через `RegistryStudioApp` в operation workspace и не создаётся внутри UI.

@@ -10,6 +10,7 @@ import 'package:helpy_translator/registry_studio/core/domain/entities/registry_e
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation_revision.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_status.dart';
+import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_status_transition_screen.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
@@ -209,6 +210,24 @@ void main() {
         expect(revisionEditor.controller?.text, 'Final working version.');
         expect(revisionEditor.readOnly, isTrue);
         expect(saveRevisionButton.onPressed, isNull);
+
+        final Finder startNewButton = find.byKey(
+          const Key('registry_engineering_operation_start_new_button'),
+        );
+
+        expect(startNewButton, findsOneWidget);
+
+        await tester.tap(startNewButton);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Начать'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byType(RegistryEngineeringOperationCreationScreen),
+          findsOneWidget,
+        );
+        expect(await persistence.loadEngineeringOperation(), isNull);
+        expect(await persistence.loadEngineeringOperationRevisions(), isEmpty);
       },
     );
   }

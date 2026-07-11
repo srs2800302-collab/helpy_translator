@@ -111,7 +111,10 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        _testApp(revisionPrimaryEntityId: RegistryEntityId('primary')),
+        _testApp(
+          revisionPrimaryEntityId: RegistryEntityId('primary'),
+          initialProblemStatement: 'Translator candidate.',
+        ),
       );
 
       await tester.enterText(
@@ -142,6 +145,12 @@ void main() {
 
       expect(revisionEditor.readOnly, isFalse);
       expect(saveRevisionButton.onPressed, isNotNull);
+      expect(
+        find.byKey(
+          const Key('registry_engineering_operation_start_new_button'),
+        ),
+        findsNothing,
+      );
 
       final Finder statusDropdown = find.byKey(
         const Key('registry_engineering_operation_requested_status_dropdown'),
@@ -185,6 +194,47 @@ void main() {
       expect(find.text('Текущий статус:\ndecided'), findsWidgets);
       expect(revisionEditor.readOnly, isTrue);
       expect(saveRevisionButton.onPressed, isNull);
+
+      final Finder startNewButton = find.byKey(
+        const Key('registry_engineering_operation_start_new_button'),
+      );
+
+      expect(startNewButton, findsOneWidget);
+
+      await tester.tap(startNewButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Начать новую операцию?'), findsOneWidget);
+
+      await tester.tap(find.text('Отмена'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byType(RegistryEngineeringOperationStatusTransitionScreen),
+        findsOneWidget,
+      );
+
+      await tester.tap(startNewButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Начать'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byType(RegistryEngineeringOperationCreationScreen),
+        findsOneWidget,
+      );
+      expect(
+        find.byType(RegistryEngineeringOperationStatusTransitionScreen),
+        findsNothing,
+      );
+
+      final TextField problemStatementField = tester.widget<TextField>(
+        find.byKey(
+          const Key('registry_engineering_operation_problem_statement_field'),
+        ),
+      );
+
+      expect(problemStatementField.controller?.text, isEmpty);
     });
 
     testWidgets('passes supplied UI language into operation flow', (
@@ -204,6 +254,7 @@ void main() {
 Widget _testApp({
   RegistryStudioUiLanguage uiLanguage = RegistryStudioUiLanguage.ru,
   RegistryEntityId? revisionPrimaryEntityId,
+  String? initialProblemStatement,
 }) {
   return MaterialApp(
     home: RegistryEngineeringOperationWorkspaceScreen(
@@ -212,6 +263,7 @@ Widget _testApp({
       transitionRegistryEngineeringOperationStatus:
           TransitionRegistryEngineeringOperationStatus(),
       revisionPrimaryEntityId: revisionPrimaryEntityId,
+      initialProblemStatement: initialProblemStatement,
     ),
   );
 }

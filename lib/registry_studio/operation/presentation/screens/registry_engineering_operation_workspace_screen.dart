@@ -48,6 +48,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
   final TextEditingController _workingContentController =
       TextEditingController();
   bool _isSavingRevision = false;
+  bool _isStartingNewOperation = false;
+  bool _initialProblemStatementConsumed = false;
 
   @override
   void initState() {
@@ -109,9 +111,117 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
   void _setCurrentOperation(RegistryEngineeringOperation operation) {
     setState(() {
       _currentOperation = operation;
+      _initialProblemStatementConsumed = true;
     });
 
     unawaited(_persistWorkspace());
+  }
+
+  Future<void> _startNewOperation() async {
+    if (_isStartingNewOperation) {
+      return;
+    }
+
+    final RegistryEngineeringOperation? operation = _currentOperation;
+
+    if (operation == null ||
+        (operation.status != RegistryEngineeringOperationStatus.decided &&
+            operation.status != RegistryEngineeringOperationStatus.cancelled)) {
+      return;
+    }
+
+    final ({String title, String message, String cancel, String confirm})
+    labels = switch (widget.uiLanguage) {
+      RegistryStudioUiLanguage.ru => (
+        title: 'Начать новую операцию?',
+        message:
+            'Текущая завершённая операция и её локальные редакции '
+            'будут удалены из рабочей сессии.',
+        cancel: 'Отмена',
+        confirm: 'Начать',
+      ),
+      RegistryStudioUiLanguage.en => (
+        title: 'Start a new operation?',
+        message:
+            'The current completed operation and its local revisions '
+            'will be removed from the work session.',
+        cancel: 'Cancel',
+        confirm: 'Start',
+      ),
+      RegistryStudioUiLanguage.th => (
+        title: 'เริ่มงานวิศวกรรมใหม่หรือไม่',
+        message:
+            'งานที่เสร็จสิ้นปัจจุบันและฉบับแก้ไขในเครื่อง'
+            'จะถูกลบออกจากเซสชันการทำงาน',
+        cancel: 'ยกเลิก',
+        confirm: 'เริ่มใหม่',
+      ),
+    };
+
+    final bool confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: Text(labels.title),
+              content: Text(labels.message),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(false);
+                  },
+                  child: Text(labels.cancel),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(true);
+                  },
+                  child: Text(labels.confirm),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _isStartingNewOperation = true;
+    });
+
+    try {
+      await widget.workSessionPersistence?.clearEngineeringOperationWorkspace();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _currentOperation = null;
+        _revisions = const <RegistryEngineeringOperationRevision>[];
+        _workingContentController.clear();
+        _isSavingRevision = false;
+        _isStartingNewOperation = false;
+        _initialProblemStatementConsumed = true;
+      });
+    } on Object {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isStartingNewOperation = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось начать новую инженерную операцию.'),
+        ),
+      );
+    }
   }
 
   Future<void> _saveRevision() async {
@@ -200,7 +310,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     if (currentOperation == null) {
       return RegistryEngineeringOperationCreationScreen(
-        initialProblemStatement: widget.initialProblemStatement,
+        initialProblemStatement: _initialProblemStatementConsumed
+            ? null
+            : widget.initialProblemStatement,
         uiLanguage: widget.uiLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
@@ -212,6 +324,22 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         currentOperation.status == RegistryEngineeringOperationStatus.decided ||
         currentOperation.status == RegistryEngineeringOperationStatus.cancelled;
 
+    final ({String startNew, String startingNew}) terminalLabels =
+        switch (widget.uiLanguage) {
+          RegistryStudioUiLanguage.ru => (
+            startNew: 'Начать новую операцию',
+            startingNew: 'Очистка…',
+          ),
+          RegistryStudioUiLanguage.en => (
+            startNew: 'Start new operation',
+            startingNew: 'Clearing…',
+          ),
+          RegistryStudioUiLanguage.th => (
+            startNew: 'เริ่มงานวิศวกรรมใหม่',
+            startingNew: 'กำลังล้าง…',
+          ),
+        };
+
     final Widget statusScreen =
         RegistryEngineeringOperationStatusTransitionScreen(
           uiLanguage: widget.uiLanguage,
@@ -221,8 +349,38 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           onOperationTransitioned: _setCurrentOperation,
         );
 
+    final Widget operationStatusSection = revisionsReadOnly
+        ? Column(
+            children: <Widget>[
+              Expanded(child: statusScreen),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      key: const Key(
+                        'registry_engineering_operation_start_new_button',
+                      ),
+                      onPressed: _isStartingNewOperation
+                          ? null
+                          : _startNewOperation,
+                      child: Text(
+                        _isStartingNewOperation
+                            ? terminalLabels.startingNew
+                            : terminalLabels.startNew,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : statusScreen;
+
     if (widget.revisionPrimaryEntityId == null) {
-      return statusScreen;
+      return operationStatusSection;
     }
 
     final ({
@@ -258,7 +416,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     return Column(
       children: <Widget>[
-        Expanded(child: statusScreen),
+        Expanded(child: operationStatusSection),
         Material(
           elevation: 6,
           child: SafeArea(
