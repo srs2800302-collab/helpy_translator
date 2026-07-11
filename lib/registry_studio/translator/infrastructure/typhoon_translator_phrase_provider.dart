@@ -33,9 +33,9 @@ final class TyphoonTranslatorPhraseProvider
     final String? normalizedEngineerContext = _optionalText(engineerContext);
 
     try {
-      final String translationContent = await _request(
-        systemPrompt: _translationPrompt,
-        userContent: _buildTranslationInput(
+      final String directContent = await _request(
+        systemPrompt: _directTranslationPrompt,
+        userContent: _buildDirectTranslationInput(
           sourceText: normalizedSourceText,
           sourceLanguageHint: normalizedSourceLanguageHint,
           engineerContext: normalizedEngineerContext,
@@ -43,34 +43,73 @@ final class TyphoonTranslatorPhraseProvider
         maxTokens: 700,
       );
 
-      final Map<String, String> translation = _parseSections(
-        translationContent,
-        _translationLabels,
+      final Map<String, String> directTranslation = _parseStrictSections(
+        content: directContent,
+        labels: _directTranslationLabels,
+        responseName: 'Ответ прямого перевода Typhoon',
       );
+
+      _validateDirectTranslation(
+        translation: directTranslation,
+        normalizedSourceText: normalizedSourceText,
+      );
+
+      final String englishLiteralContent = await _request(
+        systemPrompt: _englishLiteralTranslationPrompt,
+        userContent: _buildEnglishLiteralInput(directTranslation['EN']!),
+        maxTokens: 350,
+      );
+
+      final Map<String, String> englishLiteralTranslation =
+          _parseStrictSections(
+            content: englishLiteralContent,
+            labels: _englishLiteralLabels,
+            responseName: 'Ответ дословной проверки английской версии',
+          );
+
+      final String thaiLiteralContent = await _request(
+        systemPrompt: _thaiLiteralTranslationPrompt,
+        userContent: _buildThaiLiteralInput(directTranslation['TH']!),
+        maxTokens: 350,
+      );
+
+      final Map<String, String> thaiLiteralTranslation = _parseStrictSections(
+        content: thaiLiteralContent,
+        labels: _thaiLiteralLabels,
+        responseName: 'Ответ дословной проверки тайской версии',
+      );
+
+      final Map<String, String> translation = <String, String>{
+        'SOURCE LANGUAGE': directTranslation['SOURCE LANGUAGE']!,
+        'SOURCE TEXT': directTranslation['SOURCE TEXT']!,
+        'RU': directTranslation['RU']!,
+        'EN': directTranslation['EN']!,
+        'TH': directTranslation['TH']!,
+        'EN_TO_RU': englishLiteralTranslation['EN_TO_RU']!,
+        'TH_TO_RU': thaiLiteralTranslation['TH_TO_RU']!,
+        'EN_TO_TH': englishLiteralTranslation['EN_TO_TH']!,
+        'TH_TO_EN': thaiLiteralTranslation['TH_TO_EN']!,
+      };
+
+      _validateCompleteTranslation(translation);
 
       final String auditContent = await _request(
         systemPrompt: _auditPrompt,
-        userContent: _buildAuditInput(
-          translation: translation,
-          engineerContext: normalizedEngineerContext,
-        ),
+        userContent: _buildAuditInput(translation),
         maxTokens: 500,
       );
 
-      final Map<String, String> audit = _parseSections(
-        auditContent,
-        _auditLabels,
+      final Map<String, String> audit = _parseStrictSections(
+        content: auditContent,
+        labels: _auditLabels,
+        responseName: 'Ответ независимого аудита',
       );
 
+      _validateAudit(audit);
+
       return TranslatorPhraseResult(
-        sourceLanguage: _valueOrFallback(
-          translation['SOURCE LANGUAGE'],
-          normalizedSourceLanguageHint ?? 'unknown',
-        ),
-        sourceText: _valueOrFallback(
-          translation['SOURCE TEXT'],
-          normalizedSourceText,
-        ),
+        sourceLanguage: translation['SOURCE LANGUAGE']!,
+        sourceText: translation['SOURCE TEXT']!,
         status: _resolveStatus(audit),
         ru: translation['RU'],
         en: translation['EN'],
@@ -132,7 +171,7 @@ final class TyphoonTranslatorPhraseProvider
     );
   }
 
-  static String _buildTranslationInput({
+  static String _buildDirectTranslationInput({
     required String sourceText,
     required String? sourceLanguageHint,
     required String? engineerContext,
@@ -158,83 +197,199 @@ final class TyphoonTranslatorPhraseProvider
     return buffer.toString().trim();
   }
 
-  static String _buildAuditInput({
-    required Map<String, String> translation,
-    required String? engineerContext,
-  }) {
-    final StringBuffer buffer = StringBuffer()
-      ..writeln('SOURCE LANGUAGE:')
-      ..writeln(translation['SOURCE LANGUAGE'] ?? '')
-      ..writeln()
-      ..writeln('SOURCE TEXT:')
-      ..writeln(translation['SOURCE TEXT'] ?? '')
-      ..writeln()
-      ..writeln('RU:')
-      ..writeln(translation['RU'] ?? '')
-      ..writeln()
-      ..writeln('EN:')
-      ..writeln(translation['EN'] ?? '')
-      ..writeln()
-      ..writeln('TH:')
-      ..writeln(translation['TH'] ?? '')
-      ..writeln()
-      ..writeln('EN_TO_RU:')
-      ..writeln(translation['EN_TO_RU'] ?? '')
-      ..writeln()
-      ..writeln('TH_TO_RU:')
-      ..writeln(translation['TH_TO_RU'] ?? '')
-      ..writeln()
-      ..writeln('EN_TO_TH:')
-      ..writeln(translation['EN_TO_TH'] ?? '')
-      ..writeln()
-      ..writeln('TH_TO_EN:')
-      ..writeln(translation['TH_TO_EN'] ?? '');
+  static String _buildEnglishLiteralInput(String englishText) {
+    return 'EN:\n$englishText';
+  }
 
-    if (engineerContext != null) {
+  static String _buildThaiLiteralInput(String thaiText) {
+    return 'TH:\n$thaiText';
+  }
+
+  static String _buildAuditInput(Map<String, String> translation) {
+    final StringBuffer buffer = StringBuffer();
+
+    for (int index = 0; index < _translationLabels.length; index++) {
+      final String label = _translationLabels[index];
+
+      if (index > 0) {
+        buffer.writeln();
+      }
+
       buffer
-        ..writeln()
-        ..writeln('ENGINEER CONTEXT:')
-        ..writeln(engineerContext);
+        ..writeln('$label:')
+        ..writeln(translation[label]);
     }
 
     return buffer.toString().trim();
   }
 
-  static Map<String, String> _parseSections(
-    String content,
-    List<String> labels,
-  ) {
+  static Map<String, String> _parseStrictSections({
+    required String content,
+    required List<String> labels,
+    required String responseName,
+  }) {
+    final String normalized = content
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .trim();
+
+    if (normalized.isEmpty) {
+      throw FormatException('$responseName пуст.');
+    }
+
+    final List<RegExpMatch> matches = _labelPattern
+        .allMatches(normalized)
+        .toList(growable: false);
+
+    if (matches.isEmpty || matches.first.start != 0) {
+      throw FormatException(
+        '$responseName содержит текст до первой обязательной секции.',
+      );
+    }
+
+    final List<String> actualLabels = matches
+        .map<String>((RegExpMatch match) => match.group(1)!)
+        .toList(growable: false);
+    final Set<String> seenLabels = <String>{};
+
+    for (final String label in actualLabels) {
+      if (!seenLabels.add(label)) {
+        throw FormatException(
+          '$responseName содержит дублированную секцию $label.',
+        );
+      }
+
+      if (!labels.contains(label)) {
+        throw FormatException(
+          '$responseName содержит неожиданную секцию $label.',
+        );
+      }
+    }
+
+    for (final String label in labels) {
+      if (!seenLabels.contains(label)) {
+        throw FormatException(
+          '$responseName не содержит обязательную секцию $label.',
+        );
+      }
+    }
+
+    if (actualLabels.length != labels.length) {
+      throw FormatException(
+        '$responseName содержит неверное количество секций.',
+      );
+    }
+
+    for (int index = 0; index < labels.length; index++) {
+      if (actualLabels[index] != labels[index]) {
+        throw FormatException(
+          '$responseName содержит секции в неверном порядке.',
+        );
+      }
+    }
+
     final Map<String, String> result = <String, String>{};
 
     for (int index = 0; index < labels.length; index++) {
+      final int valueStart = matches[index].end;
+      final int valueEnd = index + 1 < matches.length
+          ? matches[index + 1].start
+          : normalized.length;
       final String label = labels[index];
-      final String marker = '$label:';
-      final int start = content.indexOf(marker);
+      final String value = normalized.substring(valueStart, valueEnd).trim();
 
-      if (start == -1) {
-        result[label] = '';
-        continue;
-      }
-
-      final int valueStart = start + marker.length;
-      int valueEnd = content.length;
-
-      for (int nextIndex = index + 1; nextIndex < labels.length; nextIndex++) {
-        final int nextStart = content.indexOf(
-          '${labels[nextIndex]}:',
-          valueStart,
-        );
-
-        if (nextStart != -1) {
-          valueEnd = nextStart;
-          break;
-        }
-      }
-
-      result[label] = content.substring(valueStart, valueEnd).trim();
+      _validateSectionValue(
+        responseName: responseName,
+        label: label,
+        value: value,
+      );
+      result[label] = value;
     }
 
     return result;
+  }
+
+  static void _validateSectionValue({
+    required String responseName,
+    required String label,
+    required String value,
+  }) {
+    if (value.isEmpty) {
+      throw FormatException('$responseName содержит пустую секцию $label.');
+    }
+
+    if (_placeholderValues.contains(value.toUpperCase())) {
+      throw FormatException(
+        '$responseName содержит значение-заглушку в секции $label.',
+      );
+    }
+  }
+
+  static void _validateDirectTranslation({
+    required Map<String, String> translation,
+    required String normalizedSourceText,
+  }) {
+    final String sourceLanguage = translation['SOURCE LANGUAGE']!;
+
+    if (!_sourceLanguages.contains(sourceLanguage)) {
+      throw const FormatException(
+        'SOURCE LANGUAGE должен содержать только RU, EN или TH.',
+      );
+    }
+
+    if (translation['SOURCE TEXT'] != normalizedSourceText) {
+      throw const FormatException(
+        'SOURCE TEXT не совпадает с переданным исходным текстом.',
+      );
+    }
+
+    if (translation[sourceLanguage] != normalizedSourceText) {
+      throw FormatException(
+        'Секция исходного языка $sourceLanguage не совпадает с SOURCE TEXT.',
+      );
+    }
+  }
+
+  static void _validateCompleteTranslation(Map<String, String> translation) {
+    if (translation.length != _translationLabels.length) {
+      throw const FormatException(
+        'Полный результат перевода должен содержать ровно девять секций.',
+      );
+    }
+
+    for (final String label in _translationLabels) {
+      final String? value = translation[label];
+
+      if (value == null) {
+        throw FormatException(
+          'Полный результат перевода не содержит секцию $label.',
+        );
+      }
+
+      _validateSectionValue(
+        responseName: 'Полный результат перевода',
+        label: label,
+        value: value,
+      );
+    }
+  }
+
+  static void _validateAudit(Map<String, String> audit) {
+    for (final String label in _auditDecisionLabels) {
+      final String value = audit[label]!.toUpperCase();
+
+      if (value != 'YES' && value != 'NO') {
+        throw FormatException(
+          'Секция аудита $label должна содержать только YES или NO.',
+        );
+      }
+    }
+
+    if (!_russianLetterPattern.hasMatch(audit['REASON']!)) {
+      throw const FormatException(
+        'Секция аудита REASON должна содержать объяснение на русском языке.',
+      );
+    }
   }
 
   static TranslatorPhraseStatus _resolveStatus(Map<String, String> audit) {
@@ -265,12 +420,12 @@ final class TyphoonTranslatorPhraseProvider
 
   static String _buildComment(Map<String, String> audit) {
     return '''
-Meaning preserved: ${audit['MEANING_PRESERVED'] ?? 'NO'}
-Terminology preserved: ${audit['TERMINOLOGY_PRESERVED'] ?? 'NO'}
-Canonical style preserved: ${audit['CANONICAL_STYLE_PRESERVED'] ?? 'NO'}
-Ambiguous wording: ${audit['AMBIGUOUS_WORDING'] ?? 'YES'}
+Meaning preserved: ${audit['MEANING_PRESERVED']}
+Terminology preserved: ${audit['TERMINOLOGY_PRESERVED']}
+Canonical style preserved: ${audit['CANONICAL_STYLE_PRESERVED']}
+Ambiguous wording: ${audit['AMBIGUOUS_WORDING']}
 
-${audit['REASON'] ?? ''}
+${audit['REASON']}
 '''
         .trim();
   }
@@ -353,10 +508,37 @@ ${audit['REASON'] ?? ''}
     return normalized;
   }
 
-  static String _valueOrFallback(String? value, String fallback) {
-    return _optionalText(value) ?? fallback;
-  }
+  static final RegExp _labelPattern = RegExp(
+    r'^([A-Z][A-Z0-9 _]*):[ \t]*$',
+    multiLine: true,
+  );
+  static final RegExp _russianLetterPattern = RegExp(r'[А-Яа-яЁё]');
 
+  static const Set<String> _sourceLanguages = <String>{'RU', 'EN', 'TH'};
+  static const Set<String> _placeholderValues = <String>{
+    '-',
+    'N/A',
+    'NONE',
+    'NULL',
+    'UNKNOWN',
+    'NOT PROVIDED',
+  };
+
+  static const List<String> _directTranslationLabels = <String>[
+    'SOURCE LANGUAGE',
+    'SOURCE TEXT',
+    'RU',
+    'EN',
+    'TH',
+  ];
+  static const List<String> _englishLiteralLabels = <String>[
+    'EN_TO_RU',
+    'EN_TO_TH',
+  ];
+  static const List<String> _thaiLiteralLabels = <String>[
+    'TH_TO_RU',
+    'TH_TO_EN',
+  ];
   static const List<String> _translationLabels = <String>[
     'SOURCE LANGUAGE',
     'SOURCE TEXT',
@@ -368,82 +550,202 @@ ${audit['REASON'] ?? ''}
     'EN_TO_TH',
     'TH_TO_EN',
   ];
-
-  static const List<String> _auditLabels = <String>[
+  static const List<String> _auditDecisionLabels = <String>[
     'MEANING_PRESERVED',
     'TERMINOLOGY_PRESERVED',
     'CANONICAL_STYLE_PRESERVED',
     'AMBIGUOUS_WORDING',
+  ];
+  static const List<String> _auditLabels = <String>[
+    ..._auditDecisionLabels,
     'REASON',
   ];
 
-  static const String _translationPrompt = '''
-You are Registry Studio strict multilingual translator.
+  static const String _directTranslationPrompt = '''
+Ты являешься строгим мультиязычным инженерным переводчиком Registry Studio.
 
-Input can be RU, EN or TH.
-Detect source language.
-Use source language hint only as a hint when present.
-Translate into RU, EN and TH.
-Then perform cross-language reverse translations.
+Язык исходного текста: RU, EN или TH.
+Определи язык исходного текста.
+Используй SOURCE LANGUAGE HINT только как подсказку, если он передан.
+Используй ENGINEER CONTEXT только для понимания терминологии или устранения неоднозначности.
+Не переводи ENGINEER CONTEXT.
+Не добавляй сведения из ENGINEER CONTEXT в переводимый текст.
 
-Do not audit.
-Do not explain.
-Do not approve canonical wording.
-Do not change registry.
-Preserve engineering meaning, instruction force and registry terminology.
+Ты обязан вернуть ровно 5 секций.
+Все секции обязательны.
+Не пропускай секции.
+Не возвращай пустые значения.
+Не используй дефис или тире вместо значения.
+Не используй символы направления в ответе.
 
-Output strictly:
+Правила перевода:
+
+1. Сохрани SOURCE TEXT точно в том виде, в котором он передан.
+2. Не добавляй кавычки вокруг SOURCE TEXT.
+3. В языковой секции, соответствующей SOURCE LANGUAGE, повтори SOURCE TEXT без изменений.
+4. Сформируй версии на русском, английском и тайском языках.
+5. Переводи настолько дословно, насколько позволяет грамматика целевого языка.
+6. Сохраняй точный инженерный смысл.
+7. Сохраняй техническую и реестровую терминологию.
+8. Сохраняй силу инструкции.
+9. Сохраняй обязательность, допустимость и запрет.
+10. Сохраняй отрицания.
+11. Сохраняй границы работ и исключения.
+12. Сохраняй количества, единицы измерения, условия и последовательность.
+13. Не улучшай формулировку.
+14. Не упрощай формулировку.
+15. Не заменяй конкретные термины более общими.
+16. Не смягчай и не усиливай инструкцию.
+17. Не добавляй пояснения.
+18. Не выполняй аудит.
+19. Не утверждай каноничность формулировки.
+20. Не изменяй содержимое registry.
+
+Верни результат строго с этими ASCII labels:
 
 SOURCE LANGUAGE:
 RU | EN | TH
 
 SOURCE TEXT:
-...
+исходный текст без изменений
 
 RU:
-...
+русская версия
 
 EN:
-...
+английская версия
 
 TH:
-...
+тайская версия
+''';
+
+  static const String _englishLiteralTranslationPrompt = '''
+Ты являешься переводчиком дословной обратной проверки Registry Studio.
+
+Ты получаешь только инженерную фразу на английском языке.
+Ты не знаешь исходный текст.
+Не пытайся угадать или восстановить исходную формулировку.
+
+Ты обязан вернуть ровно 2 секции.
+Обе секции обязательны.
+Не пропускай секции.
+Не возвращай пустые значения.
+Не используй дефис или тире вместо значения.
+Не используй символы направления в ответе.
+
+Правила перевода:
+
+1. Переведи переданный английский текст дословно на русский язык.
+2. Переведи тот же английский текст дословно на тайский язык.
+3. Переводи только фактически переданный текст.
+4. Передай точный смысл английской формулировки.
+5. Сохраняй терминологию.
+6. Сохраняй силу инструкции.
+7. Сохраняй обязательность, допустимость, запрет и отрицание.
+8. Сохраняй границы, количества, условия и последовательность.
+9. Сохраняй порядок слов там, где это допускает грамматика целевого языка.
+10. Не улучшай формулировку.
+11. Не нормализуй формулировку.
+12. Не приводи формулировку к каноническому стилю.
+13. Не устраняй неоднозначность.
+14. Не добавляй отсутствующий контекст.
+15. Не объясняй результат.
+16. Не выполняй аудит.
+
+Верни результат строго с этими ASCII labels:
 
 EN_TO_RU:
-...
-
-TH_TO_RU:
-...
+дословный русский перевод переданного английского текста
 
 EN_TO_TH:
-...
+дословный тайский перевод переданного английского текста
+''';
+
+  static const String _thaiLiteralTranslationPrompt = '''
+Ты являешься переводчиком дословной обратной проверки Registry Studio.
+
+Ты получаешь только инженерную фразу на тайском языке.
+Ты не знаешь исходный текст.
+Не пытайся угадать или восстановить исходную формулировку.
+
+Ты обязан вернуть ровно 2 секции.
+Обе секции обязательны.
+Не пропускай секции.
+Не возвращай пустые значения.
+Не используй дефис или тире вместо значения.
+Не используй символы направления в ответе.
+
+Правила перевода:
+
+1. Переведи переданный тайский текст дословно на русский язык.
+2. Переведи тот же тайский текст дословно на английский язык.
+3. Переводи только фактически переданный текст.
+4. Передай точный смысл тайской формулировки.
+5. Сохраняй терминологию.
+6. Сохраняй силу инструкции.
+7. Сохраняй обязательность, допустимость, запрет и отрицание.
+8. Сохраняй границы, количества, условия и последовательность.
+9. Сохраняй порядок слов там, где это допускает грамматика целевого языка.
+10. Не улучшай формулировку.
+11. Не нормализуй формулировку.
+12. Не приводи формулировку к каноническому стилю.
+13. Не устраняй неоднозначность.
+14. Не добавляй отсутствующий контекст.
+15. Не объясняй результат.
+16. Не выполняй аудит.
+
+Верни результат строго с этими ASCII labels:
+
+TH_TO_RU:
+дословный русский перевод переданного тайского текста
 
 TH_TO_EN:
-...
+дословный английский перевод переданного тайского текста
 ''';
 
   static const String _auditPrompt = '''
-You are an independent Registry Studio canonical wording auditor.
+Ты являешься независимым аудитором мультиязычных инженерных формулировок Registry Studio.
 
-You do not translate.
-You only audit the provided multilingual translation set.
+Ты не выполняешь перевод.
+Ты не переписываешь формулировки.
+Ты проверяешь только полный набор из 9 секций.
 
-Check:
-- Did all language versions preserve the same engineering meaning?
-- Did terminology remain precise?
-- Did canonical instructional style remain stable?
-- Did any ambiguity appear?
+Секции дословного обратного перевода являются диагностическим доказательством.
+Используй их, чтобы определить, какой смысл фактически передают английская и тайская версии.
 
-Rules:
-- If meaning changed: MEANING_PRESERVED = NO.
-- If specific terminology became broader or softer: TERMINOLOGY_PRESERVED = NO.
-- If instruction became description or style changed: CANONICAL_STYLE_PRESERVED = NO.
-- If wording can be interpreted in more than one registry-relevant way: AMBIGUOUS_WORDING = YES.
-- Be strict. Do not give benefit of doubt.
-- Do not approve publication.
-- Do not suggest registry mutation.
+Проверь:
 
-Output strictly:
+1. Сохранили ли RU, EN и TH один инженерный смысл.
+2. Осталась ли техническая и реестровая терминология точной.
+3. Сохранилась ли сила инструкции.
+4. Изменилась ли обязательность, допустимость или запрещённость действия.
+5. Изменилось ли отрицание.
+6. Изменились ли границы работ или исключения.
+7. Изменились ли количества, единицы измерения, условия или последовательность.
+8. Стал ли конкретный термин более широким, мягким или менее точным.
+9. Появилась ли неоднозначность.
+10. Показывают ли дословные обратные переводы смысловой drift.
+
+Правила аудита:
+
+1. Если смысл изменился, установи MEANING_PRESERVED в NO.
+2. Если терминология стала менее точной, установи TERMINOLOGY_PRESERVED в NO.
+3. Если изменилась сила инструкции или инструктивная форма, установи CANONICAL_STYLE_PRESERVED в NO.
+4. Если формулировка допускает несколько значимых для registry толкований, установи AMBIGUOUS_WORDING в YES.
+5. Несовпадение прямой версии и дословного обратного перевода считай основанием для строгой проверки.
+6. Не трактуй сомнения в пользу корректности.
+7. Не улучшай формулировки.
+8. Не предлагай замену.
+9. Не утверждай публикацию.
+10. Не предлагай изменение registry.
+11. Не используй символы направления в ответе.
+
+Ты обязан вернуть ровно 5 секций.
+Все секции обязательны.
+Не пропускай секции.
+Не возвращай пустые значения.
+
+Верни результат строго с этими ASCII labels:
 
 MEANING_PRESERVED:
 YES | NO
@@ -458,6 +760,6 @@ AMBIGUOUS_WORDING:
 YES | NO
 
 REASON:
-Short Russian explanation.
+краткое объяснение на русском языке с указанием конкретных различий
 ''';
 }
