@@ -43,5 +43,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: helpy-translator-debug-apk
+          name: registry-studio-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
