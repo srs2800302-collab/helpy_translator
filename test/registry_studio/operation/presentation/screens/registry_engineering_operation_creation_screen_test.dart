@@ -136,16 +136,39 @@ void main() {
 
       expect(receivedOperationId, 'registry-operation-001');
     });
+    testWidgets('prefills editable initial problem statement', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _testApp(initialProblemStatement: 'Candidate wording review.'),
+      );
+
+      final Finder field = find.byKey(
+        const Key('registry_engineering_operation_problem_statement_field'),
+      );
+
+      TextField textField = tester.widget<TextField>(field);
+
+      expect(textField.controller?.text, 'Candidate wording review.');
+
+      await tester.enterText(field, 'Edited candidate wording review.');
+
+      textField = tester.widget<TextField>(field);
+
+      expect(textField.controller?.text, 'Edited candidate wording review.');
+    });
   });
 }
 
 Widget _testApp({
+  String? initialProblemStatement,
   ValueChanged<RegistryEngineeringOperation>? onOperationCreated,
 }) {
   return MaterialApp(
     home: RegistryEngineeringOperationCreationScreen(
       uiLanguage: RegistryStudioUiLanguage.ru,
       createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
+      initialProblemStatement: initialProblemStatement,
       onOperationCreated: onOperationCreated,
     ),
   );

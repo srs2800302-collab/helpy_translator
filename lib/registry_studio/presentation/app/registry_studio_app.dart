@@ -18,6 +18,7 @@ import '../language/registry_studio_ui_language.dart';
 import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
 import '../../core/application/related_context/registry_resolved_related_context.dart';
 import '../../core/domain/value_objects/registry_entity_id.dart';
+import '../../translator/translator_phrase_result.dart';
 
 final class RegistryStudioApp extends StatefulWidget {
   const RegistryStudioApp({
@@ -72,6 +73,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
   int _selectedScreenIndex = _translatorScreenIndex;
   RegistryResolvedRelatedContext? _resolvedRelatedContext;
+  String? _initialOperationProblemStatement;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
 
   bool get _hasGuardRecordInput => widget.guardRecordEntity != null;
@@ -166,6 +168,27 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     );
   }
 
+  void _requestOperationFromTranslator(TranslatorPhraseResult result) {
+    final String? candidate = result.candidateCanonicalPhrase;
+
+    if (candidate == null) {
+      return;
+    }
+
+    final RegistryStudioTranslatorPhraseLabels labels =
+        RegistryStudioUiLabels.forLanguage(_selectedLanguage).translatorPhrase;
+
+    setState(() {
+      _initialOperationProblemStatement =
+          '${labels.sourceTextRow}:\n'
+          '${result.sourceText}\n\n'
+          '${labels.canonicalCandidateRow}:\n'
+          '$candidate';
+
+      _selectedScreenIndex = _operationWorkspaceScreenIndex;
+    });
+  }
+
   void _selectLanguage(RegistryStudioUiLanguage language) {
     setState(() {
       _selectedLanguage = language;
@@ -207,6 +230,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
     if (_selectedScreenIndex == _operationWorkspaceScreenIndex) {
       return RegistryEngineeringOperationWorkspaceScreen(
+        initialProblemStatement: _initialOperationProblemStatement,
         workSessionPersistence: widget.workSessionPersistence,
         revisionPrimaryEntityId:
             (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,
@@ -226,7 +250,10 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     return BlocProvider<TranslatorPhraseCubit>(
       create: (_) =>
           TranslatorPhraseCubit(translatePhrase: widget.translatePhrase),
-      child: TranslatorPhraseScreen(uiLanguage: _selectedLanguage),
+      child: TranslatorPhraseScreen(
+        uiLanguage: _selectedLanguage,
+        onOperationRequested: _requestOperationFromTranslator,
+      ),
     );
   }
 }

@@ -10,12 +10,14 @@ final class RegistryEngineeringOperationCreationScreen extends StatefulWidget {
   const RegistryEngineeringOperationCreationScreen({
     required this.uiLanguage,
     required this.createRegistryEngineeringOperation,
+    this.initialProblemStatement,
     this.onOperationCreated,
     super.key,
   });
 
   final RegistryStudioUiLanguage uiLanguage;
   final CreateRegistryEngineeringOperation createRegistryEngineeringOperation;
+  final String? initialProblemStatement;
   final ValueChanged<RegistryEngineeringOperation>? onOperationCreated;
 
   @override
@@ -42,11 +44,18 @@ final class _RegistryEngineeringOperationCreationScreenState
   );
 
   final TextEditingController _operationIdController = TextEditingController();
-  final TextEditingController _problemStatementController =
-      TextEditingController();
+  late final TextEditingController _problemStatementController;
 
   RegistryEngineeringOperation? _createdOperation;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _problemStatementController = TextEditingController(
+      text: widget.initialProblemStatement,
+    );
+  }
 
   @override
   void dispose() {

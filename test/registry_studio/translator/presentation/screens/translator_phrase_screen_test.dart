@@ -180,15 +180,77 @@ void main() {
         isEmpty,
       );
     });
+    testWidgets('requests operation for candidate phrase result', (
+      WidgetTester tester,
+    ) async {
+      final TranslatorPhraseResult result = TranslatorPhraseResult(
+        sourceLanguage: 'en',
+        sourceText: 'Check wording.',
+        status: TranslatorPhraseStatus.canonicalDrift,
+        comment: 'Canonical review required.',
+        candidateCanonicalPhrase: 'Check canonical wording.',
+      );
+      final _FakeTranslatorPhraseProvider provider =
+          _FakeTranslatorPhraseProvider(result: result);
+      final TranslatorPhraseCubit cubit = _cubitFor(provider);
+      addTearDown(cubit.close);
+
+      TranslatorPhraseResult? requestedResult;
+
+      await tester.pumpWidget(
+        _testApp(
+          cubit,
+          onOperationRequested: (TranslatorPhraseResult value) {
+            requestedResult = value;
+          },
+        ),
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('translator_phrase_source_text_field')),
+        result.sourceText,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('translator_phrase_translate_button')),
+      );
+      await tester.pumpAndSettle();
+
+      final Finder requestButton = find.byKey(
+        const Key('translator_phrase_request_operation_button'),
+      );
+      final Finder translatorList = find.descendant(
+        of: find.byType(TranslatorPhraseScreen),
+        matching: find.byType(ListView),
+      );
+
+      await tester.dragUntilVisible(
+        requestButton,
+        translatorList,
+        const Offset(0, -300),
+      );
+      await tester.pumpAndSettle();
+
+      expect(requestButton, findsOneWidget);
+
+      await tester.tap(requestButton);
+      await tester.pump();
+
+      expect(requestedResult, same(result));
+    });
   });
 }
 
-Widget _testApp(TranslatorPhraseCubit cubit) {
+Widget _testApp(
+  TranslatorPhraseCubit cubit, {
+  ValueChanged<TranslatorPhraseResult>? onOperationRequested,
+}) {
   return MaterialApp(
     home: BlocProvider<TranslatorPhraseCubit>.value(
       value: cubit,
-      child: const TranslatorPhraseScreen(
+      child: TranslatorPhraseScreen(
         uiLanguage: RegistryStudioUiLanguage.ru,
+        onOperationRequested: onOperationRequested,
       ),
     ),
   );

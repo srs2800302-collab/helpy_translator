@@ -9,9 +9,14 @@ import '../cubit/translator_phrase_cubit.dart';
 import '../cubit/translator_phrase_state.dart';
 
 final class TranslatorPhraseScreen extends StatefulWidget {
-  const TranslatorPhraseScreen({required this.uiLanguage, super.key});
+  const TranslatorPhraseScreen({
+    required this.uiLanguage,
+    this.onOperationRequested,
+    super.key,
+  });
 
   final RegistryStudioUiLanguage uiLanguage;
+  final ValueChanged<TranslatorPhraseResult>? onOperationRequested;
 
   @override
   State<TranslatorPhraseScreen> createState() => _TranslatorPhraseScreenState();
@@ -32,6 +37,9 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
   );
   static const Key clearButtonKey = Key('translator_phrase_clear_button');
   static const Key resultCardKey = Key('translator_phrase_result_card');
+  static const Key requestOperationButtonKey = Key(
+    'translator_phrase_request_operation_button',
+  );
   static const Key errorTextKey = Key('translator_phrase_error_text');
 
   final TextEditingController _sourceTextController = TextEditingController();
@@ -66,8 +74,11 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioUiLabels uiLabels = RegistryStudioUiLabels.forLanguage(
+      widget.uiLanguage,
+    );
     final RegistryStudioTranslatorPhraseLabels labels =
-        RegistryStudioUiLabels.forLanguage(widget.uiLanguage).translatorPhrase;
+        uiLabels.translatorPhrase;
 
     return Scaffold(
       appBar: AppBar(title: Text(labels.title)),
@@ -142,6 +153,17 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                   labels: labels,
                   result: state.result!,
                 ),
+                if (state.result!.candidateCanonicalPhrase != null &&
+                    widget.onOperationRequested != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    key: requestOperationButtonKey,
+                    onPressed: () {
+                      widget.onOperationRequested?.call(state.result!);
+                    },
+                    child: Text(uiLabels.operationCreationScreenTitle),
+                  ),
+                ],
               ],
             ],
           );

@@ -235,6 +235,76 @@ void main() {
       expect(find.text('Эквивалентная формулировка'), findsOneWidget);
     },
   );
+  testWidgets('starts operation creation from Translator candidate', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final TranslatorPhraseResult result = TranslatorPhraseResult(
+      sourceLanguage: 'ru',
+      sourceText: 'Проверить формулировку.',
+      status: TranslatorPhraseStatus.canonicalDrift,
+      comment: 'Требуется проверка канонической формы.',
+      candidateCanonicalPhrase: 'Проверить каноническую формулировку.',
+    );
+    final _FakeTranslatorPhraseProvider provider =
+        _FakeTranslatorPhraseProvider(result);
+
+    await tester.pumpWidget(_testApp(provider));
+
+    await tester.enterText(
+      find.byKey(const Key('translator_phrase_source_text_field')),
+      result.sourceText,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('translator_phrase_translate_button')),
+    );
+    await tester.pumpAndSettle();
+
+    final Finder requestButton = find.byKey(
+      const Key('translator_phrase_request_operation_button'),
+    );
+    final Finder translatorList = find.descendant(
+      of: find.byType(TranslatorPhraseScreen),
+      matching: find.byType(ListView),
+    );
+
+    await tester.dragUntilVisible(
+      requestButton,
+      translatorList,
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+
+    expect(requestButton, findsOneWidget);
+
+    await tester.tap(requestButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(RegistryEngineeringOperationWorkspaceScreen),
+      findsOneWidget,
+    );
+    expect(
+      find.byType(RegistryEngineeringOperationCreationScreen),
+      findsOneWidget,
+    );
+    expect(find.byType(TranslatorPhraseScreen), findsNothing);
+
+    final TextField problemStatement = tester.widget<TextField>(
+      find.byKey(
+        const Key('registry_engineering_operation_problem_statement_field'),
+      ),
+    );
+
+    expect(problemStatement.controller?.text, contains(result.sourceText));
+    expect(
+      problemStatement.controller?.text,
+      contains(result.candidateCanonicalPhrase!),
+    );
+  });
 }
 
 Widget _testApp(_FakeTranslatorPhraseProvider provider) {

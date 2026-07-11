@@ -19,6 +19,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     this.workSessionPersistence,
     this.revisionPrimaryEntityId,
     this.revisionRelatedEntityIds = const <RegistryEntityId>[],
+    this.initialProblemStatement,
     super.key,
   });
 
@@ -30,6 +31,8 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   final RegistryEntityId? revisionPrimaryEntityId;
 
   final Iterable<RegistryEntityId> revisionRelatedEntityIds;
+  final String? initialProblemStatement;
+
   @override
   State<RegistryEngineeringOperationWorkspaceScreen> createState() =>
       _RegistryEngineeringOperationWorkspaceScreenState();
@@ -194,6 +197,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     if (currentOperation == null) {
       return RegistryEngineeringOperationCreationScreen(
+        initialProblemStatement: widget.initialProblemStatement,
         uiLanguage: widget.uiLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
