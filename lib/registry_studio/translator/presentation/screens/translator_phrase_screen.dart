@@ -32,6 +32,9 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
   static const Key engineerContextFieldKey = Key(
     'translator_phrase_engineer_context_field',
   );
+  static const Key advancedOptionsTileKey = Key(
+    'translator_phrase_advanced_options_tile',
+  );
   static const Key translateButtonKey = Key(
     'translator_phrase_translate_button',
   );
@@ -46,17 +49,20 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
   final TextEditingController _languageHintController = TextEditingController();
   final TextEditingController _engineerContextController =
       TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _resultSectionKey = GlobalKey();
 
   @override
   void dispose() {
     _sourceTextController.dispose();
     _languageHintController.dispose();
     _engineerContextController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   void _translatePhrase() {
-    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
 
     context.read<TranslatorPhraseCubit>().translatePhrase(
       sourceText: _sourceTextController.text,
@@ -66,10 +72,37 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
   }
 
   void _clear() {
+    FocusManager.instance.primaryFocus?.unfocus();
+
     _sourceTextController.clear();
     _languageHintController.clear();
     _engineerContextController.clear();
     context.read<TranslatorPhraseCubit>().clear();
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _showResult() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final BuildContext? resultContext = _resultSectionKey.currentContext;
+
+      if (!mounted || resultContext == null) {
+        return;
+      }
+
+      Scrollable.ensureVisible(
+        resultContext,
+        alignment: 0.08,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   @override
@@ -80,96 +113,199 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
     final RegistryStudioTranslatorPhraseLabels labels =
         uiLabels.translatorPhrase;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(labels.title)),
-      body: BlocBuilder<TranslatorPhraseCubit, TranslatorPhraseState>(
-        builder: (BuildContext context, TranslatorPhraseState state) {
-          final bool isLoading =
-              state.status == TranslatorPhrasePresentationStatus.loading;
+    return BlocConsumer<TranslatorPhraseCubit, TranslatorPhraseState>(
+      listenWhen:
+          (TranslatorPhraseState previous, TranslatorPhraseState current) {
+            return current.result != null &&
+                current.status == TranslatorPhrasePresentationStatus.success &&
+                (previous.status != current.status ||
+                    previous.result != current.result);
+          },
+      listener: (BuildContext context, TranslatorPhraseState state) {
+        _showResult();
+      },
+      builder: (BuildContext context, TranslatorPhraseState state) {
+        final bool isLoading =
+            state.status == TranslatorPhrasePresentationStatus.loading;
+        final TranslatorPhraseResult? result = state.result;
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: <Widget>[
-              TextField(
-                key: sourceTextFieldKey,
-                controller: _sourceTextController,
-                minLines: 3,
-                maxLines: 6,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  labelText: labels.sourceTextLabel,
-                  border: const OutlineInputBorder(),
-                ),
+        return ListView(
+          controller: _scrollController,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: <Widget>[
+            Text(labels.title, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            _StatusSummary(result: result),
+            const SizedBox(height: 16),
+            TextField(
+              key: sourceTextFieldKey,
+              controller: _sourceTextController,
+              minLines: 3,
+              maxLines: 6,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                labelText: labels.sourceTextLabel,
+                border: const OutlineInputBorder(),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                key: languageHintFieldKey,
-                controller: _languageHintController,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: labels.sourceLanguageHintLabel,
-                  helperText: labels.sourceLanguageHintHelper,
-                  border: const OutlineInputBorder(),
+            ),
+            const SizedBox(height: 8),
+            ExpansionTile(
+              key: advancedOptionsTileKey,
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 12),
+              leading: const Icon(Icons.tune),
+              title: Text(labels.additionalParametersLabel),
+              children: <Widget>[
+                TextField(
+                  key: languageHintFieldKey,
+                  controller: _languageHintController,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: labels.sourceLanguageHintLabel,
+                    helperText: labels.sourceLanguageHintHelper,
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: engineerContextFieldKey,
-                controller: _engineerContextController,
-                minLines: 2,
-                maxLines: 5,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  labelText: labels.engineerContextLabel,
-                  border: const OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  key: engineerContextFieldKey,
+                  controller: _engineerContextController,
+                  minLines: 2,
+                  maxLines: 5,
+                  textInputAction: TextInputAction.newline,
+                  decoration: InputDecoration(
+                    labelText: labels.engineerContextLabel,
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: <Widget>[
-                  FilledButton(
+              ],
+            ),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: FilledButton(
                     key: translateButtonKey,
                     onPressed: isLoading ? null : _translatePhrase,
-                    child: Text(labels.translateButton),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(labels.translateButton),
                   ),
-                  OutlinedButton(
-                    key: clearButtonKey,
-                    onPressed: isLoading ? null : _clear,
-                    child: Text(labels.clearButton),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  key: clearButtonKey,
+                  onPressed: isLoading ? null : _clear,
+                  tooltip: labels.clearButton,
+                  icon: const Icon(Icons.clear),
+                ),
+              ],
+            ),
+            if (isLoading) ...<Widget>[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+            ],
+            if (state.errorMessage.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 16),
+              _ErrorMessage(message: state.errorMessage),
+            ],
+            if (result != null) ...<Widget>[
+              const SizedBox(height: 20),
+              Column(
+                key: _resultSectionKey,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    labels.resultsTitle,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
+                  const SizedBox(height: 8),
+                  _TranslatorPhraseResultCard(labels: labels, result: result),
+                  if (result.candidateCanonicalPhrase != null &&
+                      widget.onOperationRequested != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.tonal(
+                        key: requestOperationButtonKey,
+                        onPressed: () {
+                          widget.onOperationRequested?.call(result);
+                        },
+                        child: Text(uiLabels.operationCreationScreenTitle),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 16),
-              if (isLoading) const LinearProgressIndicator(),
-              if (state.errorMessage.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 16),
-                _ErrorMessage(message: state.errorMessage),
-              ],
-              if (state.result != null) ...<Widget>[
-                const SizedBox(height: 16),
-                _TranslatorPhraseResultCard(
-                  labels: labels,
-                  result: state.result!,
-                ),
-                if (state.result!.candidateCanonicalPhrase != null &&
-                    widget.onOperationRequested != null) ...<Widget>[
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    key: requestOperationButtonKey,
-                    onPressed: () {
-                      widget.onOperationRequested?.call(state.result!);
-                    },
-                    child: Text(uiLabels.operationCreationScreenTitle),
-                  ),
-                ],
-              ],
             ],
-          );
-        },
-      ),
+          ],
+        );
+      },
     );
+  }
+}
+
+final class _StatusSummary extends StatelessWidget {
+  const _StatusSummary({required this.result});
+
+  final TranslatorPhraseResult? result;
+
+  @override
+  Widget build(BuildContext context) {
+    final TranslatorPhraseStatus? status = result?.status;
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: <Widget>[
+        _StatusValue(
+          icon: '✅',
+          label: 'Exact',
+          count: status == TranslatorPhraseStatus.exact ? 1 : 0,
+        ),
+        _StatusValue(
+          icon: '🟢',
+          label: 'Equivalent',
+          count: status == TranslatorPhraseStatus.equivalent ? 1 : 0,
+        ),
+        _StatusValue(
+          icon: '🟡',
+          label: 'Review',
+          count: status == TranslatorPhraseStatus.needsReview ? 1 : 0,
+        ),
+        _StatusValue(
+          icon: '🔴',
+          label: 'Drift',
+          count: status == TranslatorPhraseStatus.canonicalDrift ? 1 : 0,
+        ),
+        _StatusValue(
+          icon: '❌',
+          label: 'Failed',
+          count: status == TranslatorPhraseStatus.failed ? 1 : 0,
+        ),
+      ],
+    );
+  }
+}
+
+final class _StatusValue extends StatelessWidget {
+  const _StatusValue({
+    required this.icon,
+    required this.label,
+    required this.count,
+  });
+
+  final String icon;
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text('$icon $label: $count');
   }
 }
 
@@ -203,43 +339,58 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       key: _TranslatorPhraseScreenState.resultCardKey,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              _statusLabel(labels, result.status),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            _TextValueRow(
-              label: labels.sourceLanguageRow,
-              value: result.sourceLanguage,
-            ),
-            _TextValueRow(
-              label: labels.sourceTextRow,
-              value: result.sourceText,
-            ),
-            _OptionalTextValueRow(label: 'RU', value: result.ru),
-            _OptionalTextValueRow(label: 'EN', value: result.en),
-            _OptionalTextValueRow(label: 'TH', value: result.th),
-            _OptionalTextValueRow(label: 'EN → RU', value: result.enToRu),
-            _OptionalTextValueRow(label: 'TH → RU', value: result.thToRu),
-            _OptionalTextValueRow(label: 'EN → TH', value: result.enToTh),
-            _OptionalTextValueRow(label: 'TH → EN', value: result.thToEn),
-            _OptionalTextValueRow(
-              label: labels.commentRow,
-              value: result.comment,
-            ),
-            _OptionalTextValueRow(
-              label: labels.canonicalCandidateRow,
-              value: result.candidateCanonicalPhrase,
-            ),
-          ],
+      color: _statusBackgroundColor(result.status),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        leading: Text(
+          _statusIcon(result.status),
+          style: const TextStyle(fontSize: 26),
         ),
+        title: Text(_statusLabel(labels, result.status)),
+        subtitle: Text(
+          _previewText(result),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: <Widget>[
+          _TextValueRow(
+            label: labels.sourceLanguageRow,
+            value: result.sourceLanguage,
+          ),
+          _TextValueRow(label: labels.sourceTextRow, value: result.sourceText),
+          _OptionalTextValueRow(label: 'RU', value: result.ru),
+          _OptionalTextValueRow(label: 'EN', value: result.en),
+          _OptionalTextValueRow(label: 'TH', value: result.th),
+          _OptionalTextValueRow(label: 'EN → RU', value: result.enToRu),
+          _OptionalTextValueRow(label: 'TH → RU', value: result.thToRu),
+          _OptionalTextValueRow(label: 'EN → TH', value: result.enToTh),
+          _OptionalTextValueRow(label: 'TH → EN', value: result.thToEn),
+          _OptionalTextValueRow(
+            label: labels.commentRow,
+            value: result.comment,
+          ),
+          _OptionalTextValueRow(
+            label: labels.canonicalCandidateRow,
+            value: result.candidateCanonicalPhrase,
+          ),
+        ],
       ),
     );
+  }
+
+  static String _previewText(TranslatorPhraseResult result) {
+    return result.ru ?? result.en ?? result.th ?? result.sourceText;
+  }
+
+  static String _statusIcon(TranslatorPhraseStatus status) {
+    return switch (status) {
+      TranslatorPhraseStatus.exact => '✅',
+      TranslatorPhraseStatus.equivalent => '🟢',
+      TranslatorPhraseStatus.needsReview => '🟡',
+      TranslatorPhraseStatus.canonicalDrift => '🔴',
+      TranslatorPhraseStatus.failed => '❌',
+    };
   }
 
   static String _statusLabel(
@@ -252,6 +403,16 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
       TranslatorPhraseStatus.needsReview => labels.needsReviewStatus,
       TranslatorPhraseStatus.canonicalDrift => labels.canonicalDriftStatus,
       TranslatorPhraseStatus.failed => labels.failedStatus,
+    };
+  }
+
+  static Color _statusBackgroundColor(TranslatorPhraseStatus status) {
+    return switch (status) {
+      TranslatorPhraseStatus.exact => Colors.green.shade50,
+      TranslatorPhraseStatus.equivalent => Colors.lightGreen.shade50,
+      TranslatorPhraseStatus.needsReview => Colors.yellow.shade50,
+      TranslatorPhraseStatus.canonicalDrift => Colors.red.shade50,
+      TranslatorPhraseStatus.failed => Colors.red.shade50,
     };
   }
 }
@@ -283,8 +444,15 @@ final class _TextValueRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: SelectableText('$label:\n$value'),
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 4),
+          SelectableText(value),
+        ],
+      ),
     );
   }
 }

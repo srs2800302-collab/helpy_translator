@@ -24,11 +24,31 @@ void main() {
       await tester.pumpWidget(_testApp(cubit));
 
       expect(find.text('Перевод формулировки'), findsOneWidget);
-      expect(find.text('Формулировка или текст'), findsOneWidget);
+      expect(find.text('Каноническая формулировка'), findsOneWidget);
+      expect(find.text('Дополнительные параметры'), findsOneWidget);
+      expect(find.text('Перевести'), findsOneWidget);
+      expect(find.byIcon(Icons.clear), findsOneWidget);
+      expect(find.text('✅ Exact: 0'), findsOneWidget);
+      expect(find.text('🟢 Equivalent: 0'), findsOneWidget);
+      expect(find.text('🟡 Review: 0'), findsOneWidget);
+      expect(find.text('🔴 Drift: 0'), findsOneWidget);
+      expect(find.text('❌ Failed: 0'), findsOneWidget);
+      expect(
+        find.byKey(const Key('translator_phrase_language_hint_field')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('translator_phrase_engineer_context_field')),
+        findsNothing,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('translator_phrase_advanced_options_tile')),
+      );
+      await tester.pumpAndSettle();
+
       expect(find.text('Подсказка языка'), findsOneWidget);
       expect(find.text('Контекст инженера'), findsOneWidget);
-      expect(find.text('Перевести'), findsOneWidget);
-      expect(find.text('Очистить'), findsOneWidget);
     });
 
     testWidgets('submits text through TranslatorPhraseCubit', (
@@ -40,6 +60,10 @@ void main() {
       addTearDown(cubit.close);
 
       await tester.pumpWidget(_testApp(cubit));
+      await tester.tap(
+        find.byKey(const Key('translator_phrase_advanced_options_tile')),
+      );
+      await tester.pumpAndSettle();
 
       await tester.enterText(
         find.byKey(const Key('translator_phrase_source_text_field')),
@@ -64,7 +88,9 @@ void main() {
       expect(provider.sourceLanguageHint, 'en');
       expect(provider.engineerContext, 'Registry wording review.');
       expect(find.text('Точное совпадение'), findsOneWidget);
-      expect(find.text('RU:\nПроверить формулировку.'), findsOneWidget);
+      expect(find.text('Результаты переводов'), findsOneWidget);
+      expect(find.text('Проверить формулировку.'), findsOneWidget);
+      expect(find.text('✅ Exact: 1'), findsOneWidget);
     });
 
     testWidgets('shows loading state while translation is pending', (
@@ -128,6 +154,10 @@ void main() {
       addTearDown(cubit.close);
 
       await tester.pumpWidget(_testApp(cubit));
+      await tester.tap(
+        find.byKey(const Key('translator_phrase_advanced_options_tile')),
+      );
+      await tester.pumpAndSettle();
 
       await tester.enterText(
         find.byKey(const Key('translator_phrase_source_text_field')),
@@ -246,11 +276,13 @@ Widget _testApp(
   ValueChanged<TranslatorPhraseResult>? onOperationRequested,
 }) {
   return MaterialApp(
-    home: BlocProvider<TranslatorPhraseCubit>.value(
-      value: cubit,
-      child: TranslatorPhraseScreen(
-        uiLanguage: RegistryStudioUiLanguage.ru,
-        onOperationRequested: onOperationRequested,
+    home: Scaffold(
+      body: BlocProvider<TranslatorPhraseCubit>.value(
+        value: cubit,
+        child: TranslatorPhraseScreen(
+          uiLanguage: RegistryStudioUiLanguage.ru,
+          onOperationRequested: onOperationRequested,
+        ),
       ),
     ),
   );

@@ -24,12 +24,14 @@ final class RegistryStudioUiLabels {
         operationCreationScreenTitle: 'Создание инженерной операции',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'Перевод формулировки',
-          sourceTextLabel: 'Формулировка или текст',
+          sourceTextLabel: 'Каноническая формулировка',
           sourceLanguageHintLabel: 'Подсказка языка',
           sourceLanguageHintHelper: 'Например: ru, en, th',
           engineerContextLabel: 'Контекст инженера',
           translateButton: 'Перевести',
           clearButton: 'Очистить',
+          additionalParametersLabel: 'Дополнительные параметры',
+          resultsTitle: 'Результаты переводов',
           sourceLanguageRow: 'Исходный язык',
           sourceTextRow: 'Исходный текст',
           commentRow: 'Комментарий',
@@ -106,12 +108,14 @@ final class RegistryStudioUiLabels {
         operationCreationScreenTitle: 'Create engineering operation',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'Phrase translation',
-          sourceTextLabel: 'Phrase or text',
+          sourceTextLabel: 'Canonical wording',
           sourceLanguageHintLabel: 'Language hint',
           sourceLanguageHintHelper: 'Example: ru, en, th',
           engineerContextLabel: 'Engineer context',
           translateButton: 'Translate',
           clearButton: 'Clear',
+          additionalParametersLabel: 'Additional parameters',
+          resultsTitle: 'Translation results',
           sourceLanguageRow: 'Source language',
           sourceTextRow: 'Source text',
           commentRow: 'Comment',
@@ -188,12 +192,14 @@ final class RegistryStudioUiLabels {
         operationCreationScreenTitle: 'สร้างงานวิศวกรรม',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'แปลถ้อยคำ',
-          sourceTextLabel: 'ถ้อยคำหรือข้อความ',
+          sourceTextLabel: 'ถ้อยคำมาตรฐาน',
           sourceLanguageHintLabel: 'คำใบ้ภาษา',
           sourceLanguageHintHelper: 'เช่น: ru, en, th',
           engineerContextLabel: 'บริบทของวิศวกร',
           translateButton: 'แปล',
           clearButton: 'ล้าง',
+          additionalParametersLabel: 'พารามิเตอร์เพิ่มเติม',
+          resultsTitle: 'ผลการแปล',
           sourceLanguageRow: 'ภาษาต้นทาง',
           sourceTextRow: 'ข้อความต้นทาง',
           commentRow: 'ความคิดเห็น',
@@ -286,6 +292,8 @@ final class RegistryStudioTranslatorPhraseLabels {
     required this.engineerContextLabel,
     required this.translateButton,
     required this.clearButton,
+    required this.additionalParametersLabel,
+    required this.resultsTitle,
     required this.sourceLanguageRow,
     required this.sourceTextRow,
     required this.commentRow,
@@ -304,6 +312,8 @@ final class RegistryStudioTranslatorPhraseLabels {
   final String engineerContextLabel;
   final String translateButton;
   final String clearButton;
+  final String additionalParametersLabel;
+  final String resultsTitle;
   final String sourceLanguageRow;
   final String sourceTextRow;
   final String commentRow;
