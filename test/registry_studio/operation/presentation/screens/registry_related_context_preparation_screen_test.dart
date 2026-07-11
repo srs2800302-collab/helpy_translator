@@ -10,6 +10,7 @@ import 'package:helpy_translator/registry_studio/operation/presentation/screens/
 import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
 
 import '../../../core/fixtures/registry_entity_fixture.dart';
+import 'package:helpy_translator/registry_studio/core/application/related_context/registry_resolved_related_context.dart';
 
 void main() {
   group('RegistryRelatedContextPreparationScreen', () {
@@ -29,7 +30,15 @@ void main() {
     testWidgets(
       'prepares related and resolved context through existing use cases',
       (WidgetTester tester) async {
-        await tester.pumpWidget(_testApp());
+        RegistryResolvedRelatedContext? preparedContext;
+
+        await tester.pumpWidget(
+          _testApp(
+            onContextPrepared: (RegistryResolvedRelatedContext context) {
+              preparedContext = context;
+            },
+          ),
+        );
 
         await tester.tap(
           find.byKey(const Key('registry_related_context_prepare_button')),
@@ -61,6 +70,14 @@ void main() {
           find.text('Missing related entity ids:\nrelated-002'),
           findsOneWidget,
         );
+        expect(preparedContext, isNotNull);
+        expect(
+          preparedContext!.resolvedRelatedEntities.single.id,
+          RegistryEntityId('related-001'),
+        );
+        expect(preparedContext!.missingRelatedEntityIds, <RegistryEntityId>[
+          RegistryEntityId('related-002'),
+        ]);
         expect(find.textContaining('Ошибка подготовки context'), findsNothing);
       },
     );
@@ -110,6 +127,7 @@ Widget _testApp({
   RegistryStudioUiLanguage uiLanguage = RegistryStudioUiLanguage.ru,
   Iterable<RegistryRelation>? relations,
   Iterable<RegistryEntity>? availableRelatedEntities,
+  ValueChanged<RegistryResolvedRelatedContext>? onContextPrepared,
 }) {
   final RegistryEntity primary = registryEntityFixture(id: 'primary');
   final RegistryEntity related = registryEntityFixture(id: 'related-001');
@@ -137,6 +155,7 @@ Widget _testApp({
       prepareRegistryRelatedContext: PrepareRegistryRelatedContext(),
       prepareRegistryResolvedRelatedContext:
           PrepareRegistryResolvedRelatedContext(),
+      onContextPrepared: onContextPrepared,
     ),
   );
 }

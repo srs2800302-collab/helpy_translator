@@ -83,6 +83,9 @@ void main() {
               TransitionRegistryEngineeringOperationStatus(),
           workSessionPersistence: persistence,
           revisionPrimaryEntityId: RegistryEntityId('primary'),
+          revisionRelatedEntityIds: <RegistryEntityId>[
+            RegistryEntityId('related-001'),
+          ],
         ),
       );
     }
@@ -112,6 +115,9 @@ void main() {
     expect(revisions.last.revisionNumber, 2);
     expect(revisions.last.previousRevisionId, revisions.first.id);
     expect(revisions.last.primaryEntityId, RegistryEntityId('primary'));
+    expect(revisions.last.relatedEntityIds, <RegistryEntityId>[
+      RegistryEntityId('related-001'),
+    ]);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

@@ -22,6 +22,7 @@ import 'package:helpy_translator/registry_studio/translator/translator_phrase_re
 import 'package:helpy_translator/registry_studio/translator/translator_phrase_status.dart';
 
 import '../../core/fixtures/registry_entity_fixture.dart';
+import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_relation_meaning.dart';
 
 void main() {
   testWidgets('opens Translator screen by default', (
@@ -127,6 +128,39 @@ void main() {
     );
   });
 
+  testWidgets('passes prepared related context to operation workspace', (
+    WidgetTester tester,
+  ) async {
+    final _FakeTranslatorPhraseProvider provider =
+        _FakeTranslatorPhraseProvider(_translatorResult());
+
+    await tester.pumpWidget(_testApp(provider));
+
+    await tester.tap(
+      find.byKey(const Key('registry_studio_related_context_screen_button')),
+    );
+    await tester.pump();
+
+    await tester.tap(
+      find.byKey(const Key('registry_related_context_prepare_button')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
+    );
+    await tester.pump();
+
+    final RegistryEngineeringOperationWorkspaceScreen workspace = tester
+        .widget<RegistryEngineeringOperationWorkspaceScreen>(
+          find.byType(RegistryEngineeringOperationWorkspaceScreen),
+        );
+
+    expect(workspace.revisionRelatedEntityIds.toList(), <RegistryEntityId>[
+      RegistryEntityId('related-001'),
+    ]);
+  });
+
   testWidgets('switches to Guard record screen', (WidgetTester tester) async {
     final _FakeTranslatorPhraseProvider provider =
         _FakeTranslatorPhraseProvider(_translatorResult());
@@ -207,6 +241,7 @@ Widget _testApp(_FakeTranslatorPhraseProvider provider) {
   final RegistryEntity primary = registryEntityFixture(
     id: 'guard-record-primary',
   );
+  final RegistryEntity related = registryEntityFixture(id: 'related-001');
 
   return RegistryStudioApp(
     translatePhrase: TranslatePhrase(provider: provider),
@@ -215,8 +250,14 @@ Widget _testApp(_FakeTranslatorPhraseProvider provider) {
         TransitionRegistryEngineeringOperationStatus(),
     guardRecordEntity: _guardRecordEntity(),
     relatedContextPrimary: primary,
-    relatedContextRelations: const <RegistryRelation>[],
-    availableRelatedEntities: const <RegistryEntity>[],
+    relatedContextRelations: <RegistryRelation>[
+      RegistryRelation(
+        sourceEntityId: primary.id,
+        targetEntityId: related.id,
+        meaning: RegistryRelationMeaning('depends_on'),
+      ),
+    ],
+    availableRelatedEntities: <RegistryEntity>[related],
     prepareRegistryRelatedContext: PrepareRegistryRelatedContext(),
     prepareRegistryResolvedRelatedContext:
         PrepareRegistryResolvedRelatedContext(),

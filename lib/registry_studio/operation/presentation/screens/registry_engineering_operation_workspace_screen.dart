@@ -18,6 +18,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     required this.transitionRegistryEngineeringOperationStatus,
     this.workSessionPersistence,
     this.revisionPrimaryEntityId,
+    this.revisionRelatedEntityIds = const <RegistryEntityId>[],
     super.key,
   });
 
@@ -28,6 +29,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   final RegistryWorkSessionPersistence? workSessionPersistence;
   final RegistryEntityId? revisionPrimaryEntityId;
 
+  final Iterable<RegistryEntityId> revisionRelatedEntityIds;
   @override
   State<RegistryEngineeringOperationWorkspaceScreen> createState() =>
       _RegistryEngineeringOperationWorkspaceScreenState();
@@ -136,7 +138,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           workingContent: workingContent,
           previousRevisionId: previous?.id,
           primaryEntityId: primaryEntityId,
-          relatedEntityIds: const <RegistryEntityId>[],
+          relatedEntityIds: widget.revisionRelatedEntityIds,
         );
 
     final List<RegistryEngineeringOperationRevision> next =

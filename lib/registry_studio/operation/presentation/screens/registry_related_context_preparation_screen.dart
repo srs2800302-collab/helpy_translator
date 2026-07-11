@@ -17,6 +17,7 @@ final class RegistryRelatedContextPreparationScreen extends StatefulWidget {
     required this.availableRelatedEntities,
     required this.prepareRegistryRelatedContext,
     required this.prepareRegistryResolvedRelatedContext,
+    this.onContextPrepared,
     super.key,
   });
 
@@ -28,6 +29,7 @@ final class RegistryRelatedContextPreparationScreen extends StatefulWidget {
   final PrepareRegistryResolvedRelatedContext
   prepareRegistryResolvedRelatedContext;
 
+  final ValueChanged<RegistryResolvedRelatedContext>? onContextPrepared;
   @override
   State<RegistryRelatedContextPreparationScreen> createState() =>
       _RegistryRelatedContextPreparationScreenState();
@@ -77,6 +79,8 @@ final class _RegistryRelatedContextPreparationScreenState
         _resolvedRelatedContext = resolvedRelatedContext;
         _errorMessage = null;
       });
+
+      widget.onContextPrepared?.call(resolvedRelatedContext);
     } on ArgumentError catch (error) {
       setState(() {
         _relatedContext = null;
