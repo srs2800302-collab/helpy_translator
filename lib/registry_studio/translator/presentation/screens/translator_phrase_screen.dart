@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../presentation/language/registry_studio_ui_labels.dart';
@@ -472,6 +473,26 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
         ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: <Widget>[
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(
+                  ClipboardData(text: _copyAllText(labels, result)),
+                );
+
+                if (!context.mounted) {
+                  return;
+                }
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(labels.copyAllSuccessMessage)),
+                );
+              },
+              icon: const Icon(Icons.copy),
+              label: Text(labels.copyAllButton),
+            ),
+          ),
           _TextValueRow(
             label: labels.verdictRow,
             value: _statusLabel(labels, result.status),
@@ -499,6 +520,50 @@ final class _TranslatorPhraseResultCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _copyAllText(
+    RegistryStudioTranslatorPhraseLabels labels,
+    TranslatorPhraseResult result,
+  ) {
+    return '''
+${labels.sourceLanguageRow}:
+${result.sourceLanguage}
+
+${labels.sourceTextRow}:
+${result.sourceText}
+
+RU:
+${result.ru ?? ''}
+
+EN:
+${result.en ?? ''}
+
+TH:
+${result.th ?? ''}
+
+EN_TO_RU:
+${result.enToRu ?? ''}
+
+TH_TO_RU:
+${result.thToRu ?? ''}
+
+EN_TO_TH:
+${result.enToTh ?? ''}
+
+TH_TO_EN:
+${result.thToEn ?? ''}
+
+${labels.verdictRow}:
+${_statusLabel(labels, result.status)}
+
+${labels.commentRow}:
+${result.comment ?? ''}
+
+${labels.canonicalCandidateRow}:
+${result.candidateCanonicalPhrase ?? ''}
+'''
+        .trim();
   }
 
   static String _previewText(TranslatorPhraseResult result) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translate_phrase.dart';
@@ -125,6 +126,26 @@ void main() {
     testWidgets('shows verdict, all nine sections, audit criteria and reason', (
       WidgetTester tester,
     ) async {
+      String? copiedText;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (
+            MethodCall call,
+          ) async {
+            if (call.method == 'Clipboard.setData') {
+              final Map<Object?, Object?> arguments =
+                  call.arguments as Map<Object?, Object?>;
+              copiedText = arguments['text'] as String?;
+            }
+
+            return null;
+          });
+
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+
       final TranslatorPhraseResult result = TranslatorPhraseResult(
         sourceLanguage: 'en',
         sourceText: 'SOURCE TEXT value',
@@ -205,6 +226,25 @@ Full audit reason.
       );
       expect(find.textContaining('AMBIGUOUS_WORDING: YES'), findsOneWidget);
       expect(find.textContaining('REASON\nFull audit reason.'), findsOneWidget);
+
+      expect(find.text('Копировать всё'), findsOneWidget);
+
+      await tester.tap(find.text('Копировать всё'));
+      await tester.pump();
+
+      expect(copiedText, isNotNull);
+      expect(copiedText, contains('SOURCE LANGUAGE:\nen'));
+      expect(copiedText, contains('SOURCE TEXT:\nSOURCE TEXT value'));
+      expect(copiedText, contains('RU:\nRU value'));
+      expect(copiedText, contains('EN:\nEN value'));
+      expect(copiedText, contains('TH:\nTH value'));
+      expect(copiedText, contains('EN_TO_RU:\nEN_TO_RU value'));
+      expect(copiedText, contains('TH_TO_RU:\nTH_TO_RU value'));
+      expect(copiedText, contains('EN_TO_TH:\nEN_TO_TH value'));
+      expect(copiedText, contains('TH_TO_EN:\nTH_TO_EN value'));
+      expect(copiedText, contains('Вердикт:\nНужна проверка'));
+      expect(copiedText, contains('Аудит и диагностика:'));
+      expect(find.text('Все варианты скопированы'), findsOneWidget);
     });
 
     testWidgets('shows loading state while translation is pending', (

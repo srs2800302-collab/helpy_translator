@@ -30,6 +30,8 @@ final class RegistryStudioUiLabels {
           engineerContextLabel: 'Контекст инженера',
           translateButton: 'Перевести',
           clearButton: 'Очистить',
+          copyAllButton: 'Копировать всё',
+          copyAllSuccessMessage: 'Все варианты скопированы',
           additionalParametersLabel: 'Дополнительные параметры',
           resultsTitle: 'Результаты переводов',
           sourceLanguageRow: 'SOURCE LANGUAGE',
@@ -115,6 +117,8 @@ final class RegistryStudioUiLabels {
           engineerContextLabel: 'Engineer context',
           translateButton: 'Translate',
           clearButton: 'Clear',
+          copyAllButton: 'Copy all',
+          copyAllSuccessMessage: 'All variants copied',
           additionalParametersLabel: 'Additional parameters',
           resultsTitle: 'Translation results',
           sourceLanguageRow: 'SOURCE LANGUAGE',
@@ -200,6 +204,8 @@ final class RegistryStudioUiLabels {
           engineerContextLabel: 'บริบทของวิศวกร',
           translateButton: 'แปล',
           clearButton: 'ล้าง',
+          copyAllButton: 'คัดลอกทั้งหมด',
+          copyAllSuccessMessage: 'คัดลอกผลลัพธ์ทั้งหมดแล้ว',
           additionalParametersLabel: 'พารามิเตอร์เพิ่มเติม',
           resultsTitle: 'ผลการแปล',
           sourceLanguageRow: 'SOURCE LANGUAGE',
@@ -295,6 +301,8 @@ final class RegistryStudioTranslatorPhraseLabels {
     required this.engineerContextLabel,
     required this.translateButton,
     required this.clearButton,
+    required this.copyAllButton,
+    required this.copyAllSuccessMessage,
     required this.additionalParametersLabel,
     required this.resultsTitle,
     required this.sourceLanguageRow,
@@ -316,6 +324,8 @@ final class RegistryStudioTranslatorPhraseLabels {
   final String engineerContextLabel;
   final String translateButton;
   final String clearButton;
+  final String copyAllButton;
+  final String copyAllSuccessMessage;
   final String additionalParametersLabel;
   final String resultsTitle;
   final String sourceLanguageRow;
