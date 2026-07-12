@@ -53,12 +53,24 @@ void main() {
           (RequestOptions request) =>
               _payload(request)['max_completion_tokens'],
         ),
-        <Object?>[700, 500],
+        <Object?>[512, 500],
+      );
+
+      expect(
+        requests.map<Object?>(
+          (RequestOptions request) => _payload(request)['temperature'],
+        ),
+        <Object?>[0.6, 0.0],
+      );
+
+      expect(
+        requests.map<Object?>(
+          (RequestOptions request) => _payload(request)['top_p'],
+        ),
+        <Object?>[0.6, 1.0],
       );
 
       for (final RequestOptions request in requests) {
-        expect(_payload(request)['temperature'], 0.0);
-        expect(_payload(request)['top_p'], 1.0);
         expect(_payload(request)['frequency_penalty'], 0.0);
         _expectNoDirectionSymbols(_systemContent(request));
       }

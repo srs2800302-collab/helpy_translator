@@ -46,7 +46,7 @@ final class TyphoonTranslatorPhraseProvider
           sourceLanguageHint: normalizedSourceLanguageHint,
           engineerContext: normalizedEngineerContext,
         ),
-        maxTokens: 700,
+        maxTokens: 512,
       );
       translation = parsedTranslation;
 
@@ -151,8 +151,8 @@ $returnedSourceText
       data: <String, Object>{
         'model': appConfig.typhoonModel,
         'max_completion_tokens': maxTokens,
-        'temperature': 0.0,
-        'top_p': 1.0,
+        'temperature': 0.6,
+        'top_p': 0.6,
         'frequency_penalty': 0.0,
         'messages': <Map<String, String>>[
           <String, String>{'role': 'system', 'content': systemPrompt},
