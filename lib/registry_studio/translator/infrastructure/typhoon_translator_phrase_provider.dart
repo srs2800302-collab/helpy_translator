@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/config/app_config.dart';
@@ -37,7 +39,7 @@ final class TyphoonTranslatorPhraseProvider
     final List<String> technicalDiagnostics = <String>[];
 
     try {
-      final String translationContent = await _request(
+      final Map<String, String> parsedTranslation = await _requestTranslation(
         systemPrompt: _translationPrompt,
         userContent: _buildTranslationInput(
           sourceText: normalizedSourceText,
@@ -45,13 +47,6 @@ final class TyphoonTranslatorPhraseProvider
           engineerContext: normalizedEngineerContext,
         ),
         maxTokens: 700,
-      );
-
-      final Map<String, String> parsedTranslation = _parseStrictSections(
-        content: translationContent,
-        labels: _translationLabels,
-        responseName: 'Ответ перевода Typhoon',
-        diagnostics: technicalDiagnostics,
       );
       translation = parsedTranslation;
 
@@ -88,7 +83,7 @@ $returnedSourceText
         );
       }
 
-      final String auditContent = await _request(
+      final String auditContent = await _requestContent(
         systemPrompt: _auditPrompt,
         userContent: _buildAuditInput(parsedTranslation),
         maxTokens: 500,
@@ -146,7 +141,31 @@ $returnedSourceText
     }
   }
 
-  Future<String> _request({
+  Future<Map<String, String>> _requestTranslation({
+    required String systemPrompt,
+    required String userContent,
+    required int maxTokens,
+  }) async {
+    final Response<dynamic> response = await apiClient.dio.post<dynamic>(
+      '/chat/completions',
+      data: <String, Object>{
+        'model': appConfig.typhoonModel,
+        'max_completion_tokens': maxTokens,
+        'temperature': 0.0,
+        'top_p': 1.0,
+        'frequency_penalty': 0.0,
+        'messages': <Map<String, String>>[
+          <String, String>{'role': 'system', 'content': systemPrompt},
+          <String, String>{'role': 'user', 'content': userContent},
+        ],
+        'tools': _translationTools,
+      },
+    );
+
+    return _extractTranslationArguments(response.data);
+  }
+
+  Future<String> _requestContent({
     required String systemPrompt,
     required String userContent,
     required int maxTokens,
@@ -445,7 +464,103 @@ ${audit['REASON']}
         .trim();
   }
 
-  static String _extractContent(Object? data) {
+  static Map<String, String> _extractTranslationArguments(Object? data) {
+    final Map<String, dynamic> message = _extractMessage(data);
+    final Object? toolCalls = message['tool_calls'];
+
+    if (toolCalls is! List<dynamic> || toolCalls.length != 1) {
+      throw const FormatException(
+        'Ответ Typhoon API должен содержать ровно один translation tool call.',
+      );
+    }
+
+    final Object? toolCall = toolCalls.single;
+
+    if (toolCall is! Map<String, dynamic>) {
+      throw const FormatException(
+        'Некорректный translation tool call Typhoon API.',
+      );
+    }
+
+    final Object? function = toolCall['function'];
+
+    if (function is! Map<String, dynamic>) {
+      throw const FormatException('Translation tool call не содержит функцию.');
+    }
+
+    if (function['name'] != _translationToolName) {
+      throw const FormatException(
+        'Typhoon API вызвал неожиданную translation function.',
+      );
+    }
+
+    final Object? rawArguments = function['arguments'];
+
+    if (rawArguments is! String || rawArguments.trim().isEmpty) {
+      throw const FormatException(
+        'Translation tool call не содержит arguments.',
+      );
+    }
+
+    final Object? decodedArguments;
+
+    try {
+      decodedArguments = jsonDecode(rawArguments);
+    } on FormatException {
+      throw const FormatException(
+        'Translation tool arguments содержат некорректный JSON.',
+      );
+    }
+
+    if (decodedArguments is! Map<String, dynamic>) {
+      throw const FormatException(
+        'Translation tool arguments должны быть JSON object.',
+      );
+    }
+
+    for (final String key in _translationArgumentLabels.keys) {
+      if (!decodedArguments.containsKey(key)) {
+        throw FormatException(
+          'Translation tool arguments не содержат обязательный ключ $key.',
+        );
+      }
+    }
+
+    for (final String key in decodedArguments.keys) {
+      if (!_translationArgumentLabels.containsKey(key)) {
+        throw FormatException(
+          'Translation tool arguments содержат неожиданный ключ $key.',
+        );
+      }
+    }
+
+    final Map<String, String> translation = <String, String>{};
+
+    for (final MapEntry<String, String> entry
+        in _translationArgumentLabels.entries) {
+      final Object? rawValue = decodedArguments[entry.key];
+
+      if (rawValue is! String) {
+        throw FormatException(
+          'Translation tool argument ${entry.key} должен быть строкой.',
+        );
+      }
+
+      final String value = rawValue.trim();
+
+      _validateSectionValue(
+        responseName: 'Translation tool result',
+        label: entry.value,
+        value: value,
+      );
+
+      translation[entry.value] = value;
+    }
+
+    return translation;
+  }
+
+  static Map<String, dynamic> _extractMessage(Object? data) {
     if (data is! Map<String, dynamic>) {
       throw const FormatException('Некорректный ответ Typhoon API.');
     }
@@ -453,7 +568,7 @@ ${audit['REASON']}
     final Object? choices = data['choices'];
 
     if (choices is! List<dynamic> || choices.isEmpty) {
-      throw const FormatException('Ответ Typhoon API не содержит перевод.');
+      throw const FormatException('Ответ Typhoon API не содержит результат.');
     }
 
     final Object? firstChoice = choices.first;
@@ -468,6 +583,11 @@ ${audit['REASON']}
       throw const FormatException('Ответ Typhoon API не содержит сообщение.');
     }
 
+    return message;
+  }
+
+  static String _extractContent(Object? data) {
+    final Map<String, dynamic> message = _extractMessage(data);
     final Object? content = message['content'];
 
     if (content is! String || content.trim().isEmpty) {
@@ -539,6 +659,89 @@ ${audit['REASON']}
     'NOT PROVIDED',
   };
 
+  static const String _translationToolName = 'submit_translation';
+
+  static const Map<String, String> _translationArgumentLabels =
+      <String, String>{
+        'source_language': 'SOURCE LANGUAGE',
+        'source_text': 'SOURCE TEXT',
+        'ru': 'RU',
+        'en': 'EN',
+        'th': 'TH',
+        'en_to_ru': 'EN_TO_RU',
+        'th_to_ru': 'TH_TO_RU',
+        'en_to_th': 'EN_TO_TH',
+        'th_to_en': 'TH_TO_EN',
+      };
+
+  static const List<Map<String, Object>> _translationTools =
+      <Map<String, Object>>[
+        <String, Object>{
+          'type': 'function',
+          'function': <String, Object>{
+            'name': _translationToolName,
+            'description':
+                'Submit the complete multilingual translation and reverse '
+                'translations.',
+            'parameters': <String, Object>{
+              'type': 'object',
+              'properties': <String, Object>{
+                'source_language': <String, Object>{
+                  'type': 'string',
+                  'enum': <String>['RU', 'EN', 'TH'],
+                  'description': 'Exactly one detected source-language code.',
+                },
+                'source_text': <String, Object>{
+                  'type': 'string',
+                  'description':
+                      'The original source text exactly as supplied.',
+                },
+                'ru': <String, Object>{
+                  'type': 'string',
+                  'description': 'Natural Russian translation.',
+                },
+                'en': <String, Object>{
+                  'type': 'string',
+                  'description': 'Natural English translation.',
+                },
+                'th': <String, Object>{
+                  'type': 'string',
+                  'description': 'Natural Thai translation.',
+                },
+                'en_to_ru': <String, Object>{
+                  'type': 'string',
+                  'description': 'Reverse translation of EN into Russian.',
+                },
+                'th_to_ru': <String, Object>{
+                  'type': 'string',
+                  'description': 'Reverse translation of TH into Russian.',
+                },
+                'en_to_th': <String, Object>{
+                  'type': 'string',
+                  'description': 'Reverse translation of EN into Thai.',
+                },
+                'th_to_en': <String, Object>{
+                  'type': 'string',
+                  'description': 'Reverse translation of TH into English.',
+                },
+              },
+              'required': <String>[
+                'source_language',
+                'source_text',
+                'ru',
+                'en',
+                'th',
+                'en_to_ru',
+                'th_to_ru',
+                'en_to_th',
+                'th_to_en',
+              ],
+              'additionalProperties': false,
+            },
+          },
+        },
+      ];
+
   static const List<String> _translationLabels = <String>[
     'SOURCE LANGUAGE',
     'SOURCE TEXT',
@@ -574,34 +777,7 @@ Do not explain.
 Do not improve wording.
 Preserve business meaning and service-marketplace terminology.
 
-Output strictly:
-
-SOURCE LANGUAGE:
-RU | EN | TH
-
-SOURCE TEXT:
-...
-
-RU:
-...
-
-EN:
-...
-
-TH:
-...
-
-EN_TO_RU:
-...
-
-TH_TO_RU:
-...
-
-EN_TO_TH:
-...
-
-TH_TO_EN:
-...
+Call submit_translation exactly once with all required values.
 ''';
 
   static const String _auditPrompt = '''
