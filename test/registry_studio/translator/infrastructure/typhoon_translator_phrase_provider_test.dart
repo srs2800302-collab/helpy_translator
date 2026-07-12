@@ -79,7 +79,7 @@ void main() {
           _expectNoDirectionSymbols(_systemContent(request));
         }
 
-        expect(_userContent(requests.first), 'Source text:\n"Check wording."');
+        expect(_userContent(requests.first), 'Source text:\nCheck wording.');
         expect(
           _systemContent(requests.first),
           contains('You are Helpy strict multilingual translator.'),
@@ -87,6 +87,13 @@ void main() {
         expect(
           _systemContent(requests.first),
           contains('You must return exactly 9 sections.'),
+        );
+        expect(
+          _systemContent(requests.first),
+          contains(
+            'Preserve SOURCE TEXT exactly as provided. '
+            'Do not add outer quotes.',
+          ),
         );
         expect(
           _systemContent(requests.first),
@@ -216,34 +223,32 @@ void main() {
       expect(requests, hasLength(1));
     });
 
-    test(
-      'treats one outer quote pair as technical rather than semantic drift',
-      () async {
-        final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-          responses: <Map<String, dynamic>>[
-            _contentResponse(
-              _completeTranslationContent
-                  .replaceFirst(
-                    'SOURCE TEXT:\nCheck wording.',
-                    'SOURCE TEXT:\n"Check wording."',
-                  )
-                  .replaceFirst('EN:\nCheck wording.', 'EN:\n"Check wording."'),
-            ),
-            _contentResponse(_exactAuditContent),
-          ],
-        );
+    test('silently removes one added outer quote pair', () async {
+      final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+        responses: <Map<String, dynamic>>[
+          _contentResponse(
+            _completeTranslationContent
+                .replaceFirst(
+                  'SOURCE TEXT:\nCheck wording.',
+                  'SOURCE TEXT:\n"Check wording."',
+                )
+                .replaceFirst('EN:\nCheck wording.', 'EN:\n"Check wording."'),
+          ),
+          _contentResponse(_exactAuditContent),
+        ],
+      );
 
-        final TranslatorPhraseResult result = await provider.translatePhrase(
-          sourceText: 'Check wording.',
-        );
+      final TranslatorPhraseResult result = await provider.translatePhrase(
+        sourceText: 'Check wording.',
+      );
 
-        expect(result.status, TranslatorPhraseStatus.exact);
-        expect(result.sourceText, '"Check wording."');
-        expect(result.comment, contains('лишнюю внешнюю пару кавычек'));
-        expect(result.comment, isNot(contains('Переданный исходный текст:')));
-        expect(result.comment, isNot(contains('Секция исходного языка EN')));
-      },
-    );
+      expect(result.status, TranslatorPhraseStatus.exact);
+      expect(result.sourceText, 'Check wording.');
+      expect(result.en, 'Check wording.');
+      expect(result.comment, isNot(contains('лишнюю внешнюю пару кавычек')));
+      expect(result.comment, isNot(contains('Переданный исходный текст:')));
+      expect(result.comment, isNot(contains('Секция исходного языка EN')));
+    });
 
     test(
       'preserves intentional outer quotes from the submitted source text',
@@ -498,7 +503,7 @@ void main() {
       expect(requests, hasLength(2));
       expect(
         _userContent(requests.first),
-        contains('Source text:\n"Check -> wording."'),
+        contains('Source text:\nCheck -> wording.'),
       );
       expect(
         _userContent(requests.last),

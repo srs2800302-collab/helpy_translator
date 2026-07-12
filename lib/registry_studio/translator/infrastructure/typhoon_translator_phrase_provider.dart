@@ -40,22 +40,26 @@ final class TyphoonTranslatorPhraseProvider
       _validateTranslationSourceLanguage(translation: parsedTranslation);
       _validateCompleteTranslation(parsedTranslation);
 
-      final String returnedSourceText = parsedTranslation['SOURCE TEXT']!;
+      final String rawReturnedSourceText = parsedTranslation['SOURCE TEXT']!;
       final String sourceLanguage = parsedTranslation['SOURCE LANGUAGE']!;
-      final String sourceLanguageText = parsedTranslation[sourceLanguage]!;
+      final String rawSourceLanguageText = parsedTranslation[sourceLanguage]!;
 
       final bool returnedSourceTextHasAddedOuterQuotes =
-          returnedSourceText == '"$normalizedSourceText"';
+          rawReturnedSourceText == '"$normalizedSourceText"';
+      final bool sourceLanguageTextHasAddedOuterQuotes =
+          rawSourceLanguageText == '"$normalizedSourceText"';
 
-      if (returnedSourceTextHasAddedOuterQuotes) {
-        technicalDiagnostics.add(
-          'SOURCE TEXT из ответа Typhoon содержит лишнюю внешнюю пару '
-          'кавычек. Смысл исходного текста не изменён.',
-        );
-      }
+      final String returnedSourceText = returnedSourceTextHasAddedOuterQuotes
+          ? normalizedSourceText
+          : rawReturnedSourceText;
+      final String sourceLanguageText = sourceLanguageTextHasAddedOuterQuotes
+          ? normalizedSourceText
+          : rawSourceLanguageText;
 
-      if (returnedSourceText != normalizedSourceText &&
-          !returnedSourceTextHasAddedOuterQuotes) {
+      parsedTranslation['SOURCE TEXT'] = returnedSourceText;
+      parsedTranslation[sourceLanguage] = sourceLanguageText;
+
+      if (returnedSourceText != normalizedSourceText) {
         semanticDiagnostics.add(
           '''
 Переданный исходный текст:
@@ -209,7 +213,7 @@ $returnedSourceText
   }
 
   static String _buildTranslationInput({required String sourceText}) {
-    return 'Source text:\n"$sourceText"';
+    return 'Source text:\n$sourceText';
   }
 
   static String _buildAuditInput(Map<String, String> translation) {
@@ -568,7 +572,7 @@ Do not return empty values.
 Do not use dashes as values.
 
 Task:
-1. Preserve SOURCE TEXT exactly as provided, without quotes.
+1. Preserve SOURCE TEXT exactly as provided. Do not add outer quotes.
 2. Produce normalized RU, EN and TH versions.
 3. Produce reverse translations for EN_TO_RU, TH_TO_RU, EN_TO_TH, TH_TO_EN.
 
