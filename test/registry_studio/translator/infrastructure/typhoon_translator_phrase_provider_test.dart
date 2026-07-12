@@ -8,124 +8,93 @@ import 'package:helpy_translator/registry_studio/translator/translator_phrase_st
 
 void main() {
   group('TyphoonTranslatorPhraseProvider', () {
+    test('performs two requests and maps the validated result', () async {
+      final List<RequestOptions> requests = <RequestOptions>[];
+      final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+        responses: <String>[_completeTranslationContent, _exactAuditContent],
+        requests: requests,
+      );
+
+      final TranslatorPhraseResult result = await provider.translatePhrase(
+        sourceText: ' Check wording. ',
+        sourceLanguageHint: ' en ',
+        engineerContext: ' Registry wording review. ',
+      );
+
+      expect(result.sourceLanguage, 'EN');
+      expect(result.sourceText, 'Check wording.');
+      expect(result.status, TranslatorPhraseStatus.exact);
+      expect(result.ru, 'Проверить формулировку.');
+      expect(result.en, 'Check wording.');
+      expect(result.th, 'ตรวจสอบข้อความ');
+      expect(result.enToRu, 'Проверить формулировку.');
+      expect(result.thToRu, 'Проверить текст.');
+      expect(result.enToTh, 'ตรวจสอบข้อความ');
+      expect(result.thToEn, 'Check the text.');
+      expect(result.comment, contains('Meaning preserved: YES'));
+      expect(result.comment, contains('Полное смысловое совпадение.'));
+
+      expect(requests, hasLength(2));
+      expect(
+        requests.map<String>((RequestOptions request) => request.path),
+        everyElement('/chat/completions'),
+      );
+      expect(
+        requests.map<Object?>(
+          (RequestOptions request) => _payload(request)['model'],
+        ),
+        everyElement(_testTyphoonModel),
+      );
+      expect(
+        requests.map<Object?>(
+          (RequestOptions request) =>
+              _payload(request)['max_completion_tokens'],
+        ),
+        <Object?>[700, 500],
+      );
+
+      for (final RequestOptions request in requests) {
+        expect(_payload(request)['temperature'], 0.0);
+        expect(_payload(request)['top_p'], 1.0);
+        expect(_payload(request)['frequency_penalty'], 0.0);
+        _expectNoDirectionSymbols(_systemContent(request));
+      }
+
+      final String translationInput = _userContent(requests.first);
+      expect(translationInput, contains('Source text:\n"Check wording."'));
+      expect(translationInput, contains('SOURCE LANGUAGE HINT:\nen'));
+      expect(
+        translationInput,
+        contains('ENGINEER CONTEXT:\nRegistry wording review.'),
+      );
+
+      expect(
+        _systemContent(requests.first),
+        contains('You are Helpy strict multilingual translator.'),
+      );
+      expect(
+        _systemContent(requests.first),
+        contains('Then perform cross-language reverse translations.'),
+      );
+
+      expect(_userContent(requests.last), _completeTranslationContent.trim());
+      expect(
+        _userContent(requests.last),
+        isNot(contains('SOURCE LANGUAGE HINT')),
+      );
+      expect(_userContent(requests.last), isNot(contains('ENGINEER CONTEXT')));
+    });
+
     test(
-      'performs four isolated requests and maps the validated result',
+      'accepts technical preamble before complete translation sections',
       () async {
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
           responses: <String>[
-            _directTranslationContent,
-            _englishLiteralContent,
-            _thaiLiteralContent,
-            _exactAuditContent,
-          ],
-          requests: requests,
-        );
-
-        final TranslatorPhraseResult result = await provider.translatePhrase(
-          sourceText: ' Check wording. ',
-          sourceLanguageHint: ' en ',
-          engineerContext: ' Registry wording review. ',
-        );
-
-        expect(result.sourceLanguage, 'EN');
-        expect(result.sourceText, 'Check wording.');
-        expect(result.status, TranslatorPhraseStatus.exact);
-        expect(result.ru, 'Проверить формулировку.');
-        expect(result.en, 'Check wording.');
-        expect(result.th, 'ตรวจสอบข้อความ');
-        expect(result.enToRu, 'Проверить формулировку.');
-        expect(result.thToRu, 'Проверить текст.');
-        expect(result.enToTh, 'ตรวจสอบข้อความ');
-        expect(result.thToEn, 'Check the text.');
-        expect(result.comment, contains('Meaning preserved: YES'));
-        expect(result.comment, contains('Полное смысловое совпадение.'));
-
-        expect(requests, hasLength(4));
-        expect(
-          requests.map<String>((RequestOptions request) => request.path),
-          everyElement('/chat/completions'),
-        );
-        expect(
-          requests.map<Object?>(
-            (RequestOptions request) => _payload(request)['model'],
-          ),
-          everyElement(_testTyphoonModel),
-        );
-        expect(
-          requests.map<Object?>(
-            (RequestOptions request) =>
-                _payload(request)['max_completion_tokens'],
-          ),
-          <Object?>[700, 350, 350, 500],
-        );
-
-        final String directInput = _userContent(requests[0]);
-        expect(directInput, contains('SOURCE TEXT:\nCheck wording.'));
-        expect(directInput, contains('SOURCE LANGUAGE HINT:\nen'));
-        expect(
-          directInput,
-          contains('ENGINEER CONTEXT:\nRegistry wording review.'),
-        );
-
-        expect(_userContent(requests[1]), 'EN:\nCheck wording.');
-        expect(_userContent(requests[2]), 'TH:\nตรวจสอบข้อความ');
-        expect(_userContent(requests[3]), _completeTranslationContent.trim());
-
-        expect(_userContent(requests[1]), isNot(contains('SOURCE TEXT')));
-        expect(_userContent(requests[1]), isNot(contains('ENGINEER CONTEXT')));
-        expect(_userContent(requests[2]), isNot(contains('SOURCE TEXT')));
-        expect(_userContent(requests[2]), isNot(contains('ENGINEER CONTEXT')));
-        expect(_userContent(requests[3]), isNot(contains('ENGINEER CONTEXT')));
-
-        for (final RequestOptions request in requests) {
-          expect(_systemContent(request), contains(RegExp(r'[А-Яа-яЁё]')));
-          _expectNoDirectionSymbols(_systemContent(request));
-          _expectNoDirectionSymbols(_userContent(request));
-        }
-
-        expect(
-          _systemContent(requests[0]),
-          contains(
-            'Возвращай кратчайший естественный и общепринятый эквивалент',
-          ),
-        );
-        expect(
-          _systemContent(requests[0]),
-          contains('Не заменяй перевод толкованием назначения'),
-        );
-
-        for (final int index in <int>[1, 2]) {
-          expect(
-            _systemContent(requests[index]),
-            contains(
-              'Возвращай кратчайший естественный и общепринятый эквивалент',
-            ),
-          );
-          expect(
-            _systemContent(requests[index]),
-            contains('Не заменяй перевод описанием назначения'),
-          );
-          expect(
-            _systemContent(requests[index]),
-            contains('Не добавляй конструкции `для...`'),
-          );
-        }
-      },
-    );
-
-    test(
-      'accepts technical preamble before complete literal sections',
-      () async {
-        final List<RequestOptions> requests = <RequestOptions>[];
-        final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-          responses: <String>[
-            _directTranslationContent,
-            _englishLiteralContent,
             '''
-Конечно, вот дословный перевод.
+Конечно, вот полный перевод.
 
-$_thaiLiteralContent
+$_completeTranslationContent
 ''',
             _exactAuditContent,
           ],
@@ -146,24 +115,19 @@ $_thaiLiteralContent
         expect(
           result.comment,
           contains(
-            'Ответ дословной проверки тайской версии содержит '
-            'технический текст до первой обязательной секции',
+            'Ответ перевода Typhoon содержит технический текст '
+            'до первой обязательной секции',
           ),
         );
-        expect(result.comment, contains('Конечно, вот дословный перевод.'));
+        expect(result.comment, contains('Конечно, вот полный перевод.'));
         expect(result.comment, contains('Полное смысловое совпадение.'));
-        expect(requests, hasLength(4));
+        expect(requests, hasLength(2));
       },
     );
 
     test('maps audit drift to canonicalDrift status', () async {
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-        responses: <String>[
-          _directTranslationContent,
-          _englishLiteralContent,
-          _thaiLiteralContent,
-          _driftAuditContent,
-        ],
+        responses: <String>[_completeTranslationContent, _driftAuditContent],
       );
 
       final TranslatorPhraseResult result = await provider.translatePhrase(
@@ -174,24 +138,23 @@ $_thaiLiteralContent
       expect(result.comment, contains('Смысл изменён.'));
     });
 
-    final Map<String, String> invalidDirectResponses = <String, String>{
-      'rejects a missing direct section': _directTranslationContent
-          .replaceFirst('\n\nTH:\nตรวจสอบข้อความ', ''),
-      'rejects an empty direct section': _directTranslationContent.replaceFirst(
-        'RU:\nПроверить формулировку.',
-        'RU:',
-      ),
-      'rejects a duplicated direct section':
-          '$_directTranslationContent\n\nEN:\nDuplicate.',
-      'rejects an unexpected direct section':
-          '$_directTranslationContent\n\nEXTRA:\nUnexpected.',
-      'rejects reordered direct sections': _reorderedDirectTranslationContent,
-      'rejects a placeholder direct value': _directTranslationContent
-          .replaceFirst('RU:\nПроверить формулировку.', 'RU:\nN/A'),
+    final Map<String, String> invalidTranslationResponses = <String, String>{
+      'rejects a missing translation section': _completeTranslationContent
+          .replaceFirst('\n\nTH_TO_EN:\nCheck the text.', ''),
+      'rejects an empty translation section': _completeTranslationContent
+          .replaceFirst('EN_TO_RU:\nПроверить формулировку.', 'EN_TO_RU:'),
+      'rejects a duplicated translation section':
+          '$_completeTranslationContent\n\nTH_TO_EN:\nDuplicate.',
+      'rejects an unexpected translation section':
+          '$_completeTranslationContent\n\nEXTRA:\nUnexpected.',
+      'rejects reordered translation sections':
+          _reorderedCompleteTranslationContent,
+      'rejects a placeholder translation value': _completeTranslationContent
+          .replaceFirst('TH_TO_EN:\nCheck the text.', 'TH_TO_EN:\nN/A'),
     };
 
     for (final MapEntry<String, String> entry
-        in invalidDirectResponses.entries) {
+        in invalidTranslationResponses.entries) {
       test(entry.key, () async {
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
@@ -214,7 +177,7 @@ $_thaiLiteralContent
       final List<RequestOptions> requests = <RequestOptions>[];
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <String>[
-          _directTranslationContent.replaceFirst(
+          _completeTranslationContent.replaceFirst(
             'SOURCE LANGUAGE:\nEN',
             'SOURCE LANGUAGE:\nDE',
           ),
@@ -241,12 +204,10 @@ $_thaiLiteralContent
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
           responses: <String>[
-            _directTranslationContent.replaceFirst(
+            _completeTranslationContent.replaceFirst(
               'SOURCE TEXT:\nCheck wording.',
               'SOURCE TEXT:\nChanged wording.',
             ),
-            _englishLiteralContent,
-            _thaiLiteralContent,
             _exactAuditContent,
           ],
           requests: requests,
@@ -271,7 +232,7 @@ $_thaiLiteralContent
         expect(result.comment, contains('SOURCE TEXT из ответа Typhoon:'));
         expect(result.comment, contains('Changed wording.'));
         expect(result.comment, contains('Полное смысловое совпадение.'));
-        expect(requests, hasLength(4));
+        expect(requests, hasLength(2));
       },
     );
 
@@ -279,12 +240,10 @@ $_thaiLiteralContent
       final List<RequestOptions> requests = <RequestOptions>[];
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <String>[
-          _directTranslationContent.replaceFirst(
+          _completeTranslationContent.replaceFirst(
             'SOURCE TEXT:\nCheck wording.',
             'SOURCE TEXT:\nChanged wording.',
           ),
-          _englishLiteralContent,
-          _thaiLiteralContent,
           _exactAuditContent.replaceFirst(
             'MEANING_PRESERVED:\nYES',
             'MEANING_PRESERVED:\nMAYBE',
@@ -312,7 +271,7 @@ $_thaiLiteralContent
       expect(result.comment, contains('SOURCE TEXT из ответа Typhoon:'));
       expect(result.comment, contains('Changed wording.'));
       expect(result.comment, contains('должна содержать только YES или NO'));
-      expect(requests, hasLength(4));
+      expect(requests, hasLength(2));
     });
 
     test(
@@ -321,12 +280,10 @@ $_thaiLiteralContent
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
           responses: <String>[
-            _directTranslationContent.replaceFirst(
+            _completeTranslationContent.replaceFirst(
               'EN:\nCheck wording.',
               'EN:\nChanged wording.',
             ),
-            _englishLiteralContent,
-            _thaiLiteralContent,
             _exactAuditContent,
           ],
           requests: requests,
@@ -345,70 +302,9 @@ $_thaiLiteralContent
         );
         expect(result.comment, contains('Changed wording.'));
         expect(result.comment, contains('Полное смысловое совпадение.'));
-        expect(requests, hasLength(4));
-      },
-    );
-
-    test(
-      'does not request Thai literal translation or audit after English literal failure',
-      () async {
-        final List<RequestOptions> requests = <RequestOptions>[];
-        final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-          responses: <String>[
-            _directTranslationContent,
-            'EN_TO_RU:\nПроверить формулировку.',
-          ],
-          requests: requests,
-        );
-
-        final TranslatorPhraseResult result = await provider.translatePhrase(
-          sourceText: 'Check wording.',
-        );
-
-        expect(result.status, TranslatorPhraseStatus.failed);
-        expect(result.sourceLanguage, 'EN');
-        expect(result.sourceText, 'Check wording.');
-        expect(result.ru, 'Проверить формулировку.');
-        expect(result.en, 'Check wording.');
-        expect(result.th, 'ตรวจสอบข้อความ');
-        expect(result.enToRu, isNull);
-        expect(result.enToTh, isNull);
-        expect(result.comment, contains('EN_TO_TH'));
         expect(requests, hasLength(2));
       },
     );
-
-    test('does not request audit after Thai literal failure', () async {
-      final List<RequestOptions> requests = <RequestOptions>[];
-      final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-        responses: <String>[
-          _directTranslationContent,
-          _englishLiteralContent,
-          _thaiLiteralContent.replaceFirst(
-            'TH_TO_EN:\nCheck the text.',
-            'TH_TO_EN:\nNOT PROVIDED',
-          ),
-        ],
-        requests: requests,
-      );
-
-      final TranslatorPhraseResult result = await provider.translatePhrase(
-        sourceText: 'Check wording.',
-      );
-
-      expect(result.status, TranslatorPhraseStatus.failed);
-      expect(result.sourceLanguage, 'EN');
-      expect(result.sourceText, 'Check wording.');
-      expect(result.ru, 'Проверить формулировку.');
-      expect(result.en, 'Check wording.');
-      expect(result.th, 'ตรวจสอบข้อความ');
-      expect(result.enToRu, 'Проверить формулировку.');
-      expect(result.enToTh, 'ตรวจสอบข้อความ');
-      expect(result.thToRu, isNull);
-      expect(result.thToEn, isNull);
-      expect(result.comment, contains('значение-заглушку'));
-      expect(requests, hasLength(3));
-    });
 
     final Map<String, String> invalidAuditResponses = <String, String>{
       'rejects an incomplete audit': _exactAuditContent.replaceFirst(
@@ -430,12 +326,7 @@ $_thaiLiteralContent
       test(entry.key, () async {
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-          responses: <String>[
-            _directTranslationContent,
-            _englishLiteralContent,
-            _thaiLiteralContent,
-            entry.value,
-          ],
+          responses: <String>[_completeTranslationContent, entry.value],
           requests: requests,
         );
 
@@ -454,7 +345,7 @@ $_thaiLiteralContent
         expect(result.enToTh, 'ตรวจสอบข้อความ');
         expect(result.thToEn, 'Check the text.');
         expect(result.comment, isNotEmpty);
-        expect(requests, hasLength(4));
+        expect(requests, hasLength(2));
       });
     }
 
@@ -462,9 +353,12 @@ $_thaiLiteralContent
       final List<RequestOptions> requests = <RequestOptions>[];
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <String>[
-          _directTranslationWithUserDirectionSymbols,
-          _englishLiteralWithUserDirectionSymbols,
-          _thaiLiteralContent,
+          _completeTranslationContent
+              .replaceFirst(
+                'SOURCE TEXT:\nCheck wording.',
+                'SOURCE TEXT:\nCheck -> wording.',
+              )
+              .replaceFirst('EN:\nCheck wording.', 'EN:\nCheck -> wording.'),
           _exactAuditContent,
         ],
         requests: requests,
@@ -476,7 +370,17 @@ $_thaiLiteralContent
 
       expect(result.status, TranslatorPhraseStatus.exact);
       expect(result.sourceText, 'Check -> wording.');
-      expect(_userContent(requests.first), contains('Check -> wording.'));
+      expect(result.en, 'Check -> wording.');
+      expect(requests, hasLength(2));
+
+      expect(
+        _userContent(requests.first),
+        contains('Source text:\n"Check -> wording."'),
+      );
+      expect(
+        _userContent(requests.last),
+        contains('SOURCE TEXT:\nCheck -> wording.'),
+      );
 
       for (final RequestOptions request in requests) {
         _expectNoDirectionSymbols(_systemContent(request));
@@ -615,24 +519,7 @@ AppConfig _config() {
   );
 }
 
-const String _directTranslationContent = '''
-SOURCE LANGUAGE:
-EN
-
-SOURCE TEXT:
-Check wording.
-
-RU:
-Проверить формулировку.
-
-EN:
-Check wording.
-
-TH:
-ตรวจสอบข้อความ
-''';
-
-const String _reorderedDirectTranslationContent = '''
+const String _reorderedCompleteTranslationContent = '''
 SOURCE LANGUAGE:
 EN
 
@@ -647,19 +534,15 @@ RU:
 
 TH:
 ตรวจสอบข้อความ
-''';
 
-const String _englishLiteralContent = '''
 EN_TO_RU:
 Проверить формулировку.
 
-EN_TO_TH:
-ตรวจสอบข้อความ
-''';
-
-const String _thaiLiteralContent = '''
 TH_TO_RU:
 Проверить текст.
+
+EN_TO_TH:
+ตรวจสอบข้อความ
 
 TH_TO_EN:
 Check the text.
@@ -726,29 +609,4 @@ YES
 
 REASON:
 Смысл изменён.
-''';
-
-const String _directTranslationWithUserDirectionSymbols = '''
-SOURCE LANGUAGE:
-EN
-
-SOURCE TEXT:
-Check -> wording.
-
-RU:
-Проверить формулировку.
-
-EN:
-Check -> wording.
-
-TH:
-ตรวจสอบข้อความ
-''';
-
-const String _englishLiteralWithUserDirectionSymbols = '''
-EN_TO_RU:
-Проверить формулировку.
-
-EN_TO_TH:
-ตรวจสอบข้อความ
 ''';

@@ -32,16 +32,14 @@ final class TyphoonTranslatorPhraseProvider
     );
     final String? normalizedEngineerContext = _optionalText(engineerContext);
 
-    Map<String, String>? directTranslation;
-    Map<String, String>? englishLiteralTranslation;
-    Map<String, String>? thaiLiteralTranslation;
+    Map<String, String>? translation;
     final List<String> semanticDiagnostics = <String>[];
     final List<String> technicalDiagnostics = <String>[];
 
     try {
-      final String directContent = await _request(
-        systemPrompt: _directTranslationPrompt,
-        userContent: _buildDirectTranslationInput(
+      final String translationContent = await _request(
+        systemPrompt: _translationPrompt,
+        userContent: _buildTranslationInput(
           sourceText: normalizedSourceText,
           sourceLanguageHint: normalizedSourceLanguageHint,
           engineerContext: normalizedEngineerContext,
@@ -49,20 +47,21 @@ final class TyphoonTranslatorPhraseProvider
         maxTokens: 700,
       );
 
-      final Map<String, String> parsedDirectTranslation = _parseStrictSections(
-        content: directContent,
-        labels: _directTranslationLabels,
-        responseName: 'Ответ прямого перевода Typhoon',
+      final Map<String, String> parsedTranslation = _parseStrictSections(
+        content: translationContent,
+        labels: _translationLabels,
+        responseName: 'Ответ перевода Typhoon',
         diagnostics: technicalDiagnostics,
       );
-      directTranslation = parsedDirectTranslation;
+      translation = parsedTranslation;
 
-      _validateDirectTranslation(translation: parsedDirectTranslation);
+      _validateTranslationSourceLanguage(translation: parsedTranslation);
+      _validateCompleteTranslation(parsedTranslation);
 
-      final String returnedSourceText = parsedDirectTranslation['SOURCE TEXT']!;
-      final String sourceLanguage = parsedDirectTranslation['SOURCE LANGUAGE']!;
-      final String sourceLanguageText =
-          parsedDirectTranslation[sourceLanguage]!;
+      final String returnedSourceText = parsedTranslation['SOURCE TEXT']!;
+      final String sourceLanguage = parsedTranslation['SOURCE LANGUAGE']!;
+      final String sourceLanguageText = parsedTranslation[sourceLanguage]!;
+
       if (returnedSourceText != normalizedSourceText) {
         semanticDiagnostics.add(
           '''
@@ -89,53 +88,9 @@ $returnedSourceText
         );
       }
 
-      final String englishLiteralContent = await _request(
-        systemPrompt: _englishLiteralTranslationPrompt,
-        userContent: _buildEnglishLiteralInput(directTranslation['EN']!),
-        maxTokens: 350,
-      );
-
-      final Map<String, String> parsedEnglishLiteralTranslation =
-          _parseStrictSections(
-            content: englishLiteralContent,
-            labels: _englishLiteralLabels,
-            responseName: 'Ответ дословной проверки английской версии',
-            diagnostics: technicalDiagnostics,
-          );
-      englishLiteralTranslation = parsedEnglishLiteralTranslation;
-
-      final String thaiLiteralContent = await _request(
-        systemPrompt: _thaiLiteralTranslationPrompt,
-        userContent: _buildThaiLiteralInput(directTranslation['TH']!),
-        maxTokens: 350,
-      );
-
-      final Map<String, String> parsedThaiLiteralTranslation =
-          _parseStrictSections(
-            content: thaiLiteralContent,
-            labels: _thaiLiteralLabels,
-            responseName: 'Ответ дословной проверки тайской версии',
-            diagnostics: technicalDiagnostics,
-          );
-      thaiLiteralTranslation = parsedThaiLiteralTranslation;
-
-      final Map<String, String> translation = <String, String>{
-        'SOURCE LANGUAGE': parsedDirectTranslation['SOURCE LANGUAGE']!,
-        'SOURCE TEXT': parsedDirectTranslation['SOURCE TEXT']!,
-        'RU': parsedDirectTranslation['RU']!,
-        'EN': parsedDirectTranslation['EN']!,
-        'TH': parsedDirectTranslation['TH']!,
-        'EN_TO_RU': parsedEnglishLiteralTranslation['EN_TO_RU']!,
-        'TH_TO_RU': parsedThaiLiteralTranslation['TH_TO_RU']!,
-        'EN_TO_TH': parsedEnglishLiteralTranslation['EN_TO_TH']!,
-        'TH_TO_EN': parsedThaiLiteralTranslation['TH_TO_EN']!,
-      };
-
-      _validateCompleteTranslation(translation);
-
       final String auditContent = await _request(
         systemPrompt: _auditPrompt,
-        userContent: _buildAuditInput(translation),
+        userContent: _buildAuditInput(parsedTranslation),
         maxTokens: 500,
       );
 
@@ -158,27 +113,25 @@ $returnedSourceText
           : '${diagnostics.join('\n\n')}\n\n$auditComment';
 
       return TranslatorPhraseResult(
-        sourceLanguage: translation['SOURCE LANGUAGE']!,
-        sourceText: translation['SOURCE TEXT']!,
+        sourceLanguage: parsedTranslation['SOURCE LANGUAGE']!,
+        sourceText: parsedTranslation['SOURCE TEXT']!,
         status: semanticDiagnostics.isEmpty
             ? _resolveStatus(audit)
             : TranslatorPhraseStatus.canonicalDrift,
-        ru: translation['RU'],
-        en: translation['EN'],
-        th: translation['TH'],
-        enToRu: translation['EN_TO_RU'],
-        thToRu: translation['TH_TO_RU'],
-        enToTh: translation['EN_TO_TH'],
-        thToEn: translation['TH_TO_EN'],
+        ru: parsedTranslation['RU'],
+        en: parsedTranslation['EN'],
+        th: parsedTranslation['TH'],
+        enToRu: parsedTranslation['EN_TO_RU'],
+        thToRu: parsedTranslation['TH_TO_RU'],
+        enToTh: parsedTranslation['EN_TO_TH'],
+        thToEn: parsedTranslation['TH_TO_EN'],
         comment: comment,
       );
     } on DioException catch (error) {
       return _failedResult(
         submittedSourceText: normalizedSourceText,
         sourceLanguageHint: normalizedSourceLanguageHint,
-        directTranslation: directTranslation,
-        englishLiteralTranslation: englishLiteralTranslation,
-        thaiLiteralTranslation: thaiLiteralTranslation,
+        translation: translation,
         diagnostics: <String>[...technicalDiagnostics, ...semanticDiagnostics],
         comment: _mapDioError(error),
       );
@@ -186,9 +139,7 @@ $returnedSourceText
       return _failedResult(
         submittedSourceText: normalizedSourceText,
         sourceLanguageHint: normalizedSourceLanguageHint,
-        directTranslation: directTranslation,
-        englishLiteralTranslation: englishLiteralTranslation,
-        thaiLiteralTranslation: thaiLiteralTranslation,
+        translation: translation,
         diagnostics: <String>[...technicalDiagnostics, ...semanticDiagnostics],
         comment: error.message,
       );
@@ -222,9 +173,7 @@ $returnedSourceText
     required String submittedSourceText,
     required String? sourceLanguageHint,
     required String comment,
-    Map<String, String>? directTranslation,
-    Map<String, String>? englishLiteralTranslation,
-    Map<String, String>? thaiLiteralTranslation,
+    Map<String, String>? translation,
     required List<String> diagnostics,
   }) {
     final String combinedComment = diagnostics.isEmpty
@@ -233,30 +182,28 @@ $returnedSourceText
 
     return TranslatorPhraseResult(
       sourceLanguage:
-          directTranslation?['SOURCE LANGUAGE'] ??
-          sourceLanguageHint ??
-          'unknown',
-      sourceText: directTranslation?['SOURCE TEXT'] ?? submittedSourceText,
+          translation?['SOURCE LANGUAGE'] ?? sourceLanguageHint ?? 'unknown',
+      sourceText: translation?['SOURCE TEXT'] ?? submittedSourceText,
       status: TranslatorPhraseStatus.failed,
-      ru: directTranslation?['RU'],
-      en: directTranslation?['EN'],
-      th: directTranslation?['TH'],
-      enToRu: englishLiteralTranslation?['EN_TO_RU'],
-      thToRu: thaiLiteralTranslation?['TH_TO_RU'],
-      enToTh: englishLiteralTranslation?['EN_TO_TH'],
-      thToEn: thaiLiteralTranslation?['TH_TO_EN'],
+      ru: translation?['RU'],
+      en: translation?['EN'],
+      th: translation?['TH'],
+      enToRu: translation?['EN_TO_RU'],
+      thToRu: translation?['TH_TO_RU'],
+      enToTh: translation?['EN_TO_TH'],
+      thToEn: translation?['TH_TO_EN'],
       comment: combinedComment,
     );
   }
 
-  static String _buildDirectTranslationInput({
+  static String _buildTranslationInput({
     required String sourceText,
     required String? sourceLanguageHint,
     required String? engineerContext,
   }) {
     final StringBuffer buffer = StringBuffer()
-      ..writeln('SOURCE TEXT:')
-      ..writeln(sourceText);
+      ..writeln('Source text:')
+      ..writeln('"$sourceText"');
 
     if (sourceLanguageHint != null) {
       buffer
@@ -273,14 +220,6 @@ $returnedSourceText
     }
 
     return buffer.toString().trim();
-  }
-
-  static String _buildEnglishLiteralInput(String englishText) {
-    return 'EN:\n$englishText';
-  }
-
-  static String _buildThaiLiteralInput(String thaiText) {
-    return 'TH:\n$thaiText';
   }
 
   static String _buildAuditInput(Map<String, String> translation) {
@@ -414,7 +353,7 @@ $preamble
     }
   }
 
-  static void _validateDirectTranslation({
+  static void _validateTranslationSourceLanguage({
     required Map<String, String> translation,
   }) {
     final String sourceLanguage = translation['SOURCE LANGUAGE']!;
@@ -600,21 +539,6 @@ ${audit['REASON']}
     'NOT PROVIDED',
   };
 
-  static const List<String> _directTranslationLabels = <String>[
-    'SOURCE LANGUAGE',
-    'SOURCE TEXT',
-    'RU',
-    'EN',
-    'TH',
-  ];
-  static const List<String> _englishLiteralLabels = <String>[
-    'EN_TO_RU',
-    'EN_TO_TH',
-  ];
-  static const List<String> _thaiLiteralLabels = <String>[
-    'TH_TO_RU',
-    'TH_TO_EN',
-  ];
   static const List<String> _translationLabels = <String>[
     'SOURCE LANGUAGE',
     'SOURCE TEXT',
@@ -637,158 +561,47 @@ ${audit['REASON']}
     'REASON',
   ];
 
-  static const String _directTranslationPrompt = '''
-Ты являешься строгим мультиязычным инженерным переводчиком Registry Studio.
+  static const String _translationPrompt = '''
+You are Helpy strict multilingual translator.
 
-Язык исходного текста: RU, EN или TH.
-Определи язык исходного текста.
-Используй SOURCE LANGUAGE HINT только как подсказку, если он передан.
-Используй ENGINEER CONTEXT только для понимания терминологии или устранения неоднозначности.
-Не переводи ENGINEER CONTEXT.
-Не добавляй сведения из ENGINEER CONTEXT в переводимый текст.
+Input can be RU, EN or TH.
+Detect source language.
+Translate into RU, EN and TH.
+Then perform cross-language reverse translations.
 
-Ты обязан вернуть ровно 5 секций.
-Все секции обязательны.
-Не пропускай секции.
-Не возвращай пустые значения.
-Не используй дефис или тире вместо значения.
-Не используй символы направления в ответе.
+Do not audit.
+Do not explain.
+Do not improve wording.
+Preserve business meaning and service-marketplace terminology.
 
-Правила перевода:
-
-1. Сохрани SOURCE TEXT точно в том виде, в котором он передан.
-2. Не добавляй кавычки вокруг SOURCE TEXT.
-3. В языковой секции, соответствующей SOURCE LANGUAGE, повтори SOURCE TEXT без изменений.
-4. Сформируй версии на русском, английском и тайском языках.
-5. Переводи настолько дословно, насколько позволяет грамматика целевого языка.
-6. Сохраняй точный инженерный смысл.
-7. Сохраняй техническую и реестровую терминологию.
-8. Сохраняй силу инструкции.
-9. Сохраняй обязательность, допустимость и запрет.
-10. Сохраняй отрицания.
-11. Сохраняй границы работ и исключения.
-12. Сохраняй количества, единицы измерения, условия и последовательность.
-13. Не улучшай формулировку.
-14. Не упрощай формулировку.
-15. Не заменяй конкретные термины более общими.
-16. Не смягчай и не усиливай инструкцию.
-17. Не добавляй пояснения.
-18. Возвращай кратчайший естественный и общепринятый эквивалент на целевом языке.
-19. Не заменяй перевод толкованием назначения предмета или действия.
-20. Не добавляй конструкции `для...`, `используемый для...`, `предназначенный для...`, если соответствующего смысла нет в исходном тексте.
-21. Если точного эквивалента нет, используй ближайший общепринятый термин без пояснительного расширения.
-22. Не выполняй аудит.
-23. Не утверждай каноничность формулировки.
-24. Не изменяй содержимое registry.
-
-Верни результат строго с этими ASCII labels:
+Output strictly:
 
 SOURCE LANGUAGE:
 RU | EN | TH
 
 SOURCE TEXT:
-исходный текст без изменений
+...
 
 RU:
-русская версия
+...
 
 EN:
-английская версия
+...
 
 TH:
-тайская версия
-''';
-
-  static const String _englishLiteralTranslationPrompt = '''
-Ты являешься переводчиком дословной обратной проверки Registry Studio.
-
-Ты получаешь только инженерную фразу на английском языке.
-Ты не знаешь исходный текст.
-Не пытайся угадать или восстановить исходную формулировку.
-
-Ты обязан вернуть ровно 2 секции.
-Обе секции обязательны.
-Не пропускай секции.
-Не возвращай пустые значения.
-Не используй дефис или тире вместо значения.
-Не используй символы направления в ответе.
-
-Правила перевода:
-
-1. Переведи переданный английский текст дословно на русский язык.
-2. Переведи тот же английский текст дословно на тайский язык.
-3. Переводи только фактически переданный текст.
-4. Передай точный смысл английской формулировки.
-5. Сохраняй терминологию.
-6. Сохраняй силу инструкции.
-7. Сохраняй обязательность, допустимость, запрет и отрицание.
-8. Сохраняй границы, количества, условия и последовательность.
-9. Сохраняй порядок слов там, где это допускает грамматика целевого языка.
-10. Не улучшай формулировку.
-11. Не нормализуй формулировку.
-12. Не приводи формулировку к каноническому стилю.
-13. Не устраняй неоднозначность.
-14. Не добавляй отсутствующий контекст.
-15. Возвращай кратчайший естественный и общепринятый эквивалент на целевом языке.
-16. Не заменяй перевод описанием назначения предмета или действия.
-17. Не добавляй конструкции `для...`, `используемый для...`, `предназначенный для...`, если соответствующего смысла нет в переданном тексте.
-18. Если точного эквивалента нет, используй ближайший общепринятый термин без пояснительного расширения.
-19. Не объясняй результат.
-20. Не выполняй аудит.
-
-Верни результат строго с этими ASCII labels:
+...
 
 EN_TO_RU:
-дословный русский перевод переданного английского текста
-
-EN_TO_TH:
-дословный тайский перевод переданного английского текста
-''';
-
-  static const String _thaiLiteralTranslationPrompt = '''
-Ты являешься переводчиком дословной обратной проверки Registry Studio.
-
-Ты получаешь только инженерную фразу на тайском языке.
-Ты не знаешь исходный текст.
-Не пытайся угадать или восстановить исходную формулировку.
-
-Ты обязан вернуть ровно 2 секции.
-Обе секции обязательны.
-Не пропускай секции.
-Не возвращай пустые значения.
-Не используй дефис или тире вместо значения.
-Не используй символы направления в ответе.
-
-Правила перевода:
-
-1. Переведи переданный тайский текст дословно на русский язык.
-2. Переведи тот же тайский текст дословно на английский язык.
-3. Переводи только фактически переданный текст.
-4. Передай точный смысл тайской формулировки.
-5. Сохраняй терминологию.
-6. Сохраняй силу инструкции.
-7. Сохраняй обязательность, допустимость, запрет и отрицание.
-8. Сохраняй границы, количества, условия и последовательность.
-9. Сохраняй порядок слов там, где это допускает грамматика целевого языка.
-10. Не улучшай формулировку.
-11. Не нормализуй формулировку.
-12. Не приводи формулировку к каноническому стилю.
-13. Не устраняй неоднозначность.
-14. Не добавляй отсутствующий контекст.
-15. Возвращай кратчайший естественный и общепринятый эквивалент на целевом языке.
-16. Не заменяй перевод описанием назначения предмета или действия.
-17. Не добавляй конструкции `для...`, `используемый для...`, `предназначенный для...`, если соответствующего смысла нет в переданном тексте.
-18. Если точного эквивалента нет, используй ближайший общепринятый термин без пояснительного расширения.
-19. Не объясняй результат.
-20. Не выполняй аудит.
-
-Верни результат строго с этими ASCII labels:
+...
 
 TH_TO_RU:
-дословный русский перевод переданного тайского текста
+...
+
+EN_TO_TH:
+...
 
 TH_TO_EN:
-дословный английский перевод переданного тайского текста
+...
 ''';
 
   static const String _auditPrompt = '''
