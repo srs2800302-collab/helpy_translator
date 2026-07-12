@@ -380,30 +380,31 @@ $preamble
   }
 
   static void _validateAudit(Map<String, String> audit) {
-    for (final String label in _auditDecisionLabels) {
-      final String value = audit[label]!.toUpperCase();
+    for (final String label in _auditLabels) {
+      final String value = audit[label]!;
 
-      if (value != 'YES' && value != 'NO') {
+      if (value.toUpperCase() == _noFindings) {
+        continue;
+      }
+
+      if (!_russianLetterPattern.hasMatch(value)) {
         throw FormatException(
-          'Секция аудита $label должна содержать только YES или NO.',
+          'Секция аудита $label должна содержать $_noFindings '
+          'или конкретное объяснение на русском языке.',
         );
       }
-    }
-
-    if (!_russianLetterPattern.hasMatch(audit['REASON']!)) {
-      throw const FormatException(
-        'Секция аудита REASON должна содержать объяснение на русском языке.',
-      );
     }
   }
 
   static TranslatorPhraseStatus _resolveStatus(Map<String, String> audit) {
-    final bool meaningPreserved = _isYes(audit['MEANING_PRESERVED']);
-    final bool terminologyPreserved = _isYes(audit['TERMINOLOGY_PRESERVED']);
-    final bool canonicalStylePreserved = _isYes(
-      audit['CANONICAL_STYLE_PRESERVED'],
-    );
-    final bool ambiguousWording = _isYes(audit['AMBIGUOUS_WORDING']);
+    final bool meaningPreserved =
+        audit['MEANING_FINDINGS']!.toUpperCase() == _noFindings;
+    final bool terminologyPreserved =
+        audit['TERMINOLOGY_FINDINGS']!.toUpperCase() == _noFindings;
+    final bool canonicalStylePreserved =
+        audit['STYLE_FINDINGS']!.toUpperCase() == _noFindings;
+    final bool ambiguousWording =
+        audit['AMBIGUITY_FINDINGS']!.toUpperCase() != _noFindings;
 
     if (!meaningPreserved) {
       return TranslatorPhraseStatus.canonicalDrift;
@@ -424,13 +425,32 @@ $preamble
   }
 
   static String _buildComment(Map<String, String> audit) {
-    return '''
-Meaning preserved: ${audit['MEANING_PRESERVED']}
-Terminology preserved: ${audit['TERMINOLOGY_PRESERVED']}
-Canonical style preserved: ${audit['CANONICAL_STYLE_PRESERVED']}
-Ambiguous wording: ${audit['AMBIGUOUS_WORDING']}
+    final bool meaningPreserved =
+        audit['MEANING_FINDINGS']!.toUpperCase() == _noFindings;
+    final bool terminologyPreserved =
+        audit['TERMINOLOGY_FINDINGS']!.toUpperCase() == _noFindings;
+    final bool canonicalStylePreserved =
+        audit['STYLE_FINDINGS']!.toUpperCase() == _noFindings;
+    final bool ambiguousWording =
+        audit['AMBIGUITY_FINDINGS']!.toUpperCase() != _noFindings;
 
-${audit['REASON']}
+    return '''
+Meaning preserved: ${meaningPreserved ? 'YES' : 'NO'}
+Terminology preserved: ${terminologyPreserved ? 'YES' : 'NO'}
+Canonical style preserved: ${canonicalStylePreserved ? 'YES' : 'NO'}
+Ambiguous wording: ${ambiguousWording ? 'YES' : 'NO'}
+
+Смысловые различия:
+${audit['MEANING_FINDINGS']}
+
+Терминологические различия:
+${audit['TERMINOLOGY_FINDINGS']}
+
+Стилевые различия:
+${audit['STYLE_FINDINGS']}
+
+Неоднозначность:
+${audit['AMBIGUITY_FINDINGS']}
 '''
         .trim();
   }
@@ -490,10 +510,6 @@ ${audit['REASON']}
     return 'Ошибка соединения с Typhoon API.';
   }
 
-  static bool _isYes(String? value) {
-    return value?.trim().toUpperCase() == 'YES';
-  }
-
   static String _requiredText(String value, String name, String message) {
     final String normalized = value.trim();
 
@@ -531,15 +547,12 @@ ${audit['REASON']}
     'EN_TO_TH',
     'TH_TO_EN',
   ];
-  static const List<String> _auditDecisionLabels = <String>[
-    'MEANING_PRESERVED',
-    'TERMINOLOGY_PRESERVED',
-    'CANONICAL_STYLE_PRESERVED',
-    'AMBIGUOUS_WORDING',
-  ];
+  static const String _noFindings = 'NO_FINDINGS';
   static const List<String> _auditLabels = <String>[
-    ..._auditDecisionLabels,
-    'REASON',
+    'MEANING_FINDINGS',
+    'TERMINOLOGY_FINDINGS',
+    'STYLE_FINDINGS',
+    'AMBIGUITY_FINDINGS',
   ];
 
   static const String _translationPrompt = '''
@@ -598,59 +611,50 @@ English reverse translation of TH
 Ты являешься независимым аудитором мультиязычных инженерных формулировок Registry Studio.
 
 Ты не выполняешь перевод.
-Ты не переписываешь формулировки.
-Ты проверяешь только полный набор из 9 секций.
+Ты не исправляешь и не переписываешь формулировки.
+Ты не выбираешь статус и не выставляешь бинарные значения.
+Ты сначала фиксируешь фактические различия.
 
-Секции дословного обратного перевода являются диагностическим доказательством.
-Используй их, чтобы определить, какой смысл фактически передают английская и тайская версии.
+Порядок проверки:
 
-Проверь:
+1. Напрямую сравни RU, EN и TH.
+2. Определи, одинаковые ли объект, действие, функция, условие, ограничение, количество и технический термин обозначены в каждой прямой версии.
+3. После прямого сравнения используй EN_TO_RU, TH_TO_RU, EN_TO_TH и TH_TO_EN только как вспомогательное доказательство.
+4. Обратные переводы не являются доказательством корректности прямых переводов.
+5. Совпадение обратного перевода с исходником не отменяет различие, обнаруженное в прямой иностранной версии.
+6. Близкий контекст, похожая функция или принадлежность к одной категории не означают эквивалентность.
+7. Не оценивай различие как несущественное. Фиксируй сам факт различия.
+8. Не трактуй сомнения в пользу корректности.
 
-1. Сохранили ли RU, EN и TH один инженерный смысл.
-2. Осталась ли техническая и реестровая терминология точной.
-3. Сохранилась ли сила инструкции.
-4. Изменилась ли обязательность, допустимость или запрещённость действия.
-5. Изменилось ли отрицание.
-6. Изменились ли границы работ или исключения.
-7. Изменились ли количества, единицы измерения, условия или последовательность.
-8. Стал ли конкретный термин более широким, мягким или менее точным.
-9. Появилась ли неоднозначность.
-10. Показывают ли дословные обратные переводы смысловой drift.
+Классификация findings:
 
-Правила аудита:
+1. В MEANING_FINDINGS укажи изменение объекта, действия, функции, условия, отрицания, обязательности, допустимости, запрета, количества, границ работ или последовательности.
+2. В TERMINOLOGY_FINDINGS укажи неточный, более широкий, более мягкий, иной либо технически неверный термин.
+3. В STYLE_FINDINGS укажи изменение силы инструкции, инструктивной формы или канонического стиля.
+4. В AMBIGUITY_FINDINGS укажи появившееся значимое для registry неоднозначное толкование.
+5. Одно различие укажи в нескольких findings, когда оно затрагивает несколько категорий.
+6. Если различий соответствующей категории нет, верни ровно NO_FINDINGS.
+7. Если различие есть, кратко и конкретно опиши его на русском языке.
+8. Не добавляй рекомендации, исправленные варианты, оправдания или желаемый статус.
 
-1. Если смысл изменился, установи MEANING_PRESERVED в NO.
-2. Если терминология стала менее точной, установи TERMINOLOGY_PRESERVED в NO.
-3. Если изменилась сила инструкции или инструктивная форма, установи CANONICAL_STYLE_PRESERVED в NO.
-4. Если формулировка допускает несколько значимых для registry толкований, установи AMBIGUOUS_WORDING в YES.
-5. Несовпадение прямой версии и дословного обратного перевода считай основанием для строгой проверки.
-6. Не трактуй сомнения в пользу корректности.
-7. Не улучшай формулировки.
-8. Не предлагай замену.
-9. Не утверждай публикацию.
-10. Не предлагай изменение registry.
-11. Не используй символы направления в ответе.
-
-Ты обязан вернуть ровно 5 секций.
+Ты обязан вернуть ровно 4 секции.
 Все секции обязательны.
 Не пропускай секции.
 Не возвращай пустые значения.
+Не возвращай дополнительный текст.
 
-Верни результат строго с этими ASCII labels:
+Верни результат строго с этими ASCII labels и в этом порядке:
 
-MEANING_PRESERVED:
-YES | NO
+MEANING_FINDINGS:
+NO_FINDINGS либо конкретное смысловое различие на русском языке
 
-TERMINOLOGY_PRESERVED:
-YES | NO
+TERMINOLOGY_FINDINGS:
+NO_FINDINGS либо конкретное терминологическое различие на русском языке
 
-CANONICAL_STYLE_PRESERVED:
-YES | NO
+STYLE_FINDINGS:
+NO_FINDINGS либо конкретное стилевое различие на русском языке
 
-AMBIGUOUS_WORDING:
-YES | NO
-
-REASON:
-краткое объяснение на русском языке с указанием конкретных различий
+AMBIGUITY_FINDINGS:
+NO_FINDINGS либо конкретная неоднозначность на русском языке
 ''';
 }

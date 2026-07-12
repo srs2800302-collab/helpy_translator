@@ -35,7 +35,11 @@ void main() {
         expect(result.enToTh, 'ตรวจสอบข้อความ');
         expect(result.thToEn, 'Check the text.');
         expect(result.comment, contains('Meaning preserved: YES'));
-        expect(result.comment, contains('Полное смысловое совпадение.'));
+        expect(result.comment, contains('Смысловые различия:\nNO_FINDINGS'));
+        expect(
+          result.comment,
+          contains('Терминологические различия:\nNO_FINDINGS'),
+        );
 
         expect(requests, hasLength(2));
         expect(
@@ -94,6 +98,20 @@ void main() {
         );
 
         expect(_userContent(requests.last), _completeTranslationContent.trim());
+        expect(
+          _systemContent(requests.last),
+          contains('Ты сначала фиксируешь фактические различия'),
+        );
+        expect(
+          _systemContent(requests.last),
+          contains(
+            'Обратные переводы не являются доказательством корректности',
+          ),
+        );
+        expect(
+          _systemContent(requests.last),
+          contains('Ты не выбираешь статус и не выставляешь бинарные значения'),
+        );
       },
     );
 
@@ -269,7 +287,46 @@ void main() {
       );
 
       expect(result.status, TranslatorPhraseStatus.canonicalDrift);
-      expect(result.comment, contains('Смысл изменён.'));
+      expect(result.comment, contains('Meaning preserved: NO'));
+      expect(result.comment, contains('Terminology preserved: NO'));
+      expect(
+        result.comment,
+        contains(
+          'Смысловые различия:\n'
+          'Одна языковая версия обозначает другой объект.',
+        ),
+      );
+      expect(
+        result.comment,
+        contains(
+          'Терминологические различия:\n'
+          'Технический термин обозначает другой тип оборудования.',
+        ),
+      );
+    });
+
+    test('derives needsReview from terminology findings', () async {
+      final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+        responses: <Map<String, dynamic>>[
+          _contentResponse(_completeTranslationContent),
+          _contentResponse(_terminologyFindingAuditContent),
+        ],
+      );
+
+      final TranslatorPhraseResult result = await provider.translatePhrase(
+        sourceText: 'Check wording.',
+      );
+
+      expect(result.status, TranslatorPhraseStatus.needsReview);
+      expect(result.comment, contains('Meaning preserved: YES'));
+      expect(result.comment, contains('Terminology preserved: NO'));
+      expect(
+        result.comment,
+        contains(
+          'Терминологические различия:\n'
+          'Технический термин стал менее точным.',
+        ),
+      );
     });
 
     test(
@@ -317,8 +374,8 @@ void main() {
           ),
           _contentResponse(
             _exactAuditContent.replaceFirst(
-              'MEANING_PRESERVED:\nYES',
-              'MEANING_PRESERVED:\nMAYBE',
+              'MEANING_FINDINGS:\nNO_FINDINGS',
+              'MEANING_FINDINGS:\nNo meaning differences.',
             ),
           ),
         ],
@@ -335,7 +392,7 @@ void main() {
       expect(result.enToRu, 'Проверить формулировку.');
       expect(result.thToEn, 'Check the text.');
       expect(result.comment, contains('Переданный исходный текст:'));
-      expect(result.comment, contains('должна содержать только YES или NO'));
+      expect(result.comment, contains('должна содержать NO_FINDINGS'));
       expect(requests, hasLength(2));
     });
 
@@ -374,17 +431,16 @@ void main() {
 
     final Map<String, String> invalidAuditResponses = <String, String>{
       'rejects an incomplete audit': _exactAuditContent.replaceFirst(
-        '\n\nREASON:\nПолное смысловое совпадение.',
+        '\n\nAMBIGUITY_FINDINGS:\nNO_FINDINGS',
         '',
       ),
-      'rejects a non-binary audit decision': _exactAuditContent.replaceFirst(
-        'MEANING_PRESERVED:\nYES',
-        'MEANING_PRESERVED:\nMAYBE',
+      'rejects a non-Russian audit finding': _exactAuditContent.replaceFirst(
+        'TERMINOLOGY_FINDINGS:\nNO_FINDINGS',
+        'TERMINOLOGY_FINDINGS:\nWrong technical term.',
       ),
-      'rejects a non-Russian audit reason': _exactAuditContent.replaceFirst(
-        'Полное смысловое совпадение.',
-        'Exact match.',
-      ),
+      'rejects a model-supplied binary override':
+          '${_exactAuditContent.trim()}'
+          '\n\nMEANING_PRESERVED:\nYES',
     };
 
     for (final MapEntry<String, String> entry
@@ -620,35 +676,43 @@ Check the text.
 ''';
 
 const String _exactAuditContent = '''
-MEANING_PRESERVED:
-YES
+MEANING_FINDINGS:
+NO_FINDINGS
 
-TERMINOLOGY_PRESERVED:
-YES
+TERMINOLOGY_FINDINGS:
+NO_FINDINGS
 
-CANONICAL_STYLE_PRESERVED:
-YES
+STYLE_FINDINGS:
+NO_FINDINGS
 
-AMBIGUOUS_WORDING:
-NO
+AMBIGUITY_FINDINGS:
+NO_FINDINGS
+''';
 
-REASON:
-Полное смысловое совпадение.
+const String _terminologyFindingAuditContent = '''
+MEANING_FINDINGS:
+NO_FINDINGS
+
+TERMINOLOGY_FINDINGS:
+Технический термин стал менее точным.
+
+STYLE_FINDINGS:
+NO_FINDINGS
+
+AMBIGUITY_FINDINGS:
+NO_FINDINGS
 ''';
 
 const String _driftAuditContent = '''
-MEANING_PRESERVED:
-NO
+MEANING_FINDINGS:
+Одна языковая версия обозначает другой объект.
 
-TERMINOLOGY_PRESERVED:
-NO
+TERMINOLOGY_FINDINGS:
+Технический термин обозначает другой тип оборудования.
 
-CANONICAL_STYLE_PRESERVED:
-NO
+STYLE_FINDINGS:
+NO_FINDINGS
 
-AMBIGUOUS_WORDING:
-YES
-
-REASON:
-Смысл изменён.
+AMBIGUITY_FINDINGS:
+NO_FINDINGS
 ''';
