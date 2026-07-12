@@ -27,15 +27,6 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
   static const Key sourceTextFieldKey = Key(
     'translator_phrase_source_text_field',
   );
-  static const Key languageHintFieldKey = Key(
-    'translator_phrase_language_hint_field',
-  );
-  static const Key engineerContextFieldKey = Key(
-    'translator_phrase_engineer_context_field',
-  );
-  static const Key advancedOptionsTileKey = Key(
-    'translator_phrase_advanced_options_tile',
-  );
   static const Key translateButtonKey = Key(
     'translator_phrase_translate_button',
   );
@@ -47,17 +38,12 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
   static const Key errorTextKey = Key('translator_phrase_error_text');
 
   final TextEditingController _sourceTextController = TextEditingController();
-  String _sourceLanguageHint = '';
-  bool _advancedOptionsExpanded = false;
-  final TextEditingController _engineerContextController =
-      TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _resultSectionKey = GlobalKey();
 
   @override
   void dispose() {
     _sourceTextController.dispose();
-    _engineerContextController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -67,10 +53,6 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
 
     context.read<TranslatorPhraseCubit>().translatePhrase(
       sourceText: _sourceTextController.text,
-      sourceLanguageHint: _sourceLanguageHint.isEmpty
-          ? null
-          : _sourceLanguageHint,
-      engineerContext: _engineerContextController.text,
     );
   }
 
@@ -78,10 +60,6 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
 
     _sourceTextController.clear();
-    _engineerContextController.clear();
-    setState(() {
-      _sourceLanguageHint = '';
-    });
     context.read<TranslatorPhraseCubit>().clear();
 
     if (_scrollController.hasClients) {
@@ -151,131 +129,7 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                 border: const OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 4),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Tooltip(
-                      message: labels.sourceLanguageHintLabel,
-                      child: MenuAnchor(
-                        menuChildren: <Widget>[
-                          MenuItemButton(
-                            onPressed: () {
-                              setState(() {
-                                _sourceLanguageHint = '';
-                              });
-                            },
-                            child: Text(labels.sourceLanguageAutoOption),
-                          ),
-                          MenuItemButton(
-                            onPressed: () {
-                              setState(() {
-                                _sourceLanguageHint = 'ru';
-                              });
-                            },
-                            child: const Text('RU'),
-                          ),
-                          MenuItemButton(
-                            onPressed: () {
-                              setState(() {
-                                _sourceLanguageHint = 'en';
-                              });
-                            },
-                            child: const Text('EN'),
-                          ),
-                          MenuItemButton(
-                            onPressed: () {
-                              setState(() {
-                                _sourceLanguageHint = 'th';
-                              });
-                            },
-                            child: const Text('TH'),
-                          ),
-                        ],
-                        builder:
-                            (
-                              BuildContext context,
-                              MenuController controller,
-                              Widget? child,
-                            ) {
-                              return OutlinedButton(
-                                key: languageHintFieldKey,
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size(0, 34),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                onPressed: isLoading
-                                    ? null
-                                    : () {
-                                        if (controller.isOpen) {
-                                          controller.close();
-                                        } else {
-                                          controller.open();
-                                        }
-                                      },
-                                child: Text(
-                                  _sourceLanguageHint.isEmpty
-                                      ? labels.sourceLanguageAutoOption
-                                      : _sourceLanguageHint.toUpperCase(),
-                                ),
-                              );
-                            },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SizedBox(
-                        height: 34,
-                        child: InkWell(
-                          key: advancedOptionsTileKey,
-                          borderRadius: BorderRadius.circular(4),
-                          onTap: isLoading
-                              ? null
-                              : () {
-                                  setState(() {
-                                    _advancedOptionsExpanded =
-                                        !_advancedOptionsExpanded;
-                                  });
-                                },
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              labels.additionalParametersLabel,
-                              maxLines: 1,
-                              softWrap: false,
-                              overflow: TextOverflow.clip,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (_advancedOptionsExpanded) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    key: engineerContextFieldKey,
-                    controller: _engineerContextController,
-                    minLines: 2,
-                    maxLines: 5,
-                    textInputAction: TextInputAction.newline,
-                    decoration: InputDecoration(
-                      labelText: labels.engineerContextLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ],
-            ),
+            const SizedBox(height: 12),
             Row(
               children: <Widget>[
                 Expanded(

@@ -1,9 +1,5 @@
 import '../translator_phrase_result.dart';
 
 abstract interface class TranslatorPhraseProvider {
-  Future<TranslatorPhraseResult> translatePhrase({
-    required String sourceText,
-    String? sourceLanguageHint,
-    String? engineerContext,
-  });
+  Future<TranslatorPhraseResult> translatePhrase({required String sourceText});
 }

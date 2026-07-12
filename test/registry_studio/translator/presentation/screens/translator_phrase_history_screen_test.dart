@@ -130,8 +130,6 @@ final class _QueuedProvider implements TranslatorPhraseProvider {
   @override
   Future<TranslatorPhraseResult> translatePhrase({
     required String sourceText,
-    String? sourceLanguageHint,
-    String? engineerContext,
   }) async {
     return results[index++];
   }

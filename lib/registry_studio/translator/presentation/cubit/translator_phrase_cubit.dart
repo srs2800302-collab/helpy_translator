@@ -44,11 +44,7 @@ final class TranslatorPhraseCubit extends Cubit<TranslatorPhraseState> {
     }
   }
 
-  Future<void> translatePhrase({
-    required String sourceText,
-    String? sourceLanguageHint,
-    String? engineerContext,
-  }) async {
+  Future<void> translatePhrase({required String sourceText}) async {
     final TranslatorPhraseHistoryPersistence? persistence = _historyPersistence;
 
     if (persistence != null) {
@@ -62,8 +58,6 @@ final class TranslatorPhraseCubit extends Cubit<TranslatorPhraseState> {
     try {
       final TranslatorPhraseResult result = await _translatePhrase(
         sourceText: sourceText,
-        sourceLanguageHint: sourceLanguageHint,
-        engineerContext: engineerContext,
       );
 
       final List<TranslatorPhraseResult> updatedHistory =

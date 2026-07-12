@@ -39,17 +39,11 @@ void main() {
           ]),
         );
 
-        await cubit.translatePhrase(
-          sourceText: ' Check wording. ',
-          sourceLanguageHint: ' en ',
-          engineerContext: ' Registry wording review. ',
-        );
+        await cubit.translatePhrase(sourceText: ' Check wording. ');
         await expectation;
 
         expect(provider.callCount, 1);
         expect(provider.sourceText, 'Check wording.');
-        expect(provider.sourceLanguageHint, 'en');
-        expect(provider.engineerContext, 'Registry wording review.');
         expect(cubit.state.result, same(expected));
       },
     );
@@ -154,19 +148,13 @@ final class _FakeTranslatorPhraseProvider implements TranslatorPhraseProvider {
 
   int callCount = 0;
   String? sourceText;
-  String? sourceLanguageHint;
-  String? engineerContext;
 
   @override
   Future<TranslatorPhraseResult> translatePhrase({
     required String sourceText,
-    String? sourceLanguageHint,
-    String? engineerContext,
   }) async {
     callCount++;
     this.sourceText = sourceText;
-    this.sourceLanguageHint = sourceLanguageHint;
-    this.engineerContext = engineerContext;
 
     final Object? error = this.error;
     if (error != null) {

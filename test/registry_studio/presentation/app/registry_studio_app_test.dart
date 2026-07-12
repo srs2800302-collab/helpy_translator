@@ -433,8 +433,6 @@ final class _FakeTranslatorPhraseProvider implements TranslatorPhraseProvider {
   @override
   Future<TranslatorPhraseResult> translatePhrase({
     required String sourceText,
-    String? sourceLanguageHint,
-    String? engineerContext,
   }) async {
     callCount += 1;
     receivedSourceText = sourceText;

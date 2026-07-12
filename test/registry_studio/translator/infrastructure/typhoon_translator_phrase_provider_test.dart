@@ -8,126 +8,96 @@ import 'package:helpy_translator/registry_studio/translator/translator_phrase_st
 
 void main() {
   group('TyphoonTranslatorPhraseProvider', () {
-    test('performs structured translation and audit requests', () async {
-      final List<RequestOptions> requests = <RequestOptions>[];
-      final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-        responses: <Map<String, dynamic>>[
-          _toolResponse(_completeTranslationArguments),
-          _contentResponse(_exactAuditContent),
-        ],
-        requests: requests,
-      );
+    test(
+      'performs structured content translation and audit requests',
+      () async {
+        final List<RequestOptions> requests = <RequestOptions>[];
+        final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+          responses: <Map<String, dynamic>>[
+            _contentResponse(_completeTranslationContent),
+            _contentResponse(_exactAuditContent),
+          ],
+          requests: requests,
+        );
 
-      final TranslatorPhraseResult result = await provider.translatePhrase(
-        sourceText: ' Check wording. ',
-        sourceLanguageHint: ' en ',
-        engineerContext: ' Registry wording review. ',
-      );
+        final TranslatorPhraseResult result = await provider.translatePhrase(
+          sourceText: ' Check wording. ',
+        );
 
-      expect(result.sourceLanguage, 'EN');
-      expect(result.sourceText, 'Check wording.');
-      expect(result.status, TranslatorPhraseStatus.exact);
-      expect(result.ru, 'Проверить формулировку.');
-      expect(result.en, 'Check wording.');
-      expect(result.th, 'ตรวจสอบข้อความ');
-      expect(result.enToRu, 'Проверить формулировку.');
-      expect(result.thToRu, 'Проверить текст.');
-      expect(result.enToTh, 'ตรวจสอบข้อความ');
-      expect(result.thToEn, 'Check the text.');
-      expect(result.comment, contains('Meaning preserved: YES'));
-      expect(result.comment, contains('Полное смысловое совпадение.'));
+        expect(result.sourceLanguage, 'EN');
+        expect(result.sourceText, 'Check wording.');
+        expect(result.status, TranslatorPhraseStatus.exact);
+        expect(result.ru, 'Проверить формулировку.');
+        expect(result.en, 'Check wording.');
+        expect(result.th, 'ตรวจสอบข้อความ');
+        expect(result.enToRu, 'Проверить формулировку.');
+        expect(result.thToRu, 'Проверить текст.');
+        expect(result.enToTh, 'ตรวจสอบข้อความ');
+        expect(result.thToEn, 'Check the text.');
+        expect(result.comment, contains('Meaning preserved: YES'));
+        expect(result.comment, contains('Полное смысловое совпадение.'));
 
-      expect(requests, hasLength(2));
-      expect(
-        requests.map<String>((RequestOptions request) => request.path),
-        everyElement('/chat/completions'),
-      );
-      expect(
-        requests.map<Object?>(
-          (RequestOptions request) => _payload(request)['model'],
-        ),
-        everyElement(_testTyphoonModel),
-      );
-      expect(
-        requests.map<Object?>(
-          (RequestOptions request) =>
-              _payload(request)['max_completion_tokens'],
-        ),
-        <Object?>[700, 500],
-      );
+        expect(requests, hasLength(2));
+        expect(
+          requests.map<String>((RequestOptions request) => request.path),
+          everyElement('/chat/completions'),
+        );
+        expect(
+          requests.map<Object?>(
+            (RequestOptions request) => _payload(request)['model'],
+          ),
+          everyElement(_testTyphoonModel),
+        );
+        expect(
+          requests.map<Object?>(
+            (RequestOptions request) =>
+                _payload(request)['max_completion_tokens'],
+          ),
+          <Object?>[700, 500],
+        );
+        expect(
+          requests.map<Object?>(
+            (RequestOptions request) => _payload(request)['temperature'],
+          ),
+          <Object?>[0.1, 0.1],
+        );
+        expect(
+          requests.map<Object?>(
+            (RequestOptions request) => _payload(request)['top_p'],
+          ),
+          <Object?>[0.7, 0.7],
+        );
 
-      expect(
-        requests.map<Object?>(
-          (RequestOptions request) => _payload(request)['temperature'],
-        ),
-        <Object?>[0.1, 0.1],
-      );
+        for (final RequestOptions request in requests) {
+          expect(_payload(request)['frequency_penalty'], 0.0);
+          expect(_payload(request).containsKey('tools'), isFalse);
+          expect(_messages(request), hasLength(2));
+          _expectNoDirectionSymbols(_systemContent(request));
+        }
 
-      expect(
-        requests.map<Object?>(
-          (RequestOptions request) => _payload(request)['top_p'],
-        ),
-        <Object?>[0.7, 0.7],
-      );
+        expect(_userContent(requests.first), 'Source text:\n"Check wording."');
+        expect(
+          _systemContent(requests.first),
+          contains('You are Helpy strict multilingual translator.'),
+        );
+        expect(
+          _systemContent(requests.first),
+          contains('You must return exactly 9 sections.'),
+        );
+        expect(
+          _systemContent(requests.first),
+          contains('Output strictly with these exact ASCII labels:'),
+        );
+        expect(
+          _systemContent(requests.first),
+          contains('SOURCE LANGUAGE:\nRU | EN | TH'),
+        );
 
-      for (final RequestOptions request in requests) {
-        expect(_payload(request)['frequency_penalty'], 0.0);
-        _expectNoDirectionSymbols(_systemContent(request));
-      }
+        expect(_userContent(requests.last), _completeTranslationContent.trim());
+      },
+    );
 
-      final Map<dynamic, dynamic> translationPayload = _payload(requests.first);
-      final List<dynamic> tools = translationPayload['tools'] as List<dynamic>;
-      final Map<dynamic, dynamic> tool = tools.single as Map<dynamic, dynamic>;
-      final Map<dynamic, dynamic> function =
-          tool['function'] as Map<dynamic, dynamic>;
-      final Map<dynamic, dynamic> parameters =
-          function['parameters'] as Map<dynamic, dynamic>;
-
-      expect(function['name'], 'submit_translation');
-      expect(parameters['additionalProperties'], isFalse);
-      expect(parameters['required'], <String>[
-        'source_language',
-        'source_text',
-        'ru',
-        'en',
-        'th',
-        'en_to_ru',
-        'th_to_ru',
-        'en_to_th',
-        'th_to_en',
-      ]);
-      expect(_payload(requests.last).containsKey('tools'), isFalse);
-
-      final String translationInput = _userContent(requests.first);
-      expect(translationInput, contains('Source text:\n"Check wording."'));
-      expect(translationInput, contains('SOURCE LANGUAGE HINT:\nen'));
-      expect(
-        translationInput,
-        contains('ENGINEER CONTEXT:\nRegistry wording review.'),
-      );
-
-      expect(
-        _systemContent(requests.first),
-        contains('You are Helpy strict multilingual translator.'),
-      );
-      expect(
-        _systemContent(requests.first),
-        contains('Then perform cross-language reverse translations.'),
-      );
-      expect(
-        _systemContent(requests.first),
-        contains('Call submit_translation exactly once'),
-      );
-
-      expect(_userContent(requests.last), _completeTranslationContent.trim());
-      expect(
-        _userContent(requests.last),
-        isNot(contains('SOURCE LANGUAGE HINT')),
-      );
-      expect(_userContent(requests.last), isNot(contains('ENGINEER CONTEXT')));
-    });
-
-    test('rejects a missing translation tool call', () async {
+    test('rejects translation response without sections', () async {
       final List<RequestOptions> requests = <RequestOptions>[];
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <Map<String, dynamic>>[
@@ -141,17 +111,16 @@ void main() {
       );
 
       expect(result.status, TranslatorPhraseStatus.failed);
-      expect(result.comment, contains('translation tool call'));
+      expect(result.comment, contains('не содержит обязательных секций'));
       expect(requests, hasLength(1));
     });
 
-    test('rejects an unexpected translation function', () async {
+    test('rejects an unexpected translation section', () async {
       final List<RequestOptions> requests = <RequestOptions>[];
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <Map<String, dynamic>>[
-          _toolResponse(
-            _completeTranslationArguments,
-            toolName: 'unexpected_function',
+          _contentResponse(
+            '${_completeTranslationContent.trim()}\n\nEXTRA:\nUnexpected',
           ),
         ],
         requests: requests,
@@ -162,62 +131,38 @@ void main() {
       );
 
       expect(result.status, TranslatorPhraseStatus.failed);
-      expect(result.comment, contains('неожиданную translation function'));
+      expect(result.comment, contains('неожиданную секцию EXTRA'));
       expect(requests, hasLength(1));
     });
 
-    test('rejects malformed translation tool arguments', () async {
-      final List<RequestOptions> requests = <RequestOptions>[];
-      final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-        responses: <Map<String, dynamic>>[
-          _toolResponse('{"source_language":"EN"'),
-        ],
-        requests: requests,
-      );
-
-      final TranslatorPhraseResult result = await provider.translatePhrase(
-        sourceText: 'Check wording.',
-      );
-
-      expect(result.status, TranslatorPhraseStatus.failed);
-      expect(result.comment, contains('некорректный JSON'));
-      expect(requests, hasLength(1));
-    });
-
-    final Map<String, String> invalidTranslationArguments = <String, String>{
-      'rejects a missing translation argument': _completeTranslationArguments
-          .replaceFirst(',"th_to_en":"Check the text."', ''),
-      'rejects an empty translation argument': _completeTranslationArguments
-          .replaceFirst(
-            '"en_to_ru":"Проверить формулировку."',
-            '"en_to_ru":""',
+    final Map<String, String> invalidTranslationResponses = <String, String>{
+      'rejects a missing translation section': _completeTranslationContent
+          .replaceFirst('\n\nTH_TO_EN:\nCheck the text.', ''),
+      'rejects an empty translation section': _completeTranslationContent
+          .replaceFirst('EN_TO_RU:\nПроверить формулировку.', 'EN_TO_RU:\n'),
+      'rejects translation sections in the wrong order':
+          _completeTranslationContent.replaceFirst(
+            'RU:\nПроверить формулировку.\n\nEN:\nCheck wording.',
+            'EN:\nCheck wording.\n\nRU:\nПроверить формулировку.',
           ),
-      'rejects an unexpected translation argument':
-          _completeTranslationArguments.replaceFirst(
-            '}',
-            ',"extra":"Unexpected"}',
-          ),
-      'rejects a non-string translation argument': _completeTranslationArguments
-          .replaceFirst('"th_to_en":"Check the text."', '"th_to_en":7'),
-      'rejects a placeholder translation argument':
-          _completeTranslationArguments.replaceFirst(
-            '"th_to_en":"Check the text."',
-            '"th_to_en":"N/A"',
-          ),
+      'rejects a duplicated translation section':
+          '${_completeTranslationContent.trim()}'
+          '\n\nTH_TO_EN:\nDuplicate',
+      'rejects a placeholder translation section': _completeTranslationContent
+          .replaceFirst('TH_TO_EN:\nCheck the text.', 'TH_TO_EN:\nN/A'),
     };
 
     for (final MapEntry<String, String> entry
-        in invalidTranslationArguments.entries) {
+        in invalidTranslationResponses.entries) {
       test(entry.key, () async {
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
-          responses: <Map<String, dynamic>>[_toolResponse(entry.value)],
+          responses: <Map<String, dynamic>>[_contentResponse(entry.value)],
           requests: requests,
         );
 
         final TranslatorPhraseResult result = await provider.translatePhrase(
           sourceText: 'Check wording.',
-          sourceLanguageHint: 'en',
         );
 
         expect(result.status, TranslatorPhraseStatus.failed);
@@ -230,10 +175,10 @@ void main() {
       final List<RequestOptions> requests = <RequestOptions>[];
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <Map<String, dynamic>>[
-          _toolResponse(
-            _completeTranslationArguments.replaceFirst(
-              '"source_language":"EN"',
-              '"source_language":"DE"',
+          _contentResponse(
+            _completeTranslationContent.replaceFirst(
+              'SOURCE LANGUAGE:\nEN',
+              'SOURCE LANGUAGE:\nDE',
             ),
           ),
         ],
@@ -256,7 +201,7 @@ void main() {
     test('maps audit drift to canonicalDrift status', () async {
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <Map<String, dynamic>>[
-          _toolResponse(_completeTranslationArguments),
+          _contentResponse(_completeTranslationContent),
           _contentResponse(_driftAuditContent),
         ],
       );
@@ -275,10 +220,10 @@ void main() {
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
           responses: <Map<String, dynamic>>[
-            _toolResponse(
-              _completeTranslationArguments.replaceFirst(
-                '"source_text":"Check wording."',
-                '"source_text":"Changed wording."',
+            _contentResponse(
+              _completeTranslationContent.replaceFirst(
+                'SOURCE TEXT:\nCheck wording.',
+                'SOURCE TEXT:\nChanged wording.',
               ),
             ),
             _contentResponse(_exactAuditContent),
@@ -306,10 +251,10 @@ void main() {
       final List<RequestOptions> requests = <RequestOptions>[];
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <Map<String, dynamic>>[
-          _toolResponse(
-            _completeTranslationArguments.replaceFirst(
-              '"source_text":"Check wording."',
-              '"source_text":"Changed wording."',
+          _contentResponse(
+            _completeTranslationContent.replaceFirst(
+              'SOURCE TEXT:\nCheck wording.',
+              'SOURCE TEXT:\nChanged wording.',
             ),
           ),
           _contentResponse(
@@ -342,10 +287,10 @@ void main() {
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
           responses: <Map<String, dynamic>>[
-            _toolResponse(
-              _completeTranslationArguments.replaceFirst(
-                '"en":"Check wording."',
-                '"en":"Changed wording."',
+            _contentResponse(
+              _completeTranslationContent.replaceFirst(
+                'EN:\nCheck wording.',
+                'EN:\nChanged wording.',
               ),
             ),
             _contentResponse(_exactAuditContent),
@@ -390,7 +335,7 @@ void main() {
         final List<RequestOptions> requests = <RequestOptions>[];
         final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
           responses: <Map<String, dynamic>>[
-            _toolResponse(_completeTranslationArguments),
+            _contentResponse(_completeTranslationContent),
             _contentResponse(entry.value),
           ],
           requests: requests,
@@ -416,16 +361,13 @@ void main() {
       final List<RequestOptions> requests = <RequestOptions>[];
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <Map<String, dynamic>>[
-          _toolResponse(
-            _completeTranslationArguments
+          _contentResponse(
+            _completeTranslationContent
                 .replaceFirst(
-                  '"source_text":"Check wording."',
-                  '"source_text":"Check -> wording."',
+                  'SOURCE TEXT:\nCheck wording.',
+                  'SOURCE TEXT:\nCheck -> wording.',
                 )
-                .replaceFirst(
-                  '"en":"Check wording."',
-                  '"en":"Check -> wording."',
-                ),
+                .replaceFirst('EN:\nCheck wording.', 'EN:\nCheck -> wording.'),
           ),
           _contentResponse(_exactAuditContent),
         ],
@@ -483,10 +425,9 @@ void main() {
 
       final TranslatorPhraseResult result = await provider.translatePhrase(
         sourceText: 'Check wording.',
-        sourceLanguageHint: 'en',
       );
 
-      expect(result.sourceLanguage, 'en');
+      expect(result.sourceLanguage, 'unknown');
       expect(result.sourceText, 'Check wording.');
       expect(result.status, TranslatorPhraseStatus.failed);
       expect(result.comment, contains('Ошибка авторизации Typhoon API'));
@@ -534,29 +475,6 @@ TyphoonTranslatorPhraseProvider _providerWithResponses({
     apiClient: apiClient,
     appConfig: _config(),
   );
-}
-
-Map<String, dynamic> _toolResponse(
-  String arguments, {
-  String toolName = 'submit_translation',
-}) {
-  return <String, dynamic>{
-    'choices': <dynamic>[
-      <String, dynamic>{
-        'message': <String, dynamic>{
-          'tool_calls': <dynamic>[
-            <String, dynamic>{
-              'type': 'function',
-              'function': <String, dynamic>{
-                'name': toolName,
-                'arguments': arguments,
-              },
-            },
-          ],
-        },
-      },
-    ],
-  };
 }
 
 Map<String, dynamic> _contentResponse(String content) {
@@ -613,13 +531,6 @@ AppConfig _config() {
 }
 
 const String _testTyphoonModel = 'test-model';
-
-const String _completeTranslationArguments =
-    '{"source_language":"EN","source_text":"Check wording.",'
-    '"ru":"Проверить формулировку.","en":"Check wording.",'
-    '"th":"ตรวจสอบข้อความ","en_to_ru":"Проверить формулировку.",'
-    '"th_to_ru":"Проверить текст.","en_to_th":"ตรวจสอบข้อความ",'
-    '"th_to_en":"Check the text."}';
 
 const String _completeTranslationContent = '''
 SOURCE LANGUAGE:

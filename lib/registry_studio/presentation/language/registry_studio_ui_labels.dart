@@ -25,14 +25,10 @@ final class RegistryStudioUiLabels {
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'Адаптивный переводчик',
           sourceTextLabel: 'Каноническая формулировка',
-          sourceLanguageHintLabel: 'Исходный язык — необязательно',
-          sourceLanguageAutoOption: 'Авто',
-          engineerContextLabel: 'Контекст инженера',
           translateButton: 'Перевести',
           clearButton: 'Очистить',
           copyAllButton: 'Копировать всё',
           copyAllSuccessMessage: 'Все варианты скопированы',
-          additionalParametersLabel: 'Дополнительные параметры',
           resultsTitle: 'Результаты переводов',
           sourceLanguageRow: 'SOURCE LANGUAGE',
           sourceTextRow: 'SOURCE TEXT',
@@ -112,14 +108,10 @@ final class RegistryStudioUiLabels {
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'Adaptive translator',
           sourceTextLabel: 'Canonical wording',
-          sourceLanguageHintLabel: 'Source language — optional',
-          sourceLanguageAutoOption: 'Auto',
-          engineerContextLabel: 'Engineer context',
           translateButton: 'Translate',
           clearButton: 'Clear',
           copyAllButton: 'Copy all',
           copyAllSuccessMessage: 'All variants copied',
-          additionalParametersLabel: 'Additional parameters',
           resultsTitle: 'Translation results',
           sourceLanguageRow: 'SOURCE LANGUAGE',
           sourceTextRow: 'SOURCE TEXT',
@@ -199,14 +191,10 @@ final class RegistryStudioUiLabels {
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'ตัวแปลแบบปรับตามบริบท',
           sourceTextLabel: 'ถ้อยคำมาตรฐาน',
-          sourceLanguageHintLabel: 'ภาษาต้นทาง — ไม่บังคับ',
-          sourceLanguageAutoOption: 'อัตโนมัติ',
-          engineerContextLabel: 'บริบทของวิศวกร',
           translateButton: 'แปล',
           clearButton: 'ล้าง',
           copyAllButton: 'คัดลอกทั้งหมด',
           copyAllSuccessMessage: 'คัดลอกผลลัพธ์ทั้งหมดแล้ว',
-          additionalParametersLabel: 'พารามิเตอร์เพิ่มเติม',
           resultsTitle: 'ผลการแปล',
           sourceLanguageRow: 'SOURCE LANGUAGE',
           sourceTextRow: 'SOURCE TEXT',
@@ -296,14 +284,10 @@ final class RegistryStudioTranslatorPhraseLabels {
   const RegistryStudioTranslatorPhraseLabels({
     required this.title,
     required this.sourceTextLabel,
-    required this.sourceLanguageHintLabel,
-    required this.sourceLanguageAutoOption,
-    required this.engineerContextLabel,
     required this.translateButton,
     required this.clearButton,
     required this.copyAllButton,
     required this.copyAllSuccessMessage,
-    required this.additionalParametersLabel,
     required this.resultsTitle,
     required this.sourceLanguageRow,
     required this.sourceTextRow,
@@ -319,14 +303,10 @@ final class RegistryStudioTranslatorPhraseLabels {
 
   final String title;
   final String sourceTextLabel;
-  final String sourceLanguageHintLabel;
-  final String sourceLanguageAutoOption;
-  final String engineerContextLabel;
   final String translateButton;
   final String clearButton;
   final String copyAllButton;
   final String copyAllSuccessMessage;
-  final String additionalParametersLabel;
   final String resultsTitle;
   final String sourceLanguageRow;
   final String sourceTextRow;

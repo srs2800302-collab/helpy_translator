@@ -26,57 +26,35 @@ void main() {
 
       expect(find.text('Адаптивный переводчик'), findsNothing);
       expect(find.text('Каноническая формулировка'), findsOneWidget);
-      expect(find.text('Дополнительные параметры'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
       expect(find.text('Перевести'), findsOneWidget);
       expect(find.byIcon(Icons.clear), findsOneWidget);
-      expect(find.text('✅ Exact: 0'), findsOneWidget);
-      expect(find.text('🟢 Equivalent: 0'), findsOneWidget);
-      expect(find.text('🟡 Review: 0'), findsOneWidget);
-      expect(find.text('🔴 Drift: 0'), findsOneWidget);
-      expect(find.text('❌ Failed: 0'), findsOneWidget);
+
+      expect(find.text('Дополнительные параметры'), findsNothing);
+      expect(find.text('Авто'), findsNothing);
+      expect(find.text('Контекст инженера'), findsNothing);
+      expect(find.text('RU'), findsNothing);
+      expect(find.text('EN'), findsNothing);
+      expect(find.text('TH'), findsNothing);
+
       expect(
         find.byKey(const Key('translator_phrase_language_hint_field')),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byKey(const Key('translator_phrase_engineer_context_field')),
         findsNothing,
       );
-
-      final Finder languageControl = find.byKey(
-        const Key('translator_phrase_language_hint_field'),
-      );
-      final Finder parametersLabel = find.text('Дополнительные параметры');
-
-      expect(find.byIcon(Icons.translate), findsNothing);
-      expect(find.byIcon(Icons.tune), findsNothing);
-      expect(find.byIcon(Icons.expand_more), findsNothing);
-      expect(find.byType(ExpansionTile), findsNothing);
-
-      final Text parametersText = tester.widget<Text>(parametersLabel);
-      expect(parametersText.maxLines, 1);
-      expect(parametersText.softWrap, isFalse);
-      expect(parametersText.overflow, TextOverflow.clip);
-
       expect(
-        (tester.getCenter(languageControl).dy -
-                tester.getCenter(parametersLabel).dy)
-            .abs(),
-        lessThan(2),
-      );
-
-      await tester.tap(
         find.byKey(const Key('translator_phrase_advanced_options_tile')),
+        findsNothing,
       );
-      await tester.pumpAndSettle();
 
-      expect(find.text('Исходный язык — необязательно'), findsNothing);
-      expect(
-        find.byKey(const Key('translator_phrase_language_hint_field')),
-        findsOneWidget,
-      );
-      expect(find.text('Авто'), findsOneWidget);
-      expect(find.text('Контекст инженера'), findsOneWidget);
+      expect(find.text('✅ Exact: 0'), findsOneWidget);
+      expect(find.text('🟢 Equivalent: 0'), findsOneWidget);
+      expect(find.text('🟡 Review: 0'), findsOneWidget);
+      expect(find.text('🔴 Drift: 0'), findsOneWidget);
+      expect(find.text('❌ Failed: 0'), findsOneWidget);
     });
 
     testWidgets('submits text through TranslatorPhraseCubit', (
@@ -88,24 +66,10 @@ void main() {
       addTearDown(cubit.close);
 
       await tester.pumpWidget(_testApp(cubit));
-      await tester.tap(
-        find.byKey(const Key('translator_phrase_advanced_options_tile')),
-      );
-      await tester.pumpAndSettle();
 
       await tester.enterText(
         find.byKey(const Key('translator_phrase_source_text_field')),
         ' Check wording. ',
-      );
-      await tester.tap(
-        find.byKey(const Key('translator_phrase_language_hint_field')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('EN').last);
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('translator_phrase_engineer_context_field')),
-        ' Registry wording review. ',
       );
 
       await tester.tap(
@@ -115,8 +79,7 @@ void main() {
 
       expect(provider.callCount, 1);
       expect(provider.sourceText, 'Check wording.');
-      expect(provider.sourceLanguageHint, 'en');
-      expect(provider.engineerContext, 'Registry wording review.');
+
       expect(find.text('Точное совпадение'), findsOneWidget);
       expect(find.text('Результаты переводов'), findsOneWidget);
       expect(find.text('Проверить формулировку.'), findsOneWidget);
@@ -299,7 +262,7 @@ Full audit reason.
       expect(provider.callCount, 0);
     });
 
-    testWidgets('clears text fields and current result', (
+    testWidgets('clears source text and current result', (
       WidgetTester tester,
     ) async {
       final _FakeTranslatorPhraseProvider provider =
@@ -308,25 +271,12 @@ Full audit reason.
       addTearDown(cubit.close);
 
       await tester.pumpWidget(_testApp(cubit));
-      await tester.tap(
-        find.byKey(const Key('translator_phrase_advanced_options_tile')),
-      );
-      await tester.pumpAndSettle();
 
       await tester.enterText(
         find.byKey(const Key('translator_phrase_source_text_field')),
         'Check wording.',
       );
-      await tester.tap(
-        find.byKey(const Key('translator_phrase_language_hint_field')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('EN').last);
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('translator_phrase_engineer_context_field')),
-        'Registry wording review.',
-      );
+
       await tester.tap(
         find.byKey(const Key('translator_phrase_translate_button')),
       );
@@ -338,26 +288,15 @@ Full audit reason.
       await tester.pumpAndSettle();
 
       expect(find.text('Точное совпадение'), findsNothing);
-      expect(
-        tester
-            .widget<TextField>(
-              find.byKey(const Key('translator_phrase_source_text_field')),
-            )
-            .controller
-            ?.text,
-        isEmpty,
+
+      final TextField sourceField = tester.widget<TextField>(
+        find.byKey(const Key('translator_phrase_source_text_field')),
       );
-      expect(find.text('Авто'), findsOneWidget);
-      expect(
-        tester
-            .widget<TextField>(
-              find.byKey(const Key('translator_phrase_engineer_context_field')),
-            )
-            .controller
-            ?.text,
-        isEmpty,
-      );
+
+      expect(sourceField.controller?.text, isEmpty);
+      expect(find.byType(TextField), findsOneWidget);
     });
+
     testWidgets('requests operation for candidate phrase result', (
       WidgetTester tester,
     ) async {
@@ -469,19 +408,13 @@ final class _FakeTranslatorPhraseProvider implements TranslatorPhraseProvider {
 
   int callCount = 0;
   String? sourceText;
-  String? sourceLanguageHint;
-  String? engineerContext;
 
   @override
   Future<TranslatorPhraseResult> translatePhrase({
     required String sourceText,
-    String? sourceLanguageHint,
-    String? engineerContext,
   }) async {
     callCount++;
     this.sourceText = sourceText;
-    this.sourceLanguageHint = sourceLanguageHint;
-    this.engineerContext = engineerContext;
 
     final Completer<TranslatorPhraseResult>? pending = completer;
     if (pending != null) {

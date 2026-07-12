@@ -11,31 +11,10 @@ void main() {
           _CapturingTranslatorPhraseProvider();
       final TranslatePhrase useCase = TranslatePhrase(provider: provider);
 
-      await useCase(
-        sourceText: ' Check wording. ',
-        sourceLanguageHint: ' en ',
-        engineerContext: ' Registry wording review. ',
-      );
+      await useCase(sourceText: ' Check wording. ');
 
       expect(provider.sourceText, 'Check wording.');
-      expect(provider.sourceLanguageHint, 'en');
-      expect(provider.engineerContext, 'Registry wording review.');
       expect(provider.callCount, 1);
-    });
-
-    test('normalizes blank optional hints to null', () async {
-      final _CapturingTranslatorPhraseProvider provider =
-          _CapturingTranslatorPhraseProvider();
-      final TranslatePhrase useCase = TranslatePhrase(provider: provider);
-
-      await useCase(
-        sourceText: 'Check wording.',
-        sourceLanguageHint: '   ',
-        engineerContext: '',
-      );
-
-      expect(provider.sourceLanguageHint, isNull);
-      expect(provider.engineerContext, isNull);
     });
 
     test('rejects empty source text before provider call', () {
@@ -82,19 +61,13 @@ final class _CapturingTranslatorPhraseProvider
   final TranslatorPhraseResult result;
   int callCount = 0;
   String? sourceText;
-  String? sourceLanguageHint;
-  String? engineerContext;
 
   @override
   Future<TranslatorPhraseResult> translatePhrase({
     required String sourceText,
-    String? sourceLanguageHint,
-    String? engineerContext,
   }) async {
     callCount++;
     this.sourceText = sourceText;
-    this.sourceLanguageHint = sourceLanguageHint;
-    this.engineerContext = engineerContext;
 
     return result;
   }
