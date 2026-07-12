@@ -198,6 +198,64 @@ void main() {
       expect(requests, hasLength(1));
     });
 
+    test(
+      'treats one outer quote pair as technical rather than semantic drift',
+      () async {
+        final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+          responses: <Map<String, dynamic>>[
+            _contentResponse(
+              _completeTranslationContent
+                  .replaceFirst(
+                    'SOURCE TEXT:\nCheck wording.',
+                    'SOURCE TEXT:\n"Check wording."',
+                  )
+                  .replaceFirst('EN:\nCheck wording.', 'EN:\n"Check wording."'),
+            ),
+            _contentResponse(_exactAuditContent),
+          ],
+        );
+
+        final TranslatorPhraseResult result = await provider.translatePhrase(
+          sourceText: 'Check wording.',
+        );
+
+        expect(result.status, TranslatorPhraseStatus.exact);
+        expect(result.sourceText, '"Check wording."');
+        expect(result.comment, contains('лишнюю внешнюю пару кавычек'));
+        expect(result.comment, isNot(contains('Переданный исходный текст:')));
+        expect(result.comment, isNot(contains('Секция исходного языка EN')));
+      },
+    );
+
+    test(
+      'preserves intentional outer quotes from the submitted source text',
+      () async {
+        final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
+          responses: <Map<String, dynamic>>[
+            _contentResponse(
+              _completeTranslationContent
+                  .replaceFirst(
+                    'SOURCE TEXT:\nCheck wording.',
+                    'SOURCE TEXT:\n"Check wording."',
+                  )
+                  .replaceFirst('EN:\nCheck wording.', 'EN:\n"Check wording."'),
+            ),
+            _contentResponse(_exactAuditContent),
+          ],
+        );
+
+        final TranslatorPhraseResult result = await provider.translatePhrase(
+          sourceText: '"Check wording."',
+        );
+
+        expect(result.status, TranslatorPhraseStatus.exact);
+        expect(result.sourceText, '"Check wording."');
+        expect(result.comment, isNot(contains('лишнюю внешнюю пару кавычек')));
+        expect(result.comment, isNot(contains('Переданный исходный текст:')));
+        expect(result.comment, isNot(contains('Секция исходного языка EN')));
+      },
+    );
+
     test('maps audit drift to canonicalDrift status', () async {
       final TyphoonTranslatorPhraseProvider provider = _providerWithResponses(
         responses: <Map<String, dynamic>>[

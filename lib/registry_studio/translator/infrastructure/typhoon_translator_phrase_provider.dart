@@ -44,7 +44,18 @@ final class TyphoonTranslatorPhraseProvider
       final String sourceLanguage = parsedTranslation['SOURCE LANGUAGE']!;
       final String sourceLanguageText = parsedTranslation[sourceLanguage]!;
 
-      if (returnedSourceText != normalizedSourceText) {
+      final bool returnedSourceTextHasAddedOuterQuotes =
+          returnedSourceText == '"$normalizedSourceText"';
+
+      if (returnedSourceTextHasAddedOuterQuotes) {
+        technicalDiagnostics.add(
+          'SOURCE TEXT из ответа Typhoon содержит лишнюю внешнюю пару '
+          'кавычек. Смысл исходного текста не изменён.',
+        );
+      }
+
+      if (returnedSourceText != normalizedSourceText &&
+          !returnedSourceTextHasAddedOuterQuotes) {
         semanticDiagnostics.add(
           '''
 Переданный исходный текст:
@@ -57,7 +68,12 @@ $returnedSourceText
         );
       }
 
-      if (sourceLanguageText != returnedSourceText) {
+      final bool sourceLanguageTextMatchesSourceText =
+          sourceLanguageText == returnedSourceText ||
+          sourceLanguageText == '"$returnedSourceText"' ||
+          returnedSourceText == '"$sourceLanguageText"';
+
+      if (!sourceLanguageTextMatchesSourceText) {
         semanticDiagnostics.add(
           '''
 Секция исходного языка $sourceLanguage из ответа Typhoon:
