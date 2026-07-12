@@ -46,12 +46,12 @@ final class TyphoonTranslatorPhraseProvider
           sourceLanguageHint: normalizedSourceLanguageHint,
           engineerContext: normalizedEngineerContext,
         ),
-        maxTokens: 512,
+        maxTokens: 700,
       );
       translation = parsedTranslation;
 
       _validateTranslationSourceLanguage(translation: parsedTranslation);
-      _validateDirectTranslation(parsedTranslation);
+      _validateCompleteTranslation(parsedTranslation);
 
       final String returnedSourceText = parsedTranslation['SOURCE TEXT']!;
       final String sourceLanguage = parsedTranslation['SOURCE LANGUAGE']!;
@@ -83,25 +83,10 @@ $returnedSourceText
         );
       }
 
-      final Map<String, String> reverseTranslation =
-          await _requestReverseTranslation(
-            en: parsedTranslation['EN']!,
-            th: parsedTranslation['TH']!,
-            maxTokens: 512,
-          );
-
-      final Map<String, String> completeTranslation = <String, String>{
-        ...parsedTranslation,
-        ...reverseTranslation,
-      };
-
-      translation = completeTranslation;
-      _validateCompleteTranslation(completeTranslation);
-
       final String auditContent = await _requestContent(
         systemPrompt: _auditPrompt,
-        userContent: _buildAuditInput(completeTranslation),
-        maxTokens: 512,
+        userContent: _buildAuditInput(parsedTranslation),
+        maxTokens: 500,
       );
 
       final Map<String, String> audit = _parseStrictSections(
@@ -123,18 +108,18 @@ $returnedSourceText
           : '${diagnostics.join('\n\n')}\n\n$auditComment';
 
       return TranslatorPhraseResult(
-        sourceLanguage: completeTranslation['SOURCE LANGUAGE']!,
-        sourceText: completeTranslation['SOURCE TEXT']!,
+        sourceLanguage: parsedTranslation['SOURCE LANGUAGE']!,
+        sourceText: parsedTranslation['SOURCE TEXT']!,
         status: semanticDiagnostics.isEmpty
             ? _resolveStatus(audit)
             : TranslatorPhraseStatus.canonicalDrift,
-        ru: completeTranslation['RU'],
-        en: completeTranslation['EN'],
-        th: completeTranslation['TH'],
-        enToRu: completeTranslation['EN_TO_RU'],
-        thToRu: completeTranslation['TH_TO_RU'],
-        enToTh: completeTranslation['EN_TO_TH'],
-        thToEn: completeTranslation['TH_TO_EN'],
+        ru: parsedTranslation['RU'],
+        en: parsedTranslation['EN'],
+        th: parsedTranslation['TH'],
+        enToRu: parsedTranslation['EN_TO_RU'],
+        thToRu: parsedTranslation['TH_TO_RU'],
+        enToTh: parsedTranslation['EN_TO_TH'],
+        thToEn: parsedTranslation['TH_TO_EN'],
         comment: comment,
       );
     } on DioException catch (error) {
@@ -166,8 +151,8 @@ $returnedSourceText
       data: <String, Object>{
         'model': appConfig.typhoonModel,
         'max_completion_tokens': maxTokens,
-        'temperature': 0.0,
-        'top_p': 1.0,
+        'temperature': 0.1,
+        'top_p': 0.7,
         'frequency_penalty': 0.0,
         'messages': <Map<String, String>>[
           <String, String>{'role': 'system', 'content': systemPrompt},
@@ -180,36 +165,6 @@ $returnedSourceText
     return _extractTranslationArguments(response.data);
   }
 
-  Future<Map<String, String>> _requestReverseTranslation({
-    required String en,
-    required String th,
-    required int maxTokens,
-  }) async {
-    final Response<dynamic> response = await apiClient.dio.post<dynamic>(
-      '/chat/completions',
-      data: <String, Object>{
-        'model': appConfig.typhoonModel,
-        'max_completion_tokens': maxTokens,
-        'temperature': 0.0,
-        'top_p': 1.0,
-        'frequency_penalty': 0.0,
-        'messages': <Map<String, String>>[
-          <String, String>{
-            'role': 'system',
-            'content': _reverseTranslationPrompt,
-          },
-          <String, String>{
-            'role': 'user',
-            'content': _buildReverseTranslationInput(en: en, th: th),
-          },
-        ],
-        'tools': _reverseTranslationTools,
-      },
-    );
-
-    return _extractReverseTranslationArguments(response.data);
-  }
-
   Future<String> _requestContent({
     required String systemPrompt,
     required String userContent,
@@ -220,8 +175,8 @@ $returnedSourceText
       data: <String, Object>{
         'model': appConfig.typhoonModel,
         'max_completion_tokens': maxTokens,
-        'temperature': 0.0,
-        'top_p': 1.0,
+        'temperature': 0.1,
+        'top_p': 0.7,
         'frequency_penalty': 0.0,
         'messages': <Map<String, String>>[
           <String, String>{'role': 'system', 'content': systemPrompt},
@@ -284,20 +239,6 @@ $returnedSourceText
     }
 
     return buffer.toString().trim();
-  }
-
-  static String _buildReverseTranslationInput({
-    required String en,
-    required String th,
-  }) {
-    return '''
-EN:
-$en
-
-TH:
-$th
-'''
-        .trim();
   }
 
   static String _buildAuditInput(Map<String, String> translation) {
@@ -443,30 +384,6 @@ $preamble
     }
   }
 
-  static void _validateDirectTranslation(Map<String, String> translation) {
-    if (translation.length != _translationArgumentLabels.length) {
-      throw const FormatException(
-        'Прямой результат перевода должен содержать ровно пять секций.',
-      );
-    }
-
-    for (final String label in _translationArgumentLabels.values) {
-      final String? value = translation[label];
-
-      if (value == null) {
-        throw FormatException(
-          'Прямой результат перевода не содержит секцию $label.',
-        );
-      }
-
-      _validateSectionValue(
-        responseName: 'Прямой результат перевода',
-        label: label,
-        value: value,
-      );
-    }
-  }
-
   static void _validateCompleteTranslation(Map<String, String> translation) {
     if (translation.length != _translationLabels.length) {
       throw const FormatException(
@@ -548,58 +465,41 @@ ${audit['REASON']}
   }
 
   static Map<String, String> _extractTranslationArguments(Object? data) {
-    return _extractToolArguments(
-      data: data,
-      expectedToolName: _translationToolName,
-      argumentLabels: _translationArgumentLabels,
-      responseName: 'Ответ прямого перевода',
-    );
-  }
-
-  static Map<String, String> _extractReverseTranslationArguments(Object? data) {
-    return _extractToolArguments(
-      data: data,
-      expectedToolName: _reverseTranslationToolName,
-      argumentLabels: _reverseTranslationArgumentLabels,
-      responseName: 'Ответ независимого обратного перевода',
-    );
-  }
-
-  static Map<String, String> _extractToolArguments({
-    required Object? data,
-    required String expectedToolName,
-    required Map<String, String> argumentLabels,
-    required String responseName,
-  }) {
     final Map<String, dynamic> message = _extractMessage(data);
     final Object? toolCalls = message['tool_calls'];
 
     if (toolCalls is! List<dynamic> || toolCalls.length != 1) {
-      throw FormatException(
-        '$responseName должен содержать ровно один tool call.',
+      throw const FormatException(
+        'Ответ Typhoon API должен содержать ровно один translation tool call.',
       );
     }
 
     final Object? toolCall = toolCalls.single;
 
     if (toolCall is! Map<String, dynamic>) {
-      throw FormatException('$responseName содержит некорректный tool call.');
+      throw const FormatException(
+        'Некорректный translation tool call Typhoon API.',
+      );
     }
 
     final Object? function = toolCall['function'];
 
     if (function is! Map<String, dynamic>) {
-      throw FormatException('$responseName tool call не содержит функцию.');
+      throw const FormatException('Translation tool call не содержит функцию.');
     }
 
-    if (function['name'] != expectedToolName) {
-      throw FormatException('$responseName содержит неожиданную function.');
+    if (function['name'] != _translationToolName) {
+      throw const FormatException(
+        'Typhoon API вызвал неожиданную translation function.',
+      );
     }
 
     final Object? rawArguments = function['arguments'];
 
     if (rawArguments is! String || rawArguments.trim().isEmpty) {
-      throw FormatException('$responseName tool call не содержит arguments.');
+      throw const FormatException(
+        'Translation tool call не содержит arguments.',
+      );
     }
 
     final Object? decodedArguments;
@@ -607,56 +507,57 @@ ${audit['REASON']}
     try {
       decodedArguments = jsonDecode(rawArguments);
     } on FormatException {
-      throw FormatException(
-        '$responseName tool arguments содержат некорректный JSON.',
+      throw const FormatException(
+        'Translation tool arguments содержат некорректный JSON.',
       );
     }
 
     if (decodedArguments is! Map<String, dynamic>) {
-      throw FormatException(
-        '$responseName tool arguments должны быть JSON object.',
+      throw const FormatException(
+        'Translation tool arguments должны быть JSON object.',
       );
     }
 
-    for (final String key in argumentLabels.keys) {
+    for (final String key in _translationArgumentLabels.keys) {
       if (!decodedArguments.containsKey(key)) {
         throw FormatException(
-          '$responseName tool arguments не содержат обязательный ключ $key.',
+          'Translation tool arguments не содержат обязательный ключ $key.',
         );
       }
     }
 
     for (final String key in decodedArguments.keys) {
-      if (!argumentLabels.containsKey(key)) {
+      if (!_translationArgumentLabels.containsKey(key)) {
         throw FormatException(
-          '$responseName tool arguments содержат неожиданный ключ $key.',
+          'Translation tool arguments содержат неожиданный ключ $key.',
         );
       }
     }
 
-    final Map<String, String> result = <String, String>{};
+    final Map<String, String> translation = <String, String>{};
 
-    for (final MapEntry<String, String> entry in argumentLabels.entries) {
+    for (final MapEntry<String, String> entry
+        in _translationArgumentLabels.entries) {
       final Object? rawValue = decodedArguments[entry.key];
 
       if (rawValue is! String) {
         throw FormatException(
-          '$responseName tool argument ${entry.key} должен быть строкой.',
+          'Translation tool argument ${entry.key} должен быть строкой.',
         );
       }
 
       final String value = rawValue.trim();
 
       _validateSectionValue(
-        responseName: responseName,
+        responseName: 'Translation tool result',
         label: entry.value,
         value: value,
       );
 
-      result[entry.value] = value;
+      translation[entry.value] = value;
     }
 
-    return result;
+    return translation;
   }
 
   static Map<String, dynamic> _extractMessage(Object? data) {
@@ -759,8 +660,6 @@ ${audit['REASON']}
   };
 
   static const String _translationToolName = 'submit_translation';
-  static const String _reverseTranslationToolName =
-      'submit_reverse_translation';
 
   static const Map<String, String> _translationArgumentLabels =
       <String, String>{
@@ -769,13 +668,9 @@ ${audit['REASON']}
         'ru': 'RU',
         'en': 'EN',
         'th': 'TH',
-      };
-
-  static const Map<String, String> _reverseTranslationArgumentLabels =
-      <String, String>{
         'en_to_ru': 'EN_TO_RU',
-        'en_to_th': 'EN_TO_TH',
         'th_to_ru': 'TH_TO_RU',
+        'en_to_th': 'EN_TO_TH',
         'th_to_en': 'TH_TO_EN',
       };
 
@@ -786,7 +681,7 @@ ${audit['REASON']}
           'function': <String, Object>{
             'name': _translationToolName,
             'description':
-                'Submit the source identity and direct RU, EN and TH '
+                'Submit the complete multilingual translation and reverse '
                 'translations.',
             'parameters': <String, Object>{
               'type': 'object',
@@ -799,8 +694,7 @@ ${audit['REASON']}
                 'source_text': <String, Object>{
                   'type': 'string',
                   'description':
-                      'The original source text exactly as supplied. The field '
-                      'matching source_language must repeat this exact value.',
+                      'The original source text exactly as supplied.',
                 },
                 'ru': <String, Object>{
                   'type': 'string',
@@ -814,6 +708,22 @@ ${audit['REASON']}
                   'type': 'string',
                   'description': 'Natural Thai translation.',
                 },
+                'en_to_ru': <String, Object>{
+                  'type': 'string',
+                  'description': 'Reverse translation of EN into Russian.',
+                },
+                'th_to_ru': <String, Object>{
+                  'type': 'string',
+                  'description': 'Reverse translation of TH into Russian.',
+                },
+                'en_to_th': <String, Object>{
+                  'type': 'string',
+                  'description': 'Reverse translation of EN into Thai.',
+                },
+                'th_to_en': <String, Object>{
+                  'type': 'string',
+                  'description': 'Reverse translation of TH into English.',
+                },
               },
               'required': <String>[
                 'source_language',
@@ -821,46 +731,9 @@ ${audit['REASON']}
                 'ru',
                 'en',
                 'th',
-              ],
-              'additionalProperties': false,
-            },
-          },
-        },
-      ];
-
-  static const List<Map<String, Object>> _reverseTranslationTools =
-      <Map<String, Object>>[
-        <String, Object>{
-          'type': 'function',
-          'function': <String, Object>{
-            'name': _reverseTranslationToolName,
-            'description':
-                'Submit independent translations derived only from the '
-                'supplied EN and TH texts.',
-            'parameters': <String, Object>{
-              'type': 'object',
-              'properties': <String, Object>{
-                'en_to_ru': <String, Object>{
-                  'type': 'string',
-                  'description': 'Literal translation of EN into Russian.',
-                },
-                'en_to_th': <String, Object>{
-                  'type': 'string',
-                  'description': 'Literal translation of EN into Thai.',
-                },
-                'th_to_ru': <String, Object>{
-                  'type': 'string',
-                  'description': 'Literal translation of TH into Russian.',
-                },
-                'th_to_en': <String, Object>{
-                  'type': 'string',
-                  'description': 'Literal translation of TH into English.',
-                },
-              },
-              'required': <String>[
                 'en_to_ru',
-                'en_to_th',
                 'th_to_ru',
+                'en_to_th',
                 'th_to_en',
               ],
               'additionalProperties': false,
@@ -876,8 +749,8 @@ ${audit['REASON']}
     'EN',
     'TH',
     'EN_TO_RU',
-    'EN_TO_TH',
     'TH_TO_RU',
+    'EN_TO_TH',
     'TH_TO_EN',
   ];
   static const List<String> _auditDecisionLabels = <String>[
@@ -896,37 +769,15 @@ You are Helpy strict multilingual translator.
 
 Input can be RU, EN or TH.
 Detect source language.
-Translate directly into RU, EN and TH.
-The section matching SOURCE LANGUAGE must repeat SOURCE TEXT exactly.
+Translate into RU, EN and TH.
+Then perform cross-language reverse translations.
 
-Treat ENGINEER CONTEXT only as diagnostic context.
-Never use it to repair, clarify, disambiguate or add meaning to SOURCE TEXT.
-
-Do not perform reverse translations.
 Do not audit.
 Do not explain.
 Do not improve wording.
 Preserve business meaning and service-marketplace terminology.
 
 Call submit_translation exactly once with all required values.
-''';
-
-  static const String _reverseTranslationPrompt = '''
-You are an independent strict multilingual reverse translator.
-
-Input contains only completed EN and TH direct translations.
-Do not infer or reconstruct an original source phrase.
-Do not use missing source context.
-
-Translate EN literally into RU and TH.
-Translate TH literally into RU and EN.
-
-Do not audit.
-Do not explain.
-Do not improve, repair or harmonize meaning.
-Expose the meaning actually present in each supplied text.
-
-Call submit_reverse_translation exactly once with all required values.
 ''';
 
   static const String _auditPrompt = '''
@@ -936,10 +787,8 @@ Call submit_reverse_translation exactly once with all required values.
 Ты не переписываешь формулировки.
 Ты проверяешь только полный набор из 9 секций.
 
-Секции дословного обратного перевода являются диагностическими сигналами, но не доказательством точности.
-Главными фактическими результатами являются SOURCE TEXT и прямые секции RU, EN и TH с учётом SOURCE LANGUAGE.
-Секция, соответствующая SOURCE LANGUAGE, должна дословно совпадать с SOURCE TEXT.
-Используй остальные две языковые секции, чтобы определить фактически переданный смысл.
+Секции дословного обратного перевода являются диагностическим доказательством.
+Используй их, чтобы определить, какой смысл фактически передают английская и тайская версии.
 
 Проверь:
 
