@@ -41,6 +41,64 @@ void main() {
 
     expect(sourceText.data, contains('Что требуется сделать?'));
   });
+  testWidgets('filters service intake source and clears search', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ServiceIntakeSourceBlocksScreen(
+          uiLanguage: RegistryStudioUiLanguage.ru,
+          sourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(
+            <ServiceIntakeSourceBlock>[_sourceBlock()],
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final TextField searchField = tester.widget<TextField>(
+      find.byKey(ServiceIntakeSourceBlocksScreen.searchKey),
+    );
+
+    expect(searchField.decoration?.labelText, 'Поиск по источнику');
+    expect(searchField.decoration?.hintText, 'Заголовок, ID, путь или текст');
+    expect(searchField.decoration?.border, isA<OutlineInputBorder>());
+    expect(find.byIcon(Icons.search), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(ServiceIntakeSourceBlocksScreen.searchKey),
+      'установить и подключить кран',
+    );
+    await tester.pump();
+
+    expect(find.text('Plumbing → Кран'), findsOneWidget);
+    expect(
+      find.byKey(ServiceIntakeSourceBlocksScreen.clearSearchKey),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(ServiceIntakeSourceBlocksScreen.searchKey),
+      'электрическая розетка',
+    );
+    await tester.pump();
+
+    expect(find.text('Plumbing → Кран'), findsNothing);
+    expect(find.text('Совпадения не найдены'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(ServiceIntakeSourceBlocksScreen.clearSearchKey),
+    );
+    await tester.pump();
+
+    expect(find.text('Plumbing → Кран'), findsOneWidget);
+    expect(find.text('Совпадения не найдены'), findsNothing);
+    expect(
+      find.byKey(ServiceIntakeSourceBlocksScreen.clearSearchKey),
+      findsNothing,
+    );
+  });
 }
 
 ServiceIntakeSourceBlock _sourceBlock() {

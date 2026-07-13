@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../presentation/language/registry_studio_ui_language.dart';
 import '../../infrastructure/service_intake_source_block_extractor.dart';
 
-final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
+final class ServiceIntakeSourceBlocksScreen extends StatefulWidget {
   const ServiceIntakeSourceBlocksScreen({
     required this.uiLanguage,
     required this.sourceBlocks,
@@ -14,6 +14,8 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
   static const Key loadingKey = Key('service_intake_source_loading');
   static const Key errorKey = Key('service_intake_source_error');
   static const Key listKey = Key('service_intake_source_list');
+  static const Key searchKey = Key('service_intake_source_search');
+  static const Key clearSearchKey = Key('service_intake_source_search_clear');
 
   final RegistryStudioUiLanguage uiLanguage;
   final Future<List<ServiceIntakeSourceBlock>> sourceBlocks;
@@ -28,13 +30,34 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
   }
 
   @override
+  State<ServiceIntakeSourceBlocksScreen> createState() =>
+      _ServiceIntakeSourceBlocksScreenState();
+}
+
+final class _ServiceIntakeSourceBlocksScreenState
+    extends State<ServiceIntakeSourceBlocksScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final _ServiceIntakeSourceLabels labels = _labels(uiLanguage);
+    final _ServiceIntakeSourceLabels labels = _labels(widget.uiLanguage);
 
     return Scaffold(
-      appBar: AppBar(title: Text(titleFor(uiLanguage))),
+      appBar: AppBar(
+        title: Text(
+          ServiceIntakeSourceBlocksScreen.titleFor(widget.uiLanguage),
+        ),
+      ),
       body: FutureBuilder<List<ServiceIntakeSourceBlock>>(
-        future: sourceBlocks,
+        future: widget.sourceBlocks,
         builder:
             (
               BuildContext context,
@@ -42,7 +65,7 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
             ) {
               if (snapshot.hasError) {
                 return Center(
-                  key: errorKey,
+                  key: ServiceIntakeSourceBlocksScreen.errorKey,
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
@@ -57,13 +80,31 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
 
               if (blocks == null) {
                 return const Center(
-                  key: loadingKey,
+                  key: ServiceIntakeSourceBlocksScreen.loadingKey,
                   child: CircularProgressIndicator(),
                 );
               }
 
+              final String normalizedQuery = _query.trim().toLowerCase();
+              final List<ServiceIntakeSourceBlock> visibleBlocks =
+                  normalizedQuery.isEmpty
+                  ? blocks
+                  : blocks
+                        .where((ServiceIntakeSourceBlock block) {
+                          final String searchableText =
+                              '${block.identity.heading}\n'
+                              '${block.identity.entityId.value}\n'
+                              '${block.identity.path.segments.join(' / ')}\n'
+                              '${block.sourceText}';
+
+                          return searchableText.toLowerCase().contains(
+                            normalizedQuery,
+                          );
+                        })
+                        .toList(growable: false);
+
               return ListView(
-                key: listKey,
+                key: ServiceIntakeSourceBlocksScreen.listKey,
                 padding: const EdgeInsets.all(16),
                 children: <Widget>[
                   Card(
@@ -76,7 +117,44 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  for (final ServiceIntakeSourceBlock block in blocks)
+                  TextField(
+                    key: ServiceIntakeSourceBlocksScreen.searchKey,
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      labelText: labels.searchLabel,
+                      hintText: labels.searchHint,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              key: ServiceIntakeSourceBlocksScreen
+                                  .clearSearchKey,
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _query = '';
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                              tooltip: labels.clearSearch,
+                            ),
+                    ),
+                    onChanged: (String value) {
+                      setState(() {
+                        _query = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  if (visibleBlocks.isEmpty)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(labels.noMatches),
+                      ),
+                    ),
+                  for (final ServiceIntakeSourceBlock block in visibleBlocks)
                     Card(
                       child: ExpansionTile(
                         key: ValueKey<String>(
@@ -99,14 +177,16 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
                                   SelectableText(block.sourceText),
-                                  if (onStartOperation != null) ...<Widget>[
+                                  if (widget.onStartOperation !=
+                                      null) ...<Widget>[
                                     const SizedBox(height: 16),
                                     FilledButton.icon(
                                       key: ValueKey<String>(
                                         'service_intake_start_operation_'
                                         '${block.identity.entityId.value}',
                                       ),
-                                      onPressed: () => onStartOperation!(block),
+                                      onPressed: () =>
+                                          widget.onStartOperation!(block),
                                       icon: const Icon(Icons.play_arrow),
                                       label: Text(labels.startOperation),
                                     ),
@@ -131,6 +211,10 @@ typedef _ServiceIntakeSourceLabels = ({
   String lineRange,
   String loadFailed,
   String startOperation,
+  String searchLabel,
+  String searchHint,
+  String clearSearch,
+  String noMatches,
 });
 
 _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
@@ -140,18 +224,30 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       lineRange: 'Строки',
       loadFailed: 'Не удалось загрузить источник Registry',
       startOperation: 'Открыть инженерную операцию',
+      searchLabel: 'Поиск по источнику',
+      searchHint: 'Заголовок, ID, путь или текст',
+      clearSearch: 'Очистить поиск',
+      noMatches: 'Совпадения не найдены',
     ),
     RegistryStudioUiLanguage.en => (
       loadedCount: 'Loaded records',
       lineRange: 'Lines',
       loadFailed: 'Failed to load Registry source',
       startOperation: 'Open engineering operation',
+      searchLabel: 'Search source',
+      searchHint: 'Heading, ID, path, or text',
+      clearSearch: 'Clear search',
+      noMatches: 'No matches found',
     ),
     RegistryStudioUiLanguage.th => (
       loadedCount: 'ระเบียนที่โหลด',
       lineRange: 'บรรทัด',
       loadFailed: 'ไม่สามารถโหลดแหล่งข้อมูล Registry ได้',
       startOperation: 'เปิดการดำเนินการทางวิศวกรรม',
+      searchLabel: 'ค้นหาในแหล่งข้อมูล',
+      searchHint: 'หัวข้อ, ID, เส้นทาง หรือข้อความ',
+      clearSearch: 'ล้างการค้นหา',
+      noMatches: 'ไม่พบรายการที่ตรงกัน',
     ),
   };
 }
