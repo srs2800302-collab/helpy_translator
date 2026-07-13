@@ -11,6 +11,7 @@ import '../../core/application/operation_status/transition_registry_engineering_
 import '../../core/application/related_context/prepare_registry_related_context.dart';
 import '../../core/application/related_context/prepare_registry_resolved_related_context.dart';
 import '../../core/domain/entities/registry_entity.dart';
+import '../../core/domain/value_objects/registry_entity_id.dart';
 import '../../core/domain/value_objects/registry_relation.dart';
 import '../../guard/presentation/screens/registry_studio_guard_record_screen.dart';
 import '../../operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
@@ -85,6 +86,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   int _selectedScreenIndex = _translatorScreenIndex;
   RegistryResolvedRelatedContext? _resolvedRelatedContext;
   String? _initialOperationProblemStatement;
+  RegistryEntityId? _operationPrimaryEntityId;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
   late final TranslatorPhraseCubit _translatorPhraseCubit;
 
@@ -257,6 +259,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           '${labels.canonicalCandidateRow}:\n'
           '$candidate';
 
+      _operationPrimaryEntityId = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -269,17 +272,19 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           '${block.identity.heading}\n'
           '${block.identity.entityId.value}\n\n'
           '${block.sourceText}';
+      _operationPrimaryEntityId = block.identity.entityId;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
 
   void _clearResolvedRelatedContext() {
-    if (_resolvedRelatedContext == null) {
+    if (_resolvedRelatedContext == null && _operationPrimaryEntityId == null) {
       return;
     }
 
     setState(() {
       _resolvedRelatedContext = null;
+      _operationPrimaryEntityId = null;
     });
   }
 
@@ -349,6 +354,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         onWorkSessionCleared: _clearResolvedRelatedContext,
         workSessionPersistence: widget.workSessionPersistence,
         revisionPrimaryEntityId:
+            _operationPrimaryEntityId ??
             (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,
         revisionRelatedEntityIds: _resolvedRelatedContext
             ?.resolvedRelatedEntities

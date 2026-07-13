@@ -81,6 +81,10 @@ void main() {
       workspace.initialProblemStatement,
       contains('Что требуется сделать?'),
     );
+    expect(
+      workspace.revisionPrimaryEntityId,
+      RegistryEntityId('helpy.service_intake.plumbing.faucet'),
+    );
   });
 
   testWidgets('switches top-level labels between RU EN and TH', (
