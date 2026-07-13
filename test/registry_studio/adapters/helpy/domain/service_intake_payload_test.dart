@@ -17,6 +17,24 @@ void main() {
       expect(payload.kind, same(ServiceIntakePayload.entityKind));
     });
 
+    test('supports selector-answer and direct scenario entry evidence', () {
+      final ScenarioEntryEvidence selector =
+          ScenarioEntryEvidence.selectorAnswer(
+            sourceSelectorQuestionKey: '  what_to_do  ',
+            sourceSelectedAnswerOptionKey: '  install_connect  ',
+          );
+      const ScenarioEntryEvidence direct =
+          ScenarioEntryEvidence.directSelection();
+
+      expect(selector.mode, ScenarioEntryEvidenceMode.selectorAnswer);
+      expect(selector.sourceSelectorQuestionKey, 'what_to_do');
+      expect(selector.sourceSelectedAnswerOptionKey, 'install_connect');
+
+      expect(direct.mode, ScenarioEntryEvidenceMode.directSelection);
+      expect(direct.sourceSelectorQuestionKey, isNull);
+      expect(direct.sourceSelectedAnswerOptionKey, isNull);
+    });
+
     test('preserves scenario content order and immutable collections', () {
       final IntakeScenario scenario = _scenario(
         key: 'install_connect',
@@ -280,7 +298,7 @@ IntakeScenario _scenario({
   return IntakeScenario(
     key: key,
     displayName: key,
-    entryEvidence: ScenarioEntryEvidence(
+    entryEvidence: ScenarioEntryEvidence.selectorAnswer(
       sourceSelectorQuestionKey: 'what_to_do',
       sourceSelectedAnswerOptionKey: selectedAnswerKey,
     ),

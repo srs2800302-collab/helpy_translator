@@ -217,12 +217,15 @@ final class IntakeScenario extends Equatable {
   ];
 }
 
+enum ScenarioEntryEvidenceMode { selectorAnswer, directSelection }
+
 final class ScenarioEntryEvidence extends Equatable {
-  factory ScenarioEntryEvidence({
+  factory ScenarioEntryEvidence.selectorAnswer({
     required String sourceSelectorQuestionKey,
     required String sourceSelectedAnswerOptionKey,
   }) {
     return ScenarioEntryEvidence._(
+      mode: ScenarioEntryEvidenceMode.selectorAnswer,
       sourceSelectorQuestionKey: _requiredText(
         sourceSelectorQuestionKey,
         'sourceSelectorQuestionKey',
@@ -234,16 +237,24 @@ final class ScenarioEntryEvidence extends Equatable {
     );
   }
 
+  const ScenarioEntryEvidence.directSelection()
+    : mode = ScenarioEntryEvidenceMode.directSelection,
+      sourceSelectorQuestionKey = null,
+      sourceSelectedAnswerOptionKey = null;
+
   const ScenarioEntryEvidence._({
+    required this.mode,
     required this.sourceSelectorQuestionKey,
     required this.sourceSelectedAnswerOptionKey,
   });
 
-  final String sourceSelectorQuestionKey;
-  final String sourceSelectedAnswerOptionKey;
+  final ScenarioEntryEvidenceMode mode;
+  final String? sourceSelectorQuestionKey;
+  final String? sourceSelectedAnswerOptionKey;
 
   @override
   List<Object?> get props => <Object?>[
+    mode,
     sourceSelectorQuestionKey,
     sourceSelectedAnswerOptionKey,
   ];
