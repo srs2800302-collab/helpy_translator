@@ -1,0 +1,410 @@
+{
+  "version": "v1",
+  "entries": [
+    {
+      "entityId": "helpy.service_intake.appliance.washing_machine",
+      "path": [
+        "helpy",
+        "service_intake",
+        "appliance",
+        "washing_machine"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Appliance Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Appliance → Стиральная машина"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.appliance.dishwasher",
+      "path": [
+        "helpy",
+        "service_intake",
+        "appliance",
+        "dishwasher"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Appliance Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Appliance → Посудомоечная машина"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.appliance.food_waste_disposer",
+      "path": [
+        "helpy",
+        "service_intake",
+        "appliance",
+        "food_waste_disposer"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Appliance Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Appliance → Измельчитель пищевых отходов"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.kitchen_sink",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "kitchen_sink"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Кухонная мойка"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.kitchen_faucet",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "kitchen_faucet"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Кухонный кран"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.instant_water_heater",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "instant_water_heater"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Проточный водонагреватель"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.food_waste_disposer",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "food_waste_disposer"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Измельчитель пищевых отходов"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.cooktop",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "cooktop"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Варочная панель"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.oven",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "oven"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Духовой шкаф"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.built_in_microwave",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "built_in_microwave"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Встроенная микроволновая печь"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.range_hood",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "range_hood"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Кухонная вытяжка"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.built_in_refrigerator",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "built_in_refrigerator"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Встроенный холодильник"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.built_in_dishwasher",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "built_in_dishwasher"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Встроенная посудомоечная машина"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.kitchen_built_in_appliances.built_in_washing_machine",
+      "path": [
+        "helpy",
+        "service_intake",
+        "kitchen_built_in_appliances",
+        "built_in_washing_machine"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Built-in Appliance Architecture Standard",
+        "headingLevel": 3,
+        "heading": "Kitchen Built-in Appliances → Встроенная стиральная машина"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.cleaning.regular_cleaning",
+      "path": [
+        "helpy",
+        "service_intake",
+        "cleaning",
+        "regular_cleaning"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Cleaning Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "17.1 Regular Cleaning"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.cleaning.deep_cleaning",
+      "path": [
+        "helpy",
+        "service_intake",
+        "cleaning",
+        "deep_cleaning"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Cleaning Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "17.2 Deep Cleaning"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.cleaning.post_repair_cleaning",
+      "path": [
+        "helpy",
+        "service_intake",
+        "cleaning",
+        "post_repair_cleaning"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Cleaning Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "17.3 Post-Repair Cleaning"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.electrical.socket",
+      "path": [
+        "helpy",
+        "service_intake",
+        "electrical",
+        "socket"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "23. Service Architecture Registry — Electrical",
+        "headingLevel": 3,
+        "heading": "Electrical → Socket"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.electrical.switch",
+      "path": [
+        "helpy",
+        "service_intake",
+        "electrical",
+        "switch"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "23. Service Architecture Registry — Electrical",
+        "headingLevel": 3,
+        "heading": "Electrical → Switch"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.plumbing.faucet",
+      "path": [
+        "helpy",
+        "service_intake",
+        "plumbing",
+        "faucet"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Plumbing Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Plumbing → Кран"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.plumbing.electric_shower",
+      "path": [
+        "helpy",
+        "service_intake",
+        "plumbing",
+        "electric_shower"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Plumbing Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Plumbing → Электрический душ"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.plumbing.toilet",
+      "path": [
+        "helpy",
+        "service_intake",
+        "plumbing",
+        "toilet"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Plumbing Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Plumbing → Унитаз"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.plumbing.blockage",
+      "path": [
+        "helpy",
+        "service_intake",
+        "plumbing",
+        "blockage"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Plumbing Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Plumbing → Засор"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.locks.interior_door_lock_installation",
+      "path": [
+        "helpy",
+        "service_intake",
+        "locks",
+        "interior_door_lock_installation"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Locks Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Locks → Установка замка межкомнатной двери"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.locks.interior_door_lock_replacement",
+      "path": [
+        "helpy",
+        "service_intake",
+        "locks",
+        "interior_door_lock_replacement"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Locks Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Locks → Замена замка межкомнатной двери"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.locks.mortise_furniture_lock_installation",
+      "path": [
+        "helpy",
+        "service_intake",
+        "locks",
+        "mortise_furniture_lock_installation"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Locks Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Locks → Установка врезного мебельного замка"
+      }
+    },
+    {
+      "entityId": "helpy.service_intake.locks.furniture_lock_replacement",
+      "path": [
+        "helpy",
+        "service_intake",
+        "locks",
+        "furniture_lock_replacement"
+      ],
+      "sourceLocator": {
+        "ownerHeadingLevel": 2,
+        "ownerHeading": "Locks Mini-TZ Standard",
+        "headingLevel": 3,
+        "heading": "Locks → Замена мебельного замка"
+      }
+    }
+  ]
+}
