@@ -260,10 +260,14 @@ final class ScenarioEntryEvidence extends Equatable {
   ];
 }
 
+enum IntakeQuestionInputMode { singleChoice, text }
+
 final class IntakeQuestion extends Equatable {
   factory IntakeQuestion({
     required String key,
     required String prompt,
+    required IntakeQuestionInputMode inputMode,
+    required bool isRequired,
     required Iterable<AnswerOption> answerOptions,
     required Iterable<QuestionQualifier> qualifiers,
   }) {
@@ -271,6 +275,22 @@ final class IntakeQuestion extends Equatable {
         List<AnswerOption>.unmodifiable(answerOptions);
     final List<QuestionQualifier> normalizedQualifiers =
         List<QuestionQualifier>.unmodifiable(qualifiers);
+
+    if (inputMode == IntakeQuestionInputMode.singleChoice) {
+      if (normalizedAnswerOptions.isEmpty) {
+        throw ArgumentError(
+          'Single-choice intake question must declare answer options.',
+        );
+      }
+
+      if (!isRequired) {
+        throw ArgumentError('Single-choice intake question must be required.');
+      }
+    } else if (normalizedAnswerOptions.isNotEmpty) {
+      throw ArgumentError(
+        'Text intake question must not declare answer options.',
+      );
+    }
 
     _ensureUniqueKeys(
       normalizedAnswerOptions.map((AnswerOption item) => item.key),
@@ -284,6 +304,8 @@ final class IntakeQuestion extends Equatable {
     return IntakeQuestion._(
       key: _requiredText(key, 'key'),
       prompt: _requiredText(prompt, 'prompt'),
+      inputMode: inputMode,
+      isRequired: isRequired,
       answerOptions: normalizedAnswerOptions,
       qualifiers: normalizedQualifiers,
     );
@@ -292,17 +314,28 @@ final class IntakeQuestion extends Equatable {
   const IntakeQuestion._({
     required this.key,
     required this.prompt,
+    required this.inputMode,
+    required this.isRequired,
     required this.answerOptions,
     required this.qualifiers,
   });
 
   final String key;
   final String prompt;
+  final IntakeQuestionInputMode inputMode;
+  final bool isRequired;
   final List<AnswerOption> answerOptions;
   final List<QuestionQualifier> qualifiers;
 
   @override
-  List<Object?> get props => <Object?>[key, prompt, answerOptions, qualifiers];
+  List<Object?> get props => <Object?>[
+    key,
+    prompt,
+    inputMode,
+    isRequired,
+    answerOptions,
+    qualifiers,
+  ];
 }
 
 final class AnswerOption extends Equatable {

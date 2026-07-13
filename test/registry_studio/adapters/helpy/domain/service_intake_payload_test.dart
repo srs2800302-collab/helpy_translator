@@ -251,6 +251,69 @@ void main() {
       );
     });
 
+    test('supports optional and required text questions', () {
+      final IntakeQuestion optionalQuestion = IntakeQuestion(
+        key: 'pets',
+        prompt: 'Какие животные?',
+        inputMode: IntakeQuestionInputMode.text,
+        isRequired: false,
+        answerOptions: const <AnswerOption>[],
+        qualifiers: const <QuestionQualifier>[],
+      );
+      final IntakeQuestion requiredQuestion = IntakeQuestion(
+        key: 'installation_space',
+        prompt: 'Размер ниши для установки',
+        inputMode: IntakeQuestionInputMode.text,
+        isRequired: true,
+        answerOptions: const <AnswerOption>[],
+        qualifiers: const <QuestionQualifier>[],
+      );
+
+      expect(optionalQuestion.inputMode, IntakeQuestionInputMode.text);
+      expect(optionalQuestion.isRequired, isFalse);
+      expect(requiredQuestion.isRequired, isTrue);
+    });
+
+    test('enforces the intake question input-mode contract', () {
+      expect(
+        () => IntakeQuestion(
+          key: 'location',
+          prompt: 'Where?',
+          inputMode: IntakeQuestionInputMode.singleChoice,
+          isRequired: true,
+          answerOptions: const <AnswerOption>[],
+          qualifiers: const <QuestionQualifier>[],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => IntakeQuestion(
+          key: 'location',
+          prompt: 'Where?',
+          inputMode: IntakeQuestionInputMode.singleChoice,
+          isRequired: false,
+          answerOptions: <AnswerOption>[
+            AnswerOption(key: 'sink', displayName: 'Sink'),
+          ],
+          qualifiers: const <QuestionQualifier>[],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => IntakeQuestion(
+          key: 'comment',
+          prompt: 'Comment',
+          inputMode: IntakeQuestionInputMode.text,
+          isRequired: false,
+          answerOptions: <AnswerOption>[
+            AnswerOption(key: 'unexpected', displayName: 'Unexpected'),
+          ],
+          qualifiers: const <QuestionQualifier>[],
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('rejects inconsistent photo limits', () {
       expect(
         () => PhotoLimit(
@@ -314,6 +377,8 @@ IntakeQuestion _locationQuestion() {
   return IntakeQuestion(
     key: 'location',
     prompt: 'Where is the faucet?',
+    inputMode: IntakeQuestionInputMode.singleChoice,
+    isRequired: true,
     answerOptions: <AnswerOption>[
       AnswerOption(key: 'sink', displayName: 'Sink'),
     ],
