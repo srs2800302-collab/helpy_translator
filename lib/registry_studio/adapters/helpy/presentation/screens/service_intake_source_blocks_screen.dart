@@ -111,7 +111,10 @@ final class _ServiceIntakeSourceBlocksScreenState
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
-                        '${labels.loadedCount}: ${blocks.length}',
+                        normalizedQuery.isEmpty
+                            ? '${labels.loadedCount}: ${blocks.length}'
+                            : '${labels.shownCount}: ${visibleBlocks.length} '
+                                  '${labels.ofCount} ${blocks.length}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
@@ -239,6 +242,8 @@ final class _ServiceIntakeSourceBlocksScreenState
 
 typedef _ServiceIntakeSourceLabels = ({
   String loadedCount,
+  String shownCount,
+  String ofCount,
   String lineRange,
   String loadFailed,
   String startOperation,
@@ -252,6 +257,8 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
   return switch (language) {
     RegistryStudioUiLanguage.ru => (
       loadedCount: 'Загружено записей',
+      shownCount: 'Показано',
+      ofCount: 'из',
       lineRange: 'Строки',
       loadFailed: 'Не удалось загрузить источник Registry',
       startOperation: 'Открыть инженерную операцию',
@@ -262,6 +269,8 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
     ),
     RegistryStudioUiLanguage.en => (
       loadedCount: 'Loaded records',
+      shownCount: 'Shown',
+      ofCount: 'of',
       lineRange: 'Lines',
       loadFailed: 'Failed to load Registry source',
       startOperation: 'Open engineering operation',
@@ -272,6 +281,8 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
     ),
     RegistryStudioUiLanguage.th => (
       loadedCount: 'ระเบียนที่โหลด',
+      shownCount: 'แสดง',
+      ofCount: 'จาก',
       lineRange: 'บรรทัด',
       loadFailed: 'ไม่สามารถโหลดแหล่งข้อมูล Registry ได้',
       startOperation: 'เปิดการดำเนินการทางวิศวกรรม',

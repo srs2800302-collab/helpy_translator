@@ -72,6 +72,8 @@ void main() {
     );
     await tester.pump();
 
+    expect(find.text('Показано: 1 из 1'), findsOneWidget);
+
     final Text matchedHeading = tester.widget<Text>(
       find.text('Plumbing → Кран'),
     );
@@ -107,6 +109,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Plumbing → Кран'), findsNothing);
+    expect(find.text('Показано: 0 из 1'), findsOneWidget);
     expect(find.text('Совпадения не найдены'), findsOneWidget);
 
     await tester.tap(
@@ -115,6 +118,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Plumbing → Кран'), findsOneWidget);
+    expect(find.text('Загружено записей: 1'), findsOneWidget);
+    expect(find.textContaining('Показано:'), findsNothing);
     expect(find.text('Совпадения не найдены'), findsNothing);
     expect(
       find.byKey(ServiceIntakeSourceBlocksScreen.clearSearchKey),
