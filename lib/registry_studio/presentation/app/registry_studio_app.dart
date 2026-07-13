@@ -261,6 +261,18 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     });
   }
 
+  void _startOperationFromServiceIntakeSourceBlock(
+    ServiceIntakeSourceBlock block,
+  ) {
+    setState(() {
+      _initialOperationProblemStatement =
+          '${block.identity.heading}\n'
+          '${block.identity.entityId.value}\n\n'
+          '${block.sourceText}';
+      _selectedScreenIndex = _operationWorkspaceScreenIndex;
+    });
+  }
+
   void _clearResolvedRelatedContext() {
     if (_resolvedRelatedContext == null) {
       return;
@@ -299,6 +311,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       return ServiceIntakeSourceBlocksScreen(
         uiLanguage: _selectedLanguage,
         sourceBlocks: widget.serviceIntakeSourceBlocks!,
+        onStartOperation: _startOperationFromServiceIntakeSourceBlock,
       );
     }
 

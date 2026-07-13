@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
-import 'package:helpy_translator/registry_studio/adapters/helpy/presentation/screens/service_intake_source_blocks_screen.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/application/related_context/prepare_registry_related_context.dart';
@@ -49,7 +48,7 @@ void main() {
     expect(find.text('Адаптивный переводчик'), findsWidgets);
   });
 
-  testWidgets('opens service intake source from app menu', (
+  testWidgets('starts operation from service intake source block', (
     WidgetTester tester,
   ) async {
     final provider = _FakeTranslatorPhraseProvider(_translatorResult());
@@ -58,15 +57,30 @@ void main() {
       _testApp(
         provider,
         serviceIntakeSourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(
-          const <ServiceIntakeSourceBlock>[],
+          <ServiceIntakeSourceBlock>[_serviceIntakeSourceBlock()],
         ),
       ),
     );
 
     await _selectAppScreen(tester, 'Источник service intake');
+    await tester.tap(find.text('Plumbing → Кран'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Открыть инженерную операцию'));
+    await tester.pumpAndSettle();
 
-    expect(find.byType(ServiceIntakeSourceBlocksScreen), findsOneWidget);
-    expect(find.text('Загружено записей: 0'), findsOneWidget);
+    final workspace = tester
+        .widget<RegistryEngineeringOperationWorkspaceScreen>(
+          find.byType(RegistryEngineeringOperationWorkspaceScreen),
+        );
+
+    expect(
+      workspace.initialProblemStatement,
+      contains('helpy.service_intake.plumbing.faucet'),
+    );
+    expect(
+      workspace.initialProblemStatement,
+      contains('Что требуется сделать?'),
+    );
   });
 
   testWidgets('switches top-level labels between RU EN and TH', (
@@ -407,6 +421,30 @@ Widget _testApp(
     prepareRegistryRelatedContext: PrepareRegistryRelatedContext(),
     prepareRegistryResolvedRelatedContext:
         PrepareRegistryResolvedRelatedContext(),
+  );
+}
+
+ServiceIntakeSourceBlock _serviceIntakeSourceBlock() {
+  return (
+    identity: (
+      entityId: RegistryEntityId('helpy.service_intake.plumbing.faucet'),
+      path: RegistryPath(const <String>[
+        'helpy',
+        'service_intake',
+        'plumbing',
+        'faucet',
+      ]),
+      ownerHeadingLevel: 2,
+      ownerHeading: 'Plumbing',
+      headingLevel: 3,
+      heading: 'Plumbing → Кран',
+    ),
+    startLine: 100,
+    endLine: 110,
+    sourceText:
+        '### Plumbing → Кран\n'
+        '1. Что требуется сделать?\n'
+        '- Установить и подключить кран.\n',
   );
 }
 

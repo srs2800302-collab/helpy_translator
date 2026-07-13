@@ -7,6 +7,7 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
   const ServiceIntakeSourceBlocksScreen({
     required this.uiLanguage,
     required this.sourceBlocks,
+    this.onStartOperation,
     super.key,
   });
 
@@ -16,6 +17,7 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
 
   final RegistryStudioUiLanguage uiLanguage;
   final Future<List<ServiceIntakeSourceBlock>> sourceBlocks;
+  final ValueChanged<ServiceIntakeSourceBlock>? onStartOperation;
 
   static String titleFor(RegistryStudioUiLanguage language) {
     return switch (language) {
@@ -93,7 +95,24 @@ final class ServiceIntakeSourceBlocksScreen extends StatelessWidget {
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                             child: Align(
                               alignment: Alignment.centerLeft,
-                              child: SelectableText(block.sourceText),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  SelectableText(block.sourceText),
+                                  if (onStartOperation != null) ...<Widget>[
+                                    const SizedBox(height: 16),
+                                    FilledButton.icon(
+                                      key: ValueKey<String>(
+                                        'service_intake_start_operation_'
+                                        '${block.identity.entityId.value}',
+                                      ),
+                                      onPressed: () => onStartOperation!(block),
+                                      icon: const Icon(Icons.play_arrow),
+                                      label: Text(labels.startOperation),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -111,6 +130,7 @@ typedef _ServiceIntakeSourceLabels = ({
   String loadedCount,
   String lineRange,
   String loadFailed,
+  String startOperation,
 });
 
 _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
@@ -119,16 +139,19 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       loadedCount: 'Загружено записей',
       lineRange: 'Строки',
       loadFailed: 'Не удалось загрузить источник Registry',
+      startOperation: 'Открыть инженерную операцию',
     ),
     RegistryStudioUiLanguage.en => (
       loadedCount: 'Loaded records',
       lineRange: 'Lines',
       loadFailed: 'Failed to load Registry source',
+      startOperation: 'Open engineering operation',
     ),
     RegistryStudioUiLanguage.th => (
       loadedCount: 'ระเบียนที่โหลด',
       lineRange: 'บรรทัด',
       loadFailed: 'ไม่สามารถโหลดแหล่งข้อมูล Registry ได้',
+      startOperation: 'เปิดการดำเนินการทางวิศวกรรม',
     ),
   };
 }
