@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:helpy_translator/registry_studio/adapters/helpy/domain/payloads/helpy_service_intake_payload.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/domain/payloads/service_intake_payload.dart';
 
 void main() {
-  group('HelpyServiceIntakePayload', () {
+  group('ServiceIntakePayload', () {
     test('exposes the current typed RegistryEntityKind contract', () {
-      final HelpyServiceIntakePayload payload = HelpyServiceIntakePayload(
+      final ServiceIntakePayload payload = ServiceIntakePayload(
         displayName: '  Faucet  ',
-        scenarios: const <HelpyIntakeScenario>[],
+        scenarios: const <IntakeScenario>[],
       );
 
       expect(payload.displayName, 'Faucet');
@@ -14,59 +14,59 @@ void main() {
       expect(payload.kind.semanticContract.version, '1');
       expect(payload.kind.kindId, 'helpy.service_intake');
       expect(payload.kind.schemaVersion, '1');
-      expect(payload.kind, same(HelpyServiceIntakePayload.entityKind));
+      expect(payload.kind, same(ServiceIntakePayload.entityKind));
     });
 
     test('preserves scenario content order and immutable collections', () {
-      final HelpyIntakeScenario scenario = _scenario(
+      final IntakeScenario scenario = _scenario(
         key: 'install_connect',
         selectedAnswerKey: 'install_connect',
-        questions: <HelpyIntakeQuestion>[_locationQuestion()],
-        photoQuestions: <HelpyPhotoQuestion>[
+        questions: <IntakeQuestion>[_locationQuestion()],
+        photoQuestions: <PhotoQuestion>[
           _photoQuestion(
             key: 'installed_faucet',
             qualifierKeys: <String>['location_sink'],
             limitKey: 'install_photos',
-            source: _source(HelpyPhotoSourceMode.direct),
+            source: _source(PhotoSourceMode.direct),
           ),
         ],
-        photoLimits: <HelpyPhotoLimit>[_photoLimit(key: 'install_photos')],
-        clientGuidance: <HelpyScenarioGuidanceItem>[
+        photoLimits: <PhotoLimit>[_photoLimit(key: 'install_photos')],
+        clientGuidance: <ScenarioGuidanceItem>[
           _guidance('client_access', 'Подготовьте доступ к месту работ.'),
           _guidance('client_property', 'Уберите личные вещи.'),
         ],
-        masterGuidance: <HelpyScenarioGuidanceItem>[
+        masterGuidance: <ScenarioGuidanceItem>[
           _guidance('master_compatibility', 'Проверьте совместимость.'),
           _guidance('master_test', 'Проведите проверку после работ.'),
         ],
       );
 
-      final HelpyServiceIntakePayload payload = HelpyServiceIntakePayload(
+      final ServiceIntakePayload payload = ServiceIntakePayload(
         displayName: 'Faucet',
-        scenarios: <HelpyIntakeScenario>[scenario],
+        scenarios: <IntakeScenario>[scenario],
       );
 
       expect(
         payload.scenarios.single.questions
-            .map((HelpyIntakeQuestion item) => item.key)
+            .map((IntakeQuestion item) => item.key)
             .toList(),
         <String>['location'],
       );
       expect(
         payload.scenarios.single.photoQuestions
-            .map((HelpyPhotoQuestion item) => item.key)
+            .map((PhotoQuestion item) => item.key)
             .toList(),
         <String>['installed_faucet'],
       );
       expect(
         payload.scenarios.single.clientGuidance
-            .map((HelpyScenarioGuidanceItem item) => item.key)
+            .map((ScenarioGuidanceItem item) => item.key)
             .toList(),
         <String>['client_access', 'client_property'],
       );
       expect(
         payload.scenarios.single.masterGuidance
-            .map((HelpyScenarioGuidanceItem item) => item.key)
+            .map((ScenarioGuidanceItem item) => item.key)
             .toList(),
         <String>['master_compatibility', 'master_test'],
       );
@@ -80,33 +80,33 @@ void main() {
     test(
       'allows one scenario to reuse a photo question inside the payload',
       () {
-        final HelpyIntakeScenario installScenario = _scenario(
+        final IntakeScenario installScenario = _scenario(
           key: 'install_connect',
           selectedAnswerKey: 'install_connect',
-          questions: <HelpyIntakeQuestion>[_locationQuestion()],
-          photoQuestions: <HelpyPhotoQuestion>[
+          questions: <IntakeQuestion>[_locationQuestion()],
+          photoQuestions: <PhotoQuestion>[
             _photoQuestion(
               key: 'installed_faucet',
               qualifierKeys: <String>['location_sink'],
               limitKey: 'install_photos',
-              source: _source(HelpyPhotoSourceMode.direct),
+              source: _source(PhotoSourceMode.direct),
             ),
           ],
-          photoLimits: <HelpyPhotoLimit>[_photoLimit(key: 'install_photos')],
-          clientGuidance: const <HelpyScenarioGuidanceItem>[],
-          masterGuidance: const <HelpyScenarioGuidanceItem>[],
+          photoLimits: <PhotoLimit>[_photoLimit(key: 'install_photos')],
+          clientGuidance: const <ScenarioGuidanceItem>[],
+          masterGuidance: const <ScenarioGuidanceItem>[],
         );
-        final HelpyIntakeScenario replaceScenario = _scenario(
+        final IntakeScenario replaceScenario = _scenario(
           key: 'replace',
           selectedAnswerKey: 'replace',
-          questions: const <HelpyIntakeQuestion>[],
-          photoQuestions: <HelpyPhotoQuestion>[
+          questions: const <IntakeQuestion>[],
+          photoQuestions: <PhotoQuestion>[
             _photoQuestion(
               key: 'install_context',
               qualifierKeys: const <String>[],
               limitKey: 'replace_photos',
               source: _source(
-                HelpyPhotoSourceMode.reuse,
+                PhotoSourceMode.reuse,
                 sourceScenarioKey: 'install_connect',
                 sourcePhotoQuestionKey: 'installed_faucet',
               ),
@@ -115,18 +115,18 @@ void main() {
               key: 'existing_faucet',
               qualifierKeys: const <String>[],
               limitKey: 'replace_photos',
-              source: _source(HelpyPhotoSourceMode.replacement),
+              source: _source(PhotoSourceMode.replacement),
             ),
           ],
-          photoLimits: <HelpyPhotoLimit>[_photoLimit(key: 'replace_photos')],
-          clientGuidance: const <HelpyScenarioGuidanceItem>[],
-          masterGuidance: const <HelpyScenarioGuidanceItem>[],
+          photoLimits: <PhotoLimit>[_photoLimit(key: 'replace_photos')],
+          clientGuidance: const <ScenarioGuidanceItem>[],
+          masterGuidance: const <ScenarioGuidanceItem>[],
         );
 
         expect(
-          () => HelpyServiceIntakePayload(
+          () => ServiceIntakePayload(
             displayName: 'Faucet',
-            scenarios: <HelpyIntakeScenario>[installScenario, replaceScenario],
+            scenarios: <IntakeScenario>[installScenario, replaceScenario],
           ),
           returnsNormally,
         );
@@ -134,60 +134,60 @@ void main() {
     );
 
     test('rejects duplicate scenario keys', () {
-      final HelpyIntakeScenario first = _scenario(
+      final IntakeScenario first = _scenario(
         key: 'replace',
         selectedAnswerKey: 'replace',
-        questions: const <HelpyIntakeQuestion>[],
-        photoQuestions: const <HelpyPhotoQuestion>[],
-        photoLimits: const <HelpyPhotoLimit>[],
-        clientGuidance: const <HelpyScenarioGuidanceItem>[],
-        masterGuidance: const <HelpyScenarioGuidanceItem>[],
+        questions: const <IntakeQuestion>[],
+        photoQuestions: const <PhotoQuestion>[],
+        photoLimits: const <PhotoLimit>[],
+        clientGuidance: const <ScenarioGuidanceItem>[],
+        masterGuidance: const <ScenarioGuidanceItem>[],
       );
-      final HelpyIntakeScenario second = _scenario(
+      final IntakeScenario second = _scenario(
         key: 'replace',
         selectedAnswerKey: 'replace_again',
-        questions: const <HelpyIntakeQuestion>[],
-        photoQuestions: const <HelpyPhotoQuestion>[],
-        photoLimits: const <HelpyPhotoLimit>[],
-        clientGuidance: const <HelpyScenarioGuidanceItem>[],
-        masterGuidance: const <HelpyScenarioGuidanceItem>[],
+        questions: const <IntakeQuestion>[],
+        photoQuestions: const <PhotoQuestion>[],
+        photoLimits: const <PhotoLimit>[],
+        clientGuidance: const <ScenarioGuidanceItem>[],
+        masterGuidance: const <ScenarioGuidanceItem>[],
       );
 
       expect(
-        () => HelpyServiceIntakePayload(
+        () => ServiceIntakePayload(
           displayName: 'Faucet',
-          scenarios: <HelpyIntakeScenario>[first, second],
+          scenarios: <IntakeScenario>[first, second],
         ),
         throwsArgumentError,
       );
     });
 
     test('rejects a reuse reference outside the owning intake payload', () {
-      final HelpyIntakeScenario replaceScenario = _scenario(
+      final IntakeScenario replaceScenario = _scenario(
         key: 'replace',
         selectedAnswerKey: 'replace',
-        questions: const <HelpyIntakeQuestion>[],
-        photoQuestions: <HelpyPhotoQuestion>[
+        questions: const <IntakeQuestion>[],
+        photoQuestions: <PhotoQuestion>[
           _photoQuestion(
             key: 'install_context',
             qualifierKeys: const <String>[],
             limitKey: 'replace_photos',
             source: _source(
-              HelpyPhotoSourceMode.reuse,
+              PhotoSourceMode.reuse,
               sourceScenarioKey: 'another_entity.install',
               sourcePhotoQuestionKey: 'installed_faucet',
             ),
           ),
         ],
-        photoLimits: <HelpyPhotoLimit>[_photoLimit(key: 'replace_photos')],
-        clientGuidance: const <HelpyScenarioGuidanceItem>[],
-        masterGuidance: const <HelpyScenarioGuidanceItem>[],
+        photoLimits: <PhotoLimit>[_photoLimit(key: 'replace_photos')],
+        clientGuidance: const <ScenarioGuidanceItem>[],
+        masterGuidance: const <ScenarioGuidanceItem>[],
       );
 
       expect(
-        () => HelpyServiceIntakePayload(
+        () => ServiceIntakePayload(
           displayName: 'Faucet',
-          scenarios: <HelpyIntakeScenario>[replaceScenario],
+          scenarios: <IntakeScenario>[replaceScenario],
         ),
         throwsArgumentError,
       );
@@ -198,18 +198,18 @@ void main() {
         () => _scenario(
           key: 'install_connect',
           selectedAnswerKey: 'install_connect',
-          questions: <HelpyIntakeQuestion>[_locationQuestion()],
-          photoQuestions: <HelpyPhotoQuestion>[
+          questions: <IntakeQuestion>[_locationQuestion()],
+          photoQuestions: <PhotoQuestion>[
             _photoQuestion(
               key: 'installed_faucet',
               qualifierKeys: <String>['not_owned_by_scenario'],
               limitKey: 'install_photos',
-              source: _source(HelpyPhotoSourceMode.direct),
+              source: _source(PhotoSourceMode.direct),
             ),
           ],
-          photoLimits: <HelpyPhotoLimit>[_photoLimit(key: 'install_photos')],
-          clientGuidance: const <HelpyScenarioGuidanceItem>[],
-          masterGuidance: const <HelpyScenarioGuidanceItem>[],
+          photoLimits: <PhotoLimit>[_photoLimit(key: 'install_photos')],
+          clientGuidance: const <ScenarioGuidanceItem>[],
+          masterGuidance: const <ScenarioGuidanceItem>[],
         ),
         throwsArgumentError,
       );
@@ -220,14 +220,14 @@ void main() {
         () => _scenario(
           key: 'install_connect',
           selectedAnswerKey: 'install_connect',
-          questions: const <HelpyIntakeQuestion>[],
-          photoQuestions: const <HelpyPhotoQuestion>[],
-          photoLimits: const <HelpyPhotoLimit>[],
-          clientGuidance: <HelpyScenarioGuidanceItem>[
+          questions: const <IntakeQuestion>[],
+          photoQuestions: const <PhotoQuestion>[],
+          photoLimits: const <PhotoLimit>[],
+          clientGuidance: <ScenarioGuidanceItem>[
             _guidance('client_access', 'Подготовьте доступ.'),
             _guidance('client_access', 'Уберите личные вещи.'),
           ],
-          masterGuidance: const <HelpyScenarioGuidanceItem>[],
+          masterGuidance: const <ScenarioGuidanceItem>[],
         ),
         throwsArgumentError,
       );
@@ -235,7 +235,7 @@ void main() {
 
     test('rejects inconsistent photo limits', () {
       expect(
-        () => HelpyPhotoLimit(
+        () => PhotoLimit(
           key: 'invalid_limit',
           requiredCount: 3,
           optionalCount: 2,
@@ -247,8 +247,8 @@ void main() {
 
     test('rejects source references for non-reuse modes', () {
       expect(
-        () => HelpyPhotoQuestionSource(
-          mode: HelpyPhotoSourceMode.direct,
+        () => PhotoQuestionSource(
+          mode: PhotoSourceMode.direct,
           sourceScenarioKey: 'install_connect',
           sourcePhotoQuestionKey: 'installed_faucet',
         ),
@@ -258,9 +258,9 @@ void main() {
 
     test('rejects an empty service display name', () {
       expect(
-        () => HelpyServiceIntakePayload(
+        () => ServiceIntakePayload(
           displayName: '   ',
-          scenarios: const <HelpyIntakeScenario>[],
+          scenarios: const <IntakeScenario>[],
         ),
         throwsArgumentError,
       );
@@ -268,19 +268,19 @@ void main() {
   });
 }
 
-HelpyIntakeScenario _scenario({
+IntakeScenario _scenario({
   required String key,
   required String selectedAnswerKey,
-  required Iterable<HelpyIntakeQuestion> questions,
-  required Iterable<HelpyPhotoQuestion> photoQuestions,
-  required Iterable<HelpyPhotoLimit> photoLimits,
-  required Iterable<HelpyScenarioGuidanceItem> clientGuidance,
-  required Iterable<HelpyScenarioGuidanceItem> masterGuidance,
+  required Iterable<IntakeQuestion> questions,
+  required Iterable<PhotoQuestion> photoQuestions,
+  required Iterable<PhotoLimit> photoLimits,
+  required Iterable<ScenarioGuidanceItem> clientGuidance,
+  required Iterable<ScenarioGuidanceItem> masterGuidance,
 }) {
-  return HelpyIntakeScenario(
+  return IntakeScenario(
     key: key,
     displayName: key,
-    entryEvidence: HelpyScenarioEntryEvidence(
+    entryEvidence: ScenarioEntryEvidence(
       sourceSelectorQuestionKey: 'what_to_do',
       sourceSelectedAnswerOptionKey: selectedAnswerKey,
     ),
@@ -292,30 +292,30 @@ HelpyIntakeScenario _scenario({
   );
 }
 
-HelpyIntakeQuestion _locationQuestion() {
-  return HelpyIntakeQuestion(
+IntakeQuestion _locationQuestion() {
+  return IntakeQuestion(
     key: 'location',
     prompt: 'Where is the faucet?',
-    answerOptions: <HelpyAnswerOption>[
-      HelpyAnswerOption(key: 'sink', displayName: 'Sink'),
+    answerOptions: <AnswerOption>[
+      AnswerOption(key: 'sink', displayName: 'Sink'),
     ],
-    qualifiers: <HelpyQuestionQualifier>[
-      HelpyQuestionQualifier(
+    qualifiers: <QuestionQualifier>[
+      QuestionQualifier(
         key: 'location_sink',
-        kind: HelpyQuestionQualifierKind.answerContext,
+        kind: QuestionQualifierKind.answerContext,
         expression: 'location=sink',
       ),
     ],
   );
 }
 
-HelpyPhotoQuestion _photoQuestion({
+PhotoQuestion _photoQuestion({
   required String key,
   required Iterable<String> qualifierKeys,
   required String limitKey,
-  required HelpyPhotoQuestionSource source,
+  required PhotoQuestionSource source,
 }) {
-  return HelpyPhotoQuestion(
+  return PhotoQuestion(
     key: key,
     prompt: key,
     isRequired: true,
@@ -325,20 +325,20 @@ HelpyPhotoQuestion _photoQuestion({
   );
 }
 
-HelpyPhotoQuestionSource _source(
-  HelpyPhotoSourceMode mode, {
+PhotoQuestionSource _source(
+  PhotoSourceMode mode, {
   String? sourceScenarioKey,
   String? sourcePhotoQuestionKey,
 }) {
-  return HelpyPhotoQuestionSource(
+  return PhotoQuestionSource(
     mode: mode,
     sourceScenarioKey: sourceScenarioKey,
     sourcePhotoQuestionKey: sourcePhotoQuestionKey,
   );
 }
 
-HelpyPhotoLimit _photoLimit({required String key}) {
-  return HelpyPhotoLimit(
+PhotoLimit _photoLimit({required String key}) {
+  return PhotoLimit(
     key: key,
     requiredCount: 1,
     optionalCount: 0,
@@ -346,6 +346,6 @@ HelpyPhotoLimit _photoLimit({required String key}) {
   );
 }
 
-HelpyScenarioGuidanceItem _guidance(String key, String text) {
-  return HelpyScenarioGuidanceItem(key: key, text: text);
+ScenarioGuidanceItem _guidance(String key, String text) {
+  return ScenarioGuidanceItem(key: key, text: text);
 }

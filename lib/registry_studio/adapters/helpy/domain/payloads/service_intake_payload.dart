@@ -4,28 +4,28 @@ import '../../../../core/domain/contracts/registry_entity_payload.dart';
 import '../../../../core/domain/value_objects/registry_entity_kind.dart';
 import '../../../../core/domain/value_objects/registry_semantic_contract_identity.dart';
 
-final class HelpyServiceIntakePayload extends Equatable
+final class ServiceIntakePayload extends Equatable
     implements RegistryEntityPayload {
-  factory HelpyServiceIntakePayload({
+  factory ServiceIntakePayload({
     required String displayName,
-    required Iterable<HelpyIntakeScenario> scenarios,
+    required Iterable<IntakeScenario> scenarios,
   }) {
-    final List<HelpyIntakeScenario> normalizedScenarios =
-        List<HelpyIntakeScenario>.unmodifiable(scenarios);
+    final List<IntakeScenario> normalizedScenarios =
+        List<IntakeScenario>.unmodifiable(scenarios);
 
     _ensureUniqueKeys(
-      normalizedScenarios.map((HelpyIntakeScenario item) => item.key),
+      normalizedScenarios.map((IntakeScenario item) => item.key),
       'scenario',
     );
     _validateReuseReferences(normalizedScenarios);
 
-    return HelpyServiceIntakePayload._(
+    return ServiceIntakePayload._(
       displayName: _requiredText(displayName, 'displayName'),
       scenarios: normalizedScenarios,
     );
   }
 
-  const HelpyServiceIntakePayload._({
+  const ServiceIntakePayload._({
     required this.displayName,
     required this.scenarios,
   });
@@ -46,25 +46,24 @@ final class HelpyServiceIntakePayload extends Equatable
   );
 
   final String displayName;
-  final List<HelpyIntakeScenario> scenarios;
+  final List<IntakeScenario> scenarios;
 
   @override
   RegistryEntityKind get kind => entityKind;
 
-  static void _validateReuseReferences(List<HelpyIntakeScenario> scenarios) {
+  static void _validateReuseReferences(List<IntakeScenario> scenarios) {
     final Map<String, Set<String>> photoKeysByScenario = <String, Set<String>>{
-      for (final HelpyIntakeScenario scenario in scenarios)
+      for (final IntakeScenario scenario in scenarios)
         scenario.key: <String>{
-          for (final HelpyPhotoQuestion item in scenario.photoQuestions)
-            item.key,
+          for (final PhotoQuestion item in scenario.photoQuestions) item.key,
         },
     };
 
-    for (final HelpyIntakeScenario scenario in scenarios) {
-      for (final HelpyPhotoQuestion photoQuestion in scenario.photoQuestions) {
-        final HelpyPhotoQuestionSource source = photoQuestion.source;
+    for (final IntakeScenario scenario in scenarios) {
+      for (final PhotoQuestion photoQuestion in scenario.photoQuestions) {
+        final PhotoQuestionSource source = photoQuestion.source;
 
-        if (source.mode != HelpyPhotoSourceMode.reuse) {
+        if (source.mode != PhotoSourceMode.reuse) {
           continue;
         }
 
@@ -97,68 +96,64 @@ final class HelpyServiceIntakePayload extends Equatable
   List<Object?> get props => <Object?>[kind, displayName, scenarios];
 }
 
-final class HelpyIntakeScenario extends Equatable {
-  factory HelpyIntakeScenario({
+final class IntakeScenario extends Equatable {
+  factory IntakeScenario({
     required String key,
     required String displayName,
-    required HelpyScenarioEntryEvidence entryEvidence,
-    required Iterable<HelpyIntakeQuestion> questions,
-    required Iterable<HelpyPhotoQuestion> photoQuestions,
-    required Iterable<HelpyPhotoLimit> photoLimits,
-    required Iterable<HelpyScenarioGuidanceItem> clientGuidance,
-    required Iterable<HelpyScenarioGuidanceItem> masterGuidance,
+    required ScenarioEntryEvidence entryEvidence,
+    required Iterable<IntakeQuestion> questions,
+    required Iterable<PhotoQuestion> photoQuestions,
+    required Iterable<PhotoLimit> photoLimits,
+    required Iterable<ScenarioGuidanceItem> clientGuidance,
+    required Iterable<ScenarioGuidanceItem> masterGuidance,
   }) {
-    final List<HelpyIntakeQuestion> normalizedQuestions =
-        List<HelpyIntakeQuestion>.unmodifiable(questions);
-    final List<HelpyPhotoQuestion> normalizedPhotoQuestions =
-        List<HelpyPhotoQuestion>.unmodifiable(photoQuestions);
-    final List<HelpyPhotoLimit> normalizedPhotoLimits =
-        List<HelpyPhotoLimit>.unmodifiable(photoLimits);
-    final List<HelpyScenarioGuidanceItem> normalizedClientGuidance =
-        List<HelpyScenarioGuidanceItem>.unmodifiable(clientGuidance);
-    final List<HelpyScenarioGuidanceItem> normalizedMasterGuidance =
-        List<HelpyScenarioGuidanceItem>.unmodifiable(masterGuidance);
+    final List<IntakeQuestion> normalizedQuestions =
+        List<IntakeQuestion>.unmodifiable(questions);
+    final List<PhotoQuestion> normalizedPhotoQuestions =
+        List<PhotoQuestion>.unmodifiable(photoQuestions);
+    final List<PhotoLimit> normalizedPhotoLimits =
+        List<PhotoLimit>.unmodifiable(photoLimits);
+    final List<ScenarioGuidanceItem> normalizedClientGuidance =
+        List<ScenarioGuidanceItem>.unmodifiable(clientGuidance);
+    final List<ScenarioGuidanceItem> normalizedMasterGuidance =
+        List<ScenarioGuidanceItem>.unmodifiable(masterGuidance);
 
     _ensureUniqueKeys(
-      normalizedQuestions.map((HelpyIntakeQuestion item) => item.key),
+      normalizedQuestions.map((IntakeQuestion item) => item.key),
       'question',
     );
     _ensureUniqueKeys(<String>[
-      for (final HelpyIntakeQuestion question in normalizedQuestions)
-        for (final HelpyQuestionQualifier qualifier in question.qualifiers)
+      for (final IntakeQuestion question in normalizedQuestions)
+        for (final QuestionQualifier qualifier in question.qualifiers)
           qualifier.key,
     ], 'scenario qualifier');
     _ensureUniqueKeys(
-      normalizedPhotoQuestions.map((HelpyPhotoQuestion item) => item.key),
+      normalizedPhotoQuestions.map((PhotoQuestion item) => item.key),
       'photo question',
     );
     _ensureUniqueKeys(
-      normalizedPhotoLimits.map((HelpyPhotoLimit item) => item.key),
+      normalizedPhotoLimits.map((PhotoLimit item) => item.key),
       'photo limit',
     );
     _ensureUniqueKeys(
-      normalizedClientGuidance.map(
-        (HelpyScenarioGuidanceItem item) => item.key,
-      ),
+      normalizedClientGuidance.map((ScenarioGuidanceItem item) => item.key),
       'client guidance',
     );
     _ensureUniqueKeys(
-      normalizedMasterGuidance.map(
-        (HelpyScenarioGuidanceItem item) => item.key,
-      ),
+      normalizedMasterGuidance.map((ScenarioGuidanceItem item) => item.key),
       'master guidance',
     );
 
     final Set<String> qualifierKeys = <String>{
-      for (final HelpyIntakeQuestion question in normalizedQuestions)
-        for (final HelpyQuestionQualifier qualifier in question.qualifiers)
+      for (final IntakeQuestion question in normalizedQuestions)
+        for (final QuestionQualifier qualifier in question.qualifiers)
           qualifier.key,
     };
     final Set<String> photoLimitKeys = <String>{
-      for (final HelpyPhotoLimit limit in normalizedPhotoLimits) limit.key,
+      for (final PhotoLimit limit in normalizedPhotoLimits) limit.key,
     };
 
-    for (final HelpyPhotoQuestion photoQuestion in normalizedPhotoQuestions) {
+    for (final PhotoQuestion photoQuestion in normalizedPhotoQuestions) {
       if (!photoLimitKeys.contains(photoQuestion.photoLimitKey)) {
         throw ArgumentError(
           'Photo question "${photoQuestion.key}" must reference a local '
@@ -177,7 +172,7 @@ final class HelpyIntakeScenario extends Equatable {
       }
     }
 
-    return HelpyIntakeScenario._(
+    return IntakeScenario._(
       key: _requiredText(key, 'key'),
       displayName: _requiredText(displayName, 'displayName'),
       entryEvidence: entryEvidence,
@@ -189,7 +184,7 @@ final class HelpyIntakeScenario extends Equatable {
     );
   }
 
-  const HelpyIntakeScenario._({
+  const IntakeScenario._({
     required this.key,
     required this.displayName,
     required this.entryEvidence,
@@ -202,12 +197,12 @@ final class HelpyIntakeScenario extends Equatable {
 
   final String key;
   final String displayName;
-  final HelpyScenarioEntryEvidence entryEvidence;
-  final List<HelpyIntakeQuestion> questions;
-  final List<HelpyPhotoQuestion> photoQuestions;
-  final List<HelpyPhotoLimit> photoLimits;
-  final List<HelpyScenarioGuidanceItem> clientGuidance;
-  final List<HelpyScenarioGuidanceItem> masterGuidance;
+  final ScenarioEntryEvidence entryEvidence;
+  final List<IntakeQuestion> questions;
+  final List<PhotoQuestion> photoQuestions;
+  final List<PhotoLimit> photoLimits;
+  final List<ScenarioGuidanceItem> clientGuidance;
+  final List<ScenarioGuidanceItem> masterGuidance;
 
   @override
   List<Object?> get props => <Object?>[
@@ -222,12 +217,12 @@ final class HelpyIntakeScenario extends Equatable {
   ];
 }
 
-final class HelpyScenarioEntryEvidence extends Equatable {
-  factory HelpyScenarioEntryEvidence({
+final class ScenarioEntryEvidence extends Equatable {
+  factory ScenarioEntryEvidence({
     required String sourceSelectorQuestionKey,
     required String sourceSelectedAnswerOptionKey,
   }) {
-    return HelpyScenarioEntryEvidence._(
+    return ScenarioEntryEvidence._(
       sourceSelectorQuestionKey: _requiredText(
         sourceSelectorQuestionKey,
         'sourceSelectorQuestionKey',
@@ -239,7 +234,7 @@ final class HelpyScenarioEntryEvidence extends Equatable {
     );
   }
 
-  const HelpyScenarioEntryEvidence._({
+  const ScenarioEntryEvidence._({
     required this.sourceSelectorQuestionKey,
     required this.sourceSelectedAnswerOptionKey,
   });
@@ -254,28 +249,28 @@ final class HelpyScenarioEntryEvidence extends Equatable {
   ];
 }
 
-final class HelpyIntakeQuestion extends Equatable {
-  factory HelpyIntakeQuestion({
+final class IntakeQuestion extends Equatable {
+  factory IntakeQuestion({
     required String key,
     required String prompt,
-    required Iterable<HelpyAnswerOption> answerOptions,
-    required Iterable<HelpyQuestionQualifier> qualifiers,
+    required Iterable<AnswerOption> answerOptions,
+    required Iterable<QuestionQualifier> qualifiers,
   }) {
-    final List<HelpyAnswerOption> normalizedAnswerOptions =
-        List<HelpyAnswerOption>.unmodifiable(answerOptions);
-    final List<HelpyQuestionQualifier> normalizedQualifiers =
-        List<HelpyQuestionQualifier>.unmodifiable(qualifiers);
+    final List<AnswerOption> normalizedAnswerOptions =
+        List<AnswerOption>.unmodifiable(answerOptions);
+    final List<QuestionQualifier> normalizedQualifiers =
+        List<QuestionQualifier>.unmodifiable(qualifiers);
 
     _ensureUniqueKeys(
-      normalizedAnswerOptions.map((HelpyAnswerOption item) => item.key),
+      normalizedAnswerOptions.map((AnswerOption item) => item.key),
       'answer option',
     );
     _ensureUniqueKeys(
-      normalizedQualifiers.map((HelpyQuestionQualifier item) => item.key),
+      normalizedQualifiers.map((QuestionQualifier item) => item.key),
       'question qualifier',
     );
 
-    return HelpyIntakeQuestion._(
+    return IntakeQuestion._(
       key: _requiredText(key, 'key'),
       prompt: _requiredText(prompt, 'prompt'),
       answerOptions: normalizedAnswerOptions,
@@ -283,7 +278,7 @@ final class HelpyIntakeQuestion extends Equatable {
     );
   }
 
-  const HelpyIntakeQuestion._({
+  const IntakeQuestion._({
     required this.key,
     required this.prompt,
     required this.answerOptions,
@@ -292,25 +287,22 @@ final class HelpyIntakeQuestion extends Equatable {
 
   final String key;
   final String prompt;
-  final List<HelpyAnswerOption> answerOptions;
-  final List<HelpyQuestionQualifier> qualifiers;
+  final List<AnswerOption> answerOptions;
+  final List<QuestionQualifier> qualifiers;
 
   @override
   List<Object?> get props => <Object?>[key, prompt, answerOptions, qualifiers];
 }
 
-final class HelpyAnswerOption extends Equatable {
-  factory HelpyAnswerOption({
-    required String key,
-    required String displayName,
-  }) {
-    return HelpyAnswerOption._(
+final class AnswerOption extends Equatable {
+  factory AnswerOption({required String key, required String displayName}) {
+    return AnswerOption._(
       key: _requiredText(key, 'key'),
       displayName: _requiredText(displayName, 'displayName'),
     );
   }
 
-  const HelpyAnswerOption._({required this.key, required this.displayName});
+  const AnswerOption._({required this.key, required this.displayName});
 
   final String key;
   final String displayName;
@@ -319,40 +311,40 @@ final class HelpyAnswerOption extends Equatable {
   List<Object?> get props => <Object?>[key, displayName];
 }
 
-enum HelpyQuestionQualifierKind { condition, answerContext }
+enum QuestionQualifierKind { condition, answerContext }
 
-final class HelpyQuestionQualifier extends Equatable {
-  factory HelpyQuestionQualifier({
+final class QuestionQualifier extends Equatable {
+  factory QuestionQualifier({
     required String key,
-    required HelpyQuestionQualifierKind kind,
+    required QuestionQualifierKind kind,
     required String expression,
   }) {
-    return HelpyQuestionQualifier._(
+    return QuestionQualifier._(
       key: _requiredText(key, 'key'),
       kind: kind,
       expression: _requiredText(expression, 'expression'),
     );
   }
 
-  const HelpyQuestionQualifier._({
+  const QuestionQualifier._({
     required this.key,
     required this.kind,
     required this.expression,
   });
 
   final String key;
-  final HelpyQuestionQualifierKind kind;
+  final QuestionQualifierKind kind;
   final String expression;
 
   @override
   List<Object?> get props => <Object?>[key, kind, expression];
 }
 
-enum HelpyPhotoSourceMode { direct, reuse, addition, replacement }
+enum PhotoSourceMode { direct, reuse, addition, replacement }
 
-final class HelpyPhotoQuestionSource extends Equatable {
-  factory HelpyPhotoQuestionSource({
-    required HelpyPhotoSourceMode mode,
+final class PhotoQuestionSource extends Equatable {
+  factory PhotoQuestionSource({
+    required PhotoSourceMode mode,
     String? sourceScenarioKey,
     String? sourcePhotoQuestionKey,
   }) {
@@ -363,32 +355,32 @@ final class HelpyPhotoQuestionSource extends Equatable {
     final bool hasAnyReference =
         scenarioKey.isNotEmpty || photoQuestionKey.isNotEmpty;
 
-    if (mode == HelpyPhotoSourceMode.reuse && !hasCompleteReference) {
+    if (mode == PhotoSourceMode.reuse && !hasCompleteReference) {
       throw ArgumentError(
         'Reusable photo question must declare local source references.',
       );
     }
 
-    if (mode != HelpyPhotoSourceMode.reuse && hasAnyReference) {
+    if (mode != PhotoSourceMode.reuse && hasAnyReference) {
       throw ArgumentError(
         'Only reusable photo questions may declare source references.',
       );
     }
 
-    return HelpyPhotoQuestionSource._(
+    return PhotoQuestionSource._(
       mode: mode,
       sourceScenarioKey: hasCompleteReference ? scenarioKey : null,
       sourcePhotoQuestionKey: hasCompleteReference ? photoQuestionKey : null,
     );
   }
 
-  const HelpyPhotoQuestionSource._({
+  const PhotoQuestionSource._({
     required this.mode,
     required this.sourceScenarioKey,
     required this.sourcePhotoQuestionKey,
   });
 
-  final HelpyPhotoSourceMode mode;
+  final PhotoSourceMode mode;
   final String? sourceScenarioKey;
   final String? sourcePhotoQuestionKey;
 
@@ -400,14 +392,14 @@ final class HelpyPhotoQuestionSource extends Equatable {
   ];
 }
 
-final class HelpyPhotoQuestion extends Equatable {
-  factory HelpyPhotoQuestion({
+final class PhotoQuestion extends Equatable {
+  factory PhotoQuestion({
     required String key,
     required String prompt,
     required bool isRequired,
     required Iterable<String> applicabilityQualifierKeys,
     required String photoLimitKey,
-    required HelpyPhotoQuestionSource source,
+    required PhotoQuestionSource source,
   }) {
     final List<String> qualifierKeys = List<String>.unmodifiable(
       applicabilityQualifierKeys.map(
@@ -417,7 +409,7 @@ final class HelpyPhotoQuestion extends Equatable {
 
     _ensureUniqueKeys(qualifierKeys, 'photo question applicability qualifier');
 
-    return HelpyPhotoQuestion._(
+    return PhotoQuestion._(
       key: _requiredText(key, 'key'),
       prompt: _requiredText(prompt, 'prompt'),
       isRequired: isRequired,
@@ -427,7 +419,7 @@ final class HelpyPhotoQuestion extends Equatable {
     );
   }
 
-  const HelpyPhotoQuestion._({
+  const PhotoQuestion._({
     required this.key,
     required this.prompt,
     required this.isRequired,
@@ -441,7 +433,7 @@ final class HelpyPhotoQuestion extends Equatable {
   final bool isRequired;
   final List<String> applicabilityQualifierKeys;
   final String photoLimitKey;
-  final HelpyPhotoQuestionSource source;
+  final PhotoQuestionSource source;
 
   @override
   List<Object?> get props => <Object?>[
@@ -454,8 +446,8 @@ final class HelpyPhotoQuestion extends Equatable {
   ];
 }
 
-final class HelpyPhotoLimit extends Equatable {
-  factory HelpyPhotoLimit({
+final class PhotoLimit extends Equatable {
+  factory PhotoLimit({
     required String key,
     required int requiredCount,
     required int optionalCount,
@@ -471,7 +463,7 @@ final class HelpyPhotoLimit extends Equatable {
       );
     }
 
-    return HelpyPhotoLimit._(
+    return PhotoLimit._(
       key: _requiredText(key, 'key'),
       requiredCount: requiredCount,
       optionalCount: optionalCount,
@@ -479,7 +471,7 @@ final class HelpyPhotoLimit extends Equatable {
     );
   }
 
-  const HelpyPhotoLimit._({
+  const PhotoLimit._({
     required this.key,
     required this.requiredCount,
     required this.optionalCount,
@@ -500,18 +492,15 @@ final class HelpyPhotoLimit extends Equatable {
   ];
 }
 
-final class HelpyScenarioGuidanceItem extends Equatable {
-  factory HelpyScenarioGuidanceItem({
-    required String key,
-    required String text,
-  }) {
-    return HelpyScenarioGuidanceItem._(
+final class ScenarioGuidanceItem extends Equatable {
+  factory ScenarioGuidanceItem({required String key, required String text}) {
+    return ScenarioGuidanceItem._(
       key: _requiredText(key, 'key'),
       text: _requiredText(text, 'text'),
     );
   }
 
-  const HelpyScenarioGuidanceItem._({required this.key, required this.text});
+  const ScenarioGuidanceItem._({required this.key, required this.text});
 
   final String key;
   final String text;
