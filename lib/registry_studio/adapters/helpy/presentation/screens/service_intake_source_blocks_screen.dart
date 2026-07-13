@@ -161,12 +161,32 @@ final class _ServiceIntakeSourceBlocksScreenState
                           'service_intake_source_block_'
                           '${block.identity.entityId.value}',
                         ),
-                        title: Text(block.identity.heading),
+                        title: Text(
+                          block.identity.heading,
+                          style:
+                              normalizedQuery.isNotEmpty &&
+                                  block.identity.heading.toLowerCase().contains(
+                                    normalizedQuery,
+                                  )
+                              ? const TextStyle(fontWeight: FontWeight.w700)
+                              : null,
+                        ),
                         subtitle: Text(
                           '${block.identity.entityId.value}\n'
                           '${block.identity.path.segments.join(' / ')}\n'
                           '${labels.lineRange}: '
                           '${block.startLine}–${block.endLine}',
+                          style:
+                              normalizedQuery.isNotEmpty &&
+                                  (block.identity.entityId.value
+                                          .toLowerCase()
+                                          .contains(normalizedQuery) ||
+                                      block.identity.path.segments
+                                          .join(' / ')
+                                          .toLowerCase()
+                                          .contains(normalizedQuery))
+                              ? const TextStyle(fontWeight: FontWeight.w700)
+                              : null,
                         ),
                         children: <Widget>[
                           Padding(
@@ -176,7 +196,18 @@ final class _ServiceIntakeSourceBlocksScreenState
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
-                                  SelectableText(block.sourceText),
+                                  SelectableText(
+                                    block.sourceText,
+                                    style:
+                                        normalizedQuery.isNotEmpty &&
+                                            block.sourceText
+                                                .toLowerCase()
+                                                .contains(normalizedQuery)
+                                        ? const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          )
+                                        : null,
+                                  ),
                                   if (widget.onStartOperation !=
                                       null) ...<Widget>[
                                     const SizedBox(height: 16),

@@ -68,6 +68,28 @@ void main() {
 
     await tester.enterText(
       find.byKey(ServiceIntakeSourceBlocksScreen.searchKey),
+      'кран',
+    );
+    await tester.pump();
+
+    final Text matchedHeading = tester.widget<Text>(
+      find.text('Plumbing → Кран'),
+    );
+    expect(matchedHeading.style?.fontWeight, FontWeight.w700);
+
+    await tester.enterText(
+      find.byKey(ServiceIntakeSourceBlocksScreen.searchKey),
+      'faucet',
+    );
+    await tester.pump();
+
+    final Text matchedMetadata = tester.widget<Text>(
+      find.textContaining('helpy.service_intake.plumbing.faucet'),
+    );
+    expect(matchedMetadata.style?.fontWeight, FontWeight.w700);
+
+    await tester.enterText(
+      find.byKey(ServiceIntakeSourceBlocksScreen.searchKey),
       'установить и подключить кран',
     );
     await tester.pump();
