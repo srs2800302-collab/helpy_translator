@@ -25,6 +25,18 @@ Guard владеет concrete Guard payload, чтением Guard asset и read-
 `lib/main.dart` является только composition boundary и не содержит domain policy, semantic assessment или workflow orchestration.
 Новая production entity, use case или layer допускается только после подтверждения самостоятельной ответственности и отсутствия подходящего существующего owner.
 
+### 3.1. Helpy service-intake source contracts
+Helpy adapter infrastructure владеет project-specific identity manifest, source block extraction, semantic manifest и semantic decoding. Эти ответственности не принадлежат Core и не создают новый architectural layer.
+`assets/registry_studio/helpy/service_intake_identity_manifest_v1.json` владеет только top-level `RegistryEntityId`, `RegistryPath` и точным H2/H3 source locator.
+`ServiceIntakeIdentityManifestSource` валидирует identity manifest, а `ServiceIntakeSourceBlockExtractor` извлекает соответствующий H3 block без semantic interpretation.
+`assets/registry_studio/helpy/service_intake_semantic_manifest_v1.json` отдельно владеет stable internal keys и typed references для scenarios, questions, answer options, qualifiers, photo questions, photo limits и client/master guidance. Для версии `v1` он обязан покрывать все 27 entity IDs identity manifest и не содержать неизвестных IDs.
+Canonical пользовательский текст остаётся только в Helpy Registry. Semantic manifest не владеет `displayName`, `prompt`, answer text или guidance text.
+Каждый stable semantic key отделён от contextual positional source locator. `occurrence` и `ordinal` являются только изменяемыми координатами locator и никогда не являются identity.
+`expectedText` используется только для exact-match verification найденного source элемента и не является источником semantic content.
+Абсолютные или относительные line numbers, keys из текста, fuzzy matching и fallback на первый или похожий элемент запрещены.
+`ServiceIntakeSemanticManifestSource` читает и валидирует только JSON, schema version, coverage, unique keys и typed references. Он не читает Markdown и не создаёт `ServiceIntakePayload`, `RegistryEntity` или `SourceEvidence`.
+Будущий `ServiceIntakePayloadDecoder` разрешает contextual locators только внутри соответствующего `ServiceIntakeSourceBlock`, требует ровно одно exact совпадение, извлекает canonical text из Registry и создаёт существующий `ServiceIntakePayload`. Decoder не изобретает identity или пользовательские формулировки.
+
 ## 4. Core invariants
 `RegistryEntity` является source-backed registry unit.
 Его identity определяется `RegistryEntityId`. Равенство определяется только по `id`.
