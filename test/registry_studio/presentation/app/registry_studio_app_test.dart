@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/presentation/screens/service_intake_source_blocks_screen.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/application/related_context/prepare_registry_related_context.dart';
@@ -45,6 +47,26 @@ void main() {
     );
     expect(find.byType(RegistryRelatedContextPreparationScreen), findsNothing);
     expect(find.text('Адаптивный переводчик'), findsWidgets);
+  });
+
+  testWidgets('opens service intake source from app menu', (
+    WidgetTester tester,
+  ) async {
+    final provider = _FakeTranslatorPhraseProvider(_translatorResult());
+
+    await tester.pumpWidget(
+      _testApp(
+        provider,
+        serviceIntakeSourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(
+          const <ServiceIntakeSourceBlock>[],
+        ),
+      ),
+    );
+
+    await _selectAppScreen(tester, 'Источник service intake');
+
+    expect(find.byType(ServiceIntakeSourceBlocksScreen), findsOneWidget);
+    expect(find.text('Загружено записей: 0'), findsOneWidget);
   });
 
   testWidgets('switches top-level labels between RU EN and TH', (
@@ -357,13 +379,17 @@ Future<void> _selectAppScreen(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
-Widget _testApp(_FakeTranslatorPhraseProvider provider) {
+Widget _testApp(
+  _FakeTranslatorPhraseProvider provider, {
+  Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks,
+}) {
   final RegistryEntity primary = registryEntityFixture(
     id: 'guard-record-primary',
   );
   final RegistryEntity related = registryEntityFixture(id: 'related-001');
 
   return RegistryStudioApp(
+    serviceIntakeSourceBlocks: serviceIntakeSourceBlocks,
     translatePhrase: TranslatePhrase(provider: provider),
     createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
     transitionRegistryEngineeringOperationStatus:

@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
+import '../../adapters/helpy/presentation/screens/service_intake_source_blocks_screen.dart';
+
 import '../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../core/application/related_context/prepare_registry_related_context.dart';
@@ -29,6 +32,7 @@ final class RegistryStudioApp extends StatefulWidget {
     required this.transitionRegistryEngineeringOperationStatus,
     this.translatorPhraseHistoryPersistence,
     this.workSessionPersistence,
+    this.serviceIntakeSourceBlocks,
     this.guardRecordEntity,
     this.relatedContextPrimary,
     this.relatedContextRelations = const <RegistryRelation>[],
@@ -49,6 +53,7 @@ final class RegistryStudioApp extends StatefulWidget {
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
   final RegistryWorkSessionPersistence? workSessionPersistence;
+  final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
 
   final RegistryEntity? guardRecordEntity;
   final RegistryEntity? relatedContextPrimary;
@@ -67,6 +72,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   static const int _operationWorkspaceScreenIndex = 1;
   static const int _relatedContextScreenIndex = 2;
   static const int _guardRecordScreenIndex = 3;
+  static const int _serviceIntakeSourceScreenIndex = 4;
 
   static const Key _relatedContextScreenButtonKey = Key(
     'registry_studio_related_context_screen_button',
@@ -102,6 +108,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
   bool get _hasGuardRecordInput => widget.guardRecordEntity != null;
 
+  bool get _hasServiceIntakeSourceInput =>
+      widget.serviceIntakeSourceBlocks != null;
+
   bool get _hasRelatedContextInput {
     return widget.relatedContextPrimary != null &&
         widget.prepareRegistryRelatedContext != null &&
@@ -118,6 +127,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _operationWorkspaceScreenIndex => labels.operationCreationScreenTitle,
       _relatedContextScreenIndex => labels.relatedContextPreparation.title,
       _guardRecordScreenIndex => labels.guardRecord.title,
+      _serviceIntakeSourceScreenIndex =>
+        ServiceIntakeSourceBlocksScreen.titleFor(_selectedLanguage),
       _ => labels.translatorScreenTitle,
     };
 
@@ -159,6 +170,18 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                           _operationWorkspaceScreenIndex,
                       child: Text(labels.operationCreationScreenTitle),
                     ),
+                    if (_hasServiceIntakeSourceInput)
+                      CheckedPopupMenuItem<int>(
+                        value: _serviceIntakeSourceScreenIndex,
+                        checked:
+                            _selectedScreenIndex ==
+                            _serviceIntakeSourceScreenIndex,
+                        child: Text(
+                          ServiceIntakeSourceBlocksScreen.titleFor(
+                            _selectedLanguage,
+                          ),
+                        ),
+                      ),
                     if (_hasRelatedContextInput)
                       CheckedPopupMenuItem<int>(
                         key: _relatedContextScreenButtonKey,
@@ -271,6 +294,14 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   }
 
   Widget _currentScreen() {
+    if (_selectedScreenIndex == _serviceIntakeSourceScreenIndex &&
+        _hasServiceIntakeSourceInput) {
+      return ServiceIntakeSourceBlocksScreen(
+        uiLanguage: _selectedLanguage,
+        sourceBlocks: widget.serviceIntakeSourceBlocks!,
+      );
+    }
+
     if (_selectedScreenIndex == _guardRecordScreenIndex &&
         _hasGuardRecordInput) {
       return RegistryStudioGuardRecordScreen(

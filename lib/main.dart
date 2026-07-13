@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
+import 'registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
+import 'registry_studio/adapters/helpy/infrastructure/service_intake_identity_manifest_source.dart';
+import 'registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
 import 'registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'registry_studio/core/application/related_context/prepare_registry_related_context.dart';
@@ -32,8 +36,12 @@ Future<void> main() async {
     assetBundle: rootBundle,
   ).load();
 
+  final Future<List<ServiceIntakeSourceBlock>> serviceIntakeSourceBlocks =
+      _loadServiceIntakeSourceBlocks();
+
   runApp(
     RegistryStudioApp(
+      serviceIntakeSourceBlocks: serviceIntakeSourceBlocks,
       workSessionPersistence: const RegistryWorkSessionPersistence(),
       translatorPhraseHistoryPersistence:
           const SharedPreferencesTranslatorPhraseHistoryPersistence(),
@@ -48,5 +56,23 @@ Future<void> main() async {
       prepareRegistryResolvedRelatedContext:
           PrepareRegistryResolvedRelatedContext(),
     ),
+  );
+}
+
+Future<List<ServiceIntakeSourceBlock>> _loadServiceIntakeSourceBlocks() async {
+  final List<ServiceIntakeIdentityManifestEntry> identities =
+      await ServiceIntakeIdentityManifestSource(assetBundle: rootBundle).load();
+
+  final String source = await GitHubRegistryDocumentSource(
+    dio: Dio(),
+    owner: 'srs2800302-collab',
+    repository: 'helpy',
+    documentPath: 'docs/architecture/Helpy_Architecture_Registry_v1.md',
+    ref: 'main',
+  ).load();
+
+  return const ServiceIntakeSourceBlockExtractor().extract(
+    source: source,
+    identities: identities,
   );
 }
