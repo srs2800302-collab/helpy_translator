@@ -65,7 +65,30 @@ void main() {
     await _selectAppScreen(tester, 'Источник service intake');
     await tester.tap(find.text('Plumbing → Кран'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Открыть инженерную операцию'));
+
+    final Finder startOperationButton = find.byKey(
+      const ValueKey<String>(
+        'service_intake_start_operation_'
+        'helpy.service_intake.plumbing.faucet',
+      ),
+    );
+    final Finder sourceListScrollable = find
+        .descendant(
+          of: find.byKey(const Key('service_intake_source_list')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+
+    expect(startOperationButton, findsOneWidget);
+    expect(sourceListScrollable, findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      startOperationButton,
+      200,
+      scrollable: sourceListScrollable,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(startOperationButton);
     await tester.pumpAndSettle();
 
     final workspace = tester

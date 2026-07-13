@@ -16,6 +16,9 @@ final class ServiceIntakeSourceBlocksScreen extends StatefulWidget {
   static const Key listKey = Key('service_intake_source_list');
   static const Key searchKey = Key('service_intake_source_search');
   static const Key clearSearchKey = Key('service_intake_source_search_clear');
+  static const Key comparisonSelectionKey = Key(
+    'service_intake_source_comparison_selection',
+  );
 
   final RegistryStudioUiLanguage uiLanguage;
   final Future<List<ServiceIntakeSourceBlock>> sourceBlocks;
@@ -39,6 +42,8 @@ final class _ServiceIntakeSourceBlocksScreenState
   final TextEditingController _searchController = TextEditingController();
 
   String _query = '';
+  ServiceIntakeSourceBlock? _comparisonSource;
+  ServiceIntakeSourceBlock? _comparisonTarget;
 
   @override
   void dispose() {
@@ -150,6 +155,27 @@ final class _ServiceIntakeSourceBlocksScreenState
                     },
                   ),
                   const SizedBox(height: 8),
+                  Card(
+                    key: ServiceIntakeSourceBlocksScreen.comparisonSelectionKey,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            '${labels.comparisonSource}: '
+                            '${_comparisonSource == null ? labels.notSelected : _comparisonSource!.identity.heading}',
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${labels.comparisonTarget}: '
+                            '${_comparisonTarget == null ? labels.notSelected : _comparisonTarget!.identity.heading}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   if (visibleBlocks.isEmpty)
                     Card(
                       child: Padding(
@@ -211,20 +237,78 @@ final class _ServiceIntakeSourceBlocksScreenState
                                           )
                                         : null,
                                   ),
-                                  if (widget.onStartOperation !=
-                                      null) ...<Widget>[
-                                    const SizedBox(height: 16),
-                                    FilledButton.icon(
-                                      key: ValueKey<String>(
-                                        'service_intake_start_operation_'
-                                        '${block.identity.entityId.value}',
+                                  const SizedBox(height: 16),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: <Widget>[
+                                      OutlinedButton.icon(
+                                        key: ValueKey<String>(
+                                          'service_intake_compare_source_'
+                                          '${block.identity.entityId.value}',
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _comparisonSource = block;
+
+                                            if (_comparisonTarget
+                                                    ?.identity
+                                                    .entityId ==
+                                                block.identity.entityId) {
+                                              _comparisonTarget = null;
+                                            }
+                                          });
+                                        },
+                                        icon: Icon(
+                                          _comparisonSource
+                                                      ?.identity
+                                                      .entityId ==
+                                                  block.identity.entityId
+                                              ? Icons.radio_button_checked
+                                              : Icons.radio_button_unchecked,
+                                        ),
+                                        label: Text(labels.useAsSource),
                                       ),
-                                      onPressed: () =>
-                                          widget.onStartOperation!(block),
-                                      icon: const Icon(Icons.play_arrow),
-                                      label: Text(labels.startOperation),
-                                    ),
-                                  ],
+                                      OutlinedButton.icon(
+                                        key: ValueKey<String>(
+                                          'service_intake_compare_target_'
+                                          '${block.identity.entityId.value}',
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _comparisonTarget = block;
+
+                                            if (_comparisonSource
+                                                    ?.identity
+                                                    .entityId ==
+                                                block.identity.entityId) {
+                                              _comparisonSource = null;
+                                            }
+                                          });
+                                        },
+                                        icon: Icon(
+                                          _comparisonTarget
+                                                      ?.identity
+                                                      .entityId ==
+                                                  block.identity.entityId
+                                              ? Icons.radio_button_checked
+                                              : Icons.radio_button_unchecked,
+                                        ),
+                                        label: Text(labels.useAsTarget),
+                                      ),
+                                      if (widget.onStartOperation != null)
+                                        FilledButton.icon(
+                                          key: ValueKey<String>(
+                                            'service_intake_start_operation_'
+                                            '${block.identity.entityId.value}',
+                                          ),
+                                          onPressed: () =>
+                                              widget.onStartOperation!(block),
+                                          icon: const Icon(Icons.play_arrow),
+                                          label: Text(labels.startOperation),
+                                        ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -251,6 +335,11 @@ typedef _ServiceIntakeSourceLabels = ({
   String searchHint,
   String clearSearch,
   String noMatches,
+  String comparisonSource,
+  String comparisonTarget,
+  String notSelected,
+  String useAsSource,
+  String useAsTarget,
 });
 
 _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
@@ -266,6 +355,11 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       searchHint: 'Заголовок, ID, путь или текст',
       clearSearch: 'Очистить поиск',
       noMatches: 'Совпадения не найдены',
+      comparisonSource: 'Источник',
+      comparisonTarget: 'Цель',
+      notSelected: 'не выбрано',
+      useAsSource: 'Выбрать источником',
+      useAsTarget: 'Выбрать целью',
     ),
     RegistryStudioUiLanguage.en => (
       loadedCount: 'Loaded records',
@@ -278,6 +372,11 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       searchHint: 'Heading, ID, path, or text',
       clearSearch: 'Clear search',
       noMatches: 'No matches found',
+      comparisonSource: 'Source',
+      comparisonTarget: 'Target',
+      notSelected: 'not selected',
+      useAsSource: 'Select as source',
+      useAsTarget: 'Select as target',
     ),
     RegistryStudioUiLanguage.th => (
       loadedCount: 'ระเบียนที่โหลด',
@@ -290,6 +389,11 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       searchHint: 'หัวข้อ, ID, เส้นทาง หรือข้อความ',
       clearSearch: 'ล้างการค้นหา',
       noMatches: 'ไม่พบรายการที่ตรงกัน',
+      comparisonSource: 'ต้นทาง',
+      comparisonTarget: 'เป้าหมาย',
+      notSelected: 'ยังไม่ได้เลือก',
+      useAsSource: 'เลือกเป็นต้นทาง',
+      useAsTarget: 'เลือกเป็นเป้าหมาย',
     ),
   };
 }
