@@ -51,6 +51,8 @@ typedef ServiceIntakeSemanticScenarioEntryEvidence = ({
 typedef ServiceIntakeSemanticQuestion = ({
   String key,
   ServiceIntakeSemanticItemLocator promptLocator,
+  IntakeQuestionInputMode inputMode,
+  bool isRequired,
   List<ServiceIntakeSemanticAnswerOption> answerOptions,
   List<ServiceIntakeSemanticQuestionQualifier> qualifiers,
 });
@@ -479,11 +481,22 @@ ServiceIntakeSemanticQuestion _decodeQuestion(Object? value) {
   _ensureExactKeys(source, const <String>{
     'key',
     'promptLocator',
+    'inputMode',
+    'isRequired',
     'answerOptions',
     'qualifiers',
   }, 'Service intake semantic question');
 
   final String questionKey = _requiredString(source, 'key');
+  final String encodedInputMode = _requiredString(source, 'inputMode');
+  final IntakeQuestionInputMode inputMode = switch (encodedInputMode) {
+    'singleChoice' => IntakeQuestionInputMode.singleChoice,
+    'text' => IntakeQuestionInputMode.text,
+    _ => throw FormatException(
+      'Unsupported service intake question input mode: $encodedInputMode.',
+    ),
+  };
+  final bool isRequired = _requiredBool(source, 'isRequired');
   final List<ServiceIntakeSemanticAnswerOption> answerOptions =
       <ServiceIntakeSemanticAnswerOption>[
         for (final Object? item in _requiredList(source, 'answerOptions'))
@@ -494,6 +507,26 @@ ServiceIntakeSemanticQuestion _decodeQuestion(Object? value) {
         for (final Object? item in _requiredList(source, 'qualifiers'))
           _decodeQualifier(item),
       ];
+
+  if (inputMode == IntakeQuestionInputMode.singleChoice) {
+    if (answerOptions.isEmpty) {
+      throw FormatException(
+        'Single-choice semantic question "$questionKey" '
+        'must declare answer options.',
+      );
+    }
+
+    if (!isRequired) {
+      throw FormatException(
+        'Single-choice semantic question "$questionKey" must be required.',
+      );
+    }
+  } else if (answerOptions.isNotEmpty) {
+    throw FormatException(
+      'Text semantic question "$questionKey" '
+      'must not declare answer options.',
+    );
+  }
 
   _ensureUniqueKeys(
     answerOptions.map((ServiceIntakeSemanticAnswerOption item) => item.key),
@@ -509,6 +542,8 @@ ServiceIntakeSemanticQuestion _decodeQuestion(Object? value) {
   return (
     key: questionKey,
     promptLocator: _decodeItemLocator(source['promptLocator']),
+    inputMode: inputMode,
+    isRequired: isRequired,
     answerOptions: List<ServiceIntakeSemanticAnswerOption>.unmodifiable(
       answerOptions,
     ),

@@ -39,17 +39,12 @@ void main() {
           entry.scenarios.last.entryEvidence.mode,
           ScenarioEntryEvidenceMode.directSelection,
         );
-        expect(
-          entry
-              .scenarios
-              .first
-              .questions
-              .single
-              .qualifiers
-              .single
-              .sourceAnswerOptionKey,
-          'sink',
-        );
+        final ServiceIntakeSemanticQuestion question =
+            entry.scenarios.first.questions.single;
+
+        expect(question.inputMode, IntakeQuestionInputMode.singleChoice);
+        expect(question.isRequired, isTrue);
+        expect(question.qualifiers.single.sourceAnswerOptionKey, 'sink');
         expect(
           entry
               .scenarios
@@ -106,6 +101,101 @@ void main() {
       final String manifest = _manifest(<Map<String, Object?>>[entry]);
 
       expect(() => _source(manifest).decode(manifest), throwsFormatException);
+    });
+
+    test('loads an optional text question without answer options', () {
+      final Map<String, Object?> entry = _entry();
+      final List<Map<String, Object?>> scenarios =
+          entry['scenarios']! as List<Map<String, Object?>>;
+      final List<Map<String, Object?>> questions =
+          scenarios.first['questions']! as List<Map<String, Object?>>;
+      final Map<String, Object?> question = questions.single;
+
+      question['inputMode'] = 'text';
+      question['isRequired'] = false;
+      question['answerOptions'] = <Map<String, Object?>>[];
+      question['qualifiers'] = <Map<String, Object?>>[];
+      scenarios.first['photoQuestions'] = <Map<String, Object?>>[];
+      scenarios.first['photoLimits'] = <Map<String, Object?>>[];
+
+      final String manifest = _manifest(<Map<String, Object?>>[entry]);
+      final ServiceIntakeSemanticQuestion decoded = _source(
+        manifest,
+      ).decode(manifest).single.scenarios.first.questions.single;
+
+      expect(decoded.inputMode, IntakeQuestionInputMode.text);
+      expect(decoded.isRequired, isFalse);
+      expect(decoded.answerOptions, isEmpty);
+    });
+
+    test('rejects invalid question input-mode contracts', () {
+      final Map<String, Object?> unsupportedEntry = _entry();
+      final List<Map<String, Object?>> unsupportedScenarios =
+          unsupportedEntry['scenarios']! as List<Map<String, Object?>>;
+      final List<Map<String, Object?>> unsupportedQuestions =
+          unsupportedScenarios.first['questions']!
+              as List<Map<String, Object?>>;
+      unsupportedQuestions.single['inputMode'] = 'multiChoice';
+
+      final String unsupportedManifest = _manifest(<Map<String, Object?>>[
+        unsupportedEntry,
+      ]);
+
+      expect(
+        () => _source(unsupportedManifest).decode(unsupportedManifest),
+        throwsFormatException,
+      );
+
+      final Map<String, Object?> emptyChoiceEntry = _entry();
+      final List<Map<String, Object?>> emptyChoiceScenarios =
+          emptyChoiceEntry['scenarios']! as List<Map<String, Object?>>;
+      final List<Map<String, Object?>> emptyChoiceQuestions =
+          emptyChoiceScenarios.first['questions']!
+              as List<Map<String, Object?>>;
+      emptyChoiceQuestions.single['answerOptions'] = <Map<String, Object?>>[];
+
+      final String emptyChoiceManifest = _manifest(<Map<String, Object?>>[
+        emptyChoiceEntry,
+      ]);
+
+      expect(
+        () => _source(emptyChoiceManifest).decode(emptyChoiceManifest),
+        throwsFormatException,
+      );
+
+      final Map<String, Object?> optionalChoiceEntry = _entry();
+      final List<Map<String, Object?>> optionalChoiceScenarios =
+          optionalChoiceEntry['scenarios']! as List<Map<String, Object?>>;
+      final List<Map<String, Object?>> optionalChoiceQuestions =
+          optionalChoiceScenarios.first['questions']!
+              as List<Map<String, Object?>>;
+      optionalChoiceQuestions.single['isRequired'] = false;
+
+      final String optionalChoiceManifest = _manifest(<Map<String, Object?>>[
+        optionalChoiceEntry,
+      ]);
+
+      expect(
+        () => _source(optionalChoiceManifest).decode(optionalChoiceManifest),
+        throwsFormatException,
+      );
+
+      final Map<String, Object?> textWithOptionsEntry = _entry();
+      final List<Map<String, Object?>> textWithOptionsScenarios =
+          textWithOptionsEntry['scenarios']! as List<Map<String, Object?>>;
+      final List<Map<String, Object?>> textWithOptionsQuestions =
+          textWithOptionsScenarios.first['questions']!
+              as List<Map<String, Object?>>;
+      textWithOptionsQuestions.single['inputMode'] = 'text';
+
+      final String textWithOptionsManifest = _manifest(<Map<String, Object?>>[
+        textWithOptionsEntry,
+      ]);
+
+      expect(
+        () => _source(textWithOptionsManifest).decode(textWithOptionsManifest),
+        throwsFormatException,
+      );
     });
 
     test('rejects a qualifier referencing a foreign answer option', () {
@@ -196,6 +286,8 @@ Map<String, Object?> _selectorScenario() {
           ordinal: 2,
           expectedText: questionText,
         ),
+        'inputMode': 'singleChoice',
+        'isRequired': true,
         'answerOptions': <Map<String, Object?>>[
           <String, Object?>{
             'key': 'sink',
