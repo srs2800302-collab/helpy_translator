@@ -9,8 +9,6 @@ final class RegistryStudioUiLabels {
     required this.translatorPhrase,
     required this.operationCreation,
     required this.operationStatusTransition,
-    required this.relatedContextPreparation,
-    required this.guardRecord,
   });
 
   factory RegistryStudioUiLabels.forLanguage(
@@ -67,38 +65,6 @@ final class RegistryStudioUiLabels {
               persistenceFailedError:
                   'Не удалось сохранить новый статус инженерной операции.',
             ),
-        relatedContextPreparation:
-            RegistryStudioRelatedContextPreparationLabels(
-              title: 'Подготовка related context',
-              primaryEntityTitle: 'Primary entity',
-              relatedContextTitle: 'Related context подготовлен',
-              resolvedContextTitle: 'Resolved related context подготовлен',
-              prepareButton: 'Подготовить context',
-              primaryEntityLabel: 'Primary entity ID',
-              pathLabel: 'Path',
-              kindLabel: 'Kind',
-              matchedRelationsLabel: 'Matched relations',
-              relatedEntityIdsLabel: 'Related entity ids',
-              resolvedRelatedEntitiesLabel: 'Resolved related entities',
-              missingRelatedEntityIdsLabel: 'Missing related entity ids',
-              noItemsLabel: 'Нет данных',
-              preparationFailedTitle: 'Ошибка подготовки context',
-            ),
-        guardRecord: RegistryStudioGuardRecordLabels(
-          title: 'Guard record',
-          entityTitle: 'Registry entity',
-          entityIdLabel: 'Entity ID',
-          pathLabel: 'Path',
-          kindLabel: 'Kind',
-          recordTypeLabel: 'Тип записи',
-          headingLabel: 'Заголовок',
-          summaryLabel: 'Краткое описание',
-          sourceEvidenceTitle: 'Source evidence',
-          sourceDocumentPathLabel: 'Путь к источнику',
-          sourceSnapshotFingerprintLabel: 'Fingerprint источника',
-          headingPathLabel: 'Путь заголовков',
-          lineRangeLabel: 'Диапазон строк',
-        ),
       ),
       RegistryStudioUiLanguage.en => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
@@ -150,38 +116,6 @@ final class RegistryStudioUiLabels {
               persistenceFailedError:
                   'Failed to save the new engineering operation status.',
             ),
-        relatedContextPreparation:
-            RegistryStudioRelatedContextPreparationLabels(
-              title: 'Prepare related context',
-              primaryEntityTitle: 'Primary entity',
-              relatedContextTitle: 'Related context prepared',
-              resolvedContextTitle: 'Resolved related context prepared',
-              prepareButton: 'Prepare context',
-              primaryEntityLabel: 'Primary entity ID',
-              pathLabel: 'Path',
-              kindLabel: 'Kind',
-              matchedRelationsLabel: 'Matched relations',
-              relatedEntityIdsLabel: 'Related entity ids',
-              resolvedRelatedEntitiesLabel: 'Resolved related entities',
-              missingRelatedEntityIdsLabel: 'Missing related entity ids',
-              noItemsLabel: 'No items',
-              preparationFailedTitle: 'Context preparation error',
-            ),
-        guardRecord: RegistryStudioGuardRecordLabels(
-          title: 'Guard record',
-          entityTitle: 'Registry entity',
-          entityIdLabel: 'Entity ID',
-          pathLabel: 'Path',
-          kindLabel: 'Kind',
-          recordTypeLabel: 'Record type',
-          headingLabel: 'Heading',
-          summaryLabel: 'Summary',
-          sourceEvidenceTitle: 'Source evidence',
-          sourceDocumentPathLabel: 'Source document path',
-          sourceSnapshotFingerprintLabel: 'Source snapshot fingerprint',
-          headingPathLabel: 'Heading path',
-          lineRangeLabel: 'Line range',
-        ),
       ),
       RegistryStudioUiLanguage.th => const RegistryStudioUiLabels(
         appTitle: 'Registry Studio',
@@ -233,38 +167,6 @@ final class RegistryStudioUiLabels {
               persistenceFailedError:
                   'ไม่สามารถบันทึกสถานะใหม่ของงานวิศวกรรมได้',
             ),
-        relatedContextPreparation:
-            RegistryStudioRelatedContextPreparationLabels(
-              title: 'เตรียม related context',
-              primaryEntityTitle: 'Primary entity',
-              relatedContextTitle: 'เตรียม related context แล้ว',
-              resolvedContextTitle: 'เตรียม resolved related context แล้ว',
-              prepareButton: 'เตรียม context',
-              primaryEntityLabel: 'รหัส primary entity',
-              pathLabel: 'Path',
-              kindLabel: 'Kind',
-              matchedRelationsLabel: 'Matched relations',
-              relatedEntityIdsLabel: 'Related entity ids',
-              resolvedRelatedEntitiesLabel: 'Resolved related entities',
-              missingRelatedEntityIdsLabel: 'Missing related entity ids',
-              noItemsLabel: 'ไม่มีข้อมูล',
-              preparationFailedTitle: 'ข้อผิดพลาดในการเตรียม context',
-            ),
-        guardRecord: RegistryStudioGuardRecordLabels(
-          title: 'ระเบียน Guard',
-          entityTitle: 'Registry entity',
-          entityIdLabel: 'Entity ID',
-          pathLabel: 'Path',
-          kindLabel: 'Kind',
-          recordTypeLabel: 'ประเภทระเบียน',
-          headingLabel: 'หัวข้อ',
-          summaryLabel: 'สรุป',
-          sourceEvidenceTitle: 'หลักฐานแหล่งที่มา',
-          sourceDocumentPathLabel: 'พาธเอกสารต้นทาง',
-          sourceSnapshotFingerprintLabel: 'Fingerprint ของ snapshot',
-          headingPathLabel: 'พาธหัวข้อ',
-          lineRangeLabel: 'ช่วงบรรทัด',
-        ),
       ),
     };
   }
@@ -276,8 +178,6 @@ final class RegistryStudioUiLabels {
   final RegistryStudioTranslatorPhraseLabels translatorPhrase;
   final RegistryStudioOperationCreationLabels operationCreation;
   final RegistryStudioOperationStatusTransitionLabels operationStatusTransition;
-  final RegistryStudioRelatedContextPreparationLabels relatedContextPreparation;
-  final RegistryStudioGuardRecordLabels guardRecord;
 }
 
 final class RegistryStudioTranslatorPhraseLabels {
@@ -370,70 +270,4 @@ final class RegistryStudioOperationStatusTransitionLabels {
   final String transitionedTitle;
   final String transitionFailedTitle;
   final String persistenceFailedError;
-}
-
-final class RegistryStudioRelatedContextPreparationLabels {
-  const RegistryStudioRelatedContextPreparationLabels({
-    required this.title,
-    required this.primaryEntityTitle,
-    required this.relatedContextTitle,
-    required this.resolvedContextTitle,
-    required this.prepareButton,
-    required this.primaryEntityLabel,
-    required this.pathLabel,
-    required this.kindLabel,
-    required this.matchedRelationsLabel,
-    required this.relatedEntityIdsLabel,
-    required this.resolvedRelatedEntitiesLabel,
-    required this.missingRelatedEntityIdsLabel,
-    required this.noItemsLabel,
-    required this.preparationFailedTitle,
-  });
-
-  final String title;
-  final String primaryEntityTitle;
-  final String relatedContextTitle;
-  final String resolvedContextTitle;
-  final String prepareButton;
-  final String primaryEntityLabel;
-  final String pathLabel;
-  final String kindLabel;
-  final String matchedRelationsLabel;
-  final String relatedEntityIdsLabel;
-  final String resolvedRelatedEntitiesLabel;
-  final String missingRelatedEntityIdsLabel;
-  final String noItemsLabel;
-  final String preparationFailedTitle;
-}
-
-final class RegistryStudioGuardRecordLabels {
-  const RegistryStudioGuardRecordLabels({
-    required this.title,
-    required this.entityTitle,
-    required this.entityIdLabel,
-    required this.pathLabel,
-    required this.kindLabel,
-    required this.recordTypeLabel,
-    required this.headingLabel,
-    required this.summaryLabel,
-    required this.sourceEvidenceTitle,
-    required this.sourceDocumentPathLabel,
-    required this.sourceSnapshotFingerprintLabel,
-    required this.headingPathLabel,
-    required this.lineRangeLabel,
-  });
-
-  final String title;
-  final String entityTitle;
-  final String entityIdLabel;
-  final String pathLabel;
-  final String kindLabel;
-  final String recordTypeLabel;
-  final String headingLabel;
-  final String summaryLabel;
-  final String sourceEvidenceTitle;
-  final String sourceDocumentPathLabel;
-  final String sourceSnapshotFingerprintLabel;
-  final String headingPathLabel;
-  final String lineRangeLabel;
 }
