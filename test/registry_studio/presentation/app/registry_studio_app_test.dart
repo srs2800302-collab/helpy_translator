@@ -211,6 +211,72 @@ void main() {
       }
       expect(workspace.initialWorkingContent, target.sourceText.trim());
 
+      final RegistryOperationComparisonViewData comparisonViewData =
+          workspace.comparisonViewData!;
+
+      expect(comparisonViewData.sourceHeading, source.identity.heading);
+      expect(comparisonViewData.sourceEntityId, source.identity.entityId);
+      expect(comparisonViewData.sourceText, source.sourceText.trim());
+      expect(comparisonViewData.targetHeading, target.identity.heading);
+      expect(comparisonViewData.targetEntityId, target.identity.entityId);
+      expect(comparisonViewData.targetText, target.sourceText.trim());
+      expect(comparisonViewData.affectedEntityIds, <RegistryEntityId>[
+        source.identity.entityId,
+        affectedEntityId,
+      ]);
+      expect(comparisonViewData.lineDiff, contains('- ### Plumbing → Кран'));
+      expect(
+        comparisonViewData.lineDiff,
+        contains('+ ### Plumbing → Замена крана'),
+      );
+
+      final Finder comparisonSummary = find.byKey(
+        const Key('registry_operation_comparison_summary'),
+      );
+
+      expect(comparisonSummary, findsOneWidget);
+
+      await tester.ensureVisible(comparisonSummary);
+      await tester.tap(comparisonSummary);
+      await tester.pumpAndSettle();
+
+      final Finder comparisonSheet = find.byKey(
+        const Key('registry_operation_comparison_sheet'),
+      );
+
+      expect(comparisonSheet, findsOneWidget);
+      expect(
+        find.byKey(const Key('registry_operation_comparison_source')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('registry_operation_comparison_target')),
+        findsOneWidget,
+      );
+
+      final Finder affectedSection = find.byKey(
+        const Key('registry_operation_comparison_affected'),
+      );
+      await tester.dragUntilVisible(
+        affectedSection,
+        comparisonSheet,
+        const Offset(0, -300),
+      );
+      expect(affectedSection, findsOneWidget);
+
+      final Finder diffSection = find.byKey(
+        const Key('registry_operation_comparison_diff'),
+      );
+      await tester.dragUntilVisible(
+        diffSection,
+        comparisonSheet,
+        const Offset(0, -300),
+      );
+      expect(diffSection, findsOneWidget);
+
+      Navigator.of(tester.element(comparisonSheet)).pop();
+      await tester.pumpAndSettle();
+
       final TextField workingContentEditor = tester.widget<TextField>(
         find.byKey(const Key('registry_operation_revision_content')),
       );

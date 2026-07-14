@@ -64,6 +64,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   String? _initialOperationWorkingContent;
   RegistryEntityId? _operationPrimaryEntityId;
   List<RegistryEntityId>? _operationRelatedEntityIds;
+  RegistryOperationComparisonViewData? _operationComparisonViewData;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
   late final TranslatorPhraseCubit _translatorPhraseCubit;
 
@@ -213,6 +214,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = null;
       _operationRelatedEntityIds = null;
+      _operationComparisonViewData = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -228,6 +230,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = block.identity.entityId;
       _operationRelatedEntityIds = null;
+      _operationComparisonViewData = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -269,6 +272,16 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _initialOperationWorkingContent = target.sourceText.trim();
       _operationPrimaryEntityId = target.identity.entityId;
       _operationRelatedEntityIds = affectedEntityIds;
+      _operationComparisonViewData = (
+        sourceHeading: source.identity.heading,
+        sourceEntityId: source.identity.entityId,
+        sourceText: source.sourceText.trim(),
+        targetHeading: target.identity.heading,
+        targetEntityId: target.identity.entityId,
+        targetText: target.sourceText.trim(),
+        lineDiff: lineComparison,
+        affectedEntityIds: affectedEntityIds,
+      );
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -276,7 +289,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   void _clearOperationContext() {
     if (_initialOperationWorkingContent == null &&
         _operationPrimaryEntityId == null &&
-        _operationRelatedEntityIds == null) {
+        _operationRelatedEntityIds == null &&
+        _operationComparisonViewData == null) {
       return;
     }
 
@@ -284,6 +298,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = null;
       _operationRelatedEntityIds = null;
+      _operationComparisonViewData = null;
     });
   }
 
@@ -330,6 +345,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         workSessionPersistence: widget.workSessionPersistence,
         revisionPrimaryEntityId: _operationPrimaryEntityId,
         revisionRelatedEntityIds: _operationRelatedEntityIds,
+        comparisonViewData: _operationComparisonViewData,
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,

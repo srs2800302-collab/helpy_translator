@@ -12,6 +12,17 @@ import 'package:helpy_translator/core/persistence/registry_work_session_persiste
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation_revision.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 
+typedef RegistryOperationComparisonViewData = ({
+  String sourceHeading,
+  RegistryEntityId sourceEntityId,
+  String sourceText,
+  String targetHeading,
+  RegistryEntityId targetEntityId,
+  String targetText,
+  String lineDiff,
+  List<RegistryEntityId> affectedEntityIds,
+});
+
 final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   const RegistryEngineeringOperationWorkspaceScreen({
     required this.uiLanguage,
@@ -22,6 +33,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     this.revisionRelatedEntityIds,
     this.initialProblemStatement,
     this.initialWorkingContent,
+    this.comparisonViewData,
     this.onInitialProblemStatementConsumed,
     this.onWorkSessionCleared,
     super.key,
@@ -37,6 +49,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   final Iterable<RegistryEntityId>? revisionRelatedEntityIds;
   final String? initialProblemStatement;
   final String? initialWorkingContent;
+  final RegistryOperationComparisonViewData? comparisonViewData;
   final VoidCallback? onInitialProblemStatementConsumed;
   final VoidCallback? onWorkSessionCleared;
 
@@ -488,7 +501,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           onOperationTransitioned: _setCurrentOperation,
         );
 
-    final Widget operationStatusSection = revisionsReadOnly
+    final Widget operationStatusContent = revisionsReadOnly
         ? Column(
             children: <Widget>[
               Expanded(child: statusScreen),
@@ -517,6 +530,219 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
             ],
           )
         : statusScreen;
+
+    final RegistryOperationComparisonViewData? comparisonViewData =
+        widget.comparisonViewData;
+
+    final ({
+      String title,
+      String source,
+      String target,
+      String affected,
+      String changes,
+    })
+    comparisonLabels = switch (widget.uiLanguage) {
+      RegistryStudioUiLanguage.ru => (
+        title: 'Сравнение Registry',
+        source: 'Источник',
+        target: 'Цель изменения',
+        affected: 'Затронутые Registry identities',
+        changes: 'Построчные изменения',
+      ),
+      RegistryStudioUiLanguage.en => (
+        title: 'Registry comparison',
+        source: 'Source',
+        target: 'Change target',
+        affected: 'Affected Registry identities',
+        changes: 'Line changes',
+      ),
+      RegistryStudioUiLanguage.th => (
+        title: 'การเปรียบเทียบ Registry',
+        source: 'ต้นทาง',
+        target: 'เป้าหมายการเปลี่ยนแปลง',
+        affected: 'Registry identities ที่ได้รับผลกระทบ',
+        changes: 'การเปลี่ยนแปลงรายบรรทัด',
+      ),
+    };
+
+    final Widget operationStatusSection = comparisonViewData == null
+        ? operationStatusContent
+        : Column(
+            children: <Widget>[
+              Card(
+                key: const Key('registry_operation_comparison_summary'),
+                margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: ListTile(
+                  leading: const Icon(Icons.compare_arrows),
+                  title: Text(comparisonLabels.title),
+                  subtitle: Text(
+                    '${comparisonViewData.sourceHeading}\n'
+                    '→ ${comparisonViewData.targetHeading}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    unawaited(
+                      showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (BuildContext sheetContext) {
+                          return SafeArea(
+                            child: FractionallySizedBox(
+                              heightFactor: 0.9,
+                              child: ListView(
+                                key: const Key(
+                                  'registry_operation_comparison_sheet',
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                children: <Widget>[
+                                  Text(
+                                    comparisonLabels.title,
+                                    style: Theme.of(
+                                      sheetContext,
+                                    ).textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Card(
+                                    key: const Key(
+                                      'registry_operation_comparison_source',
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            comparisonLabels.source,
+                                            style: Theme.of(
+                                              sheetContext,
+                                            ).textTheme.titleMedium,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          SelectableText(
+                                            comparisonViewData.sourceHeading,
+                                          ),
+                                          SelectableText(
+                                            comparisonViewData
+                                                .sourceEntityId
+                                                .value,
+                                          ),
+                                          const Divider(),
+                                          SelectableText(
+                                            comparisonViewData.sourceText,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Card(
+                                    key: const Key(
+                                      'registry_operation_comparison_target',
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            comparisonLabels.target,
+                                            style: Theme.of(
+                                              sheetContext,
+                                            ).textTheme.titleMedium,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          SelectableText(
+                                            comparisonViewData.targetHeading,
+                                          ),
+                                          SelectableText(
+                                            comparisonViewData
+                                                .targetEntityId
+                                                .value,
+                                          ),
+                                          const Divider(),
+                                          SelectableText(
+                                            comparisonViewData.targetText,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Card(
+                                    key: const Key(
+                                      'registry_operation_comparison_affected',
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            comparisonLabels.affected,
+                                            style: Theme.of(
+                                              sheetContext,
+                                            ).textTheme.titleMedium,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          for (final RegistryEntityId entityId
+                                              in comparisonViewData
+                                                  .affectedEntityIds)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 4,
+                                              ),
+                                              child: SelectableText(
+                                                entityId.value,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Card(
+                                    key: const Key(
+                                      'registry_operation_comparison_diff',
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            comparisonLabels.changes,
+                                            style: Theme.of(
+                                              sheetContext,
+                                            ).textTheme.titleMedium,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          SelectableText(
+                                            comparisonViewData.lineDiff,
+                                            style: Theme.of(sheetContext)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  fontFamily: 'monospace',
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Expanded(child: operationStatusContent),
+            ],
+          );
 
     if (widget.revisionPrimaryEntityId == null) {
       return operationStatusSection;
