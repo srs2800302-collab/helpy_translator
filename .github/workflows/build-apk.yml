@@ -7,6 +7,10 @@ on:
       - main
       - registry-studio/v1
       - registry-studio/clean-rebuild
+    paths-ignore:
+      - 'worker/registry_apply/**'
+      - '.github/workflows/registry-apply-worker.yml'
+      - '.github/workflows/build-apk.yml'
 
 jobs:
   build:

@@ -1,0 +1,41 @@
+name: Validate Registry Apply Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - registry-studio/clean-rebuild
+    paths:
+      - 'worker/registry_apply/**'
+      - '.github/workflows/registry-apply-worker.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Worker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: worker/registry_apply/package-lock.json
+
+      - name: Install dependencies
+        working-directory: worker/registry_apply
+        run: npm ci
+
+      - name: Check TypeScript
+        working-directory: worker/registry_apply
+        run: npm run check
+
+      - name: Build Worker dry run
+        working-directory: worker/registry_apply
+        run: npm run build
