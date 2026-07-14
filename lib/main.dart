@@ -10,9 +10,6 @@ import 'registry_studio/adapters/helpy/infrastructure/service_intake_identity_ma
 import 'registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
 import 'registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
-import 'registry_studio/core/application/related_context/prepare_registry_related_context.dart';
-import 'registry_studio/core/application/related_context/prepare_registry_resolved_related_context.dart';
-import 'registry_studio/guard/infrastructure/registry_studio_guard_asset_source.dart';
 import 'registry_studio/presentation/app/registry_studio_app.dart';
 import 'registry_studio/translator/application/translate_phrase.dart';
 import 'registry_studio/translator/infrastructure/shared_preferences_translator_phrase_history_persistence.dart';
@@ -32,10 +29,6 @@ Future<void> main() async {
         appConfig: appConfig,
       );
 
-  final guardSource = await RegistryStudioGuardAssetSource(
-    assetBundle: rootBundle,
-  ).load();
-
   final Future<List<ServiceIntakeSourceBlock>> serviceIntakeSourceBlocks =
       _loadServiceIntakeSourceBlocks();
 
@@ -49,12 +42,6 @@ Future<void> main() async {
       createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
       transitionRegistryEngineeringOperationStatus:
           TransitionRegistryEngineeringOperationStatus(),
-      guardRecordEntity: guardSource.entity,
-      relatedContextPrimary: guardSource.entity,
-      relatedContextRelations: guardSource.relations,
-      prepareRegistryRelatedContext: PrepareRegistryRelatedContext(),
-      prepareRegistryResolvedRelatedContext:
-          PrepareRegistryResolvedRelatedContext(),
     ),
   );
 }
