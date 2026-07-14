@@ -143,6 +143,9 @@ void main() {
             '1. Что требуется сделать?\n'
             '- Заменить существующий кран.\n',
       );
+      final RegistryEntityId affectedEntityId = RegistryEntityId(
+        'registry.service_intake.plumbing.faucet.materials',
+      );
 
       await tester.pumpWidget(
         _testApp(
@@ -151,6 +154,13 @@ void main() {
               Future<List<ServiceIntakeSourceBlock>>.value(
                 <ServiceIntakeSourceBlock>[source, target],
               ),
+          relatedContextRelations: <RegistryRelation>[
+            RegistryRelation(
+              sourceEntityId: target.identity.entityId,
+              targetEntityId: affectedEntityId,
+              meaning: RegistryRelationMeaning('references'),
+            ),
+          ],
         ),
       );
 
@@ -201,6 +211,7 @@ void main() {
       expect(workspace.revisionPrimaryEntityId, target.identity.entityId);
       expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
         source.identity.entityId,
+        affectedEntityId,
       ]);
       expect(
         workspace.initialProblemStatement,
@@ -238,6 +249,7 @@ void main() {
         workspace.initialWorkingContent,
         contains('+ ### Plumbing → Замена крана'),
       );
+      expect(workspace.initialWorkingContent, contains(affectedEntityId.value));
 
       await tester.enterText(
         find.byKey(const Key('registry_engineering_operation_id_field')),
@@ -650,6 +662,7 @@ Future<void> _selectAppScreen(WidgetTester tester, String label) async {
 Widget _testApp(
   _FakeTranslatorPhraseProvider provider, {
   Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks,
+  Iterable<RegistryRelation>? relatedContextRelations,
 }) {
   final RegistryEntity primary = registryEntityFixture(
     id: 'guard-record-primary',
@@ -664,13 +677,15 @@ Widget _testApp(
         TransitionRegistryEngineeringOperationStatus(),
     guardRecordEntity: _guardRecordEntity(),
     relatedContextPrimary: primary,
-    relatedContextRelations: <RegistryRelation>[
-      RegistryRelation(
-        sourceEntityId: primary.id,
-        targetEntityId: related.id,
-        meaning: RegistryRelationMeaning('depends_on'),
-      ),
-    ],
+    relatedContextRelations:
+        relatedContextRelations ??
+        <RegistryRelation>[
+          RegistryRelation(
+            sourceEntityId: primary.id,
+            targetEntityId: related.id,
+            meaning: RegistryRelationMeaning('depends_on'),
+          ),
+        ],
     availableRelatedEntities: <RegistryEntity>[related],
     prepareRegistryRelatedContext: PrepareRegistryRelatedContext(),
     prepareRegistryResolvedRelatedContext:

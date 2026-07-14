@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
 import '../../adapters/helpy/presentation/screens/service_intake_source_blocks_screen.dart';
 
+import '../../core/application/change_impact/resolve_affected_registry_entity_ids.dart';
 import '../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../core/application/related_context/prepare_registry_related_context.dart';
@@ -35,6 +36,8 @@ final class RegistryStudioApp extends StatefulWidget {
     this.translatorPhraseHistoryPersistence,
     this.workSessionPersistence,
     this.compareRegistrySourceText = const CompareRegistrySourceText(),
+    this.resolveAffectedRegistryEntityIds =
+        const ResolveAffectedRegistryEntityIds(),
     this.serviceIntakeSourceBlocks,
     this.guardRecordEntity,
     this.relatedContextPrimary,
@@ -57,6 +60,7 @@ final class RegistryStudioApp extends StatefulWidget {
   transitionRegistryEngineeringOperationStatus;
   final RegistryWorkSessionPersistence? workSessionPersistence;
   final CompareRegistrySourceText compareRegistrySourceText;
+  final ResolveAffectedRegistryEntityIds resolveAffectedRegistryEntityIds;
   final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
 
   final RegistryEntity? guardRecordEntity;
@@ -91,7 +95,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   String? _initialOperationProblemStatement;
   String? _initialOperationWorkingContent;
   RegistryEntityId? _operationPrimaryEntityId;
-  RegistryEntityId? _operationRelatedEntityId;
+  List<RegistryEntityId>? _operationRelatedEntityIds;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
   late final TranslatorPhraseCubit _translatorPhraseCubit;
 
@@ -266,7 +270,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = null;
-      _operationRelatedEntityId = null;
+      _operationRelatedEntityIds = null;
       _resolvedRelatedContext = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
@@ -282,7 +286,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           '${block.sourceText}';
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = block.identity.entityId;
-      _operationRelatedEntityId = null;
+      _operationRelatedEntityIds = null;
       _resolvedRelatedContext = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
@@ -296,6 +300,12 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       source: source.sourceText,
       target: target.sourceText,
     );
+    final List<RegistryEntityId> affectedEntityIds = widget
+        .resolveAffectedRegistryEntityIds(
+          primaryEntityId: target.identity.entityId,
+          seedRelatedEntityIds: <RegistryEntityId>[source.identity.entityId],
+          relations: widget.relatedContextRelations,
+        );
 
     setState(() {
       _initialOperationProblemStatement =
@@ -310,6 +320,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         'Цель изменения: ${target.identity.heading}',
         'Цель ID: ${target.identity.entityId.value}',
         '',
+        'Затронутые Registry identities:',
+        ...affectedEntityIds.map((RegistryEntityId id) => '- ${id.value}'),
+        '',
         'Полная рабочая версия цели:',
         target.sourceText.trim(),
         '',
@@ -317,7 +330,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         lineComparison,
       ].join('\n');
       _operationPrimaryEntityId = target.identity.entityId;
-      _operationRelatedEntityId = source.identity.entityId;
+      _operationRelatedEntityIds = affectedEntityIds;
       _resolvedRelatedContext = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
@@ -327,7 +340,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     if (_resolvedRelatedContext == null &&
         _initialOperationWorkingContent == null &&
         _operationPrimaryEntityId == null &&
-        _operationRelatedEntityId == null) {
+        _operationRelatedEntityIds == null) {
       return;
     }
 
@@ -335,7 +348,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _resolvedRelatedContext = null;
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = null;
-      _operationRelatedEntityId = null;
+      _operationRelatedEntityIds = null;
     });
   }
 
@@ -395,7 +408,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
             _resolvedRelatedContext = context;
             _initialOperationWorkingContent = null;
             _operationPrimaryEntityId = null;
-            _operationRelatedEntityId = null;
+            _operationRelatedEntityIds = null;
           });
         },
       );
@@ -412,11 +425,11 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         revisionPrimaryEntityId:
             _operationPrimaryEntityId ??
             (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,
-        revisionRelatedEntityIds: _operationRelatedEntityId == null
-            ? _resolvedRelatedContext?.resolvedRelatedEntities.map(
-                (RegistryEntity entity) => entity.id,
-              )
-            : <RegistryEntityId>[_operationRelatedEntityId!],
+        revisionRelatedEntityIds:
+            _operationRelatedEntityIds ??
+            _resolvedRelatedContext?.resolvedRelatedEntities.map(
+              (RegistryEntity entity) => entity.id,
+            ),
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
