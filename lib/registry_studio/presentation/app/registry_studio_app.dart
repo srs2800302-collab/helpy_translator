@@ -308,13 +308,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         );
 
     setState(() {
-      _initialOperationProblemStatement =
-          '${source.identity.heading} → ${target.identity.heading}\n\n'
-          '${source.identity.entityId.value}\n'
-          '${source.sourceText}\n\n'
-          '${target.identity.entityId.value}\n'
-          '${target.sourceText}';
-      _initialOperationWorkingContent = <String>[
+      _initialOperationProblemStatement = <String>[
         'Источник сравнения: ${source.identity.heading}',
         'Источник ID: ${source.identity.entityId.value}',
         'Цель изменения: ${target.identity.heading}',
@@ -323,12 +317,16 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         'Затронутые Registry identities:',
         ...affectedEntityIds.map((RegistryEntityId id) => '- ${id.value}'),
         '',
-        'Полная рабочая версия цели:',
+        'Исходная версия:',
+        source.sourceText.trim(),
+        '',
+        'Предлагаемая версия:',
         target.sourceText.trim(),
         '',
         'Построчные изменения:',
         lineComparison,
       ].join('\n');
+      _initialOperationWorkingContent = target.sourceText.trim();
       _operationPrimaryEntityId = target.identity.entityId;
       _operationRelatedEntityIds = affectedEntityIds;
       _resolvedRelatedContext = null;

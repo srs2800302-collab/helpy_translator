@@ -238,18 +238,18 @@ void main() {
         contains('Заменить существующий кран.'),
       );
       expect(
-        workspace.initialWorkingContent,
-        contains('Полная рабочая версия цели:'),
-      );
-      expect(
-        workspace.initialWorkingContent,
+        workspace.initialProblemStatement,
         contains('- ### Plumbing → Кран'),
       );
       expect(
-        workspace.initialWorkingContent,
+        workspace.initialProblemStatement,
         contains('+ ### Plumbing → Замена крана'),
       );
-      expect(workspace.initialWorkingContent, contains(affectedEntityId.value));
+      expect(
+        workspace.initialProblemStatement,
+        contains(affectedEntityId.value),
+      );
+      expect(workspace.initialWorkingContent, target.sourceText.trim());
 
       await tester.enterText(
         find.byKey(const Key('registry_engineering_operation_id_field')),
@@ -268,17 +268,10 @@ void main() {
         find.byKey(const Key('registry_operation_revision_content')),
       );
 
+      expect(workingContentEditor.controller?.text, target.sourceText.trim());
       expect(
         workingContentEditor.controller?.text,
-        contains('Полная рабочая версия цели:'),
-      );
-      expect(
-        workingContentEditor.controller?.text,
-        contains('- - Установить и подключить кран.'),
-      );
-      expect(
-        workingContentEditor.controller?.text,
-        contains('+ - Заменить существующий кран.'),
+        isNot(contains('Построчные изменения:')),
       );
 
       final Finder saveRevisionButton = find.byKey(
