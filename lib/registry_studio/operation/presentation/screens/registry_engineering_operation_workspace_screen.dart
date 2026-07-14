@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../../core/domain/entities/registry_engineering_operation.dart';
+import '../../../core/domain/value_objects/registry_engineering_operation_id.dart';
 import '../../../core/domain/value_objects/registry_engineering_operation_status.dart';
 import '../../../presentation/language/registry_studio_ui_language.dart';
 import 'registry_engineering_operation_creation_screen.dart';
@@ -22,6 +23,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     this.revisionRelatedEntityIds,
     this.initialProblemStatement,
     this.initialWorkingContent,
+    this.automaticOperationCreation = false,
     this.onInitialProblemStatementConsumed,
     this.onWorkSessionCleared,
     super.key,
@@ -37,6 +39,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   final Iterable<RegistryEntityId>? revisionRelatedEntityIds;
   final String? initialProblemStatement;
   final String? initialWorkingContent;
+  final bool automaticOperationCreation;
   final VoidCallback? onInitialProblemStatementConsumed;
   final VoidCallback? onWorkSessionCleared;
 
@@ -56,6 +59,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
   bool _isSavingRevision = false;
   bool _isStartingNewOperation = false;
   bool _initialProblemStatementConsumed = false;
+  bool _isCreatingInitialOperation = false;
+  String? _initialOperationCreationError;
 
   @override
   void initState() {
@@ -66,6 +71,12 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     if (widget.workSessionPersistence != null) {
       _isRestoring = true;
       unawaited(_restoreWorkspace());
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_createInitialOperationIfNeeded());
+        }
+      });
     }
   }
 
@@ -102,6 +113,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     if (operation != null) {
       _consumeInitialProblemStatement();
+    } else {
+      await _createInitialOperationIfNeeded();
     }
   }
 
@@ -153,6 +166,65 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     }
 
     _consumeInitialProblemStatement();
+  }
+
+  Future<void> _createInitialOperationIfNeeded() async {
+    if (!widget.automaticOperationCreation ||
+        _currentOperation != null ||
+        _isRestoring ||
+        _isCreatingInitialOperation ||
+        _initialProblemStatementConsumed) {
+      return;
+    }
+
+    final String? problemStatement = widget.initialProblemStatement?.trim();
+
+    if (problemStatement == null || problemStatement.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isCreatingInitialOperation = true;
+      _initialOperationCreationError = null;
+    });
+
+    try {
+      final RegistryEngineeringOperation operation = widget
+          .createRegistryEngineeringOperation(
+            id: RegistryEngineeringOperationId(
+              'registry-operation-'
+              '${DateTime.now().microsecondsSinceEpoch}',
+            ),
+            problemStatement: problemStatement,
+          );
+
+      await _setCreatedOperation(operation);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isCreatingInitialOperation = false;
+        _initialOperationCreationError = null;
+      });
+    } on Object {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isCreatingInitialOperation = false;
+        _initialOperationCreationError = switch (widget.uiLanguage) {
+          RegistryStudioUiLanguage.ru =>
+            'Не удалось автоматически создать инженерную операцию.',
+          RegistryStudioUiLanguage.en =>
+            'Failed to create the engineering operation automatically.',
+          RegistryStudioUiLanguage.th =>
+            'ไม่สามารถสร้างงานวิศวกรรมโดยอัตโนมัติได้',
+        };
+      });
+    }
   }
 
   Future<void> _startNewOperation() async {
@@ -355,14 +427,50 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     }
 
     if (currentOperation == null) {
-      return RegistryEngineeringOperationCreationScreen(
-        initialProblemStatement: _initialProblemStatementConsumed
-            ? null
-            : widget.initialProblemStatement,
-        uiLanguage: widget.uiLanguage,
-        createRegistryEngineeringOperation:
-            widget.createRegistryEngineeringOperation,
-        onOperationCreated: _setCreatedOperation,
+      if (!widget.automaticOperationCreation) {
+        return RegistryEngineeringOperationCreationScreen(
+          initialProblemStatement: _initialProblemStatementConsumed
+              ? null
+              : widget.initialProblemStatement,
+          uiLanguage: widget.uiLanguage,
+          createRegistryEngineeringOperation:
+              widget.createRegistryEngineeringOperation,
+          onOperationCreated: _setCreatedOperation,
+        );
+      }
+
+      final String? creationError = _initialOperationCreationError;
+      final bool hasPendingProblemStatement =
+          !_initialProblemStatementConsumed &&
+          (widget.initialProblemStatement?.trim().isNotEmpty ?? false);
+
+      if (creationError != null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(creationError, textAlign: TextAlign.center),
+          ),
+        );
+      }
+
+      if (_isCreatingInitialOperation || hasPendingProblemStatement) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      final String emptyStateMessage = switch (widget.uiLanguage) {
+        RegistryStudioUiLanguage.ru =>
+          'Сначала выберите источник и цель изменения.',
+        RegistryStudioUiLanguage.en =>
+          'Select the source and change target first.',
+        RegistryStudioUiLanguage.th =>
+          'เลือกแหล่งที่มาและเป้าหมายการเปลี่ยนแปลงก่อน',
+      };
+
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(emptyStateMessage, textAlign: TextAlign.center),
+        ),
       );
     }
 
