@@ -10,7 +10,6 @@ import 'package:helpy_translator/registry_studio/core/domain/entities/registry_e
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation_revision.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_status.dart';
-import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_status_transition_screen.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
@@ -262,7 +261,7 @@ void main() {
 
         expect(workSessionCleared, isTrue);
         expect(
-          find.byType(RegistryEngineeringOperationCreationScreen),
+          find.text('Сначала выберите источник и цель изменения.'),
           findsOneWidget,
         );
         expect(await persistence.loadEngineeringOperation(), isNull);

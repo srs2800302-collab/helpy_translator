@@ -5,9 +5,8 @@ final class RegistryStudioUiLabels {
     required this.appTitle,
     required this.languageLabel,
     required this.translatorScreenTitle,
-    required this.operationCreationScreenTitle,
+    required this.operationWorkspaceScreenTitle,
     required this.translatorPhrase,
-    required this.operationCreation,
     required this.operationStatusTransition,
   });
 
@@ -19,7 +18,7 @@ final class RegistryStudioUiLabels {
         appTitle: 'Registry Studio',
         languageLabel: 'Язык',
         translatorScreenTitle: 'Адаптивный переводчик',
-        operationCreationScreenTitle: 'Создание инженерной операции',
+        operationWorkspaceScreenTitle: 'Инженерная операция',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'Адаптивный переводчик',
           sourceTextLabel: 'Каноническая формулировка',
@@ -38,17 +37,6 @@ final class RegistryStudioUiLabels {
           needsReviewStatus: 'Нужна проверка',
           canonicalDriftStatus: 'Отклонение от канона',
           failedStatus: 'Ошибка',
-        ),
-        operationCreation: RegistryStudioOperationCreationLabels(
-          title: 'Создание инженерной операции',
-          operationIdLabel: 'ID операции',
-          problemStatementLabel: 'Постановка проблемы',
-          createButton: 'Создать операцию',
-          createdTitle: 'Операция создана',
-          statusLabel: 'Статус',
-          operationIdRequiredError: 'ID операции обязателен.',
-          problemStatementRequiredError: 'Постановка проблемы обязательна.',
-          persistenceFailedError: 'Не удалось сохранить инженерную операцию.',
         ),
         operationStatusTransition:
             RegistryStudioOperationStatusTransitionLabels(
@@ -70,7 +58,7 @@ final class RegistryStudioUiLabels {
         appTitle: 'Registry Studio',
         languageLabel: 'Language',
         translatorScreenTitle: 'Adaptive translator',
-        operationCreationScreenTitle: 'Create engineering operation',
+        operationWorkspaceScreenTitle: 'Engineering operation',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'Adaptive translator',
           sourceTextLabel: 'Canonical wording',
@@ -89,17 +77,6 @@ final class RegistryStudioUiLabels {
           needsReviewStatus: 'Needs review',
           canonicalDriftStatus: 'Canonical drift',
           failedStatus: 'Error',
-        ),
-        operationCreation: RegistryStudioOperationCreationLabels(
-          title: 'Create engineering operation',
-          operationIdLabel: 'Operation ID',
-          problemStatementLabel: 'Problem statement',
-          createButton: 'Create operation',
-          createdTitle: 'Operation created',
-          statusLabel: 'Status',
-          operationIdRequiredError: 'Operation ID is required.',
-          problemStatementRequiredError: 'Problem statement is required.',
-          persistenceFailedError: 'Failed to save the engineering operation.',
         ),
         operationStatusTransition:
             RegistryStudioOperationStatusTransitionLabels(
@@ -121,7 +98,7 @@ final class RegistryStudioUiLabels {
         appTitle: 'Registry Studio',
         languageLabel: 'ภาษา',
         translatorScreenTitle: 'ตัวแปลแบบปรับตามบริบท',
-        operationCreationScreenTitle: 'สร้างงานวิศวกรรม',
+        operationWorkspaceScreenTitle: 'งานวิศวกรรม',
         translatorPhrase: RegistryStudioTranslatorPhraseLabels(
           title: 'ตัวแปลแบบปรับตามบริบท',
           sourceTextLabel: 'ถ้อยคำมาตรฐาน',
@@ -140,17 +117,6 @@ final class RegistryStudioUiLabels {
           needsReviewStatus: 'ต้องตรวจสอบ',
           canonicalDriftStatus: 'เบี่ยงเบนจากมาตรฐาน',
           failedStatus: 'ข้อผิดพลาด',
-        ),
-        operationCreation: RegistryStudioOperationCreationLabels(
-          title: 'สร้างงานวิศวกรรม',
-          operationIdLabel: 'รหัสงาน',
-          problemStatementLabel: 'คำอธิบายปัญหา',
-          createButton: 'สร้างงาน',
-          createdTitle: 'สร้างงานแล้ว',
-          statusLabel: 'สถานะ',
-          operationIdRequiredError: 'ต้องระบุรหัสงาน',
-          problemStatementRequiredError: 'ต้องระบุคำอธิบายปัญหา',
-          persistenceFailedError: 'ไม่สามารถบันทึกงานวิศวกรรมได้',
         ),
         operationStatusTransition:
             RegistryStudioOperationStatusTransitionLabels(
@@ -174,9 +140,8 @@ final class RegistryStudioUiLabels {
   final String appTitle;
   final String languageLabel;
   final String translatorScreenTitle;
-  final String operationCreationScreenTitle;
+  final String operationWorkspaceScreenTitle;
   final RegistryStudioTranslatorPhraseLabels translatorPhrase;
-  final RegistryStudioOperationCreationLabels operationCreation;
   final RegistryStudioOperationStatusTransitionLabels operationStatusTransition;
 }
 
@@ -218,30 +183,6 @@ final class RegistryStudioTranslatorPhraseLabels {
   final String needsReviewStatus;
   final String canonicalDriftStatus;
   final String failedStatus;
-}
-
-final class RegistryStudioOperationCreationLabels {
-  const RegistryStudioOperationCreationLabels({
-    required this.title,
-    required this.operationIdLabel,
-    required this.problemStatementLabel,
-    required this.createButton,
-    required this.createdTitle,
-    required this.statusLabel,
-    required this.operationIdRequiredError,
-    required this.problemStatementRequiredError,
-    required this.persistenceFailedError,
-  });
-
-  final String title;
-  final String operationIdLabel;
-  final String problemStatementLabel;
-  final String createButton;
-  final String createdTitle;
-  final String statusLabel;
-  final String operationIdRequiredError;
-  final String problemStatementRequiredError;
-  final String persistenceFailedError;
 }
 
 final class RegistryStudioOperationStatusTransitionLabels {

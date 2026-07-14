@@ -6,7 +6,6 @@ import '../../../core/domain/entities/registry_engineering_operation.dart';
 import '../../../core/domain/value_objects/registry_engineering_operation_id.dart';
 import '../../../core/domain/value_objects/registry_engineering_operation_status.dart';
 import '../../../presentation/language/registry_studio_ui_language.dart';
-import 'registry_engineering_operation_creation_screen.dart';
 import 'registry_engineering_operation_status_transition_screen.dart';
 import 'dart:async';
 import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
@@ -23,7 +22,6 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     this.revisionRelatedEntityIds,
     this.initialProblemStatement,
     this.initialWorkingContent,
-    this.automaticOperationCreation = false,
     this.onInitialProblemStatementConsumed,
     this.onWorkSessionCleared,
     super.key,
@@ -39,7 +37,6 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   final Iterable<RegistryEntityId>? revisionRelatedEntityIds;
   final String? initialProblemStatement;
   final String? initialWorkingContent;
-  final bool automaticOperationCreation;
   final VoidCallback? onInitialProblemStatementConsumed;
   final VoidCallback? onWorkSessionCleared;
 
@@ -169,8 +166,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
   }
 
   Future<void> _createInitialOperationIfNeeded() async {
-    if (!widget.automaticOperationCreation ||
-        _currentOperation != null ||
+    if (_currentOperation != null ||
         _isRestoring ||
         _isCreatingInitialOperation ||
         _initialProblemStatementConsumed) {
@@ -427,18 +423,6 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     }
 
     if (currentOperation == null) {
-      if (!widget.automaticOperationCreation) {
-        return RegistryEngineeringOperationCreationScreen(
-          initialProblemStatement: _initialProblemStatementConsumed
-              ? null
-              : widget.initialProblemStatement,
-          uiLanguage: widget.uiLanguage,
-          createRegistryEngineeringOperation:
-              widget.createRegistryEngineeringOperation,
-          onOperationCreated: _setCreatedOperation,
-        );
-      }
-
       final String? creationError = _initialOperationCreationError;
       final bool hasPendingProblemStatement =
           !_initialProblemStatementConsumed &&

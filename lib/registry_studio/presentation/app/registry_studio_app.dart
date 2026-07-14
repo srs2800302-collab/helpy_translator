@@ -34,7 +34,6 @@ final class RegistryStudioApp extends StatefulWidget {
         const ResolveAffectedRegistryEntityIds(),
     this.serviceIntakeSourceBlocks,
     this.relatedContextRelations = const <RegistryRelation>[],
-    this.automaticOperationCreation = false,
     super.key,
   });
 
@@ -48,7 +47,6 @@ final class RegistryStudioApp extends StatefulWidget {
   final ResolveAffectedRegistryEntityIds resolveAffectedRegistryEntityIds;
   final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
   final Iterable<RegistryRelation> relatedContextRelations;
-  final bool automaticOperationCreation;
 
   @override
   State<RegistryStudioApp> createState() => _RegistryStudioAppState();
@@ -97,7 +95,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     );
 
     final String selectedScreenLabel = switch (_selectedScreenIndex) {
-      _operationWorkspaceScreenIndex => labels.operationCreationScreenTitle,
+      _operationWorkspaceScreenIndex => labels.operationWorkspaceScreenTitle,
       _serviceIntakeSourceScreenIndex =>
         ServiceIntakeSourceBlocksScreen.titleFor(_selectedLanguage),
       _ => labels.translatorScreenTitle,
@@ -139,7 +137,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                       checked:
                           _selectedScreenIndex ==
                           _operationWorkspaceScreenIndex,
-                      child: Text(labels.operationCreationScreenTitle),
+                      child: Text(labels.operationWorkspaceScreenTitle),
                     ),
                     if (_hasServiceIntakeSourceInput)
                       CheckedPopupMenuItem<int>(
@@ -326,7 +324,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       return RegistryEngineeringOperationWorkspaceScreen(
         initialProblemStatement: _initialOperationProblemStatement,
         initialWorkingContent: _initialOperationWorkingContent,
-        automaticOperationCreation: widget.automaticOperationCreation,
         onInitialProblemStatementConsumed:
             _consumeInitialOperationProblemStatement,
         onWorkSessionCleared: _clearOperationContext,

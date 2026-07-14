@@ -6,7 +6,6 @@ import 'package:helpy_translator/registry_studio/core/application/operation_stat
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_relation.dart';
-import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/app/registry_studio_app.dart';
 import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
@@ -30,10 +29,6 @@ void main() {
     expect(find.byType(TranslatorPhraseScreen), findsOneWidget);
     expect(
       find.byType(RegistryEngineeringOperationWorkspaceScreen),
-      findsNothing,
-    );
-    expect(
-      find.byType(RegistryEngineeringOperationCreationScreen),
       findsNothing,
     );
     expect(find.text('Адаптивный переводчик'), findsWidgets);
@@ -88,13 +83,10 @@ void main() {
         );
 
     expect(
-      workspace.initialProblemStatement,
-      contains('helpy.service_intake.plumbing.faucet'),
+      find.textContaining('helpy.service_intake.plumbing.faucet'),
+      findsOneWidget,
     );
-    expect(
-      workspace.initialProblemStatement,
-      contains('Что требуется сделать?'),
-    );
+    expect(find.textContaining('Что требуется сделать?'), findsOneWidget);
     expect(
       workspace.revisionPrimaryEntityId,
       RegistryEntityId('helpy.service_intake.plumbing.faucet'),
@@ -204,56 +196,20 @@ void main() {
         source.identity.entityId,
         affectedEntityId,
       ]);
-      expect(
-        workspace.initialProblemStatement,
-        contains(source.identity.heading),
-      );
-      expect(
-        workspace.initialProblemStatement,
-        contains(source.identity.entityId.value),
-      );
-      expect(
-        workspace.initialProblemStatement,
-        contains(target.identity.heading),
-      );
-      expect(
-        workspace.initialProblemStatement,
-        contains(target.identity.entityId.value),
-      );
-      expect(
-        workspace.initialProblemStatement,
-        contains('Установить и подключить кран.'),
-      );
-      expect(
-        workspace.initialProblemStatement,
-        contains('Заменить существующий кран.'),
-      );
-      expect(
-        workspace.initialProblemStatement,
-        contains('- ### Plumbing → Кран'),
-      );
-      expect(
-        workspace.initialProblemStatement,
-        contains('+ ### Plumbing → Замена крана'),
-      );
-      expect(
-        workspace.initialProblemStatement,
-        contains(affectedEntityId.value),
-      );
+      for (final String expectedText in <String>[
+        source.identity.heading,
+        source.identity.entityId.value,
+        target.identity.heading,
+        target.identity.entityId.value,
+        'Установить и подключить кран.',
+        'Заменить существующий кран.',
+        '- ### Plumbing → Кран',
+        '+ ### Plumbing → Замена крана',
+        affectedEntityId.value,
+      ]) {
+        expect(find.textContaining(expectedText), findsWidgets);
+      }
       expect(workspace.initialWorkingContent, target.sourceText.trim());
-
-      await tester.enterText(
-        find.byKey(const Key('registry_engineering_operation_id_field')),
-        'service-intake-comparison-001',
-      );
-
-      final Finder createButton = find.byKey(
-        const Key('registry_engineering_operation_create_button'),
-      );
-
-      await tester.ensureVisible(createButton);
-      await tester.tap(createButton);
-      await tester.pumpAndSettle();
 
       final TextField workingContentEditor = tester.widget<TextField>(
         find.byKey(const Key('registry_operation_revision_content')),
@@ -355,7 +311,7 @@ void main() {
       findsNothing,
     );
     expect(
-      find.widgetWithText(OutlinedButton, 'Создание инженерной операции'),
+      find.widgetWithText(OutlinedButton, 'Инженерная операция'),
       findsNothing,
     );
     expect(find.text('Адаптивный переводчик'), findsWidgets);
@@ -385,7 +341,7 @@ void main() {
     expect(find.text('ตัวแปลแบบปรับตามบริบท'), findsWidgets);
   });
 
-  testWidgets('switches to operation workspace screen', (
+  testWidgets('opens empty engineering operation workspace', (
     WidgetTester tester,
   ) async {
     final _FakeTranslatorPhraseProvider provider =
@@ -393,14 +349,14 @@ void main() {
 
     await tester.pumpWidget(_testApp(provider));
 
-    await _selectAppScreen(tester, 'Создание инженерной операции');
+    await _selectAppScreen(tester, 'Инженерная операция');
 
     expect(
       find.byType(RegistryEngineeringOperationWorkspaceScreen),
       findsOneWidget,
     );
     expect(
-      find.byType(RegistryEngineeringOperationCreationScreen),
+      find.text('Сначала выберите источник и цель изменения.'),
       findsOneWidget,
     );
     expect(find.byType(TranslatorPhraseScreen), findsNothing);
@@ -417,7 +373,7 @@ void main() {
 
       await tester.pumpWidget(_testApp(provider));
 
-      await _selectAppScreen(tester, 'Создание инженерной операции');
+      await _selectAppScreen(tester, 'Инженерная операция');
 
       await _selectAppScreen(tester, 'Адаптивный переводчик');
 
@@ -439,7 +395,7 @@ void main() {
       expect(find.text('Эквивалентная формулировка'), findsOneWidget);
     },
   );
-  testWidgets('starts operation creation from Translator candidate', (
+  testWidgets('starts engineering operation from Translator candidate', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 900));
@@ -461,7 +417,6 @@ void main() {
       find.byKey(const Key('translator_phrase_source_text_field')),
       result.sourceText,
     );
-
     await tester.tap(
       find.byKey(const Key('translator_phrase_translate_button')),
     );
@@ -481,9 +436,6 @@ void main() {
       const Offset(0, -300),
     );
     await tester.pumpAndSettle();
-
-    expect(requestButton, findsOneWidget);
-
     await tester.tap(requestButton);
     await tester.pumpAndSettle();
 
@@ -491,54 +443,18 @@ void main() {
       find.byType(RegistryEngineeringOperationWorkspaceScreen),
       findsOneWidget,
     );
-    expect(
-      find.byType(RegistryEngineeringOperationCreationScreen),
-      findsOneWidget,
-    );
     expect(find.byType(TranslatorPhraseScreen), findsNothing);
-
-    final TextField problemStatement = tester.widget<TextField>(
-      find.byKey(
-        const Key('registry_engineering_operation_problem_statement_field'),
-      ),
-    );
-
-    expect(problemStatement.controller?.text, contains(result.sourceText));
-    expect(
-      problemStatement.controller?.text,
-      contains(result.candidateCanonicalPhrase!),
-    );
-
-    await tester.enterText(
-      find.byKey(const Key('registry_engineering_operation_id_field')),
-      'operation-from-translator',
-    );
-    await tester.tap(
-      find.byKey(const Key('registry_engineering_operation_create_button')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byType(RegistryEngineeringOperationCreationScreen),
-      findsNothing,
-    );
+    expect(find.text('Текущий статус:\nopen'), findsOneWidget);
+    expect(find.textContaining(result.sourceText), findsWidgets);
+    expect(find.textContaining(result.candidateCanonicalPhrase!), findsWidgets);
 
     await _selectAppScreen(tester, 'Адаптивный переводчик');
-
-    await _selectAppScreen(tester, 'Создание инженерной операции');
+    await _selectAppScreen(tester, 'Инженерная операция');
 
     expect(
-      find.byType(RegistryEngineeringOperationCreationScreen),
+      find.text('Сначала выберите источник и цель изменения.'),
       findsOneWidget,
     );
-
-    final TextField remountedProblemStatement = tester.widget<TextField>(
-      find.byKey(
-        const Key('registry_engineering_operation_problem_statement_field'),
-      ),
-    );
-
-    expect(remountedProblemStatement.controller?.text, isEmpty);
   });
 }
 

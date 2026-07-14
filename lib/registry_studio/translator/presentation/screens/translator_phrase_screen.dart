@@ -202,7 +202,7 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
                           onPressed: () {
                             widget.onOperationRequested?.call(history[index]);
                           },
-                          child: Text(uiLabels.operationCreationScreenTitle),
+                          child: Text(uiLabels.operationWorkspaceScreenTitle),
                         ),
                       ),
                     ],

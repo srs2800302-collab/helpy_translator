@@ -35,7 +35,6 @@ Future<void> main() async {
   runApp(
     RegistryStudioApp(
       serviceIntakeSourceBlocks: serviceIntakeSourceBlocks,
-      automaticOperationCreation: true,
       workSessionPersistence: const RegistryWorkSessionPersistence(),
       translatorPhraseHistoryPersistence:
           const SharedPreferencesTranslatorPhraseHistoryPersistence(),
