@@ -268,6 +268,72 @@ void main() {
         workingContentEditor.controller?.text,
         contains('+ - Заменить существующий кран.'),
       );
+
+      final Finder saveRevisionButton = find.byKey(
+        const Key('registry_operation_save_revision'),
+      );
+
+      await tester.ensureVisible(saveRevisionButton);
+      await tester.tap(saveRevisionButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey<String>('registry_operation_revision_1')),
+        findsOneWidget,
+      );
+
+      final Finder statusDropdown = find.byKey(
+        const Key('registry_engineering_operation_requested_status_dropdown'),
+      );
+      final Finder transitionButton = find.byKey(
+        const Key('registry_engineering_operation_status_transition_button'),
+      );
+
+      await tester.tap(statusDropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('readyForDecision').last);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(transitionButton);
+      await tester.tap(transitionButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
+
+      await tester.tap(statusDropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('decided').last);
+      await tester.pumpAndSettle();
+
+      final Finder decisionField = find.byKey(
+        const Key('registry_engineering_operation_decision_statement_field'),
+      );
+
+      await tester.ensureVisible(decisionField);
+      await tester.enterText(
+        decisionField,
+        'Approve registry source comparison.',
+      );
+
+      await tester.ensureVisible(transitionButton);
+      await tester.tap(transitionButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Текущий статус:\ndecided'), findsWidgets);
+      expect(
+        find.textContaining('Approve registry source comparison.'),
+        findsWidgets,
+      );
+
+      final TextField lockedWorkingContentEditor = tester.widget<TextField>(
+        find.byKey(const Key('registry_operation_revision_content')),
+      );
+      final FilledButton lockedSaveRevisionButton = tester.widget<FilledButton>(
+        saveRevisionButton,
+      );
+
+      expect(lockedWorkingContentEditor.readOnly, isTrue);
+      expect(lockedSaveRevisionButton.onPressed, isNull);
     },
   );
 
