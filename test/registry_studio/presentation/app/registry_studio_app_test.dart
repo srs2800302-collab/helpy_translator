@@ -226,6 +226,48 @@ void main() {
         workspace.initialProblemStatement,
         contains('Заменить существующий кран.'),
       );
+      expect(
+        workspace.initialWorkingContent,
+        contains('Полная рабочая версия цели:'),
+      );
+      expect(
+        workspace.initialWorkingContent,
+        contains('- ### Plumbing → Кран'),
+      );
+      expect(
+        workspace.initialWorkingContent,
+        contains('+ ### Plumbing → Замена крана'),
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('registry_engineering_operation_id_field')),
+        'service-intake-comparison-001',
+      );
+
+      final Finder createButton = find.byKey(
+        const Key('registry_engineering_operation_create_button'),
+      );
+
+      await tester.ensureVisible(createButton);
+      await tester.tap(createButton);
+      await tester.pumpAndSettle();
+
+      final TextField workingContentEditor = tester.widget<TextField>(
+        find.byKey(const Key('registry_operation_revision_content')),
+      );
+
+      expect(
+        workingContentEditor.controller?.text,
+        contains('Полная рабочая версия цели:'),
+      );
+      expect(
+        workingContentEditor.controller?.text,
+        contains('- - Установить и подключить кран.'),
+      );
+      expect(
+        workingContentEditor.controller?.text,
+        contains('+ - Заменить существующий кран.'),
+      );
     },
   );
 

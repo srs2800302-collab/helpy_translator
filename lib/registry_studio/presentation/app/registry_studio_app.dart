@@ -10,6 +10,7 @@ import '../../core/application/operation_creation/create_registry_engineering_op
 import '../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../core/application/related_context/prepare_registry_related_context.dart';
 import '../../core/application/related_context/prepare_registry_resolved_related_context.dart';
+import '../../core/application/source_comparison/compare_registry_source_text.dart';
 import '../../core/domain/entities/registry_entity.dart';
 import '../../core/domain/value_objects/registry_entity_id.dart';
 import '../../core/domain/value_objects/registry_relation.dart';
@@ -33,6 +34,7 @@ final class RegistryStudioApp extends StatefulWidget {
     required this.transitionRegistryEngineeringOperationStatus,
     this.translatorPhraseHistoryPersistence,
     this.workSessionPersistence,
+    this.compareRegistrySourceText = const CompareRegistrySourceText(),
     this.serviceIntakeSourceBlocks,
     this.guardRecordEntity,
     this.relatedContextPrimary,
@@ -54,6 +56,7 @@ final class RegistryStudioApp extends StatefulWidget {
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
   final RegistryWorkSessionPersistence? workSessionPersistence;
+  final CompareRegistrySourceText compareRegistrySourceText;
   final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
 
   final RegistryEntity? guardRecordEntity;
@@ -86,6 +89,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   int _selectedScreenIndex = _translatorScreenIndex;
   RegistryResolvedRelatedContext? _resolvedRelatedContext;
   String? _initialOperationProblemStatement;
+  String? _initialOperationWorkingContent;
   RegistryEntityId? _operationPrimaryEntityId;
   RegistryEntityId? _operationRelatedEntityId;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
@@ -260,6 +264,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           '${labels.canonicalCandidateRow}:\n'
           '$candidate';
 
+      _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = null;
       _operationRelatedEntityId = null;
       _resolvedRelatedContext = null;
@@ -275,6 +280,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           '${block.identity.heading}\n'
           '${block.identity.entityId.value}\n\n'
           '${block.sourceText}';
+      _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = block.identity.entityId;
       _operationRelatedEntityId = null;
       _resolvedRelatedContext = null;
@@ -286,6 +292,11 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     ServiceIntakeSourceBlock source,
     ServiceIntakeSourceBlock target,
   ) {
+    final String lineComparison = widget.compareRegistrySourceText.compare(
+      source: source.sourceText,
+      target: target.sourceText,
+    );
+
     setState(() {
       _initialOperationProblemStatement =
           '${source.identity.heading} → ${target.identity.heading}\n\n'
@@ -293,6 +304,18 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           '${source.sourceText}\n\n'
           '${target.identity.entityId.value}\n'
           '${target.sourceText}';
+      _initialOperationWorkingContent = <String>[
+        'Источник сравнения: ${source.identity.heading}',
+        'Источник ID: ${source.identity.entityId.value}',
+        'Цель изменения: ${target.identity.heading}',
+        'Цель ID: ${target.identity.entityId.value}',
+        '',
+        'Полная рабочая версия цели:',
+        target.sourceText.trim(),
+        '',
+        'Построчные изменения:',
+        lineComparison,
+      ].join('\n');
       _operationPrimaryEntityId = target.identity.entityId;
       _operationRelatedEntityId = source.identity.entityId;
       _resolvedRelatedContext = null;
@@ -302,6 +325,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
   void _clearResolvedRelatedContext() {
     if (_resolvedRelatedContext == null &&
+        _initialOperationWorkingContent == null &&
         _operationPrimaryEntityId == null &&
         _operationRelatedEntityId == null) {
       return;
@@ -309,6 +333,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
     setState(() {
       _resolvedRelatedContext = null;
+      _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = null;
       _operationRelatedEntityId = null;
     });
@@ -368,6 +393,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         onContextPrepared: (RegistryResolvedRelatedContext context) {
           setState(() {
             _resolvedRelatedContext = context;
+            _initialOperationWorkingContent = null;
             _operationPrimaryEntityId = null;
             _operationRelatedEntityId = null;
           });
@@ -378,6 +404,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     if (_selectedScreenIndex == _operationWorkspaceScreenIndex) {
       return RegistryEngineeringOperationWorkspaceScreen(
         initialProblemStatement: _initialOperationProblemStatement,
+        initialWorkingContent: _initialOperationWorkingContent,
         onInitialProblemStatementConsumed:
             _consumeInitialOperationProblemStatement,
         onWorkSessionCleared: _clearResolvedRelatedContext,

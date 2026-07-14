@@ -21,6 +21,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     this.revisionPrimaryEntityId,
     this.revisionRelatedEntityIds,
     this.initialProblemStatement,
+    this.initialWorkingContent,
     this.onInitialProblemStatementConsumed,
     this.onWorkSessionCleared,
     super.key,
@@ -35,6 +36,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
 
   final Iterable<RegistryEntityId>? revisionRelatedEntityIds;
   final String? initialProblemStatement;
+  final String? initialWorkingContent;
   final VoidCallback? onInitialProblemStatementConsumed;
   final VoidCallback? onWorkSessionCleared;
 
@@ -58,6 +60,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
   @override
   void initState() {
     super.initState();
+
+    _workingContentController.text = widget.initialWorkingContent?.trim() ?? '';
 
     if (widget.workSessionPersistence != null) {
       _isRestoring = true;
@@ -91,7 +95,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       _currentOperation = operation;
       _revisions = revisions;
       _workingContentController.text = revisions.isEmpty
-          ? ''
+          ? widget.initialWorkingContent?.trim() ?? ''
           : revisions.last.workingContent;
       _isRestoring = false;
     });
