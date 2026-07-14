@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../../core/domain/entities/registry_engineering_operation.dart';
+import '../../../core/domain/entities/registry_engineering_operation_revision.dart';
 import '../../../core/domain/value_objects/registry_engineering_operation_status.dart';
 import '../../../presentation/language/registry_studio_ui_labels.dart';
 import '../../../presentation/language/registry_studio_ui_language.dart';
@@ -13,6 +14,7 @@ final class RegistryEngineeringOperationStatusTransitionScreen
   const RegistryEngineeringOperationStatusTransitionScreen({
     required this.uiLanguage,
     required this.operation,
+    required this.revisions,
     required this.transitionRegistryEngineeringOperationStatus,
     this.onOperationTransitioned,
     super.key,
@@ -20,6 +22,7 @@ final class RegistryEngineeringOperationStatusTransitionScreen
 
   final RegistryStudioUiLanguage uiLanguage;
   final RegistryEngineeringOperation operation;
+  final Iterable<RegistryEngineeringOperationRevision> revisions;
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
   final FutureOr<void> Function(RegistryEngineeringOperation)?
@@ -108,6 +111,7 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
           .transitionRegistryEngineeringOperationStatus(
             operation: _currentOperation,
             nextStatus: _requestedStatus,
+            revisions: widget.revisions,
             decisionStatement:
                 _requestedStatus == RegistryEngineeringOperationStatus.decided
                 ? _decisionStatementController.text
@@ -168,77 +172,74 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
         ).operationStatusTransition;
     final String? errorMessage = _errorMessage;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(labels.title)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: <Widget>[
-          _RegistryEngineeringOperationStatusCard(
-            key: currentOperationCardKey,
-            title: labels.currentOperationTitle,
-            labels: labels,
-            operation: _currentOperation,
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<RegistryEngineeringOperationStatus>(
-            key: requestedStatusDropdownKey,
-            initialValue: _requestedStatus,
-            decoration: InputDecoration(
-              labelText: labels.requestedStatusLabel,
-              border: const OutlineInputBorder(),
-            ),
-            items: RegistryEngineeringOperationStatus.values
-                .map(
-                  (status) =>
-                      DropdownMenuItem<RegistryEngineeringOperationStatus>(
-                        value: status,
-                        child: Text(status.name),
-                      ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() {
-                  _requestedStatus = value;
-                });
-              }
-            },
-          ),
-          if (_requestedStatus ==
-              RegistryEngineeringOperationStatus.decided) ...<Widget>[
-            const SizedBox(height: 16),
-            TextField(
-              key: decisionStatementFieldKey,
-              controller: _decisionStatementController,
-              minLines: 3,
-              maxLines: 6,
-              textInputAction: TextInputAction.newline,
-              decoration: InputDecoration(
-                labelText: labels.decisionStatementLabel,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          FilledButton(
-            key: transitionButtonKey,
-            onPressed: _isTransitioning ? null : _transitionStatus,
-            child: Text(labels.transitionButton),
-          ),
-          if (errorMessage != null) ...<Widget>[
-            const SizedBox(height: 16),
-            _OperationStatusTransitionErrorMessage(message: errorMessage),
-          ],
-          if (_hasTransitioned) ...<Widget>[
+    return Material(
+      child: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: <Widget>[
+            Text(labels.title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
             _RegistryEngineeringOperationStatusCard(
-              key: resultCardKey,
-              title: labels.transitionedTitle,
+              key: _hasTransitioned ? resultCardKey : currentOperationCardKey,
+              title: _hasTransitioned
+                  ? labels.transitionedTitle
+                  : labels.currentOperationTitle,
               labels: labels,
               operation: _currentOperation,
             ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<RegistryEngineeringOperationStatus>(
+              key: requestedStatusDropdownKey,
+              initialValue: _requestedStatus,
+              decoration: InputDecoration(
+                labelText: labels.requestedStatusLabel,
+                border: const OutlineInputBorder(),
+              ),
+              items: RegistryEngineeringOperationStatus.values
+                  .map(
+                    (status) =>
+                        DropdownMenuItem<RegistryEngineeringOperationStatus>(
+                          value: status,
+                          child: Text(status.name),
+                        ),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _requestedStatus = value;
+                  });
+                }
+              },
+            ),
+            if (_requestedStatus ==
+                RegistryEngineeringOperationStatus.decided) ...<Widget>[
+              const SizedBox(height: 16),
+              TextField(
+                key: decisionStatementFieldKey,
+                controller: _decisionStatementController,
+                minLines: 3,
+                maxLines: 6,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  labelText: labels.decisionStatementLabel,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              key: transitionButtonKey,
+              onPressed: _isTransitioning ? null : _transitionStatus,
+              child: Text(labels.transitionButton),
+            ),
+            if (errorMessage != null) ...<Widget>[
+              const SizedBox(height: 16),
+              _OperationStatusTransitionErrorMessage(message: errorMessage),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

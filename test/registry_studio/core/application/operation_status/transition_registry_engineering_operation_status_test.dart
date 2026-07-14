@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation.dart';
+import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation_revision.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_status.dart';
+import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 
 void main() {
   group('TransitionRegistryEngineeringOperationStatus', () {
@@ -69,9 +71,21 @@ void main() {
       ];
 
       for (final _StatusTransition allowedTransition in allowedTransitions) {
+        final RegistryEngineeringOperation operation = _operationWith(
+          allowedTransition.currentStatus,
+        );
+        final bool requiresRevisionSet =
+            allowedTransition.nextStatus ==
+                RegistryEngineeringOperationStatus.readyForDecision ||
+            allowedTransition.nextStatus ==
+                RegistryEngineeringOperationStatus.decided;
+
         final RegistryEngineeringOperation transitioned = transition(
-          operation: _operationWith(allowedTransition.currentStatus),
+          operation: operation,
           nextStatus: allowedTransition.nextStatus,
+          revisions: requiresRevisionSet
+              ? <RegistryEngineeringOperationRevision>[_revisionFor(operation)]
+              : const <RegistryEngineeringOperationRevision>[],
           decisionStatement:
               allowedTransition.nextStatus ==
                   RegistryEngineeringOperationStatus.decided
@@ -148,20 +162,55 @@ void main() {
       }
     });
 
-    test(
-      'does not require context, translator, assessment, repository or store',
-      () {
-        final RegistryEngineeringOperation transitioned = transition(
-          operation: _operationWith(RegistryEngineeringOperationStatus.open),
-          nextStatus: RegistryEngineeringOperationStatus.readyForDecision,
-        );
+    test('requires a current operation revision before readiness', () {
+      final RegistryEngineeringOperation operation = _operationWith(
+        RegistryEngineeringOperationStatus.open,
+      );
 
-        expect(
-          transitioned.status,
-          RegistryEngineeringOperationStatus.readyForDecision,
-        );
-      },
-    );
+      expect(
+        () => transition(
+          operation: operation,
+          nextStatus: RegistryEngineeringOperationStatus.readyForDecision,
+        ),
+        throwsArgumentError,
+      );
+
+      final RegistryEngineeringOperation transitioned = transition(
+        operation: operation,
+        nextStatus: RegistryEngineeringOperationStatus.readyForDecision,
+        revisions: <RegistryEngineeringOperationRevision>[
+          _revisionFor(operation),
+        ],
+      );
+
+      expect(
+        transitioned.status,
+        RegistryEngineeringOperationStatus.readyForDecision,
+      );
+    });
+
+    test('rejects revisions owned by another operation', () {
+      final RegistryEngineeringOperation operation = _operationWith(
+        RegistryEngineeringOperationStatus.open,
+      );
+      final RegistryEngineeringOperation otherOperation =
+          RegistryEngineeringOperation(
+            id: RegistryEngineeringOperationId('registry-operation-002'),
+            status: RegistryEngineeringOperationStatus.open,
+            problemStatement: 'Other operation.',
+          );
+
+      expect(
+        () => transition(
+          operation: operation,
+          nextStatus: RegistryEngineeringOperationStatus.readyForDecision,
+          revisions: <RegistryEngineeringOperationRevision>[
+            _revisionFor(otherOperation),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
 
     test('requires engineer decision for decided transition', () {
       final RegistryEngineeringOperation ready = _operationWith(
@@ -172,6 +221,9 @@ void main() {
         () => transition(
           operation: ready,
           nextStatus: RegistryEngineeringOperationStatus.decided,
+          revisions: <RegistryEngineeringOperationRevision>[
+            _revisionFor(ready),
+          ],
         ),
         throwsArgumentError,
       );
@@ -180,6 +232,9 @@ void main() {
         () => transition(
           operation: ready,
           nextStatus: RegistryEngineeringOperationStatus.decided,
+          revisions: <RegistryEngineeringOperationRevision>[
+            _revisionFor(ready),
+          ],
           decisionStatement: '   ',
         ),
         throwsArgumentError,
@@ -187,11 +242,15 @@ void main() {
     });
 
     test('stores normalized engineer decision', () {
+      final RegistryEngineeringOperation operation = _operationWith(
+        RegistryEngineeringOperationStatus.readyForDecision,
+      );
       final RegistryEngineeringOperation transitioned = transition(
-        operation: _operationWith(
-          RegistryEngineeringOperationStatus.readyForDecision,
-        ),
+        operation: operation,
         nextStatus: RegistryEngineeringOperationStatus.decided,
+        revisions: <RegistryEngineeringOperationRevision>[
+          _revisionFor(operation),
+        ],
         decisionStatement: '  Approve canonical wording.  ',
       );
 
@@ -211,6 +270,20 @@ RegistryEngineeringOperation _operationWith(
     decisionStatement: status == RegistryEngineeringOperationStatus.decided
         ? 'Approved canonical wording.'
         : null,
+  );
+}
+
+RegistryEngineeringOperationRevision _revisionFor(
+  RegistryEngineeringOperation operation,
+) {
+  return RegistryEngineeringOperationRevision(
+    id: '${operation.id.value}-revision-1',
+    operationId: operation.id,
+    revisionNumber: 1,
+    workingContent: 'Approved working content.',
+    previousRevisionId: null,
+    primaryEntityId: RegistryEntityId('primary'),
+    relatedEntityIds: const <RegistryEntityId>[],
   );
 }
 

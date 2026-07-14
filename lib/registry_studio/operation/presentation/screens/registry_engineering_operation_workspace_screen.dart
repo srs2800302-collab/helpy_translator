@@ -390,6 +390,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         RegistryEngineeringOperationStatusTransitionScreen(
           uiLanguage: widget.uiLanguage,
           operation: currentOperation,
+          revisions: _revisions,
           transitionRegistryEngineeringOperationStatus:
               widget.transitionRegistryEngineeringOperationStatus,
           onOperationTransitioned: _setCurrentOperation,

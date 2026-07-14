@@ -59,6 +59,7 @@ void main() {
       await tester.pumpWidget(
         _testApp(
           workSessionPersistence: const RegistryWorkSessionPersistence(),
+          revisionPrimaryEntityId: RegistryEntityId('primary'),
           initialProblemStatement: 'Candidate wording review.',
           onInitialProblemStatementConsumed: () {
             initialProblemStatementConsumed = true;
@@ -116,11 +117,28 @@ void main() {
       expect(find.text('Текущий статус:\nopen'), findsOneWidget);
       expect(initialProblemStatementConsumed, isTrue);
 
-      await tester.tap(
-        find.byKey(
-          const Key('registry_engineering_operation_requested_status_dropdown'),
-        ),
+      await tester.enterText(
+        find.byKey(const Key('registry_operation_revision_content')),
+        'Approved working content.',
       );
+
+      final Finder saveRevisionFinder = find.byKey(
+        const Key('registry_operation_save_revision'),
+      );
+      await tester.ensureVisible(saveRevisionFinder);
+      await tester.tap(saveRevisionFinder);
+      await tester.pumpAndSettle();
+
+      final Finder statusDropdown = find.byKey(
+        const Key('registry_engineering_operation_requested_status_dropdown'),
+      );
+      await Scrollable.ensureVisible(
+        tester.element(statusDropdown),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(statusDropdown);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('readyForDecision').last);
@@ -128,14 +146,37 @@ void main() {
 
       failWrites = true;
 
-      await tester.tap(
-        find.byKey(
-          const Key('registry_engineering_operation_status_transition_button'),
-        ),
+      final Finder transitionButton = find.byKey(
+        const Key('registry_engineering_operation_status_transition_button'),
+      );
+      await Scrollable.ensureVisible(
+        tester.element(transitionButton),
+        alignment: 0.5,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Текущий статус:\nopen'), findsOneWidget);
+      await tester.tap(transitionButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Текущий статус:\nopen', skipOffstage: false),
+        findsOneWidget,
+      );
+
+      final Finder persistenceError = find.textContaining(
+        'Не удалось сохранить новый статус '
+        'инженерной операции.',
+        skipOffstage: false,
+      );
+
+      expect(persistenceError, findsOneWidget);
+
+      await Scrollable.ensureVisible(
+        tester.element(persistenceError),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
+
       expect(
         find.textContaining(
           'Не удалось сохранить новый статус '
@@ -143,7 +184,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Статус изменён'), findsNothing);
+      expect(find.text('Статус изменён', skipOffstage: false), findsNothing);
     });
 
     testWidgets('switches to status transition flow after operation creation', (
@@ -186,7 +227,9 @@ void main() {
     testWidgets('keeps transitioned operation as current workspace operation', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(_testApp());
+      await tester.pumpWidget(
+        _testApp(revisionPrimaryEntityId: RegistryEntityId('primary')),
+      );
 
       await tester.enterText(
         find.byKey(const Key('registry_engineering_operation_id_field')),
@@ -206,25 +249,53 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(
-        find.byKey(
-          const Key('registry_engineering_operation_requested_status_dropdown'),
-        ),
+      await tester.enterText(
+        find.byKey(const Key('registry_operation_revision_content')),
+        'Approved working content.',
       );
+
+      final Finder saveRevisionFinder = find.byKey(
+        const Key('registry_operation_save_revision'),
+      );
+      await tester.ensureVisible(saveRevisionFinder);
+      await tester.tap(saveRevisionFinder);
+      await tester.pumpAndSettle();
+
+      final Finder statusDropdown = find.byKey(
+        const Key('registry_engineering_operation_requested_status_dropdown'),
+      );
+      await Scrollable.ensureVisible(
+        tester.element(statusDropdown),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(statusDropdown);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('readyForDecision').last);
       await tester.pumpAndSettle();
 
-      await tester.tap(
-        find.byKey(
-          const Key('registry_engineering_operation_status_transition_button'),
-        ),
+      final Finder transitionButton = find.byKey(
+        const Key('registry_engineering_operation_status_transition_button'),
+      );
+      await Scrollable.ensureVisible(
+        tester.element(transitionButton),
+        alignment: 0.5,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
-      expect(find.text('Текущий статус:\nopen'), findsNothing);
+      await tester.tap(transitionButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Текущий статус:\nreadyForDecision', skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Текущий статус:\nopen', skipOffstage: false),
+        findsNothing,
+      );
     });
 
     testWidgets('locks revision editing after engineer decision', (
@@ -272,6 +343,18 @@ void main() {
         findsNothing,
       );
 
+      await tester.enterText(
+        find.byKey(const Key('registry_operation_revision_content')),
+        'Approved working content.',
+      );
+
+      final Finder saveRevisionFinder = find.byKey(
+        const Key('registry_operation_save_revision'),
+      );
+      await tester.ensureVisible(saveRevisionFinder);
+      await tester.tap(saveRevisionFinder);
+      await tester.pumpAndSettle();
+
       final Finder statusDropdown = find.byKey(
         const Key('registry_engineering_operation_requested_status_dropdown'),
       );
@@ -279,13 +362,30 @@ void main() {
         const Key('registry_engineering_operation_status_transition_button'),
       );
 
+      await Scrollable.ensureVisible(
+        tester.element(statusDropdown),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
+
       await tester.tap(statusDropdown);
       await tester.pumpAndSettle();
       await tester.tap(find.text('readyForDecision').last);
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(transitionButton);
+      await Scrollable.ensureVisible(
+        tester.element(transitionButton),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
+
       await tester.tap(transitionButton);
+      await tester.pumpAndSettle();
+
+      await Scrollable.ensureVisible(
+        tester.element(statusDropdown),
+        alignment: 0.5,
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(statusDropdown);
@@ -297,10 +397,19 @@ void main() {
         const Key('registry_engineering_operation_decision_statement_field'),
       );
 
-      await tester.ensureVisible(decisionField);
+      await Scrollable.ensureVisible(
+        tester.element(decisionField),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
       await tester.enterText(decisionField, 'Approve canonical wording.');
 
-      await tester.ensureVisible(transitionButton);
+      await Scrollable.ensureVisible(
+        tester.element(transitionButton),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
+
       await tester.tap(transitionButton);
       await tester.pumpAndSettle();
 
@@ -311,7 +420,10 @@ void main() {
         find.byKey(const Key('registry_operation_save_revision')),
       );
 
-      expect(find.text('Текущий статус:\ndecided'), findsWidgets);
+      expect(
+        find.text('Текущий статус:\ndecided', skipOffstage: false),
+        findsOneWidget,
+      );
       expect(revisionEditor.readOnly, isTrue);
       expect(saveRevisionButton.onPressed, isNull);
 

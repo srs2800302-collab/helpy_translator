@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation.dart';
+import 'package:helpy_translator/registry_studio/core/domain/entities/registry_engineering_operation_revision.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_engineering_operation_status.dart';
+import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_status_transition_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
 
@@ -187,14 +189,35 @@ Widget _testApp({
       RegistryEngineeringOperationStatus.open,
   ValueChanged<RegistryEngineeringOperation>? onOperationTransitioned,
 }) {
+  final RegistryEngineeringOperation operation = _operationWith(
+    operationStatus,
+  );
+
   return MaterialApp(
     home: RegistryEngineeringOperationStatusTransitionScreen(
       uiLanguage: uiLanguage,
-      operation: _operationWith(operationStatus),
+      operation: operation,
+      revisions: <RegistryEngineeringOperationRevision>[
+        _revisionFor(operation),
+      ],
       transitionRegistryEngineeringOperationStatus:
           TransitionRegistryEngineeringOperationStatus(),
       onOperationTransitioned: onOperationTransitioned,
     ),
+  );
+}
+
+RegistryEngineeringOperationRevision _revisionFor(
+  RegistryEngineeringOperation operation,
+) {
+  return RegistryEngineeringOperationRevision(
+    id: '${operation.id.value}-revision-1',
+    operationId: operation.id,
+    revisionNumber: 1,
+    workingContent: 'Approved working content.',
+    previousRevisionId: null,
+    primaryEntityId: RegistryEntityId('primary'),
+    relatedEntityIds: const <RegistryEntityId>[],
   );
 }
 
