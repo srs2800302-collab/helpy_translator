@@ -15,7 +15,6 @@ import '../../core/application/source_comparison/compare_registry_source_text.da
 import '../../core/domain/entities/registry_entity.dart';
 import '../../core/domain/value_objects/registry_entity_id.dart';
 import '../../core/domain/value_objects/registry_relation.dart';
-import '../../guard/presentation/screens/registry_studio_guard_record_screen.dart';
 import '../../operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import '../../operation/presentation/screens/registry_related_context_preparation_screen.dart';
 import '../../translator/application/translate_phrase.dart';
@@ -39,7 +38,6 @@ final class RegistryStudioApp extends StatefulWidget {
     this.resolveAffectedRegistryEntityIds =
         const ResolveAffectedRegistryEntityIds(),
     this.serviceIntakeSourceBlocks,
-    this.guardRecordEntity,
     this.relatedContextPrimary,
     this.relatedContextRelations = const <RegistryRelation>[],
     this.availableRelatedEntities = const <RegistryEntity>[],
@@ -63,7 +61,6 @@ final class RegistryStudioApp extends StatefulWidget {
   final ResolveAffectedRegistryEntityIds resolveAffectedRegistryEntityIds;
   final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
 
-  final RegistryEntity? guardRecordEntity;
   final RegistryEntity? relatedContextPrimary;
   final Iterable<RegistryRelation> relatedContextRelations;
   final Iterable<RegistryEntity> availableRelatedEntities;
@@ -79,14 +76,10 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   static const int _translatorScreenIndex = 0;
   static const int _operationWorkspaceScreenIndex = 1;
   static const int _relatedContextScreenIndex = 2;
-  static const int _guardRecordScreenIndex = 3;
-  static const int _serviceIntakeSourceScreenIndex = 4;
+  static const int _serviceIntakeSourceScreenIndex = 3;
 
   static const Key _relatedContextScreenButtonKey = Key(
     'registry_studio_related_context_screen_button',
-  );
-  static const Key _guardRecordScreenButtonKey = Key(
-    'registry_studio_guard_record_screen_button',
   );
   static const Key _screenSelectorKey = Key('registry_studio_screen_selector');
 
@@ -117,8 +110,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     super.dispose();
   }
 
-  bool get _hasGuardRecordInput => widget.guardRecordEntity != null;
-
   bool get _hasServiceIntakeSourceInput =>
       widget.serviceIntakeSourceBlocks != null;
 
@@ -137,7 +128,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     final String selectedScreenLabel = switch (_selectedScreenIndex) {
       _operationWorkspaceScreenIndex => labels.operationCreationScreenTitle,
       _relatedContextScreenIndex => labels.relatedContextPreparation.title,
-      _guardRecordScreenIndex => labels.guardRecord.title,
       _serviceIntakeSourceScreenIndex =>
         ServiceIntakeSourceBlocksScreen.titleFor(_selectedLanguage),
       _ => labels.translatorScreenTitle,
@@ -200,14 +190,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                         checked:
                             _selectedScreenIndex == _relatedContextScreenIndex,
                         child: Text(labels.relatedContextPreparation.title),
-                      ),
-                    if (_hasGuardRecordInput)
-                      CheckedPopupMenuItem<int>(
-                        key: _guardRecordScreenButtonKey,
-                        value: _guardRecordScreenIndex,
-                        checked:
-                            _selectedScreenIndex == _guardRecordScreenIndex,
-                        child: Text(labels.guardRecord.title),
                       ),
                   ];
                 },
@@ -383,14 +365,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       );
     }
 
-    if (_selectedScreenIndex == _guardRecordScreenIndex &&
-        _hasGuardRecordInput) {
-      return RegistryStudioGuardRecordScreen(
-        uiLanguage: _selectedLanguage,
-        entity: widget.guardRecordEntity!,
-      );
-    }
-
     if (_selectedScreenIndex == _relatedContextScreenIndex &&
         _hasRelatedContextInput) {
       return RegistryRelatedContextPreparationScreen(
@@ -421,8 +395,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         onWorkSessionCleared: _clearResolvedRelatedContext,
         workSessionPersistence: widget.workSessionPersistence,
         revisionPrimaryEntityId:
-            _operationPrimaryEntityId ??
-            (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,
+            _operationPrimaryEntityId ?? widget.relatedContextPrimary?.id,
         revisionRelatedEntityIds:
             _operationRelatedEntityIds ??
             _resolvedRelatedContext?.resolvedRelatedEntities.map(
