@@ -110,6 +110,125 @@ void main() {
     );
   });
 
+  testWidgets(
+    'starts comparison operation with target primary and source related',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final _FakeTranslatorPhraseProvider provider =
+          _FakeTranslatorPhraseProvider(_translatorResult());
+      final ServiceIntakeSourceBlock source = _serviceIntakeSourceBlock();
+      final ServiceIntakeSourceBlock target = (
+        identity: (
+          entityId: RegistryEntityId(
+            'helpy.service_intake.plumbing.faucet.replace',
+          ),
+          path: RegistryPath(const <String>[
+            'helpy',
+            'service_intake',
+            'plumbing',
+            'faucet',
+            'replace',
+          ]),
+          ownerHeadingLevel: 2,
+          ownerHeading: 'Plumbing',
+          headingLevel: 3,
+          heading: 'Plumbing → Замена крана',
+        ),
+        startLine: 120,
+        endLine: 130,
+        sourceText:
+            '### Plumbing → Замена крана\n'
+            '1. Что требуется сделать?\n'
+            '- Заменить существующий кран.\n',
+      );
+
+      await tester.pumpWidget(
+        _testApp(
+          provider,
+          serviceIntakeSourceBlocks:
+              Future<List<ServiceIntakeSourceBlock>>.value(
+                <ServiceIntakeSourceBlock>[source, target],
+              ),
+        ),
+      );
+
+      await _selectAppScreen(tester, 'Источник service intake');
+
+      final Finder sourceHeading = find.text(source.identity.heading);
+      await tester.ensureVisible(sourceHeading);
+      await tester.tap(sourceHeading);
+      await tester.pumpAndSettle();
+
+      final Finder sourceButton = find.byKey(
+        ValueKey<String>(
+          'service_intake_compare_source_'
+          '${source.identity.entityId.value}',
+        ),
+      );
+      await tester.ensureVisible(sourceButton);
+      await tester.tap(sourceButton);
+      await tester.pumpAndSettle();
+
+      final Finder targetHeading = find.text(target.identity.heading);
+      await tester.ensureVisible(targetHeading);
+      await tester.tap(targetHeading);
+      await tester.pumpAndSettle();
+
+      final Finder targetButton = find.byKey(
+        ValueKey<String>(
+          'service_intake_compare_target_'
+          '${target.identity.entityId.value}',
+        ),
+      );
+      await tester.ensureVisible(targetButton);
+      await tester.tap(targetButton);
+      await tester.pumpAndSettle();
+
+      final Finder comparisonButton = find.byKey(
+        const Key('service_intake_source_comparison_action'),
+      );
+      await tester.ensureVisible(comparisonButton);
+      await tester.tap(comparisonButton);
+      await tester.pumpAndSettle();
+
+      final RegistryEngineeringOperationWorkspaceScreen workspace = tester
+          .widget<RegistryEngineeringOperationWorkspaceScreen>(
+            find.byType(RegistryEngineeringOperationWorkspaceScreen),
+          );
+
+      expect(workspace.revisionPrimaryEntityId, target.identity.entityId);
+      expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
+        source.identity.entityId,
+      ]);
+      expect(
+        workspace.initialProblemStatement,
+        contains(source.identity.heading),
+      );
+      expect(
+        workspace.initialProblemStatement,
+        contains(source.identity.entityId.value),
+      );
+      expect(
+        workspace.initialProblemStatement,
+        contains(target.identity.heading),
+      );
+      expect(
+        workspace.initialProblemStatement,
+        contains(target.identity.entityId.value),
+      );
+      expect(
+        workspace.initialProblemStatement,
+        contains('Установить и подключить кран.'),
+      );
+      expect(
+        workspace.initialProblemStatement,
+        contains('Заменить существующий кран.'),
+      );
+    },
+  );
+
   testWidgets('switches top-level labels between RU EN and TH', (
     WidgetTester tester,
   ) async {

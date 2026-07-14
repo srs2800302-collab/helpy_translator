@@ -87,6 +87,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   RegistryResolvedRelatedContext? _resolvedRelatedContext;
   String? _initialOperationProblemStatement;
   RegistryEntityId? _operationPrimaryEntityId;
+  RegistryEntityId? _operationRelatedEntityId;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
   late final TranslatorPhraseCubit _translatorPhraseCubit;
 
@@ -260,6 +261,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           '$candidate';
 
       _operationPrimaryEntityId = null;
+      _operationRelatedEntityId = null;
+      _resolvedRelatedContext = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -273,18 +276,41 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           '${block.identity.entityId.value}\n\n'
           '${block.sourceText}';
       _operationPrimaryEntityId = block.identity.entityId;
+      _operationRelatedEntityId = null;
+      _resolvedRelatedContext = null;
+      _selectedScreenIndex = _operationWorkspaceScreenIndex;
+    });
+  }
+
+  void _startOperationFromServiceIntakeComparison(
+    ServiceIntakeSourceBlock source,
+    ServiceIntakeSourceBlock target,
+  ) {
+    setState(() {
+      _initialOperationProblemStatement =
+          '${source.identity.heading} → ${target.identity.heading}\n\n'
+          '${source.identity.entityId.value}\n'
+          '${source.sourceText}\n\n'
+          '${target.identity.entityId.value}\n'
+          '${target.sourceText}';
+      _operationPrimaryEntityId = target.identity.entityId;
+      _operationRelatedEntityId = source.identity.entityId;
+      _resolvedRelatedContext = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
 
   void _clearResolvedRelatedContext() {
-    if (_resolvedRelatedContext == null && _operationPrimaryEntityId == null) {
+    if (_resolvedRelatedContext == null &&
+        _operationPrimaryEntityId == null &&
+        _operationRelatedEntityId == null) {
       return;
     }
 
     setState(() {
       _resolvedRelatedContext = null;
       _operationPrimaryEntityId = null;
+      _operationRelatedEntityId = null;
     });
   }
 
@@ -316,6 +342,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       return ServiceIntakeSourceBlocksScreen(
         uiLanguage: _selectedLanguage,
         sourceBlocks: widget.serviceIntakeSourceBlocks!,
+        onComparisonRequested: _startOperationFromServiceIntakeComparison,
         onStartOperation: _startOperationFromServiceIntakeSourceBlock,
       );
     }
@@ -341,6 +368,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         onContextPrepared: (RegistryResolvedRelatedContext context) {
           setState(() {
             _resolvedRelatedContext = context;
+            _operationPrimaryEntityId = null;
+            _operationRelatedEntityId = null;
           });
         },
       );
@@ -356,9 +385,11 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         revisionPrimaryEntityId:
             _operationPrimaryEntityId ??
             (widget.relatedContextPrimary ?? widget.guardRecordEntity)?.id,
-        revisionRelatedEntityIds: _resolvedRelatedContext
-            ?.resolvedRelatedEntities
-            .map((RegistryEntity entity) => entity.id),
+        revisionRelatedEntityIds: _operationRelatedEntityId == null
+            ? _resolvedRelatedContext?.resolvedRelatedEntities.map(
+                (RegistryEntity entity) => entity.id,
+              )
+            : <RegistryEntityId>[_operationRelatedEntityId!],
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
