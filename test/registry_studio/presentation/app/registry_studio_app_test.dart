@@ -3,15 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
-import 'package:helpy_translator/registry_studio/core/application/related_context/prepare_registry_related_context.dart';
-import 'package:helpy_translator/registry_studio/core/application/related_context/prepare_registry_resolved_related_context.dart';
-import 'package:helpy_translator/registry_studio/core/domain/entities/registry_entity.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_relation.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_creation_screen.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
-import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_related_context_preparation_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/app/registry_studio_app.dart';
 import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translate_phrase.dart';
@@ -20,7 +16,6 @@ import 'package:helpy_translator/registry_studio/translator/presentation/screens
 import 'package:helpy_translator/registry_studio/translator/translator_phrase_result.dart';
 import 'package:helpy_translator/registry_studio/translator/translator_phrase_status.dart';
 
-import '../../core/fixtures/registry_entity_fixture.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_relation_meaning.dart';
 
 void main() {
@@ -41,7 +36,6 @@ void main() {
       find.byType(RegistryEngineeringOperationCreationScreen),
       findsNothing,
     );
-    expect(find.byType(RegistryRelatedContextPreparationScreen), findsNothing);
     expect(find.text('Адаптивный переводчик'), findsWidgets);
   });
 
@@ -410,67 +404,6 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(TranslatorPhraseScreen), findsNothing);
-    expect(find.byType(RegistryRelatedContextPreparationScreen), findsNothing);
-  });
-
-  testWidgets('switches to related context preparation screen', (
-    WidgetTester tester,
-  ) async {
-    final _FakeTranslatorPhraseProvider provider =
-        _FakeTranslatorPhraseProvider(_translatorResult());
-
-    await tester.pumpWidget(_testApp(provider));
-
-    await _selectAppScreen(tester, 'Подготовка related context');
-
-    expect(
-      find.byType(RegistryRelatedContextPreparationScreen),
-      findsOneWidget,
-    );
-    expect(find.byType(TranslatorPhraseScreen), findsNothing);
-    expect(
-      find.byType(RegistryEngineeringOperationWorkspaceScreen),
-      findsNothing,
-    );
-  });
-
-  testWidgets('passes prepared related context to operation workspace', (
-    WidgetTester tester,
-  ) async {
-    final _FakeTranslatorPhraseProvider provider =
-        _FakeTranslatorPhraseProvider(_translatorResult());
-
-    await tester.pumpWidget(_testApp(provider));
-
-    await _selectAppScreen(tester, 'Подготовка related context');
-
-    await tester.tap(
-      find.byKey(const Key('registry_related_context_prepare_button')),
-    );
-    await tester.pumpAndSettle();
-
-    await _selectAppScreen(tester, 'Создание инженерной операции');
-
-    final RegistryEngineeringOperationWorkspaceScreen workspace = tester
-        .widget<RegistryEngineeringOperationWorkspaceScreen>(
-          find.byType(RegistryEngineeringOperationWorkspaceScreen),
-        );
-
-    expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
-      RegistryEntityId('related-001'),
-    ]);
-
-    expect(workspace.onWorkSessionCleared, isNotNull);
-
-    workspace.onWorkSessionCleared!();
-    await tester.pump();
-
-    final RegistryEngineeringOperationWorkspaceScreen clearedWorkspace = tester
-        .widget<RegistryEngineeringOperationWorkspaceScreen>(
-          find.byType(RegistryEngineeringOperationWorkspaceScreen),
-        );
-
-    expect(clearedWorkspace.revisionRelatedEntityIds, isNull);
   });
 
   testWidgets(
@@ -622,31 +555,14 @@ Widget _testApp(
   Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks,
   Iterable<RegistryRelation>? relatedContextRelations,
 }) {
-  final RegistryEntity primary = registryEntityFixture(
-    id: 'guard-record-primary',
-  );
-  final RegistryEntity related = registryEntityFixture(id: 'related-001');
-
   return RegistryStudioApp(
     serviceIntakeSourceBlocks: serviceIntakeSourceBlocks,
     translatePhrase: TranslatePhrase(provider: provider),
     createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
     transitionRegistryEngineeringOperationStatus:
         TransitionRegistryEngineeringOperationStatus(),
-    relatedContextPrimary: primary,
     relatedContextRelations:
-        relatedContextRelations ??
-        <RegistryRelation>[
-          RegistryRelation(
-            sourceEntityId: primary.id,
-            targetEntityId: related.id,
-            meaning: RegistryRelationMeaning('depends_on'),
-          ),
-        ],
-    availableRelatedEntities: <RegistryEntity>[related],
-    prepareRegistryRelatedContext: PrepareRegistryRelatedContext(),
-    prepareRegistryResolvedRelatedContext:
-        PrepareRegistryResolvedRelatedContext(),
+        relatedContextRelations ?? const <RegistryRelation>[],
   );
 }
 

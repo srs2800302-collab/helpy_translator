@@ -9,14 +9,10 @@ import '../../adapters/helpy/presentation/screens/service_intake_source_blocks_s
 import '../../core/application/change_impact/resolve_affected_registry_entity_ids.dart';
 import '../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
-import '../../core/application/related_context/prepare_registry_related_context.dart';
-import '../../core/application/related_context/prepare_registry_resolved_related_context.dart';
 import '../../core/application/source_comparison/compare_registry_source_text.dart';
-import '../../core/domain/entities/registry_entity.dart';
 import '../../core/domain/value_objects/registry_entity_id.dart';
 import '../../core/domain/value_objects/registry_relation.dart';
 import '../../operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
-import '../../operation/presentation/screens/registry_related_context_preparation_screen.dart';
 import '../../translator/application/translate_phrase.dart';
 import '../../translator/application/translator_phrase_history_persistence.dart';
 import '../../translator/presentation/cubit/translator_phrase_cubit.dart';
@@ -24,7 +20,6 @@ import '../../translator/presentation/screens/translator_phrase_screen.dart';
 import '../language/registry_studio_ui_labels.dart';
 import '../language/registry_studio_ui_language.dart';
 import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
-import '../../core/application/related_context/registry_resolved_related_context.dart';
 import '../../translator/translator_phrase_result.dart';
 
 final class RegistryStudioApp extends StatefulWidget {
@@ -38,18 +33,9 @@ final class RegistryStudioApp extends StatefulWidget {
     this.resolveAffectedRegistryEntityIds =
         const ResolveAffectedRegistryEntityIds(),
     this.serviceIntakeSourceBlocks,
-    this.relatedContextPrimary,
     this.relatedContextRelations = const <RegistryRelation>[],
-    this.availableRelatedEntities = const <RegistryEntity>[],
-    this.prepareRegistryRelatedContext,
-    this.prepareRegistryResolvedRelatedContext,
     super.key,
-  }) : assert(
-         relatedContextPrimary == null ||
-             (prepareRegistryRelatedContext != null &&
-                 prepareRegistryResolvedRelatedContext != null),
-         'Related context use cases are required when primary entity is provided.',
-       );
+  });
 
   final TranslatePhrase translatePhrase;
   final TranslatorPhraseHistoryPersistence? translatorPhraseHistoryPersistence;
@@ -60,13 +46,7 @@ final class RegistryStudioApp extends StatefulWidget {
   final CompareRegistrySourceText compareRegistrySourceText;
   final ResolveAffectedRegistryEntityIds resolveAffectedRegistryEntityIds;
   final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
-
-  final RegistryEntity? relatedContextPrimary;
   final Iterable<RegistryRelation> relatedContextRelations;
-  final Iterable<RegistryEntity> availableRelatedEntities;
-  final PrepareRegistryRelatedContext? prepareRegistryRelatedContext;
-  final PrepareRegistryResolvedRelatedContext?
-  prepareRegistryResolvedRelatedContext;
 
   @override
   State<RegistryStudioApp> createState() => _RegistryStudioAppState();
@@ -75,16 +55,11 @@ final class RegistryStudioApp extends StatefulWidget {
 final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   static const int _translatorScreenIndex = 0;
   static const int _operationWorkspaceScreenIndex = 1;
-  static const int _relatedContextScreenIndex = 2;
-  static const int _serviceIntakeSourceScreenIndex = 3;
+  static const int _serviceIntakeSourceScreenIndex = 2;
 
-  static const Key _relatedContextScreenButtonKey = Key(
-    'registry_studio_related_context_screen_button',
-  );
   static const Key _screenSelectorKey = Key('registry_studio_screen_selector');
 
   int _selectedScreenIndex = _translatorScreenIndex;
-  RegistryResolvedRelatedContext? _resolvedRelatedContext;
   String? _initialOperationProblemStatement;
   String? _initialOperationWorkingContent;
   RegistryEntityId? _operationPrimaryEntityId;
@@ -113,12 +88,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   bool get _hasServiceIntakeSourceInput =>
       widget.serviceIntakeSourceBlocks != null;
 
-  bool get _hasRelatedContextInput {
-    return widget.relatedContextPrimary != null &&
-        widget.prepareRegistryRelatedContext != null &&
-        widget.prepareRegistryResolvedRelatedContext != null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final RegistryStudioUiLabels labels = RegistryStudioUiLabels.forLanguage(
@@ -127,7 +96,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
     final String selectedScreenLabel = switch (_selectedScreenIndex) {
       _operationWorkspaceScreenIndex => labels.operationCreationScreenTitle,
-      _relatedContextScreenIndex => labels.relatedContextPreparation.title,
       _serviceIntakeSourceScreenIndex =>
         ServiceIntakeSourceBlocksScreen.titleFor(_selectedLanguage),
       _ => labels.translatorScreenTitle,
@@ -182,14 +150,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                             _selectedLanguage,
                           ),
                         ),
-                      ),
-                    if (_hasRelatedContextInput)
-                      CheckedPopupMenuItem<int>(
-                        key: _relatedContextScreenButtonKey,
-                        value: _relatedContextScreenIndex,
-                        checked:
-                            _selectedScreenIndex == _relatedContextScreenIndex,
-                        child: Text(labels.relatedContextPreparation.title),
                       ),
                   ];
                 },
@@ -253,7 +213,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = null;
       _operationRelatedEntityIds = null;
-      _resolvedRelatedContext = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -269,7 +228,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = block.identity.entityId;
       _operationRelatedEntityIds = null;
-      _resolvedRelatedContext = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -311,21 +269,18 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _initialOperationWorkingContent = target.sourceText.trim();
       _operationPrimaryEntityId = target.identity.entityId;
       _operationRelatedEntityIds = affectedEntityIds;
-      _resolvedRelatedContext = null;
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
 
-  void _clearResolvedRelatedContext() {
-    if (_resolvedRelatedContext == null &&
-        _initialOperationWorkingContent == null &&
+  void _clearOperationContext() {
+    if (_initialOperationWorkingContent == null &&
         _operationPrimaryEntityId == null &&
         _operationRelatedEntityIds == null) {
       return;
     }
 
     setState(() {
-      _resolvedRelatedContext = null;
       _initialOperationWorkingContent = null;
       _operationPrimaryEntityId = null;
       _operationRelatedEntityIds = null;
@@ -365,42 +320,16 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       );
     }
 
-    if (_selectedScreenIndex == _relatedContextScreenIndex &&
-        _hasRelatedContextInput) {
-      return RegistryRelatedContextPreparationScreen(
-        uiLanguage: _selectedLanguage,
-        primary: widget.relatedContextPrimary!,
-        relations: widget.relatedContextRelations,
-        availableRelatedEntities: widget.availableRelatedEntities,
-        prepareRegistryRelatedContext: widget.prepareRegistryRelatedContext!,
-        prepareRegistryResolvedRelatedContext:
-            widget.prepareRegistryResolvedRelatedContext!,
-        onContextPrepared: (RegistryResolvedRelatedContext context) {
-          setState(() {
-            _resolvedRelatedContext = context;
-            _initialOperationWorkingContent = null;
-            _operationPrimaryEntityId = null;
-            _operationRelatedEntityIds = null;
-          });
-        },
-      );
-    }
-
     if (_selectedScreenIndex == _operationWorkspaceScreenIndex) {
       return RegistryEngineeringOperationWorkspaceScreen(
         initialProblemStatement: _initialOperationProblemStatement,
         initialWorkingContent: _initialOperationWorkingContent,
         onInitialProblemStatementConsumed:
             _consumeInitialOperationProblemStatement,
-        onWorkSessionCleared: _clearResolvedRelatedContext,
+        onWorkSessionCleared: _clearOperationContext,
         workSessionPersistence: widget.workSessionPersistence,
-        revisionPrimaryEntityId:
-            _operationPrimaryEntityId ?? widget.relatedContextPrimary?.id,
-        revisionRelatedEntityIds:
-            _operationRelatedEntityIds ??
-            _resolvedRelatedContext?.resolvedRelatedEntities.map(
-              (RegistryEntity entity) => entity.id,
-            ),
+        revisionPrimaryEntityId: _operationPrimaryEntityId,
+        revisionRelatedEntityIds: _operationRelatedEntityIds,
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,
