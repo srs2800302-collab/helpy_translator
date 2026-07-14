@@ -17,10 +17,15 @@ void main() {
         _sourceBlock(entityId: _targetId, heading: _targetHeading),
       ]);
 
-      expect(find.text('Источник: не выбрано'), findsOneWidget);
-      expect(find.text('Цель: не выбрано'), findsOneWidget);
+      expect(
+        find.byKey(ServiceIntakeSourceBlocksScreen.comparisonSelectionKey),
+        findsNothing,
+      );
 
       await _openBlock(tester, _sourceHeading);
+
+      expect(find.text('Источник: не выбрано'), findsOneWidget);
+      expect(find.text('Цель: не выбрано'), findsOneWidget);
 
       final Finder sourceButton = _sourceButton(_sourceId);
 
@@ -37,11 +42,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Источник: $_sourceHeading'), findsOneWidget);
+      expect(find.text('Источник: $_sourceHeading'), findsNothing);
       expect(find.text(_sourceHeading), findsNothing);
       expect(find.text(_targetHeading), findsOneWidget);
 
       await _openBlock(tester, _targetHeading);
+
+      expect(find.text('Источник: $_sourceHeading'), findsOneWidget);
+      expect(find.text('Цель: не выбрано'), findsOneWidget);
 
       final Finder targetButton = _targetButton(_targetId);
 
@@ -104,14 +112,16 @@ void main() {
           },
     );
 
-    final Finder comparisonButton = find.byKey(
-      ServiceIntakeSourceBlocksScreen.comparisonActionKey,
+    await _openBlock(tester, _sourceHeading);
+
+    final Finder sourceComparisonButton = _comparisonButton(_sourceId);
+
+    expect(sourceComparisonButton, findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(sourceComparisonButton).onPressed,
+      isNull,
     );
 
-    expect(comparisonButton, findsOneWidget);
-    expect(tester.widget<FilledButton>(comparisonButton).onPressed, isNull);
-
-    await _openBlock(tester, _sourceHeading);
     await tester.tap(_sourceButton(_sourceId));
     await tester.pumpAndSettle();
 
@@ -122,9 +132,23 @@ void main() {
     await tester.pumpAndSettle();
 
     await _openBlock(tester, _targetHeading);
+
+    final Finder targetComparisonButton = _comparisonButton(_targetId);
+
+    expect(targetComparisonButton, findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(targetComparisonButton).onPressed,
+      isNull,
+    );
+
     await tester.tap(_targetButton(_targetId));
     await tester.pumpAndSettle();
 
+    final Finder comparisonButton = find.byKey(
+      ServiceIntakeSourceBlocksScreen.comparisonActionKey,
+    );
+
+    expect(comparisonButton, findsOneWidget);
     expect(tester.widget<FilledButton>(comparisonButton).onPressed, isNotNull);
 
     await tester.ensureVisible(comparisonButton);
@@ -182,6 +206,12 @@ Finder _sourceButton(String entityId) {
 Finder _targetButton(String entityId) {
   return find.byKey(
     ValueKey<String>('service_intake_compare_target_$entityId'),
+  );
+}
+
+Finder _comparisonButton(String entityId) {
+  return find.byKey(
+    ValueKey<String>('service_intake_source_comparison_action_$entityId'),
   );
 }
 

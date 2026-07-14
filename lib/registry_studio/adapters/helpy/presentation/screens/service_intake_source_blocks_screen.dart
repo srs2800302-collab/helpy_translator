@@ -164,48 +164,6 @@ final class _ServiceIntakeSourceBlocksScreenState
                     },
                   ),
                   const SizedBox(height: 8),
-                  Card(
-                    key: ServiceIntakeSourceBlocksScreen.comparisonSelectionKey,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            '${labels.comparisonSource}: '
-                            '${_comparisonSource == null ? labels.notSelected : _comparisonSource!.identity.heading}',
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${labels.comparisonTarget}: '
-                            '${_comparisonTarget == null ? labels.notSelected : _comparisonTarget!.identity.heading}',
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton.icon(
-                              key: ServiceIntakeSourceBlocksScreen
-                                  .comparisonActionKey,
-                              onPressed:
-                                  _comparisonSource != null &&
-                                      _comparisonTarget != null &&
-                                      widget.onComparisonRequested != null
-                                  ? () {
-                                      widget.onComparisonRequested!(
-                                        _comparisonSource!,
-                                        _comparisonTarget!,
-                                      );
-                                    }
-                                  : null,
-                              icon: const Icon(Icons.compare_arrows),
-                              label: Text(labels.compareSelected),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   if (visibleBlocks.isEmpty)
                     Card(
                       child: Padding(
@@ -255,6 +213,144 @@ final class _ServiceIntakeSourceBlocksScreenState
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
+                                  Row(
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          key: ValueKey<String>(
+                                            'service_intake_compare_source_'
+                                            '${block.identity.entityId.value}',
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _comparisonSource = block;
+
+                                              if (_comparisonTarget
+                                                      ?.identity
+                                                      .entityId ==
+                                                  block.identity.entityId) {
+                                                _comparisonTarget = null;
+                                              }
+                                            });
+                                          },
+                                          icon: Icon(
+                                            _comparisonSource
+                                                        ?.identity
+                                                        .entityId ==
+                                                    block.identity.entityId
+                                                ? Icons.radio_button_checked
+                                                : Icons.radio_button_unchecked,
+                                          ),
+                                          label: Text(labels.useAsSource),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          key: ValueKey<String>(
+                                            'service_intake_compare_target_'
+                                            '${block.identity.entityId.value}',
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _comparisonTarget = block;
+
+                                              if (_comparisonSource
+                                                      ?.identity
+                                                      .entityId ==
+                                                  block.identity.entityId) {
+                                                _comparisonSource = null;
+                                              }
+                                            });
+                                          },
+                                          icon: Icon(
+                                            _comparisonTarget
+                                                        ?.identity
+                                                        .entityId ==
+                                                    block.identity.entityId
+                                                ? Icons.radio_button_checked
+                                                : Icons.radio_button_unchecked,
+                                          ),
+                                          label: Text(labels.useAsTarget),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: <Widget>[
+                                      if (widget.onStartOperation !=
+                                          null) ...<Widget>[
+                                        Expanded(
+                                          child: SizedBox(
+                                            height: 56,
+                                            child: FilledButton(
+                                              key: ValueKey<String>(
+                                                'service_intake_start_operation_'
+                                                '${block.identity.entityId.value}',
+                                              ),
+                                              onPressed: () =>
+                                                  widget.onStartOperation!(
+                                                    block,
+                                                  ),
+                                              child: Text(
+                                                labels.startOperation,
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                      ],
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: 56,
+                                          child: FilledButton(
+                                            key:
+                                                _comparisonTarget
+                                                        ?.identity
+                                                        .entityId ==
+                                                    block.identity.entityId
+                                                ? ServiceIntakeSourceBlocksScreen
+                                                      .comparisonActionKey
+                                                : ValueKey<String>(
+                                                    'service_intake_source_'
+                                                    'comparison_action_'
+                                                    '${block.identity.entityId.value}',
+                                                  ),
+                                            onPressed:
+                                                _comparisonSource != null &&
+                                                    _comparisonTarget != null &&
+                                                    widget.onComparisonRequested !=
+                                                        null
+                                                ? () {
+                                                    widget
+                                                        .onComparisonRequested!(
+                                                      _comparisonSource!,
+                                                      _comparisonTarget!,
+                                                    );
+                                                  }
+                                                : null,
+                                            child: Text(
+                                              labels.compareSelected,
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    '${labels.comparisonSource}: '
+                                    '${_comparisonSource == null ? labels.notSelected : _comparisonSource!.identity.heading}',
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${labels.comparisonTarget}: '
+                                    '${_comparisonTarget == null ? labels.notSelected : _comparisonTarget!.identity.heading}',
+                                  ),
+                                  const SizedBox(height: 16),
                                   SelectableText(
                                     block.sourceText,
                                     style:
@@ -266,78 +362,6 @@ final class _ServiceIntakeSourceBlocksScreenState
                                             fontWeight: FontWeight.w700,
                                           )
                                         : null,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: <Widget>[
-                                      OutlinedButton.icon(
-                                        key: ValueKey<String>(
-                                          'service_intake_compare_source_'
-                                          '${block.identity.entityId.value}',
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _comparisonSource = block;
-
-                                            if (_comparisonTarget
-                                                    ?.identity
-                                                    .entityId ==
-                                                block.identity.entityId) {
-                                              _comparisonTarget = null;
-                                            }
-                                          });
-                                        },
-                                        icon: Icon(
-                                          _comparisonSource
-                                                      ?.identity
-                                                      .entityId ==
-                                                  block.identity.entityId
-                                              ? Icons.radio_button_checked
-                                              : Icons.radio_button_unchecked,
-                                        ),
-                                        label: Text(labels.useAsSource),
-                                      ),
-                                      OutlinedButton.icon(
-                                        key: ValueKey<String>(
-                                          'service_intake_compare_target_'
-                                          '${block.identity.entityId.value}',
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _comparisonTarget = block;
-
-                                            if (_comparisonSource
-                                                    ?.identity
-                                                    .entityId ==
-                                                block.identity.entityId) {
-                                              _comparisonSource = null;
-                                            }
-                                          });
-                                        },
-                                        icon: Icon(
-                                          _comparisonTarget
-                                                      ?.identity
-                                                      .entityId ==
-                                                  block.identity.entityId
-                                              ? Icons.radio_button_checked
-                                              : Icons.radio_button_unchecked,
-                                        ),
-                                        label: Text(labels.useAsTarget),
-                                      ),
-                                      if (widget.onStartOperation != null)
-                                        FilledButton.icon(
-                                          key: ValueKey<String>(
-                                            'service_intake_start_operation_'
-                                            '${block.identity.entityId.value}',
-                                          ),
-                                          onPressed: () =>
-                                              widget.onStartOperation!(block),
-                                          icon: const Icon(Icons.play_arrow),
-                                          label: Text(labels.startOperation),
-                                        ),
-                                    ],
                                   ),
                                 ],
                               ),
@@ -381,7 +405,7 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       ofCount: 'из',
       lineRange: 'Строки',
       loadFailed: 'Не удалось загрузить источник Registry',
-      startOperation: 'Открыть инженерную операцию',
+      startOperation: 'Инженерная операция',
       searchLabel: 'Поиск по источнику',
       searchHint: 'Заголовок, ID, путь или текст',
       clearSearch: 'Очистить поиск',
@@ -389,9 +413,9 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       comparisonSource: 'Источник',
       comparisonTarget: 'Цель',
       notSelected: 'не выбрано',
-      useAsSource: 'Выбрать источником',
-      useAsTarget: 'Выбрать целью',
-      compareSelected: 'Сравнить выбранные',
+      useAsSource: 'Источник',
+      useAsTarget: 'Цель',
+      compareSelected: 'Сравнить',
     ),
     RegistryStudioUiLanguage.en => (
       loadedCount: 'Loaded records',
@@ -399,7 +423,7 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       ofCount: 'of',
       lineRange: 'Lines',
       loadFailed: 'Failed to load Registry source',
-      startOperation: 'Open engineering operation',
+      startOperation: 'Engineering operation',
       searchLabel: 'Search source',
       searchHint: 'Heading, ID, path, or text',
       clearSearch: 'Clear search',
@@ -407,9 +431,9 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       comparisonSource: 'Source',
       comparisonTarget: 'Target',
       notSelected: 'not selected',
-      useAsSource: 'Select as source',
-      useAsTarget: 'Select as target',
-      compareSelected: 'Compare selected',
+      useAsSource: 'Source',
+      useAsTarget: 'Target',
+      compareSelected: 'Compare',
     ),
     RegistryStudioUiLanguage.th => (
       loadedCount: 'ระเบียนที่โหลด',
@@ -417,7 +441,7 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       ofCount: 'จาก',
       lineRange: 'บรรทัด',
       loadFailed: 'ไม่สามารถโหลดแหล่งข้อมูล Registry ได้',
-      startOperation: 'เปิดการดำเนินการทางวิศวกรรม',
+      startOperation: 'การดำเนินการทางวิศวกรรม',
       searchLabel: 'ค้นหาในแหล่งข้อมูล',
       searchHint: 'หัวข้อ, ID, เส้นทาง หรือข้อความ',
       clearSearch: 'ล้างการค้นหา',
@@ -425,9 +449,9 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       comparisonSource: 'ต้นทาง',
       comparisonTarget: 'เป้าหมาย',
       notSelected: 'ยังไม่ได้เลือก',
-      useAsSource: 'เลือกเป็นต้นทาง',
-      useAsTarget: 'เลือกเป็นเป้าหมาย',
-      compareSelected: 'เปรียบเทียบรายการที่เลือก',
+      useAsSource: 'ต้นทาง',
+      useAsTarget: 'เป้าหมาย',
+      compareSelected: 'เปรียบเทียบ',
     ),
   };
 }
