@@ -82,6 +82,58 @@ void main() {
     expect(find.text('Источник: не выбрано'), findsOneWidget);
     expect(find.text('Цель: $_sourceHeading'), findsOneWidget);
   });
+
+  testWidgets('requests comparison for selected source and target', (
+    WidgetTester tester,
+  ) async {
+    await _useLargeSurface(tester);
+
+    ServiceIntakeSourceBlock? requestedSource;
+    ServiceIntakeSourceBlock? requestedTarget;
+
+    await _pumpScreen(
+      tester,
+      <ServiceIntakeSourceBlock>[
+        _sourceBlock(entityId: _sourceId, heading: _sourceHeading),
+        _sourceBlock(entityId: _targetId, heading: _targetHeading),
+      ],
+      onComparisonRequested:
+          (ServiceIntakeSourceBlock source, ServiceIntakeSourceBlock target) {
+            requestedSource = source;
+            requestedTarget = target;
+          },
+    );
+
+    final Finder comparisonButton = find.byKey(
+      ServiceIntakeSourceBlocksScreen.comparisonActionKey,
+    );
+
+    expect(comparisonButton, findsOneWidget);
+    expect(tester.widget<FilledButton>(comparisonButton).onPressed, isNull);
+
+    await _openBlock(tester, _sourceHeading);
+    await tester.tap(_sourceButton(_sourceId));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(ServiceIntakeSourceBlocksScreen.searchKey),
+      'цель',
+    );
+    await tester.pumpAndSettle();
+
+    await _openBlock(tester, _targetHeading);
+    await tester.tap(_targetButton(_targetId));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<FilledButton>(comparisonButton).onPressed, isNotNull);
+
+    await tester.ensureVisible(comparisonButton);
+    await tester.tap(comparisonButton);
+    await tester.pumpAndSettle();
+
+    expect(requestedSource?.identity.entityId, RegistryEntityId(_sourceId));
+    expect(requestedTarget?.identity.entityId, RegistryEntityId(_targetId));
+  });
 }
 
 Future<void> _useLargeSurface(WidgetTester tester) async {
@@ -92,13 +144,19 @@ Future<void> _useLargeSurface(WidgetTester tester) async {
 
 Future<void> _pumpScreen(
   WidgetTester tester,
-  List<ServiceIntakeSourceBlock> blocks,
-) async {
+  List<ServiceIntakeSourceBlock> blocks, {
+  void Function(
+    ServiceIntakeSourceBlock source,
+    ServiceIntakeSourceBlock target,
+  )?
+  onComparisonRequested,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       home: ServiceIntakeSourceBlocksScreen(
         uiLanguage: RegistryStudioUiLanguage.ru,
         sourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(blocks),
+        onComparisonRequested: onComparisonRequested,
       ),
     ),
   );

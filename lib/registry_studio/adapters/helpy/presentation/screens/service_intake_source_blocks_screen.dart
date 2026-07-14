@@ -7,6 +7,7 @@ final class ServiceIntakeSourceBlocksScreen extends StatefulWidget {
   const ServiceIntakeSourceBlocksScreen({
     required this.uiLanguage,
     required this.sourceBlocks,
+    this.onComparisonRequested,
     this.onStartOperation,
     super.key,
   });
@@ -19,9 +20,17 @@ final class ServiceIntakeSourceBlocksScreen extends StatefulWidget {
   static const Key comparisonSelectionKey = Key(
     'service_intake_source_comparison_selection',
   );
+  static const Key comparisonActionKey = Key(
+    'service_intake_source_comparison_action',
+  );
 
   final RegistryStudioUiLanguage uiLanguage;
   final Future<List<ServiceIntakeSourceBlock>> sourceBlocks;
+  final void Function(
+    ServiceIntakeSourceBlock source,
+    ServiceIntakeSourceBlock target,
+  )?
+  onComparisonRequested;
   final ValueChanged<ServiceIntakeSourceBlock>? onStartOperation;
 
   static String titleFor(RegistryStudioUiLanguage language) {
@@ -170,6 +179,27 @@ final class _ServiceIntakeSourceBlocksScreenState
                           Text(
                             '${labels.comparisonTarget}: '
                             '${_comparisonTarget == null ? labels.notSelected : _comparisonTarget!.identity.heading}',
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              key: ServiceIntakeSourceBlocksScreen
+                                  .comparisonActionKey,
+                              onPressed:
+                                  _comparisonSource != null &&
+                                      _comparisonTarget != null &&
+                                      widget.onComparisonRequested != null
+                                  ? () {
+                                      widget.onComparisonRequested!(
+                                        _comparisonSource!,
+                                        _comparisonTarget!,
+                                      );
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.compare_arrows),
+                              label: Text(labels.compareSelected),
+                            ),
                           ),
                         ],
                       ),
@@ -340,6 +370,7 @@ typedef _ServiceIntakeSourceLabels = ({
   String notSelected,
   String useAsSource,
   String useAsTarget,
+  String compareSelected,
 });
 
 _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
@@ -360,6 +391,7 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       notSelected: 'не выбрано',
       useAsSource: 'Выбрать источником',
       useAsTarget: 'Выбрать целью',
+      compareSelected: 'Сравнить выбранные',
     ),
     RegistryStudioUiLanguage.en => (
       loadedCount: 'Loaded records',
@@ -377,6 +409,7 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       notSelected: 'not selected',
       useAsSource: 'Select as source',
       useAsTarget: 'Select as target',
+      compareSelected: 'Compare selected',
     ),
     RegistryStudioUiLanguage.th => (
       loadedCount: 'ระเบียนที่โหลด',
@@ -394,6 +427,7 @@ _ServiceIntakeSourceLabels _labels(RegistryStudioUiLanguage language) {
       notSelected: 'ยังไม่ได้เลือก',
       useAsSource: 'เลือกเป็นต้นทาง',
       useAsTarget: 'เลือกเป็นเป้าหมาย',
+      compareSelected: 'เปรียบเทียบรายการที่เลือก',
     ),
   };
 }
