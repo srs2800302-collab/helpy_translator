@@ -104,6 +104,23 @@ void main() {
     expect(find.byType(RegistryDocumentExplorerScreen), findsOneWidget);
     expect(find.text(block.identity.heading), findsOneWidget);
 
+    final Finder searchField = find.byKey(
+      RegistryDocumentExplorerScreen.searchKey,
+    );
+
+    await tester.enterText(searchField, block.identity.entityId.value);
+    await tester.pump();
+
+    expect(find.text(block.identity.heading), findsOneWidget);
+
+    await tester.enterText(
+      searchField,
+      block.identity.path.segments.join(' / '),
+    );
+    await tester.pump();
+
+    expect(find.text(block.identity.heading), findsOneWidget);
+
     await tester.tap(find.text(block.identity.heading));
     await tester.pumpAndSettle();
 

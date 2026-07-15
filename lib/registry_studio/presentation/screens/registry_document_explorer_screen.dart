@@ -9,6 +9,7 @@ final class RegistryDocumentExplorerScreen extends StatefulWidget {
     required this.nodes,
     required this.sourceRevision,
     this.nodeActionsBuilder,
+    this.nodeSearchTextBuilder,
     super.key,
   });
 
@@ -25,6 +26,7 @@ final class RegistryDocumentExplorerScreen extends StatefulWidget {
   final Future<String> sourceRevision;
   final Widget? Function(BuildContext context, RegistryDocumentNode node)?
   nodeActionsBuilder;
+  final String? Function(RegistryDocumentNode node)? nodeSearchTextBuilder;
 
   static String titleFor(RegistryStudioUiLanguage language) {
     return switch (language) {
@@ -206,7 +208,8 @@ final class _RegistryDocumentExplorerScreenState
     final String searchableText =
         '${node.title}\n'
         '${node.headingPath.join(' / ')}\n'
-        '${_ownSourceText(node)}';
+        '${_ownSourceText(node)}\n'
+        '${widget.nodeSearchTextBuilder?.call(node) ?? ''}';
 
     return searchableText.toLowerCase().contains(normalizedQuery);
   }

@@ -127,6 +127,14 @@ void main() {
             nodes: Future<List<RegistryDocumentNode>>.value(
               <RegistryDocumentNode>[root],
             ),
+            nodeSearchTextBuilder: (RegistryDocumentNode node) {
+              if (node != target) {
+                return null;
+              }
+
+              return 'overlay.identity.target\n'
+                  'helpy / service_intake / plumbing / faucet';
+            },
           ),
         ),
       ),
@@ -158,6 +166,23 @@ void main() {
 
     expect(find.text('Показано: 2 из 3'), findsOneWidget);
     expect(find.text('Hidden domain'), findsOneWidget);
+    expect(find.text('Canonical target'), findsOneWidget);
+
+    await tester.enterText(searchField(), 'overlay.identity.target');
+    await tester.pump();
+
+    expect(find.text('Показано: 1 из 3'), findsOneWidget);
+    expect(find.text('Canonical target'), findsOneWidget);
+    expect(find.text('Registry'), findsNothing);
+    expect(find.text('Hidden domain'), findsNothing);
+
+    await tester.enterText(
+      searchField(),
+      'helpy / service_intake / plumbing / faucet',
+    );
+    await tester.pump();
+
+    expect(find.text('Показано: 1 из 3'), findsOneWidget);
     expect(find.text('Canonical target'), findsOneWidget);
 
     await tester.enterText(searchField(), 'missing section');

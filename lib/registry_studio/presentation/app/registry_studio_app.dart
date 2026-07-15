@@ -362,6 +362,17 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                 uiLanguage: _selectedLanguage,
                 nodes: widget.registryDocumentNodes!,
                 sourceRevision: widget.registrySourceRevision!,
+                nodeSearchTextBuilder: (RegistryDocumentNode node) {
+                  final ServiceIntakeSourceBlock? block =
+                      blocksByRange[(node.startLine, node.endLine)];
+
+                  if (block == null) {
+                    return null;
+                  }
+
+                  return '${block.identity.entityId.value}\n'
+                      '${block.identity.path.segments.join(' / ')}';
+                },
                 nodeActionsBuilder: (BuildContext context, RegistryDocumentNode node) {
                   final ServiceIntakeSourceBlock? block =
                       blocksByRange[(node.startLine, node.endLine)];
