@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
-import '../../adapters/helpy/presentation/screens/service_intake_source_blocks_screen.dart';
 
 import '../../core/application/change_impact/registry_dependency_graph.dart';
 import '../../core/application/change_impact/resolve_registry_dependency_graph.dart';
@@ -62,8 +61,7 @@ final class RegistryStudioApp extends StatefulWidget {
 final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   static const int _translatorScreenIndex = 0;
   static const int _operationWorkspaceScreenIndex = 1;
-  static const int _serviceIntakeSourceScreenIndex = 2;
-  static const int _registryDocumentScreenIndex = 3;
+  static const int _registryDocumentScreenIndex = 2;
 
   static const Key _screenSelectorKey = Key('registry_studio_screen_selector');
 
@@ -100,9 +98,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       widget.registryDocumentNodes != null &&
       widget.registrySourceRevision != null;
 
-  bool get _hasServiceIntakeSourceInput =>
-      widget.serviceIntakeSourceBlocks != null;
-
   @override
   Widget build(BuildContext context) {
     final RegistryStudioUiLabels labels = RegistryStudioUiLabels.forLanguage(
@@ -111,8 +106,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
     final String selectedScreenLabel = switch (_selectedScreenIndex) {
       _operationWorkspaceScreenIndex => labels.operationWorkspaceScreenTitle,
-      _serviceIntakeSourceScreenIndex =>
-        ServiceIntakeSourceBlocksScreen.titleFor(_selectedLanguage),
       _registryDocumentScreenIndex => RegistryDocumentExplorerScreen.titleFor(
         _selectedLanguage,
       ),
@@ -158,18 +151,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                             _registryDocumentScreenIndex,
                         child: Text(
                           RegistryDocumentExplorerScreen.titleFor(
-                            _selectedLanguage,
-                          ),
-                        ),
-                      ),
-                    if (_hasServiceIntakeSourceInput)
-                      CheckedPopupMenuItem<int>(
-                        value: _serviceIntakeSourceScreenIndex,
-                        checked:
-                            _selectedScreenIndex ==
-                            _serviceIntakeSourceScreenIndex,
-                        child: Text(
-                          ServiceIntakeSourceBlocksScreen.titleFor(
                             _selectedLanguage,
                           ),
                         ),
@@ -509,8 +490,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                       ),
                       const SizedBox(height: 8),
                       FilledButton(
-                        key:
-                            ServiceIntakeSourceBlocksScreen.comparisonActionKey,
+                        key: const Key(
+                          'service_intake_source_comparison_action',
+                        ),
                         onPressed: comparisonReady
                             ? () {
                                 final ServiceIntakeSourceBlock source =
@@ -542,16 +524,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                 },
               );
             },
-      );
-    }
-
-    if (_selectedScreenIndex == _serviceIntakeSourceScreenIndex &&
-        _hasServiceIntakeSourceInput) {
-      return ServiceIntakeSourceBlocksScreen(
-        uiLanguage: _selectedLanguage,
-        sourceBlocks: widget.serviceIntakeSourceBlocks!,
-        onComparisonRequested: _startOperationFromServiceIntakeComparison,
-        onStartOperation: _startOperationFromServiceIntakeSourceBlock,
       );
     }
 

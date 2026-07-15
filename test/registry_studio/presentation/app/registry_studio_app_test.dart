@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
-import 'package:helpy_translator/registry_studio/adapters/helpy/presentation/screens/service_intake_source_blocks_screen.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/application/source_indexing/registry_document_node.dart';
@@ -223,7 +222,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final Finder comparisonButton = find.byKey(
-      ServiceIntakeSourceBlocksScreen.comparisonActionKey,
+      const Key('service_intake_source_comparison_action'),
     );
 
     expect(comparisonButton, findsOneWidget);
@@ -248,65 +247,6 @@ void main() {
     expect(
       workspace.comparisonViewData?.targetEntityId,
       target.identity.entityId,
-    );
-  });
-
-  testWidgets('starts operation from service intake source block', (
-    WidgetTester tester,
-  ) async {
-    final provider = _FakeTranslatorPhraseProvider(_translatorResult());
-
-    await tester.pumpWidget(
-      _testApp(
-        provider,
-        serviceIntakeSourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(
-          <ServiceIntakeSourceBlock>[_serviceIntakeSourceBlock()],
-        ),
-      ),
-    );
-
-    await _selectAppScreen(tester, 'Источник service intake');
-    await tester.tap(find.text('Plumbing → Кран'));
-    await tester.pumpAndSettle();
-
-    final Finder startOperationButton = find.byKey(
-      const ValueKey<String>(
-        'service_intake_start_operation_'
-        'helpy.service_intake.plumbing.faucet',
-      ),
-    );
-    final Finder sourceListScrollable = find
-        .descendant(
-          of: find.byKey(const Key('service_intake_source_list')),
-          matching: find.byType(Scrollable),
-        )
-        .first;
-
-    expect(startOperationButton, findsOneWidget);
-    expect(sourceListScrollable, findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      startOperationButton,
-      200,
-      scrollable: sourceListScrollable,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(startOperationButton);
-    await tester.pumpAndSettle();
-
-    final workspace = tester
-        .widget<RegistryEngineeringOperationWorkspaceScreen>(
-          find.byType(RegistryEngineeringOperationWorkspaceScreen),
-        );
-
-    expect(
-      find.textContaining('helpy.service_intake.plumbing.faucet'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('Что требуется сделать?'), findsOneWidget);
-    expect(
-      workspace.revisionPrimaryEntityId,
-      RegistryEntityId('helpy.service_intake.plumbing.faucet'),
     );
   });
 
@@ -350,9 +290,29 @@ void main() {
         'registry.service_intake.plumbing.faucet.materials.guidance',
       );
 
+      RegistryDocumentNode nodeFor(ServiceIntakeSourceBlock block) {
+        return RegistryDocumentNode(
+          title: block.identity.heading,
+          headingLevel: block.identity.headingLevel,
+          headingPath: <String>[
+            'Registry',
+            block.identity.ownerHeading,
+            block.identity.heading,
+          ],
+          startLine: block.startLine,
+          endLine: block.endLine,
+          sourceText: block.sourceText,
+          children: const <RegistryDocumentNode>[],
+        );
+      }
+
       await tester.pumpWidget(
         _testApp(
           provider,
+          registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
+            <RegistryDocumentNode>[nodeFor(source), nodeFor(target)],
+          ),
+          registrySourceRevision: Future<String>.value(_sourceRevision),
           serviceIntakeSourceBlocks:
               Future<List<ServiceIntakeSourceBlock>>.value(
                 <ServiceIntakeSourceBlock>[source, target],
@@ -372,7 +332,7 @@ void main() {
         ),
       );
 
-      await _selectAppScreen(tester, 'Источник service intake');
+      await _selectAppScreen(tester, 'Registry');
 
       final Finder sourceHeading = find.text(source.identity.heading);
       await tester.ensureVisible(sourceHeading);
@@ -402,6 +362,9 @@ void main() {
       );
       await tester.ensureVisible(targetButton);
       await tester.tap(targetButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(targetHeading);
       await tester.pumpAndSettle();
 
       final Finder comparisonButton = find.byKey(
@@ -673,9 +636,23 @@ void main() {
       final _FakeTranslatorPhraseProvider provider =
           _FakeTranslatorPhraseProvider(_translatorResult());
 
+      final RegistryDocumentNode node = RegistryDocumentNode(
+        title: 'Registry',
+        headingLevel: 1,
+        headingPath: const <String>['Registry'],
+        startLine: 1,
+        endLine: 1,
+        sourceText: '# Registry\n',
+        children: const <RegistryDocumentNode>[],
+      );
+
       await tester.pumpWidget(
         _testApp(
           provider,
+          registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
+            <RegistryDocumentNode>[node],
+          ),
+          registrySourceRevision: Future<String>.value(_sourceRevision),
           serviceIntakeSourceBlocks:
               Future<List<ServiceIntakeSourceBlock>>.value(
                 <ServiceIntakeSourceBlock>[],
@@ -683,7 +660,7 @@ void main() {
         ),
       );
 
-      await _selectAppScreen(tester, 'Источник service intake');
+      await _selectAppScreen(tester, 'Registry');
       await _selectAppScreen(tester, 'Адаптивный переводчик');
 
       await tester.enterText(
