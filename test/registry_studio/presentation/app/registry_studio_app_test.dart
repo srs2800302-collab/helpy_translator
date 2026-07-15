@@ -3,12 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
+import 'package:helpy_translator/registry_studio/core/application/source_indexing/registry_document_node.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_relation.dart';
 import 'package:helpy_translator/registry_studio/operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
 import 'package:helpy_translator/registry_studio/presentation/app/registry_studio_app.dart';
 import 'package:helpy_translator/registry_studio/presentation/language/registry_studio_ui_language.dart';
+import 'package:helpy_translator/registry_studio/presentation/screens/registry_document_explorer_screen.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translate_phrase.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_phrase_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/presentation/screens/translator_phrase_screen.dart';
@@ -32,6 +34,36 @@ void main() {
       findsNothing,
     );
     expect(find.text('Адаптивный переводчик'), findsWidgets);
+  });
+
+  testWidgets('opens complete Registry read-only screen', (
+    WidgetTester tester,
+  ) async {
+    final RegistryDocumentNode node = RegistryDocumentNode(
+      title: 'Registry root',
+      headingLevel: 1,
+      headingPath: const <String>['Registry root'],
+      startLine: 1,
+      endLine: 2,
+      sourceText: '# Registry root\ncontent\n',
+      children: const <RegistryDocumentNode>[],
+    );
+
+    await tester.pumpWidget(
+      _testApp(
+        _FakeTranslatorPhraseProvider(_translatorResult()),
+        registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
+          <RegistryDocumentNode>[node],
+        ),
+      ),
+    );
+
+    await _selectAppScreen(tester, 'Registry');
+
+    expect(find.byType(RegistryDocumentExplorerScreen), findsOneWidget);
+    expect(find.text('Registry root'), findsOneWidget);
+    expect(find.textContaining('Строки: 1–2'), findsOneWidget);
+    expect(find.byType(TranslatorPhraseScreen), findsNothing);
   });
 
   testWidgets('starts operation from service intake source block', (
@@ -538,10 +570,12 @@ Future<void> _selectAppScreen(WidgetTester tester, String label) async {
 
 Widget _testApp(
   _FakeTranslatorPhraseProvider provider, {
+  Future<List<RegistryDocumentNode>>? registryDocumentNodes,
   Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks,
   Iterable<RegistryRelation>? relatedContextRelations,
 }) {
   return RegistryStudioApp(
+    registryDocumentNodes: registryDocumentNodes,
     serviceIntakeSourceBlocks: serviceIntakeSourceBlocks,
     translatePhrase: TranslatePhrase(provider: provider),
     createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),

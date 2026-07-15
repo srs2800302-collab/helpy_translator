@@ -10,6 +10,8 @@ import 'registry_studio/adapters/helpy/infrastructure/service_intake_identity_ma
 import 'registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
 import 'registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
+import 'registry_studio/core/application/source_indexing/registry_document_indexer.dart';
+import 'registry_studio/core/application/source_indexing/registry_document_node.dart';
 import 'registry_studio/presentation/app/registry_studio_app.dart';
 import 'registry_studio/translator/application/translate_phrase.dart';
 import 'registry_studio/translator/infrastructure/shared_preferences_translator_phrase_history_persistence.dart';
@@ -29,11 +31,21 @@ Future<void> main() async {
         appConfig: appConfig,
       );
 
+  final Future<GitHubRegistryDocumentSourceResult> registryDocumentSnapshot =
+      _loadRegistryDocumentSnapshot();
+
+  final Future<List<RegistryDocumentNode>> registryDocumentNodes =
+      registryDocumentSnapshot.then(
+        (GitHubRegistryDocumentSourceResult snapshot) =>
+            const RegistryDocumentIndexer().index(snapshot.content),
+      );
+
   final Future<List<ServiceIntakeSourceBlock>> serviceIntakeSourceBlocks =
-      _loadServiceIntakeSourceBlocks();
+      _loadServiceIntakeSourceBlocks(registryDocumentSnapshot);
 
   runApp(
     RegistryStudioApp(
+      registryDocumentNodes: registryDocumentNodes,
       serviceIntakeSourceBlocks: serviceIntakeSourceBlocks,
       workSessionPersistence: const RegistryWorkSessionPersistence(),
       translatorPhraseHistoryPersistence:
@@ -46,18 +58,24 @@ Future<void> main() async {
   );
 }
 
-Future<List<ServiceIntakeSourceBlock>> _loadServiceIntakeSourceBlocks() async {
+Future<GitHubRegistryDocumentSourceResult> _loadRegistryDocumentSnapshot() {
+  return GitHubRegistryDocumentSource(
+    dio: Dio(),
+    owner: 'srs2800302-collab',
+    repository: 'helpy',
+    documentPath: 'docs/architecture/Helpy_Architecture_Registry_v1.md',
+    ref: 'main',
+  ).load();
+}
+
+Future<List<ServiceIntakeSourceBlock>> _loadServiceIntakeSourceBlocks(
+  Future<GitHubRegistryDocumentSourceResult> registryDocumentSnapshot,
+) async {
   final List<ServiceIntakeIdentityManifestEntry> identities =
       await ServiceIntakeIdentityManifestSource(assetBundle: rootBundle).load();
 
   final GitHubRegistryDocumentSourceResult sourceResult =
-      await GitHubRegistryDocumentSource(
-        dio: Dio(),
-        owner: 'srs2800302-collab',
-        repository: 'helpy',
-        documentPath: 'docs/architecture/Helpy_Architecture_Registry_v1.md',
-        ref: 'main',
-      ).load();
+      await registryDocumentSnapshot;
 
   return const ServiceIntakeSourceBlockExtractor().extract(
     source: sourceResult.content,

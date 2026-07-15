@@ -10,6 +10,7 @@ import '../../core/application/change_impact/resolve_affected_registry_entity_id
 import '../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../core/application/source_comparison/compare_registry_source_text.dart';
+import '../../core/application/source_indexing/registry_document_node.dart';
 import '../../core/domain/value_objects/registry_entity_id.dart';
 import '../../core/domain/value_objects/registry_relation.dart';
 import '../../operation/presentation/screens/registry_engineering_operation_workspace_screen.dart';
@@ -19,6 +20,7 @@ import '../../translator/presentation/cubit/translator_phrase_cubit.dart';
 import '../../translator/presentation/screens/translator_phrase_screen.dart';
 import '../language/registry_studio_ui_labels.dart';
 import '../language/registry_studio_ui_language.dart';
+import '../screens/registry_document_explorer_screen.dart';
 import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
 import '../../translator/translator_phrase_result.dart';
 
@@ -32,6 +34,7 @@ final class RegistryStudioApp extends StatefulWidget {
     this.compareRegistrySourceText = const CompareRegistrySourceText(),
     this.resolveAffectedRegistryEntityIds =
         const ResolveAffectedRegistryEntityIds(),
+    this.registryDocumentNodes,
     this.serviceIntakeSourceBlocks,
     this.relatedContextRelations = const <RegistryRelation>[],
     super.key,
@@ -45,6 +48,7 @@ final class RegistryStudioApp extends StatefulWidget {
   final RegistryWorkSessionPersistence? workSessionPersistence;
   final CompareRegistrySourceText compareRegistrySourceText;
   final ResolveAffectedRegistryEntityIds resolveAffectedRegistryEntityIds;
+  final Future<List<RegistryDocumentNode>>? registryDocumentNodes;
   final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
   final Iterable<RegistryRelation> relatedContextRelations;
 
@@ -56,6 +60,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   static const int _translatorScreenIndex = 0;
   static const int _operationWorkspaceScreenIndex = 1;
   static const int _serviceIntakeSourceScreenIndex = 2;
+  static const int _registryDocumentScreenIndex = 3;
 
   static const Key _screenSelectorKey = Key('registry_studio_screen_selector');
 
@@ -86,6 +91,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     super.dispose();
   }
 
+  bool get _hasRegistryDocumentInput => widget.registryDocumentNodes != null;
+
   bool get _hasServiceIntakeSourceInput =>
       widget.serviceIntakeSourceBlocks != null;
 
@@ -99,6 +106,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _operationWorkspaceScreenIndex => labels.operationWorkspaceScreenTitle,
       _serviceIntakeSourceScreenIndex =>
         ServiceIntakeSourceBlocksScreen.titleFor(_selectedLanguage),
+      _registryDocumentScreenIndex => RegistryDocumentExplorerScreen.titleFor(
+        _selectedLanguage,
+      ),
       _ => labels.translatorScreenTitle,
     };
 
@@ -133,6 +143,18 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                       checked: _selectedScreenIndex == _translatorScreenIndex,
                       child: Text(labels.translatorScreenTitle),
                     ),
+                    if (_hasRegistryDocumentInput)
+                      CheckedPopupMenuItem<int>(
+                        value: _registryDocumentScreenIndex,
+                        checked:
+                            _selectedScreenIndex ==
+                            _registryDocumentScreenIndex,
+                        child: Text(
+                          RegistryDocumentExplorerScreen.titleFor(
+                            _selectedLanguage,
+                          ),
+                        ),
+                      ),
                     if (_hasServiceIntakeSourceInput)
                       CheckedPopupMenuItem<int>(
                         value: _serviceIntakeSourceScreenIndex,
@@ -318,6 +340,14 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   }
 
   Widget _currentScreen() {
+    if (_selectedScreenIndex == _registryDocumentScreenIndex &&
+        _hasRegistryDocumentInput) {
+      return RegistryDocumentExplorerScreen(
+        uiLanguage: _selectedLanguage,
+        nodes: widget.registryDocumentNodes!,
+      );
+    }
+
     if (_selectedScreenIndex == _serviceIntakeSourceScreenIndex &&
         _hasServiceIntakeSourceInput) {
       return ServiceIntakeSourceBlocksScreen(
