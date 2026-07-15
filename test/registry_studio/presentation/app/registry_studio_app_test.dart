@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/presentation/screens/service_intake_source_blocks_screen.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/application/source_indexing/registry_document_node.dart';
@@ -127,6 +128,127 @@ void main() {
     expect(workspace.revisionPrimaryEntityId, block.identity.entityId);
     expect(find.textContaining(block.identity.entityId.value), findsWidgets);
     expect(find.textContaining(block.sourceText.trim()), findsWidgets);
+  });
+
+  testWidgets('starts comparison from matching full Registry nodes', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final ServiceIntakeSourceBlock source = _serviceIntakeSourceBlock();
+    final ServiceIntakeSourceBlock target = (
+      identity: (
+        entityId: RegistryEntityId(
+          'helpy.service_intake.plumbing.faucet.replace',
+        ),
+        path: RegistryPath(const <String>[
+          'helpy',
+          'service_intake',
+          'plumbing',
+          'faucet',
+          'replace',
+        ]),
+        ownerHeadingLevel: 2,
+        ownerHeading: 'Plumbing',
+        headingLevel: 3,
+        heading: 'Plumbing → Замена крана',
+      ),
+      startLine: 120,
+      endLine: 130,
+      sourceText:
+          '### Plumbing → Замена крана\n'
+          '1. Что требуется сделать?\n'
+          '- Заменить существующий кран.\n',
+    );
+
+    RegistryDocumentNode nodeFor(ServiceIntakeSourceBlock block) {
+      return RegistryDocumentNode(
+        title: block.identity.heading,
+        headingLevel: block.identity.headingLevel,
+        headingPath: <String>[
+          'Registry',
+          block.identity.ownerHeading,
+          block.identity.heading,
+        ],
+        startLine: block.startLine,
+        endLine: block.endLine,
+        sourceText: block.sourceText,
+        children: const <RegistryDocumentNode>[],
+      );
+    }
+
+    await tester.pumpWidget(
+      _testApp(
+        _FakeTranslatorPhraseProvider(_translatorResult()),
+        registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
+          <RegistryDocumentNode>[nodeFor(source), nodeFor(target)],
+        ),
+        registrySourceRevision: Future<String>.value(_sourceRevision),
+        serviceIntakeSourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(
+          <ServiceIntakeSourceBlock>[source, target],
+        ),
+      ),
+    );
+
+    await _selectAppScreen(tester, 'Registry');
+
+    await tester.tap(find.text(source.identity.heading));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(
+        ValueKey<String>(
+          'service_intake_compare_source_'
+          '${source.identity.entityId.value}',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(target.identity.heading));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(
+        ValueKey<String>(
+          'service_intake_compare_target_'
+          '${target.identity.entityId.value}',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(target.identity.heading));
+    await tester.pumpAndSettle();
+
+    final Finder comparisonButton = find.byKey(
+      ServiceIntakeSourceBlocksScreen.comparisonActionKey,
+    );
+
+    expect(comparisonButton, findsOneWidget);
+
+    await tester.tap(comparisonButton);
+    await tester.pumpAndSettle();
+
+    final RegistryEngineeringOperationWorkspaceScreen workspace = tester
+        .widget<RegistryEngineeringOperationWorkspaceScreen>(
+          find.byType(RegistryEngineeringOperationWorkspaceScreen),
+        );
+
+    expect(workspace.revisionPrimaryEntityId, target.identity.entityId);
+    expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
+      source.identity.entityId,
+    ]);
+    expect(workspace.initialWorkingContent, target.sourceText.trim());
+    expect(
+      workspace.comparisonViewData?.sourceEntityId,
+      source.identity.entityId,
+    );
+    expect(
+      workspace.comparisonViewData?.targetEntityId,
+      target.identity.entityId,
+    );
   });
 
   testWidgets('starts operation from service intake source block', (

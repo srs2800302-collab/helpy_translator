@@ -73,6 +73,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   RegistryEntityId? _operationPrimaryEntityId;
   List<RegistryEntityId>? _operationRelatedEntityIds;
   RegistryOperationComparisonViewData? _operationComparisonViewData;
+  ServiceIntakeSourceBlock? _registryComparisonSource;
+  ServiceIntakeSourceBlock? _registryComparisonTarget;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
   late final TranslatorPhraseCubit _translatorPhraseCubit;
 
@@ -379,35 +381,165 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                 uiLanguage: _selectedLanguage,
                 nodes: widget.registryDocumentNodes!,
                 sourceRevision: widget.registrySourceRevision!,
-                nodeActionsBuilder:
-                    (BuildContext context, RegistryDocumentNode node) {
-                      final ServiceIntakeSourceBlock? block =
-                          blocksByRange[(node.startLine, node.endLine)];
+                nodeActionsBuilder: (BuildContext context, RegistryDocumentNode node) {
+                  final ServiceIntakeSourceBlock? block =
+                      blocksByRange[(node.startLine, node.endLine)];
 
-                      if (block == null) {
-                        return null;
-                      }
+                  if (block == null) {
+                    return null;
+                  }
 
-                      return SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          key: ValueKey<String>(
-                            'service_intake_start_operation_'
-                            '${block.identity.entityId.value}',
+                  final bool selectedAsSource =
+                      _registryComparisonSource?.identity.entityId ==
+                      block.identity.entityId;
+                  final bool selectedAsTarget =
+                      _registryComparisonTarget?.identity.entityId ==
+                      block.identity.entityId;
+                  final bool comparisonReady =
+                      _registryComparisonSource != null &&
+                      _registryComparisonTarget != null;
+
+                  final ({
+                    String source,
+                    String target,
+                    String compare,
+                    String selectedSource,
+                    String selectedTarget,
+                    String notSelected,
+                  })
+                  comparisonLabels = switch (_selectedLanguage) {
+                    RegistryStudioUiLanguage.ru => (
+                      source: 'Источник',
+                      target: 'Цель',
+                      compare: 'Сравнить выбранное',
+                      selectedSource: 'Выбранный источник',
+                      selectedTarget: 'Выбранная цель',
+                      notSelected: 'не выбрано',
+                    ),
+                    RegistryStudioUiLanguage.en => (
+                      source: 'Source',
+                      target: 'Target',
+                      compare: 'Compare selected',
+                      selectedSource: 'Selected source',
+                      selectedTarget: 'Selected target',
+                      notSelected: 'not selected',
+                    ),
+                    RegistryStudioUiLanguage.th => (
+                      source: 'ต้นทาง',
+                      target: 'เป้าหมาย',
+                      compare: 'เปรียบเทียบรายการที่เลือก',
+                      selectedSource: 'ต้นทางที่เลือก',
+                      selectedTarget: 'เป้าหมายที่เลือก',
+                      notSelected: 'ยังไม่ได้เลือก',
+                    ),
+                  };
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              key: ValueKey<String>(
+                                'service_intake_compare_source_'
+                                '${block.identity.entityId.value}',
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _registryComparisonSource = block;
+
+                                  if (selectedAsTarget) {
+                                    _registryComparisonTarget = null;
+                                  }
+                                });
+                                Navigator.of(context).pop();
+                              },
+                              icon: Icon(
+                                selectedAsSource
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_unchecked,
+                              ),
+                              label: Text(comparisonLabels.source),
+                            ),
                           ),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            _startOperationFromServiceIntakeSourceBlock(block);
-                          },
-                          icon: const Icon(Icons.engineering_outlined),
-                          label: Text(
-                            RegistryStudioUiLabels.forLanguage(
-                              _selectedLanguage,
-                            ).operationWorkspaceScreenTitle,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              key: ValueKey<String>(
+                                'service_intake_compare_target_'
+                                '${block.identity.entityId.value}',
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _registryComparisonTarget = block;
+
+                                  if (selectedAsSource) {
+                                    _registryComparisonSource = null;
+                                  }
+                                });
+                                Navigator.of(context).pop();
+                              },
+                              icon: Icon(
+                                selectedAsTarget
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_unchecked,
+                              ),
+                              label: Text(comparisonLabels.target),
+                            ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.icon(
+                        key: ValueKey<String>(
+                          'service_intake_start_operation_'
+                          '${block.identity.entityId.value}',
                         ),
-                      );
-                    },
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _startOperationFromServiceIntakeSourceBlock(block);
+                        },
+                        icon: const Icon(Icons.engineering_outlined),
+                        label: Text(
+                          RegistryStudioUiLabels.forLanguage(
+                            _selectedLanguage,
+                          ).operationWorkspaceScreenTitle,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        key:
+                            ServiceIntakeSourceBlocksScreen.comparisonActionKey,
+                        onPressed: comparisonReady
+                            ? () {
+                                final ServiceIntakeSourceBlock source =
+                                    _registryComparisonSource!;
+                                final ServiceIntakeSourceBlock target =
+                                    _registryComparisonTarget!;
+
+                                Navigator.of(context).pop();
+                                _startOperationFromServiceIntakeComparison(
+                                  source,
+                                  target,
+                                );
+                              }
+                            : null,
+                        child: Text(comparisonLabels.compare),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${comparisonLabels.selectedSource}: '
+                        '${_registryComparisonSource?.identity.heading ?? comparisonLabels.notSelected}',
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${comparisonLabels.selectedTarget}: '
+                        '${_registryComparisonTarget?.identity.heading ?? comparisonLabels.notSelected}',
+                      ),
+                    ],
+                  );
+                },
               );
             },
       );
