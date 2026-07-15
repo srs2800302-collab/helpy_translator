@@ -160,6 +160,14 @@ Registry Studio должен получить или восстановить:
 
 Registry Studio должен находить все места, которые прямо или косвенно зависят от изменённого элемента.
 
+Dependency graph строится по сущностям из всего Registry и не ограничивается отдельной root-категорией, project-specific adapter, identity manifest или semantic overlay.
+
+Весь Registry document должен индексироваться независимо от наличия глубокого semantic description. Отсутствие сущности в конкретном semantic manifest не делает её невидимой и не исключает из поиска, сравнения или dependency analysis.
+
+Project-specific semantic manifests являются расширяемыми overlays над полным Registry index. Они добавляют typed references, branch context и adapter-defined evidence для выбранных веток, но не определяют границы общего Registry.
+
+На текущем этапе блок Helpy service-intake состоит из 27 сущностей. Это число отражает только фактический текущий состав блока. Количество root-категорий, подкатегорий, услуг, бизнес-моделей, сущностей и сценариев может увеличиваться без изменения Core и алгоритма построения dependency graph.
+
 Поиск не ограничивается одинаковым текстом.
 
 Учитываются:
@@ -185,6 +193,10 @@ Registry Studio должен находить все места, которые 
 Текстовое совпадение без доказанной семантической связи является кандидатом, а не подтверждённой зависимостью.
 
 Registry Studio должен обходить прямые и транзитивные зависимости до полного построения затронутого change graph.
+
+Change graph может связывать сущности из любых веток Registry, включая service-intake, global rules, canonical dictionaries, identity, payments, chat, policies и будущие расширения.
+
+Добавление новых root-категорий, подкатегорий или сущностей не должно требовать изменения общего алгоритма графа. Расширяется только индексируемый Registry scope и соответствующие adapter-defined semantic overlays.
 
 ## 8. Классы найденных связей
 
