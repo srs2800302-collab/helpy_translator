@@ -32,10 +32,12 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: RegistryDocumentExplorerScreen(
-          uiLanguage: RegistryStudioUiLanguage.ru,
-          nodes: Future<List<RegistryDocumentNode>>.value(
-            <RegistryDocumentNode>[root],
+        home: Scaffold(
+          body: RegistryDocumentExplorerScreen(
+            uiLanguage: RegistryStudioUiLanguage.ru,
+            nodes: Future<List<RegistryDocumentNode>>.value(
+              <RegistryDocumentNode>[root],
+            ),
           ),
         ),
       ),
@@ -65,15 +67,119 @@ void main() {
     expect(find.byType(OutlinedButton), findsNothing);
   });
 
+  testWidgets('searches all nodes without matching ancestor descendant text', (
+    WidgetTester tester,
+  ) async {
+    final RegistryDocumentNode target = RegistryDocumentNode(
+      title: 'Canonical target',
+      headingLevel: 3,
+      headingPath: const <String>[
+        'Registry',
+        'Hidden domain',
+        'Canonical target',
+      ],
+      startLine: 3,
+      endLine: 4,
+      sourceText:
+          '### Canonical target\n'
+          'Unique searchable wording\n',
+      children: const <RegistryDocumentNode>[],
+    );
+
+    final RegistryDocumentNode domain = RegistryDocumentNode(
+      title: 'Hidden domain',
+      headingLevel: 2,
+      headingPath: const <String>['Registry', 'Hidden domain'],
+      startLine: 2,
+      endLine: 4,
+      sourceText:
+          '## Hidden domain\n'
+          '### Canonical target\n'
+          'Unique searchable wording\n',
+      children: <RegistryDocumentNode>[target],
+    );
+
+    final RegistryDocumentNode root = RegistryDocumentNode(
+      title: 'Registry',
+      headingLevel: 1,
+      headingPath: const <String>['Registry'],
+      startLine: 1,
+      endLine: 4,
+      sourceText:
+          '# Registry\n'
+          '## Hidden domain\n'
+          '### Canonical target\n'
+          'Unique searchable wording\n',
+      children: <RegistryDocumentNode>[domain],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RegistryDocumentExplorerScreen(
+            uiLanguage: RegistryStudioUiLanguage.ru,
+            nodes: Future<List<RegistryDocumentNode>>.value(
+              <RegistryDocumentNode>[root],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    Finder searchField() =>
+        find.byKey(RegistryDocumentExplorerScreen.searchKey);
+
+    expect(searchField(), findsOneWidget);
+    expect(find.text('Canonical target'), findsNothing);
+
+    await tester.enterText(searchField(), 'unique SEARCHABLE wording');
+    await tester.pump();
+
+    expect(find.text('Показано: 1 из 3'), findsOneWidget);
+    expect(find.text('Canonical target'), findsOneWidget);
+    expect(find.text('Registry'), findsNothing);
+    expect(find.text('Hidden domain'), findsNothing);
+    expect(
+      find.textContaining('Путь: Registry / Hidden domain / Canonical target'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Строки: 3–4'), findsOneWidget);
+
+    await tester.enterText(searchField(), 'hidden domain');
+    await tester.pump();
+
+    expect(find.text('Показано: 2 из 3'), findsOneWidget);
+    expect(find.text('Hidden domain'), findsOneWidget);
+    expect(find.text('Canonical target'), findsOneWidget);
+
+    await tester.enterText(searchField(), 'missing section');
+    await tester.pump();
+
+    expect(find.text('Показано: 0 из 3'), findsOneWidget);
+    expect(find.text('Совпадения не найдены'), findsOneWidget);
+
+    await tester.tap(find.byKey(RegistryDocumentExplorerScreen.clearSearchKey));
+    await tester.pump();
+
+    expect(find.text('Корневых разделов: 1'), findsOneWidget);
+    expect(find.text('Registry'), findsOneWidget);
+    expect(find.text('Canonical target'), findsNothing);
+    expect(find.text('Совпадения не найдены'), findsNothing);
+  });
+
   testWidgets('shows loading and error states', (WidgetTester tester) async {
     final Completer<List<RegistryDocumentNode>> completer =
         Completer<List<RegistryDocumentNode>>();
 
     await tester.pumpWidget(
       MaterialApp(
-        home: RegistryDocumentExplorerScreen(
-          uiLanguage: RegistryStudioUiLanguage.en,
-          nodes: completer.future,
+        home: Scaffold(
+          body: RegistryDocumentExplorerScreen(
+            uiLanguage: RegistryStudioUiLanguage.en,
+            nodes: completer.future,
+          ),
         ),
       ),
     );
