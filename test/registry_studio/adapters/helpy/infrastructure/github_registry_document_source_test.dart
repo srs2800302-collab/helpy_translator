@@ -21,9 +21,16 @@ void main() {
         token: 'test-token',
       );
 
-      final String document = await source.load();
+      final GitHubRegistryDocumentSourceResult result = await source.load();
 
-      expect(document, '## Registry\n- Правило\n');
+      expect(result.content, '## Registry\n- Правило\n');
+      expect(
+        result.documentPath,
+        'docs/architecture/Helpy_Architecture_Registry_v1.md',
+      );
+      expect(result.requestedRef, 'main');
+      expect(result.sourceRevision, startsWith('fnv1a64:'));
+      expect(result.sourceSnapshotFingerprint, result.sourceRevision);
       expect(requests, hasLength(1));
 
       final RequestOptions request = requests.single;

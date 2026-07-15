@@ -1,4 +1,22 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
+
+final class GitHubRegistryDocumentSourceResult {
+  const GitHubRegistryDocumentSourceResult({
+    required this.content,
+    required this.documentPath,
+    required this.requestedRef,
+    required this.sourceRevision,
+    required this.sourceSnapshotFingerprint,
+  });
+
+  final String content;
+  final String documentPath;
+  final String requestedRef;
+  final String sourceRevision;
+  final String sourceSnapshotFingerprint;
+}
 
 final class GitHubRegistryDocumentSource {
   factory GitHubRegistryDocumentSource({
@@ -47,7 +65,7 @@ final class GitHubRegistryDocumentSource {
   final String ref;
   final String token;
 
-  Future<String> load() async {
+  Future<GitHubRegistryDocumentSourceResult> load() async {
     final Uri uri = Uri(
       scheme: 'https',
       host: _host,
@@ -97,8 +115,31 @@ final class GitHubRegistryDocumentSource {
       );
     }
 
-    return data;
+    final String sourceSnapshotFingerprint = _fingerprint(data);
+
+    return GitHubRegistryDocumentSourceResult(
+      content: data,
+      documentPath: documentPath,
+      requestedRef: ref,
+      sourceRevision: sourceSnapshotFingerprint,
+      sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+    );
   }
+}
+
+String _fingerprint(String source) {
+  const int offsetBasis = 0xcbf29ce484222325;
+  const int prime = 0x100000001b3;
+  const int mask = 0xffffffffffffffff;
+
+  int hash = offsetBasis;
+
+  for (final int byte in utf8.encode(source)) {
+    hash ^= byte;
+    hash = (hash * prime) & mask;
+  }
+
+  return 'fnv1a64:${hash.toRadixString(16).padLeft(16, '0')}';
 }
 
 String _requiredValue(String value, String parameterName) {

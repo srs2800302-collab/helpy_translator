@@ -50,16 +50,17 @@ Future<List<ServiceIntakeSourceBlock>> _loadServiceIntakeSourceBlocks() async {
   final List<ServiceIntakeIdentityManifestEntry> identities =
       await ServiceIntakeIdentityManifestSource(assetBundle: rootBundle).load();
 
-  final String source = await GitHubRegistryDocumentSource(
-    dio: Dio(),
-    owner: 'srs2800302-collab',
-    repository: 'helpy',
-    documentPath: 'docs/architecture/Helpy_Architecture_Registry_v1.md',
-    ref: 'main',
-  ).load();
+  final GitHubRegistryDocumentSourceResult sourceResult =
+      await GitHubRegistryDocumentSource(
+        dio: Dio(),
+        owner: 'srs2800302-collab',
+        repository: 'helpy',
+        documentPath: 'docs/architecture/Helpy_Architecture_Registry_v1.md',
+        ref: 'main',
+      ).load();
 
   return const ServiceIntakeSourceBlockExtractor().extract(
-    source: source,
+    source: sourceResult.content,
     identities: identities,
   );
 }
