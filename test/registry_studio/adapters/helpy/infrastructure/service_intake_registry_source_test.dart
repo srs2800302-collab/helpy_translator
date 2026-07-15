@@ -15,12 +15,17 @@ void main() {
   group('ServiceIntakeRegistrySource', () {
     test('loads one synchronized source-backed registry snapshot', () async {
       final List<RequestOptions> requests = <RequestOptions>[];
-      final Dio dio = _dioWithResponse(
-        statusCode: 200,
-        data:
-            '## Plumbing Mini-TZ Standard\n'
-            '### Plumbing → Кран\n'
-            'Описание услуги.\n',
+      final Dio dio = _dioWithResponses(
+        responses: <_TestResponse>[
+          (statusCode: 200, data: <String, Object?>{'sha': _exactCommitSha}),
+          (
+            statusCode: 200,
+            data:
+                '## Plumbing Mini-TZ Standard\n'
+                '### Plumbing → Кран\n'
+                'Описание услуги.\n',
+          ),
+        ],
         requests: requests,
       );
 
@@ -42,10 +47,11 @@ void main() {
 
       final ServiceIntakeRegistrySourceResult result = await source.load();
 
-      expect(requests, hasLength(1));
+      expect(requests, hasLength(2));
       expect(result.sourceDocumentPath, 'docs/registry.md');
-      expect(result.sourceRevision, startsWith('fnv1a64:'));
-      expect(result.sourceSnapshotFingerprint, result.sourceRevision);
+      expect(result.sourceRevision, _exactCommitSha);
+      expect(result.sourceSnapshotFingerprint, startsWith('fnv1a64:'));
+      expect(result.sourceSnapshotFingerprint, isNot(result.sourceRevision));
 
       expect(result.sourceBlocks, hasLength(1));
       expect(result.entities, hasLength(1));
@@ -129,23 +135,37 @@ String _semanticManifest() {
   });
 }
 
-Dio _dioWithResponse({
-  required int statusCode,
-  required Object? data,
+typedef _TestResponse = ({int statusCode, Object? data});
+
+Dio _dioWithResponses({
+  required List<_TestResponse> responses,
   List<RequestOptions>? requests,
 }) {
   final Dio dio = Dio();
+  int responseIndex = 0;
 
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (RequestOptions options, RequestInterceptorHandler handler) {
         requests?.add(options);
 
+        if (responseIndex >= responses.length) {
+          handler.reject(
+            DioException(
+              requestOptions: options,
+              error: 'Unexpected test request.',
+            ),
+          );
+          return;
+        }
+
+        final _TestResponse response = responses[responseIndex++];
+
         handler.resolve(
           Response<dynamic>(
             requestOptions: options,
-            statusCode: statusCode,
-            data: data,
+            statusCode: response.statusCode,
+            data: response.data,
           ),
         );
       },
@@ -176,3 +196,5 @@ final class _MemoryAssetBundle extends CachingAssetBundle {
 
 const String _identityManifestPath = 'identity.json';
 const String _semanticManifestPath = 'semantic.json';
+
+const String _exactCommitSha = '8e26a1eed581f96aa57f4b400dd4b6d59c30168f';

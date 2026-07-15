@@ -55,8 +55,11 @@ final class GitHubRegistryDocumentSource {
   });
 
   static const String _host = 'api.github.com';
+  static const String _jsonMediaType = 'application/vnd.github+json';
   static const String _rawMediaType = 'application/vnd.github.raw+json';
   static const String _userAgent = 'registry-studio';
+
+  static final RegExp _commitShaPattern = RegExp(r'^[0-9a-f]{40}$');
 
   final Dio dio;
   final String owner;
@@ -66,7 +69,53 @@ final class GitHubRegistryDocumentSource {
   final String token;
 
   Future<GitHubRegistryDocumentSourceResult> load() async {
-    final Uri uri = Uri(
+    final Uri revisionUri = Uri(
+      scheme: 'https',
+      host: _host,
+      pathSegments: <String>['repos', owner, repository, 'commits', ref],
+    );
+
+    final Response<dynamic> revisionResponse = await dio.getUri<dynamic>(
+      revisionUri,
+      options: Options(
+        responseType: ResponseType.json,
+        validateStatus: (int? status) => true,
+        headers: _headers(_jsonMediaType),
+      ),
+    );
+
+    final int? revisionStatusCode = revisionResponse.statusCode;
+
+    if (revisionStatusCode == null ||
+        revisionStatusCode < 200 ||
+        revisionStatusCode >= 300) {
+      throw StateError(
+        'GitHub registry revision resolve failed: '
+        'HTTP ${revisionStatusCode ?? "unknown"}.',
+      );
+    }
+
+    final Object? revisionData = revisionResponse.data;
+
+    if (revisionData is! Map<String, dynamic>) {
+      throw const FormatException(
+        'GitHub registry revision response must be a JSON object.',
+      );
+    }
+
+    final Object? revisionValue = revisionData['sha'];
+
+    if (revisionValue is! String ||
+        !_commitShaPattern.hasMatch(revisionValue)) {
+      throw const FormatException(
+        'GitHub registry revision response must contain '
+        'an exact lowercase 40-character commit SHA.',
+      );
+    }
+
+    final String sourceRevision = revisionValue;
+
+    final Uri documentUri = Uri(
       scheme: 'https',
       host: _host,
       pathSegments: <String>[
@@ -76,54 +125,60 @@ final class GitHubRegistryDocumentSource {
         'contents',
         ...documentPath.split('/'),
       ],
-      queryParameters: <String, String>{'ref': ref},
+      queryParameters: <String, String>{'ref': sourceRevision},
     );
 
-    final Response<dynamic> response = await dio.getUri<dynamic>(
-      uri,
+    final Response<dynamic> documentResponse = await dio.getUri<dynamic>(
+      documentUri,
       options: Options(
         responseType: ResponseType.plain,
         validateStatus: (int? status) => true,
-        headers: <String, String>{
-          'Accept': _rawMediaType,
-          'User-Agent': _userAgent,
-          if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-        },
+        headers: _headers(_rawMediaType),
       ),
     );
 
-    final int? statusCode = response.statusCode;
+    final int? documentStatusCode = documentResponse.statusCode;
 
-    if (statusCode == null || statusCode < 200 || statusCode >= 300) {
+    if (documentStatusCode == null ||
+        documentStatusCode < 200 ||
+        documentStatusCode >= 300) {
       throw StateError(
         'GitHub registry document load failed: '
-        'HTTP ${statusCode ?? "unknown"}.',
+        'HTTP ${documentStatusCode ?? "unknown"}.',
       );
     }
 
-    final Object? data = response.data;
+    final Object? documentData = documentResponse.data;
 
-    if (data is! String) {
+    if (documentData is! String) {
       throw const FormatException(
         'GitHub registry document response must be raw text.',
       );
     }
 
-    if (data.trim().isEmpty) {
+    if (documentData.trim().isEmpty) {
       throw const FormatException(
         'GitHub registry document must not be empty.',
       );
     }
 
-    final String sourceSnapshotFingerprint = _fingerprint(data);
+    final String sourceSnapshotFingerprint = _fingerprint(documentData);
 
     return GitHubRegistryDocumentSourceResult(
-      content: data,
+      content: documentData,
       documentPath: documentPath,
       requestedRef: ref,
-      sourceRevision: sourceSnapshotFingerprint,
+      sourceRevision: sourceRevision,
       sourceSnapshotFingerprint: sourceSnapshotFingerprint,
     );
+  }
+
+  Map<String, String> _headers(String mediaType) {
+    return <String, String>{
+      'Accept': mediaType,
+      'User-Agent': _userAgent,
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
   }
 }
 
