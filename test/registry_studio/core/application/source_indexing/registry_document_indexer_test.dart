@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/application/source_indexing/registry_document_indexer.dart';
 import 'package:helpy_translator/registry_studio/core/application/source_indexing/registry_document_node.dart';
@@ -76,6 +78,55 @@ void main() {
         expect(domainB.startLine, 10);
         expect(domainB.endLine, 11);
       },
+    );
+
+    test(
+      'indexes the complete pinned production Registry snapshot',
+      () {
+        final String snapshotPath =
+            Platform.environment['REGISTRY_STUDIO_FULL_REGISTRY_SNAPSHOT']!;
+        final String source = File(snapshotPath).readAsStringSync();
+
+        final List<RegistryDocumentNode> roots = indexer.index(source);
+        final List<RegistryDocumentNode> nodes = _flattenNodes(roots);
+
+        expect(roots, hasLength(1));
+        expect(nodes, hasLength(534));
+
+        expect(
+          <int, int>{
+            for (int level = 1; level <= 6; level++)
+              level: nodes
+                  .where(
+                    (RegistryDocumentNode node) => node.headingLevel == level,
+                  )
+                  .length,
+          },
+          <int, int>{1: 1, 2: 69, 3: 301, 4: 104, 5: 42, 6: 17},
+        );
+
+        final RegistryDocumentNode root = roots.single;
+        final RegistryDocumentNode last = nodes.last;
+
+        expect(root.title, 'Helpy Architecture Registry v1 Foundation');
+        expect(root.headingLevel, 1);
+        expect(root.startLine, 1);
+        expect(root.endLine, 14699);
+        expect(root.sourceText, source);
+
+        expect(last.title, 'Not Used');
+        expect(last.headingLevel, 3);
+        expect(last.startLine, 14690);
+        expect(last.endLine, 14699);
+        expect(
+          last.sourceText,
+          endsWith('• использование одного аккаунта несколькими людьми.\n'),
+        );
+      },
+      skip:
+          Platform.environment['REGISTRY_STUDIO_FULL_REGISTRY_SNAPSHOT'] == null
+          ? 'Full Registry snapshot path is not configured.'
+          : false,
     );
 
     test('preserves duplicate titles under different parents', () {
@@ -196,4 +247,15 @@ void main() {
       expect(() => section.headingPath.add('Mutation'), throwsUnsupportedError);
     });
   });
+}
+
+List<RegistryDocumentNode> _flattenNodes(Iterable<RegistryDocumentNode> nodes) {
+  final List<RegistryDocumentNode> result = <RegistryDocumentNode>[];
+
+  for (final RegistryDocumentNode node in nodes) {
+    result.add(node);
+    result.addAll(_flattenNodes(node.children));
+  }
+
+  return result;
 }

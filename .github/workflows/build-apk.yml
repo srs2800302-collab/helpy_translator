@@ -36,9 +36,23 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Download pinned Registry snapshot
+        run: |
+          curl \
+            --fail \
+            --location \
+            --silent \
+            --show-error \
+            --output "$RUNNER_TEMP/Helpy_Architecture_Registry_v1.md" \
+            "https://raw.githubusercontent.com/srs2800302-collab/helpy/8e26a1eed581f96aa57f4b400dd4b6d59c30168f/docs/architecture/Helpy_Architecture_Registry_v1.md"
+          test -s "$RUNNER_TEMP/Helpy_Architecture_Registry_v1.md"
+
       - name: Analyze
         run: flutter analyze
+
       - name: Test
+        env:
+          REGISTRY_STUDIO_FULL_REGISTRY_SNAPSHOT: ${{ runner.temp }}/Helpy_Architecture_Registry_v1.md
         run: flutter test
 
       - name: Build debug APK
