@@ -222,8 +222,31 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final Finder searchField = find.byKey(
+      RegistryDocumentExplorerScreen.searchKey,
+    );
+
+    await tester.enterText(searchField, target.identity.entityId.value);
+    await tester.pumpAndSettle();
+
+    expect(find.text(source.identity.heading), findsNothing);
+    expect(find.text(target.identity.heading), findsOneWidget);
+
     await tester.tap(find.text(target.identity.heading));
     await tester.pumpAndSettle();
+
+    expect(
+      find.text('Выбранный источник: ${source.identity.heading}'),
+      findsOneWidget,
+    );
+    expect(find.text('Выбранная цель: не выбрано'), findsOneWidget);
+
+    final Finder comparisonButton = find.byKey(
+      const Key('service_intake_source_comparison_action'),
+    );
+
+    expect(comparisonButton, findsOneWidget);
+    expect(tester.widget<FilledButton>(comparisonButton).onPressed, isNull);
 
     await tester.tap(
       find.byKey(
@@ -238,11 +261,15 @@ void main() {
     await tester.tap(find.text(target.identity.heading));
     await tester.pumpAndSettle();
 
-    final Finder comparisonButton = find.byKey(
-      const Key('service_intake_source_comparison_action'),
+    expect(
+      find.text('Выбранный источник: ${source.identity.heading}'),
+      findsOneWidget,
     );
-
-    expect(comparisonButton, findsOneWidget);
+    expect(
+      find.text('Выбранная цель: ${target.identity.heading}'),
+      findsOneWidget,
+    );
+    expect(tester.widget<FilledButton>(comparisonButton).onPressed, isNotNull);
 
     await tester.tap(comparisonButton);
     await tester.pumpAndSettle();
@@ -265,6 +292,93 @@ void main() {
       workspace.comparisonViewData?.targetEntityId,
       target.identity.entityId,
     );
+  });
+
+  testWidgets('moves one full Registry identity from source to target', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final ServiceIntakeSourceBlock block = _serviceIntakeSourceBlock();
+    final RegistryDocumentNode node = RegistryDocumentNode(
+      title: block.identity.heading,
+      headingLevel: block.identity.headingLevel,
+      headingPath: <String>[
+        'Registry',
+        block.identity.ownerHeading,
+        block.identity.heading,
+      ],
+      startLine: block.startLine,
+      endLine: block.endLine,
+      sourceText: block.sourceText,
+      children: const <RegistryDocumentNode>[],
+    );
+
+    await tester.pumpWidget(
+      _testApp(
+        _FakeTranslatorPhraseProvider(_translatorResult()),
+        registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
+          <RegistryDocumentNode>[node],
+        ),
+        registrySourceRevision: Future<String>.value(_sourceRevision),
+        serviceIntakeSourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(
+          <ServiceIntakeSourceBlock>[block],
+        ),
+      ),
+    );
+
+    await _selectAppScreen(tester, 'Registry');
+
+    final Finder heading = find.text(block.identity.heading);
+
+    await tester.tap(heading);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(
+        ValueKey<String>(
+          'service_intake_compare_source_'
+          '${block.identity.entityId.value}',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(heading);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Выбранный источник: ${block.identity.heading}'),
+      findsOneWidget,
+    );
+    expect(find.text('Выбранная цель: не выбрано'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        ValueKey<String>(
+          'service_intake_compare_target_'
+          '${block.identity.entityId.value}',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(heading);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Выбранный источник: не выбрано'), findsOneWidget);
+    expect(
+      find.text('Выбранная цель: ${block.identity.heading}'),
+      findsOneWidget,
+    );
+
+    final Finder comparisonButton = find.byKey(
+      const Key('service_intake_source_comparison_action'),
+    );
+
+    expect(comparisonButton, findsOneWidget);
+    expect(tester.widget<FilledButton>(comparisonButton).onPressed, isNull);
   });
 
   testWidgets(
