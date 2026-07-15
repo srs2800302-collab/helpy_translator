@@ -133,13 +133,6 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                       checked: _selectedScreenIndex == _translatorScreenIndex,
                       child: Text(labels.translatorScreenTitle),
                     ),
-                    CheckedPopupMenuItem<int>(
-                      value: _operationWorkspaceScreenIndex,
-                      checked:
-                          _selectedScreenIndex ==
-                          _operationWorkspaceScreenIndex,
-                      child: Text(labels.operationWorkspaceScreenTitle),
-                    ),
                     if (_hasServiceIntakeSourceInput)
                       CheckedPopupMenuItem<int>(
                         value: _serviceIntakeSourceScreenIndex,

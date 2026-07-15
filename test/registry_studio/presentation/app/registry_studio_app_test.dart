@@ -407,7 +407,7 @@ void main() {
     expect(find.text('ตัวแปลแบบปรับตามบริบท'), findsWidgets);
   });
 
-  testWidgets('opens empty engineering operation workspace', (
+  testWidgets('does not expose engineering operation in top-level menu', (
     WidgetTester tester,
   ) async {
     final _FakeTranslatorPhraseProvider provider =
@@ -415,17 +415,14 @@ void main() {
 
     await tester.pumpWidget(_testApp(provider));
 
-    await _selectAppScreen(tester, 'Инженерная операция');
+    await tester.tap(find.byKey(const Key('registry_studio_screen_selector')));
+    await tester.pumpAndSettle();
 
+    expect(find.text('Инженерная операция'), findsNothing);
     expect(
       find.byType(RegistryEngineeringOperationWorkspaceScreen),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(
-      find.text('Сначала выберите источник и цель изменения.'),
-      findsOneWidget,
-    );
-    expect(find.byType(TranslatorPhraseScreen), findsNothing);
   });
 
   testWidgets(
@@ -437,10 +434,17 @@ void main() {
       final _FakeTranslatorPhraseProvider provider =
           _FakeTranslatorPhraseProvider(_translatorResult());
 
-      await tester.pumpWidget(_testApp(provider));
+      await tester.pumpWidget(
+        _testApp(
+          provider,
+          serviceIntakeSourceBlocks:
+              Future<List<ServiceIntakeSourceBlock>>.value(
+                <ServiceIntakeSourceBlock>[],
+              ),
+        ),
+      );
 
-      await _selectAppScreen(tester, 'Инженерная операция');
-
+      await _selectAppScreen(tester, 'Источник service intake');
       await _selectAppScreen(tester, 'Адаптивный переводчик');
 
       await tester.enterText(
@@ -515,11 +519,11 @@ void main() {
     expect(find.textContaining(result.candidateCanonicalPhrase!), findsWidgets);
 
     await _selectAppScreen(tester, 'Адаптивный переводчик');
-    await _selectAppScreen(tester, 'Инженерная операция');
 
+    expect(find.byType(TranslatorPhraseScreen), findsOneWidget);
     expect(
-      find.text('Сначала выберите источник и цель изменения.'),
-      findsOneWidget,
+      find.byType(RegistryEngineeringOperationWorkspaceScreen),
+      findsNothing,
     );
   });
 }
