@@ -40,12 +40,17 @@ Future<void> main() async {
             const RegistryDocumentIndexer().index(snapshot.content),
       );
 
+  final Future<String> registrySourceRevision = registryDocumentSnapshot.then(
+    (GitHubRegistryDocumentSourceResult snapshot) => snapshot.sourceRevision,
+  );
+
   final Future<List<ServiceIntakeSourceBlock>> serviceIntakeSourceBlocks =
       _loadServiceIntakeSourceBlocks(registryDocumentSnapshot);
 
   runApp(
     RegistryStudioApp(
       registryDocumentNodes: registryDocumentNodes,
+      registrySourceRevision: registrySourceRevision,
       serviceIntakeSourceBlocks: serviceIntakeSourceBlocks,
       workSessionPersistence: const RegistryWorkSessionPersistence(),
       translatorPhraseHistoryPersistence:

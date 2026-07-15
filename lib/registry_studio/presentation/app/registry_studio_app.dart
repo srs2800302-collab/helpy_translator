@@ -35,6 +35,7 @@ final class RegistryStudioApp extends StatefulWidget {
     this.resolveAffectedRegistryEntityIds =
         const ResolveAffectedRegistryEntityIds(),
     this.registryDocumentNodes,
+    this.registrySourceRevision,
     this.serviceIntakeSourceBlocks,
     this.relatedContextRelations = const <RegistryRelation>[],
     super.key,
@@ -49,6 +50,7 @@ final class RegistryStudioApp extends StatefulWidget {
   final CompareRegistrySourceText compareRegistrySourceText;
   final ResolveAffectedRegistryEntityIds resolveAffectedRegistryEntityIds;
   final Future<List<RegistryDocumentNode>>? registryDocumentNodes;
+  final Future<String>? registrySourceRevision;
   final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
   final Iterable<RegistryRelation> relatedContextRelations;
 
@@ -91,7 +93,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     super.dispose();
   }
 
-  bool get _hasRegistryDocumentInput => widget.registryDocumentNodes != null;
+  bool get _hasRegistryDocumentInput =>
+      widget.registryDocumentNodes != null &&
+      widget.registrySourceRevision != null;
 
   bool get _hasServiceIntakeSourceInput =>
       widget.serviceIntakeSourceBlocks != null;
@@ -345,6 +349,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       return RegistryDocumentExplorerScreen(
         uiLanguage: _selectedLanguage,
         nodes: widget.registryDocumentNodes!,
+        sourceRevision: widget.registrySourceRevision!,
       );
     }
 

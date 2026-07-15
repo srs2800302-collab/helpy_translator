@@ -55,6 +55,7 @@ void main() {
         registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
           <RegistryDocumentNode>[node],
         ),
+        registrySourceRevision: Future<String>.value(_sourceRevision),
       ),
     );
 
@@ -62,6 +63,7 @@ void main() {
 
     expect(find.byType(RegistryDocumentExplorerScreen), findsOneWidget);
     expect(find.text('Registry root'), findsOneWidget);
+    expect(find.text('Исходная ревизия: $_sourceRevision'), findsOneWidget);
     expect(find.textContaining('Строки: 1–2'), findsOneWidget);
     expect(find.byType(TranslatorPhraseScreen), findsNothing);
   });
@@ -571,11 +573,13 @@ Future<void> _selectAppScreen(WidgetTester tester, String label) async {
 Widget _testApp(
   _FakeTranslatorPhraseProvider provider, {
   Future<List<RegistryDocumentNode>>? registryDocumentNodes,
+  Future<String>? registrySourceRevision,
   Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks,
   Iterable<RegistryRelation>? relatedContextRelations,
 }) {
   return RegistryStudioApp(
     registryDocumentNodes: registryDocumentNodes,
+    registrySourceRevision: registrySourceRevision,
     serviceIntakeSourceBlocks: serviceIntakeSourceBlocks,
     translatePhrase: TranslatePhrase(provider: provider),
     createRegistryEngineeringOperation: CreateRegistryEngineeringOperation(),
@@ -638,3 +642,5 @@ final class _FakeTranslatorPhraseProvider implements TranslatorPhraseProvider {
     return result;
   }
 }
+
+const String _sourceRevision = '0123456789abcdef0123456789abcdef01234567';

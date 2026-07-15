@@ -35,6 +35,7 @@ void main() {
         home: Scaffold(
           body: RegistryDocumentExplorerScreen(
             uiLanguage: RegistryStudioUiLanguage.ru,
+            sourceRevision: Future<String>.value(_sourceRevision),
             nodes: Future<List<RegistryDocumentNode>>.value(
               <RegistryDocumentNode>[root],
             ),
@@ -47,6 +48,7 @@ void main() {
 
     expect(find.text('Корневых разделов: 1'), findsOneWidget);
     expect(find.text('Registry'), findsOneWidget);
+    expect(find.text('Исходная ревизия: $_sourceRevision'), findsOneWidget);
     expect(find.textContaining('Уровень: H1'), findsOneWidget);
     expect(find.textContaining('Путь: Registry'), findsOneWidget);
     expect(find.textContaining('Строки: 1–3'), findsOneWidget);
@@ -62,7 +64,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Child source'), findsOneWidget);
-    expect(find.byType(SelectableText), findsOneWidget);
+    expect(
+      find.widgetWithText(SelectableText, '## Child\nChild source\n'),
+      findsOneWidget,
+    );
     expect(find.byType(FilledButton), findsNothing);
     expect(find.byType(OutlinedButton), findsNothing);
   });
@@ -118,6 +123,7 @@ void main() {
         home: Scaffold(
           body: RegistryDocumentExplorerScreen(
             uiLanguage: RegistryStudioUiLanguage.ru,
+            sourceRevision: Future<String>.value(_sourceRevision),
             nodes: Future<List<RegistryDocumentNode>>.value(
               <RegistryDocumentNode>[root],
             ),
@@ -178,6 +184,7 @@ void main() {
         home: Scaffold(
           body: RegistryDocumentExplorerScreen(
             uiLanguage: RegistryStudioUiLanguage.en,
+            sourceRevision: Future<String>.value(_sourceRevision),
             nodes: completer.future,
           ),
         ),
@@ -199,3 +206,5 @@ void main() {
     );
   });
 }
+
+const String _sourceRevision = '0123456789abcdef0123456789abcdef01234567';

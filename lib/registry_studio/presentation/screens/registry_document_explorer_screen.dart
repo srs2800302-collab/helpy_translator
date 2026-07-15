@@ -7,6 +7,7 @@ final class RegistryDocumentExplorerScreen extends StatefulWidget {
   const RegistryDocumentExplorerScreen({
     required this.uiLanguage,
     required this.nodes,
+    required this.sourceRevision,
     super.key,
   });
 
@@ -20,6 +21,7 @@ final class RegistryDocumentExplorerScreen extends StatefulWidget {
 
   final RegistryStudioUiLanguage uiLanguage;
   final Future<List<RegistryDocumentNode>> nodes;
+  final Future<String> sourceRevision;
 
   static String titleFor(RegistryStudioUiLanguage language) {
     return switch (language) {
@@ -103,6 +105,22 @@ final class _RegistryDocumentExplorerScreenState
                         : '${labels.shownCount}: ${visibleNodes.length} '
                               '${labels.ofCount} ${allNodes.length}',
                     style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                  child: FutureBuilder<String>(
+                    future: widget.sourceRevision,
+                    builder:
+                        (
+                          BuildContext context,
+                          AsyncSnapshot<String> revisionSnapshot,
+                        ) {
+                          return SelectableText(
+                            '${labels.sourceRevision}: '
+                            '${revisionSnapshot.data ?? labels.loadingRevision}',
+                          );
+                        },
                   ),
                 ),
                 TextField(
@@ -308,6 +326,8 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
 
 typedef _RegistryDocumentExplorerLabels = ({
   String rootSections,
+  String sourceRevision,
+  String loadingRevision,
   String shownCount,
   String ofCount,
   String level,
@@ -326,6 +346,8 @@ _RegistryDocumentExplorerLabels _labels(RegistryStudioUiLanguage language) {
   return switch (language) {
     RegistryStudioUiLanguage.ru => (
       rootSections: 'Корневых разделов',
+      sourceRevision: 'Исходная ревизия',
+      loadingRevision: 'загрузка',
       shownCount: 'Показано',
       ofCount: 'из',
       level: 'Уровень',
@@ -341,6 +363,8 @@ _RegistryDocumentExplorerLabels _labels(RegistryStudioUiLanguage language) {
     ),
     RegistryStudioUiLanguage.en => (
       rootSections: 'Root sections',
+      sourceRevision: 'Source revision',
+      loadingRevision: 'loading',
       shownCount: 'Shown',
       ofCount: 'of',
       level: 'Level',
@@ -356,6 +380,8 @@ _RegistryDocumentExplorerLabels _labels(RegistryStudioUiLanguage language) {
     ),
     RegistryStudioUiLanguage.th => (
       rootSections: 'ส่วนราก',
+      sourceRevision: 'รีวิชันต้นทาง',
+      loadingRevision: 'กำลังโหลด',
       shownCount: 'แสดง',
       ofCount: 'จาก',
       level: 'ระดับ',
