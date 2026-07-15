@@ -68,6 +68,67 @@ void main() {
     expect(find.byType(TranslatorPhraseScreen), findsNothing);
   });
 
+  testWidgets('starts operation from matching full Registry node', (
+    WidgetTester tester,
+  ) async {
+    final ServiceIntakeSourceBlock block = _serviceIntakeSourceBlock();
+    final RegistryDocumentNode node = RegistryDocumentNode(
+      title: block.identity.heading,
+      headingLevel: block.identity.headingLevel,
+      headingPath: <String>[
+        'Registry',
+        block.identity.ownerHeading,
+        block.identity.heading,
+      ],
+      startLine: block.startLine,
+      endLine: block.endLine,
+      sourceText: block.sourceText,
+      children: const <RegistryDocumentNode>[],
+    );
+
+    await tester.pumpWidget(
+      _testApp(
+        _FakeTranslatorPhraseProvider(_translatorResult()),
+        registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
+          <RegistryDocumentNode>[node],
+        ),
+        registrySourceRevision: Future<String>.value(_sourceRevision),
+        serviceIntakeSourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(
+          <ServiceIntakeSourceBlock>[block],
+        ),
+      ),
+    );
+
+    await _selectAppScreen(tester, 'Registry');
+
+    expect(find.byType(RegistryDocumentExplorerScreen), findsOneWidget);
+    expect(find.text(block.identity.heading), findsOneWidget);
+
+    await tester.tap(find.text(block.identity.heading));
+    await tester.pumpAndSettle();
+
+    final Finder startOperationButton = find.byKey(
+      ValueKey<String>(
+        'service_intake_start_operation_'
+        '${block.identity.entityId.value}',
+      ),
+    );
+
+    expect(startOperationButton, findsOneWidget);
+
+    await tester.tap(startOperationButton);
+    await tester.pumpAndSettle();
+
+    final RegistryEngineeringOperationWorkspaceScreen workspace = tester
+        .widget<RegistryEngineeringOperationWorkspaceScreen>(
+          find.byType(RegistryEngineeringOperationWorkspaceScreen),
+        );
+
+    expect(workspace.revisionPrimaryEntityId, block.identity.entityId);
+    expect(find.textContaining(block.identity.entityId.value), findsWidgets);
+    expect(find.textContaining(block.sourceText.trim()), findsWidgets);
+  });
+
   testWidgets('starts operation from service intake source block', (
     WidgetTester tester,
   ) async {

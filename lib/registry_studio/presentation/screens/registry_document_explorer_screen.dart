@@ -8,6 +8,7 @@ final class RegistryDocumentExplorerScreen extends StatefulWidget {
     required this.uiLanguage,
     required this.nodes,
     required this.sourceRevision,
+    this.nodeActionsBuilder,
     super.key,
   });
 
@@ -22,6 +23,8 @@ final class RegistryDocumentExplorerScreen extends StatefulWidget {
   final RegistryStudioUiLanguage uiLanguage;
   final Future<List<RegistryDocumentNode>> nodes;
   final Future<String> sourceRevision;
+  final Widget? Function(BuildContext context, RegistryDocumentNode node)?
+  nodeActionsBuilder;
 
   static String titleFor(RegistryStudioUiLanguage language) {
     return switch (language) {
@@ -160,7 +163,11 @@ final class _RegistryDocumentExplorerScreenState
                     )
                   else
                     for (final RegistryDocumentNode node in roots)
-                      _RegistryDocumentNodeTile(node: node, labels: labels),
+                      _RegistryDocumentNodeTile(
+                        node: node,
+                        labels: labels,
+                        nodeActionsBuilder: widget.nodeActionsBuilder,
+                      ),
                 ] else if (visibleNodes.isEmpty)
                   Card(
                     child: Padding(
@@ -174,6 +181,7 @@ final class _RegistryDocumentExplorerScreenState
                       node: node,
                       labels: labels,
                       flat: true,
+                      nodeActionsBuilder: widget.nodeActionsBuilder,
                     ),
               ],
             );
@@ -238,11 +246,14 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
     required this.node,
     required this.labels,
     this.flat = false,
+    this.nodeActionsBuilder,
   });
 
   final RegistryDocumentNode node;
   final _RegistryDocumentExplorerLabels labels;
   final bool flat;
+  final Widget? Function(BuildContext context, RegistryDocumentNode node)?
+  nodeActionsBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +294,11 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
             ),
           ),
           for (final RegistryDocumentNode child in node.children)
-            _RegistryDocumentNodeTile(node: child, labels: labels),
+            _RegistryDocumentNodeTile(
+              node: child,
+              labels: labels,
+              nodeActionsBuilder: nodeActionsBuilder,
+            ),
         ],
       ),
     );
@@ -294,6 +309,8 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
+        final Widget? nodeActions = nodeActionsBuilder?.call(context, node);
+
         return SafeArea(
           child: FractionallySizedBox(
             heightFactor: 0.9,
@@ -309,6 +326,10 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text('${labels.lines}: ${node.startLine}–${node.endLine}'),
                   const SizedBox(height: 12),
+                  if (nodeActions != null) ...<Widget>[
+                    nodeActions,
+                    const SizedBox(height: 12),
+                  ],
                   Expanded(
                     child: SingleChildScrollView(
                       child: SelectableText(node.sourceText),

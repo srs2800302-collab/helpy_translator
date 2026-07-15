@@ -349,10 +349,67 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   Widget _currentScreen() {
     if (_selectedScreenIndex == _registryDocumentScreenIndex &&
         _hasRegistryDocumentInput) {
-      return RegistryDocumentExplorerScreen(
-        uiLanguage: _selectedLanguage,
-        nodes: widget.registryDocumentNodes!,
-        sourceRevision: widget.registrySourceRevision!,
+      final Future<List<ServiceIntakeSourceBlock>>? sourceBlocks =
+          widget.serviceIntakeSourceBlocks;
+
+      if (sourceBlocks == null) {
+        return RegistryDocumentExplorerScreen(
+          uiLanguage: _selectedLanguage,
+          nodes: widget.registryDocumentNodes!,
+          sourceRevision: widget.registrySourceRevision!,
+        );
+      }
+
+      return FutureBuilder<List<ServiceIntakeSourceBlock>>(
+        future: sourceBlocks,
+        builder:
+            (
+              BuildContext context,
+              AsyncSnapshot<List<ServiceIntakeSourceBlock>> snapshot,
+            ) {
+              final List<ServiceIntakeSourceBlock> blocks =
+                  snapshot.data ?? const <ServiceIntakeSourceBlock>[];
+              final Map<(int, int), ServiceIntakeSourceBlock> blocksByRange =
+                  <(int, int), ServiceIntakeSourceBlock>{
+                    for (final ServiceIntakeSourceBlock block in blocks)
+                      (block.startLine, block.endLine): block,
+                  };
+
+              return RegistryDocumentExplorerScreen(
+                uiLanguage: _selectedLanguage,
+                nodes: widget.registryDocumentNodes!,
+                sourceRevision: widget.registrySourceRevision!,
+                nodeActionsBuilder:
+                    (BuildContext context, RegistryDocumentNode node) {
+                      final ServiceIntakeSourceBlock? block =
+                          blocksByRange[(node.startLine, node.endLine)];
+
+                      if (block == null) {
+                        return null;
+                      }
+
+                      return SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          key: ValueKey<String>(
+                            'service_intake_start_operation_'
+                            '${block.identity.entityId.value}',
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _startOperationFromServiceIntakeSourceBlock(block);
+                          },
+                          icon: const Icon(Icons.engineering_outlined),
+                          label: Text(
+                            RegistryStudioUiLabels.forLanguage(
+                              _selectedLanguage,
+                            ).operationWorkspaceScreenTitle,
+                          ),
+                        ),
+                      );
+                    },
+              );
+            },
       );
     }
 
