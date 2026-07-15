@@ -163,6 +163,9 @@ void main() {
       final RegistryEntityId affectedEntityId = RegistryEntityId(
         'registry.service_intake.plumbing.faucet.materials',
       );
+      final RegistryEntityId transitiveEntityId = RegistryEntityId(
+        'registry.service_intake.plumbing.faucet.materials.guidance',
+      );
 
       await tester.pumpWidget(
         _testApp(
@@ -176,6 +179,11 @@ void main() {
               sourceEntityId: target.identity.entityId,
               targetEntityId: affectedEntityId,
               meaning: RegistryRelationMeaning('references'),
+            ),
+            RegistryRelation(
+              sourceEntityId: affectedEntityId,
+              targetEntityId: transitiveEntityId,
+              meaning: RegistryRelationMeaning('depends_on'),
             ),
           ],
         ),
@@ -229,6 +237,7 @@ void main() {
       expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
         source.identity.entityId,
         affectedEntityId,
+        transitiveEntityId,
       ]);
       for (final String expectedText in <String>[
         source.identity.heading,
@@ -240,6 +249,7 @@ void main() {
         '- ### Plumbing → Кран',
         '+ ### Plumbing → Замена крана',
         affectedEntityId.value,
+        transitiveEntityId.value,
       ]) {
         expect(find.textContaining(expectedText), findsWidgets);
       }
@@ -254,10 +264,22 @@ void main() {
       expect(comparisonViewData.targetHeading, target.identity.heading);
       expect(comparisonViewData.targetEntityId, target.identity.entityId);
       expect(comparisonViewData.targetText, target.sourceText.trim());
-      expect(comparisonViewData.affectedEntityIds, <RegistryEntityId>[
-        source.identity.entityId,
-        affectedEntityId,
-      ]);
+      expect(
+        comparisonViewData.dependencyGraph.directDependencyIds,
+        <RegistryEntityId>[source.identity.entityId, affectedEntityId],
+      );
+      expect(
+        comparisonViewData.dependencyGraph.transitiveDependencyIds,
+        <RegistryEntityId>[transitiveEntityId],
+      );
+      expect(
+        comparisonViewData.dependencyGraph.pathTo(transitiveEntityId),
+        <RegistryEntityId>[
+          target.identity.entityId,
+          affectedEntityId,
+          transitiveEntityId,
+        ],
+      );
       expect(comparisonViewData.lineDiff, contains('- ### Plumbing → Кран'));
       expect(
         comparisonViewData.lineDiff,

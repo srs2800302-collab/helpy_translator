@@ -6,7 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../adapters/helpy/infrastructure/service_intake_source_block_extractor.dart';
 import '../../adapters/helpy/presentation/screens/service_intake_source_blocks_screen.dart';
 
-import '../../core/application/change_impact/resolve_affected_registry_entity_ids.dart';
+import '../../core/application/change_impact/registry_dependency_graph.dart';
+import '../../core/application/change_impact/resolve_registry_dependency_graph.dart';
 import '../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../core/application/source_comparison/compare_registry_source_text.dart';
@@ -32,8 +33,8 @@ final class RegistryStudioApp extends StatefulWidget {
     this.translatorPhraseHistoryPersistence,
     this.workSessionPersistence,
     this.compareRegistrySourceText = const CompareRegistrySourceText(),
-    this.resolveAffectedRegistryEntityIds =
-        const ResolveAffectedRegistryEntityIds(),
+    this.resolveRegistryDependencyGraph =
+        const ResolveRegistryDependencyGraph(),
     this.registryDocumentNodes,
     this.registrySourceRevision,
     this.serviceIntakeSourceBlocks,
@@ -48,7 +49,7 @@ final class RegistryStudioApp extends StatefulWidget {
   transitionRegistryEngineeringOperationStatus;
   final RegistryWorkSessionPersistence? workSessionPersistence;
   final CompareRegistrySourceText compareRegistrySourceText;
-  final ResolveAffectedRegistryEntityIds resolveAffectedRegistryEntityIds;
+  final ResolveRegistryDependencyGraph resolveRegistryDependencyGraph;
   final Future<List<RegistryDocumentNode>>? registryDocumentNodes;
   final Future<String>? registrySourceRevision;
   final Future<List<ServiceIntakeSourceBlock>>? serviceIntakeSourceBlocks;
@@ -262,8 +263,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       source: source.sourceText,
       target: target.sourceText,
     );
-    final List<RegistryEntityId> affectedEntityIds = widget
-        .resolveAffectedRegistryEntityIds(
+    final RegistryDependencyGraph dependencyGraph = widget
+        .resolveRegistryDependencyGraph(
           primaryEntityId: target.identity.entityId,
           seedRelatedEntityIds: <RegistryEntityId>[source.identity.entityId],
           relations: widget.relatedContextRelations,
@@ -277,7 +278,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         'Цель ID: ${target.identity.entityId.value}',
         '',
         'Затронутые Registry identities:',
-        ...affectedEntityIds.map((RegistryEntityId id) => '- ${id.value}'),
+        ...dependencyGraph.affectedEntityIds.map(
+          (RegistryEntityId id) => '- ${id.value}',
+        ),
         '',
         'Исходная версия:',
         source.sourceText.trim(),
@@ -290,7 +293,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       ].join('\n');
       _initialOperationWorkingContent = target.sourceText.trim();
       _operationPrimaryEntityId = target.identity.entityId;
-      _operationRelatedEntityIds = affectedEntityIds;
+      _operationRelatedEntityIds = dependencyGraph.affectedEntityIds;
       _operationComparisonViewData = (
         sourceHeading: source.identity.heading,
         sourceEntityId: source.identity.entityId,
@@ -299,7 +302,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         targetEntityId: target.identity.entityId,
         targetText: target.sourceText.trim(),
         lineDiff: lineComparison,
-        affectedEntityIds: affectedEntityIds,
+        dependencyGraph: dependencyGraph,
       );
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/application/change_impact/registry_dependency_graph.dart';
 import '../../../core/application/operation_creation/create_registry_engineering_operation.dart';
 import '../../../core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import '../../../core/domain/entities/registry_engineering_operation.dart';
@@ -20,7 +21,7 @@ typedef RegistryOperationComparisonViewData = ({
   RegistryEntityId targetEntityId,
   String targetText,
   String lineDiff,
-  List<RegistryEntityId> affectedEntityIds,
+  RegistryDependencyGraph dependencyGraph,
 });
 
 final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
@@ -539,6 +540,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String source,
       String target,
       String affected,
+      String direct,
+      String transitive,
+      String paths,
       String changes,
     })
     comparisonLabels = switch (widget.uiLanguage) {
@@ -547,6 +551,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         source: 'Источник',
         target: 'Цель изменения',
         affected: 'Затронутые Registry identities',
+        direct: 'Прямые зависимости',
+        transitive: 'Транзитивные зависимости',
+        paths: 'Пути зависимостей',
         changes: 'Построчные изменения',
       ),
       RegistryStudioUiLanguage.en => (
@@ -554,6 +561,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         source: 'Source',
         target: 'Change target',
         affected: 'Affected Registry identities',
+        direct: 'Direct dependencies',
+        transitive: 'Transitive dependencies',
+        paths: 'Dependency paths',
         changes: 'Line changes',
       ),
       RegistryStudioUiLanguage.th => (
@@ -561,6 +571,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         source: 'ต้นทาง',
         target: 'เป้าหมายการเปลี่ยนแปลง',
         affected: 'Registry identities ที่ได้รับผลกระทบ',
+        direct: 'การขึ้นต่อกันโดยตรง',
+        transitive: 'การขึ้นต่อกันแบบส่งต่อ',
+        paths: 'เส้นทางการขึ้นต่อกัน',
         changes: 'การเปลี่ยนแปลงรายบรรทัด',
       ),
     };
@@ -685,15 +698,70 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                             ).textTheme.titleMedium,
                                           ),
                                           const SizedBox(height: 8),
+                                          Text(
+                                            comparisonLabels.direct,
+                                            style: Theme.of(
+                                              sheetContext,
+                                            ).textTheme.titleSmall,
+                                          ),
+                                          const SizedBox(height: 4),
                                           for (final RegistryEntityId entityId
                                               in comparisonViewData
-                                                  .affectedEntityIds)
+                                                  .dependencyGraph
+                                                  .directDependencyIds)
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                 bottom: 4,
                                               ),
                                               child: SelectableText(
                                                 entityId.value,
+                                              ),
+                                            ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            comparisonLabels.transitive,
+                                            style: Theme.of(
+                                              sheetContext,
+                                            ).textTheme.titleSmall,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          for (final RegistryEntityId entityId
+                                              in comparisonViewData
+                                                  .dependencyGraph
+                                                  .transitiveDependencyIds)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 4,
+                                              ),
+                                              child: SelectableText(
+                                                entityId.value,
+                                              ),
+                                            ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            comparisonLabels.paths,
+                                            style: Theme.of(
+                                              sheetContext,
+                                            ).textTheme.titleSmall,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          for (final RegistryEntityId entityId
+                                              in comparisonViewData
+                                                  .dependencyGraph
+                                                  .affectedEntityIds)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 6,
+                                              ),
+                                              child: SelectableText(
+                                                comparisonViewData
+                                                    .dependencyGraph
+                                                    .pathTo(entityId)
+                                                    .map(
+                                                      (RegistryEntityId id) =>
+                                                          id.value,
+                                                    )
+                                                    .join(' → '),
                                               ),
                                             ),
                                         ],
