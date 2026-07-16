@@ -325,6 +325,118 @@ void main() {
     });
   });
 
+  testWidgets('restored semantic candidate decisions satisfy readiness gate', (
+    WidgetTester tester,
+  ) async {
+    const RegistryWorkSessionPersistence persistence =
+        RegistryWorkSessionPersistence();
+
+    final RegistryEngineeringOperation operation = RegistryEngineeringOperation(
+      id: RegistryEngineeringOperationId('operation-semantic-gate'),
+      status: RegistryEngineeringOperationStatus.open,
+      problemStatement: 'Resolve semantic readiness gate.',
+    );
+    final RegistryEngineeringOperationRevision revision =
+        RegistryEngineeringOperationRevision(
+          id: 'operation-semantic-gate-revision-1',
+          operationId: operation.id,
+          revisionNumber: 1,
+          workingContent: 'Saved working value.',
+          previousRevisionId: null,
+          primaryEntityId: RegistryEntityId('target'),
+          relatedEntityIds: const <RegistryEntityId>[],
+          semanticCandidateDecisions: const <String, bool>{
+            'candidate-a': false,
+          },
+        );
+
+    final RegistryOperationComparisonViewData comparisonViewData = (
+      operationType: 'Service Intake comparison',
+      projectAdapter: 'Helpy Service Intake',
+      sourceRevision: 'source-revision',
+      sourceHeading: 'Source heading',
+      sourceEntityId: RegistryEntityId('source'),
+      sourceRegistryPath: 'source',
+      sourceEvidence: 'H2 Source owner → H3 Source heading; lines 1–10',
+      sourceText: 'Original source value.',
+      targetHeading: 'Target heading',
+      targetEntityId: RegistryEntityId('target'),
+      targetRegistryPath: 'target',
+      targetEvidence: 'H2 Target owner → H3 Target heading; lines 11–20',
+      targetText: 'Saved working value.',
+      lineDiff: '- Original source value.\n+ Saved working value.',
+      dependencyGraph: RegistryDependencyGraph(
+        primaryEntityId: RegistryEntityId('target'),
+        dependencyEdges: const [],
+        directDependencyIds: const <RegistryEntityId>[],
+        transitiveDependencyIds: const <RegistryEntityId>[],
+        dependencyPaths: const <Iterable<RegistryEntityId>>[],
+      ),
+      affectedBranchPaths: const <String>[],
+      unaffectedIdentityExplanations: const <String>[],
+      semanticCandidateExplanations: const <String>['candidate-a'],
+    );
+
+    await persistence.saveEngineeringOperationWorkspace(
+      operation: operation,
+      revisions: <RegistryEngineeringOperationRevision>[revision],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RegistryEngineeringOperationWorkspaceScreen(
+          uiLanguage: RegistryStudioUiLanguage.ru,
+          createRegistryEngineeringOperation:
+              CreateRegistryEngineeringOperation(),
+          transitionRegistryEngineeringOperationStatus:
+              TransitionRegistryEngineeringOperationStatus(),
+          workSessionPersistence: persistence,
+          revisionPrimaryEntityId: RegistryEntityId('target'),
+          comparisonViewData: comparisonViewData,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Semantic candidates unresolved'), findsNothing);
+
+    final Finder statusDropdown = find.byKey(
+      const Key('registry_engineering_operation_requested_status_dropdown'),
+    );
+    final Finder transitionButton = find.byKey(
+      const Key('registry_engineering_operation_status_transition_button'),
+    );
+
+    await tester.dragUntilVisible(
+      statusDropdown,
+      find.byType(ListView).first,
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(statusDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('readyForDecision').last);
+    await tester.pumpAndSettle();
+
+    await tester.dragUntilVisible(
+      transitionButton,
+      find.byType(ListView).first,
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(transitionButton);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Semantic candidates unresolved'), findsNothing);
+    final RegistryEngineeringOperation? transitionedOperation =
+        await persistence.loadEngineeringOperation();
+
+    expect(
+      transitionedOperation?.status,
+      RegistryEngineeringOperationStatus.readyForDecision,
+    );
+  });
+
   for (final RegistryEngineeringOperationStatus terminalStatus
       in <RegistryEngineeringOperationStatus>[
         RegistryEngineeringOperationStatus.decided,
