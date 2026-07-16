@@ -66,7 +66,13 @@ void main() {
       final Finder saveRevisionFinder = find.byKey(
         const Key('registry_operation_save_revision'),
       );
-      await tester.ensureVisible(saveRevisionFinder);
+      await tester.scrollUntilVisible(
+        saveRevisionFinder,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(saveRevisionFinder);
       await tester.pumpAndSettle();
 
@@ -146,7 +152,13 @@ void main() {
       final Finder saveRevisionFinder = find.byKey(
         const Key('registry_operation_save_revision'),
       );
-      await tester.ensureVisible(saveRevisionFinder);
+      await tester.scrollUntilVisible(
+        saveRevisionFinder,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(saveRevisionFinder);
       await tester.pumpAndSettle();
 
@@ -236,6 +248,13 @@ void main() {
 
       expect(startNewButton, findsOneWidget);
 
+      await tester.scrollUntilVisible(
+        startNewButton,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(startNewButton);
       await tester.pumpAndSettle();
 

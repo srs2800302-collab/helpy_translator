@@ -200,18 +200,36 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final Finder saveRevisionButton = find.byKey(
+      const Key('registry_operation_save_revision'),
+    );
+
     await tester.enterText(
       find.byKey(const Key('registry_operation_revision_content')),
       'Первая полная версия.',
     );
-    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    await tester.scrollUntilVisible(
+      saveRevisionButton,
+      160,
+      scrollable: find.byType(Scrollable).first,
+      maxScrolls: 16,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveRevisionButton);
     await tester.pumpAndSettle();
 
     await tester.enterText(
       find.byKey(const Key('registry_operation_revision_content')),
       'Вторая расширенная версия.',
     );
-    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    await tester.scrollUntilVisible(
+      saveRevisionButton,
+      160,
+      scrollable: find.byType(Scrollable).first,
+      maxScrolls: 16,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveRevisionButton);
     await tester.pumpAndSettle();
 
     final revisions = await persistence.loadEngineeringOperationRevisions();
@@ -247,11 +265,21 @@ void main() {
 
     expect(editor.controller?.text, 'Вторая расширенная версия.');
 
+    final Finder restoredSaveRevisionButton = find.byKey(
+      const Key('registry_operation_save_revision'),
+    );
     await tester.enterText(
       find.byKey(const Key('registry_operation_revision_content')),
       'Третья версия после восстановления.',
     );
-    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    await tester.scrollUntilVisible(
+      restoredSaveRevisionButton,
+      160,
+      scrollable: find.byType(Scrollable).first,
+      maxScrolls: 16,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(restoredSaveRevisionButton);
     await tester.pumpAndSettle();
 
     final List<RegistryEngineeringOperationRevision> restoredRevisions =
@@ -324,11 +352,21 @@ void main() {
       findsOneWidget,
     );
 
+    final Finder semanticSaveRevisionButton = find.byKey(
+      const Key('registry_operation_save_revision'),
+    );
     await tester.enterText(
       find.byKey(const Key('registry_operation_revision_content')),
       'Next working value.',
     );
-    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    await tester.scrollUntilVisible(
+      semanticSaveRevisionButton,
+      160,
+      scrollable: find.byType(Scrollable).first,
+      maxScrolls: 16,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(semanticSaveRevisionButton);
     await tester.pumpAndSettle();
 
     final List<RegistryEngineeringOperationRevision> revisions =
@@ -767,6 +805,13 @@ void main() {
 
         expect(startNewButton, findsOneWidget);
 
+        await tester.scrollUntilVisible(
+          startNewButton,
+          160,
+          scrollable: find.byType(Scrollable).first,
+          maxScrolls: 16,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(startNewButton);
         await tester.pumpAndSettle();
         await tester.tap(find.text('Начать'));

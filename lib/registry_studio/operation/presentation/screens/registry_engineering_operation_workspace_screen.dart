@@ -576,7 +576,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           uiLanguage: widget.uiLanguage,
           operation: currentOperation,
           revisions: _revisions,
-          embedded: widget.comparisonViewData != null,
+          embedded: true,
           externalReadinessBlockers: <String>[
             ...externalOperationReadinessBlockers,
             ...semanticReadinessBlockers,
@@ -590,14 +590,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     final Widget operationStatusContent = revisionsReadOnly
         ? Column(
-            mainAxisSize: widget.comparisonViewData != null
-                ? MainAxisSize.min
-                : MainAxisSize.max,
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              if (widget.comparisonViewData != null)
-                statusScreen
-              else
-                Expanded(child: statusScreen),
+              statusScreen,
               SafeArea(
                 top: false,
                 child: Padding(
@@ -1035,7 +1030,16 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     );
 
     final Widget operationStatusSection = comparisonViewData == null
-        ? operationStatusContent
+        ? ListView(
+            children: <Widget>[
+              Column(
+                children: <Widget>[
+                  operationStatusContent,
+                  if (widget.revisionPrimaryEntityId != null) revisionPanel,
+                ],
+              ),
+            ],
+          )
         : ListView(
             children: <Widget>[
               Card(
@@ -1919,15 +1923,6 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
               operationStatusContent,
             ],
           );
-    if (widget.comparisonViewData != null) {
-      return operationStatusSection;
-    }
-
-    return Column(
-      children: <Widget>[
-        Expanded(child: operationStatusSection),
-        revisionPanel,
-      ],
-    );
+    return operationStatusSection;
   }
 }
