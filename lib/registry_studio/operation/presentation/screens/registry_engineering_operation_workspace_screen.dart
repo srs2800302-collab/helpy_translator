@@ -567,6 +567,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String additions,
       String deletions,
       String replacements,
+      String potentialMoves,
       String unchanged,
       String changes,
     })
@@ -589,6 +590,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         additions: 'Добавления',
         deletions: 'Удаления',
         replacements: 'Замены',
+        potentialMoves: 'Потенциальные перемещения',
         unchanged: 'Без изменений',
         changes: 'Построчные изменения',
       ),
@@ -610,6 +612,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         additions: 'Additions',
         deletions: 'Deletions',
         replacements: 'Replacements',
+        potentialMoves: 'Potential moves',
         unchanged: 'Unchanged',
         changes: 'Line changes',
       ),
@@ -631,6 +634,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         additions: 'เพิ่ม',
         deletions: 'ลบ',
         replacements: 'แทนที่',
+        potentialMoves: 'การย้ายที่เป็นไปได้',
         unchanged: 'ไม่เปลี่ยนแปลง',
         changes: 'การเปลี่ยนแปลงรายบรรทัด',
       ),
@@ -639,9 +643,12 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     int comparisonAdditionCount = 0;
     int comparisonDeletionCount = 0;
     int comparisonReplacementCount = 0;
+    int comparisonPotentialMoveCount = 0;
     int comparisonUnchangedCount = 0;
     int pendingComparisonAdditions = 0;
     int pendingComparisonDeletions = 0;
+    final Map<String, int> comparisonAddedLineCounts = <String, int>{};
+    final Map<String, int> comparisonDeletedLineCounts = <String, int>{};
 
     if (comparisonViewData != null) {
       for (final String line in comparisonViewData.lineDiff.split('\n')) {
@@ -663,11 +670,17 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
         if (line.startsWith('+ ')) {
           pendingComparisonAdditions += 1;
+          final String addedLine = line.substring(2);
+          comparisonAddedLineCounts[addedLine] =
+              (comparisonAddedLineCounts[addedLine] ?? 0) + 1;
           continue;
         }
 
         if (line.startsWith('- ')) {
           pendingComparisonDeletions += 1;
+          final String deletedLine = line.substring(2);
+          comparisonDeletedLineCounts[deletedLine] =
+              (comparisonDeletedLineCounts[deletedLine] ?? 0) + 1;
         }
       }
 
@@ -680,6 +693,20 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           pendingComparisonAdditions - trailingRunReplacements;
       comparisonDeletionCount +=
           pendingComparisonDeletions - trailingRunReplacements;
+
+      for (final MapEntry<String, int> deletedLineEntry
+          in comparisonDeletedLineCounts.entries) {
+        final int? addedLineCount =
+            comparisonAddedLineCounts[deletedLineEntry.key];
+
+        if (addedLineCount == null) {
+          continue;
+        }
+
+        comparisonPotentialMoveCount += deletedLineEntry.value < addedLineCount
+            ? deletedLineEntry.value
+            : addedLineCount;
+      }
     }
 
     final Widget operationStatusSection = comparisonViewData == null
@@ -967,6 +994,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                                   SelectableText(
                                                     '${comparisonLabels.replacements}: '
                                                     '$comparisonReplacementCount',
+                                                  ),
+                                                  SelectableText(
+                                                    '${comparisonLabels.potentialMoves}: '
+                                                    '$comparisonPotentialMoveCount',
                                                   ),
                                                   SelectableText(
                                                     '${comparisonLabels.unchanged}: '

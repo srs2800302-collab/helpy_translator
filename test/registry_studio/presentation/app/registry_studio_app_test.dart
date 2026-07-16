@@ -714,6 +714,7 @@ void main() {
       expect(find.textContaining('Добавления:'), findsOneWidget);
       expect(find.textContaining('Удаления:'), findsOneWidget);
       expect(find.textContaining('Замены:'), findsOneWidget);
+      expect(find.textContaining('Потенциальные перемещения:'), findsOneWidget);
       expect(find.textContaining('Без изменений:'), findsOneWidget);
 
       final Finder diffSection = find.byKey(
