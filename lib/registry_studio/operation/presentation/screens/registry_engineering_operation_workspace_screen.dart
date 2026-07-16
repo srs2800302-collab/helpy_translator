@@ -83,6 +83,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
   bool _isCreatingInitialOperation = false;
   String? _initialOperationCreationError;
   Map<String, bool> _semanticCandidateDecisions = const <String, bool>{};
+  bool _proposalReviewed = false;
 
   @override
   void initState() {
@@ -110,6 +111,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     if (!identical(oldWidget.comparisonViewData, widget.comparisonViewData)) {
       _semanticCandidateDecisions = const <String, bool>{};
+      _proposalReviewed = false;
     }
   }
 
@@ -445,6 +447,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
       setState(() {
         _revisions = next;
+        _proposalReviewed = false;
         _isSavingRevision = false;
       });
     } on Object {
@@ -539,12 +542,22 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
             .toList(growable: false) ??
         const <String>[];
 
+    final List<String> proposalReadinessBlockers =
+        widget.comparisonViewData != null &&
+            _revisions.isNotEmpty &&
+            !_proposalReviewed
+        ? const <String>['Proposal not reviewed']
+        : const <String>[];
+
     final Widget statusScreen =
         RegistryEngineeringOperationStatusTransitionScreen(
           uiLanguage: widget.uiLanguage,
           operation: currentOperation,
           revisions: _revisions,
-          externalReadinessBlockers: semanticReadinessBlockers,
+          externalReadinessBlockers: <String>[
+            ...semanticReadinessBlockers,
+            ...proposalReadinessBlockers,
+          ],
           transitionRegistryEngineeringOperationStatus:
               widget.transitionRegistryEngineeringOperationStatus,
           onOperationTransitioned: _setCurrentOperation,
@@ -1481,6 +1494,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String semanticDecisions,
       String semanticConfirmed,
       String semanticRejected,
+      String reviewProposal,
+      String proposalReviewed,
     })
     labels = switch (widget.uiLanguage) {
       RegistryStudioUiLanguage.ru => (
@@ -1495,6 +1510,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         semanticDecisions: 'Решения по semantic candidates',
         semanticConfirmed: 'Подтверждено как dependency',
         semanticRejected: 'Отклонено как unrelated',
+        reviewProposal: 'Подтвердить review proposal',
+        proposalReviewed: 'Proposal review подтверждён',
       ),
       RegistryStudioUiLanguage.en => (
         count: 'Revisions',
@@ -1508,6 +1525,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         semanticDecisions: 'Semantic candidate decisions',
         semanticConfirmed: 'Confirmed dependency',
         semanticRejected: 'Rejected as unrelated',
+        reviewProposal: 'Confirm proposal review',
+        proposalReviewed: 'Proposal reviewed',
       ),
       RegistryStudioUiLanguage.th => (
         count: 'ฉบับแก้ไข',
@@ -1521,6 +1540,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         semanticDecisions: 'การตัดสินใจ semantic candidates',
         semanticConfirmed: 'ยืนยันว่าเป็น dependency แล้ว',
         semanticRejected: 'ปฏิเสธว่าไม่เกี่ยวข้องแล้ว',
+        reviewProposal: 'ยืนยัน proposal review',
+        proposalReviewed: 'ตรวจสอบ proposal แล้ว',
       ),
     };
 
@@ -1564,6 +1585,30 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                       ),
                     ],
                   ),
+                  if (widget.comparisonViewData != null &&
+                      _revisions.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        key: const Key(
+                          'registry_operation_proposal_review_confirm',
+                        ),
+                        onPressed: revisionsReadOnly || _proposalReviewed
+                            ? null
+                            : () {
+                                setState(() {
+                                  _proposalReviewed = true;
+                                });
+                              },
+                        child: Text(
+                          _proposalReviewed
+                              ? labels.proposalReviewed
+                              : labels.reviewProposal,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (_revisions.isNotEmpty) ...<Widget>[
                     const Divider(),
                     SizedBox(

@@ -849,6 +849,13 @@ void main() {
     );
     expect(find.textContaining('Отклонено как unrelated'), findsOneWidget);
 
+    final Finder proposalReviewButton = find.byKey(
+      const Key('registry_operation_proposal_review_confirm'),
+    );
+    await tester.ensureVisible(proposalReviewButton);
+    await tester.tap(proposalReviewButton);
+    await tester.pumpAndSettle();
+
     final Finder statusDropdown = find.byKey(
       const Key('registry_engineering_operation_requested_status_dropdown'),
     );
