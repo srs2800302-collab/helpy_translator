@@ -363,6 +363,11 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         previous?.relatedEntityIds ??
         const <RegistryEntityId>[];
     final String workingContent = _workingContentController.text.trim();
+    final String revisionOriginalValue =
+        previous?.originalValue ??
+        widget.comparisonViewData?.sourceText.trim() ??
+        workingContent;
+    final String revisionProposedValue = workingContent;
 
     if (operation == null ||
         operation.status == RegistryEngineeringOperationStatus.decided ||
@@ -380,6 +385,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           operationId: operation.id,
           revisionNumber: revisionNumber,
           workingContent: workingContent,
+          originalValue: revisionOriginalValue,
+          proposedValue: revisionProposedValue,
           previousRevisionId: previous?.id,
           primaryEntityId: primaryEntityId,
           relatedEntityIds: relatedEntityIds,
@@ -908,7 +915,11 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                               '${revision.revisionNumber} · '
                               '${revision.primaryEntityId.value}',
                             ),
-                            subtitle: Text(revision.workingContent),
+                            subtitle: Text(
+                              'original: ${revision.originalValue}\n'
+                              'proposed: ${revision.proposedValue}\n'
+                              'working: ${revision.workingContent}',
+                            ),
                           );
                         },
                       ),

@@ -31,6 +31,8 @@ void main() {
           operationId: RegistryEngineeringOperationId('operation-1'),
           revisionNumber: 1,
           workingContent: 'Complete working version.',
+          originalValue: 'Original value.',
+          proposedValue: 'Proposed value.',
           previousRevisionId: null,
           primaryEntityId: RegistryEntityId('primary'),
           relatedEntityIds: <RegistryEntityId>[RegistryEntityId('related')],
@@ -56,6 +58,8 @@ void main() {
     expect(restoredRevisions.single.id, revision.id);
     expect(restoredRevisions.single.operationId, revision.operationId);
     expect(restoredRevisions.single.workingContent, revision.workingContent);
+    expect(restoredRevisions.single.originalValue, revision.originalValue);
+    expect(restoredRevisions.single.proposedValue, revision.proposedValue);
     expect(restoredRevisions.single.primaryEntityId, revision.primaryEntityId);
     expect(
       restoredRevisions.single.relatedEntityIds,

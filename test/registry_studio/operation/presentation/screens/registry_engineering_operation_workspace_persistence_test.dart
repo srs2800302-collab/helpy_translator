@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
+import 'package:helpy_translator/registry_studio/core/application/change_impact/registry_dependency_graph.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_creation/create_registry_engineering_operation.dart';
 import 'package:helpy_translator/registry_studio/core/application/operation_status/transition_registry_engineering_operation_status.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
@@ -64,6 +65,75 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(initialProblemStatementConsumed, isTrue);
   });
+
+  testWidgets(
+    'preserves comparison original value and stores edited proposed value',
+    (WidgetTester tester) async {
+      const RegistryWorkSessionPersistence persistence =
+          RegistryWorkSessionPersistence();
+
+      final RegistryOperationComparisonViewData comparisonViewData = (
+        sourceHeading: 'Source heading',
+        sourceEntityId: RegistryEntityId('source'),
+        sourceText: 'Original source value.',
+        targetHeading: 'Target heading',
+        targetEntityId: RegistryEntityId('target'),
+        targetText: 'Initial target value.',
+        lineDiff: '- Original source value.\n+ Initial target value.',
+        dependencyGraph: RegistryDependencyGraph(
+          primaryEntityId: RegistryEntityId('source'),
+          dependencyEdges: const [],
+          directDependencyIds: const <RegistryEntityId>[],
+          transitiveDependencyIds: const <RegistryEntityId>[],
+          dependencyPaths: const <Iterable<RegistryEntityId>>[],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RegistryEngineeringOperationWorkspaceScreen(
+            uiLanguage: RegistryStudioUiLanguage.ru,
+            createRegistryEngineeringOperation:
+                CreateRegistryEngineeringOperation(),
+            transitionRegistryEngineeringOperationStatus:
+                TransitionRegistryEngineeringOperationStatus(),
+            workSessionPersistence: persistence,
+            revisionPrimaryEntityId: RegistryEntityId('target'),
+            initialProblemStatement: 'Compare source and target.',
+            initialWorkingContent: comparisonViewData.targetText,
+            comparisonViewData: comparisonViewData,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('registry_operation_revision_content')),
+        'Edited proposed value.',
+      );
+      await tester.tap(
+        find.byKey(const Key('registry_operation_save_revision')),
+      );
+      await tester.pumpAndSettle();
+
+      final List<RegistryEngineeringOperationRevision> revisions =
+          await persistence.loadEngineeringOperationRevisions();
+
+      expect(revisions, hasLength(1));
+      expect(revisions.single.originalValue, 'Original source value.');
+      expect(revisions.single.proposedValue, 'Edited proposed value.');
+      expect(revisions.single.workingContent, 'Edited proposed value.');
+      expect(
+        find.textContaining('original: Original source value.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('proposed: Edited proposed value.'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('creates linked revisions and restores them', (
     WidgetTester tester,

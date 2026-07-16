@@ -138,6 +138,8 @@ final class RegistryWorkSessionPersistence {
                   'operationId': revision.operationId.value,
                   'revisionNumber': revision.revisionNumber,
                   'workingContent': revision.workingContent,
+                  'originalValue': revision.originalValue,
+                  'proposedValue': revision.proposedValue,
                   'previousRevisionId': revision.previousRevisionId,
                   'primaryEntityId': revision.primaryEntityId.value,
                   'relatedEntityIds': revision.relatedEntityIds
@@ -244,6 +246,8 @@ final class RegistryWorkSessionPersistence {
               ),
               revisionNumber: revisionJson['revisionNumber'] as int,
               workingContent: revisionJson['workingContent'] as String,
+              originalValue: revisionJson['originalValue'] as String?,
+              proposedValue: revisionJson['proposedValue'] as String?,
               previousRevisionId: revisionJson['previousRevisionId'] as String?,
               primaryEntityId: RegistryEntityId(
                 revisionJson['primaryEntityId'] as String,
