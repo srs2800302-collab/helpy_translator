@@ -68,6 +68,64 @@ void main() {
     expect(find.byType(TranslatorPhraseScreen), findsNothing);
   });
 
+  testWidgets('sends complete Registry node source text to Translator', (
+    WidgetTester tester,
+  ) async {
+    final RegistryDocumentNode node = RegistryDocumentNode(
+      title: 'Registry root',
+      headingLevel: 1,
+      headingPath: const <String>['Registry root'],
+      startLine: 1,
+      endLine: 2,
+      sourceText: '# Registry root\ncontent\n',
+      children: const <RegistryDocumentNode>[],
+    );
+
+    await tester.pumpWidget(
+      _testApp(
+        _FakeTranslatorPhraseProvider(_translatorResult()),
+        registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
+          <RegistryDocumentNode>[node],
+        ),
+        registrySourceRevision: Future<String>.value(_sourceRevision),
+      ),
+    );
+
+    await _selectAppScreen(tester, 'Registry');
+
+    expect(find.byType(RegistryDocumentExplorerScreen), findsOneWidget);
+    expect(find.text('Registry root'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>(
+          'registry_document_node_translate_Registry root',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TranslatorPhraseScreen), findsOneWidget);
+    expect(find.byType(RegistryDocumentExplorerScreen), findsNothing);
+
+    final TextField sourceTextField = tester.widget<TextField>(
+      find.byKey(const Key('translator_phrase_source_text_field')),
+    );
+
+    expect(sourceTextField.controller?.text, '# Registry root\ncontent');
+    expect(
+      find.byKey(const Key('translator_phrase_source_context_card')),
+      findsOneWidget,
+    );
+    expect(find.text('Источник: Registry'), findsOneWidget);
+    expect(find.textContaining('Путь: Registry root'), findsOneWidget);
+    expect(find.textContaining('Строки: 1–2'), findsOneWidget);
+    expect(
+      find.textContaining('Исходная ревизия: $_sourceRevision'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('starts operation from matching full Registry node', (
     WidgetTester tester,
   ) async {

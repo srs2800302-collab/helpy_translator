@@ -12,11 +12,17 @@ import '../cubit/translator_phrase_state.dart';
 final class TranslatorPhraseScreen extends StatefulWidget {
   const TranslatorPhraseScreen({
     required this.uiLanguage,
+    this.initialSourceText,
+    this.sourceContextLabel,
+    this.initialSourceVersion = 0,
     this.onOperationRequested,
     super.key,
   });
 
   final RegistryStudioUiLanguage uiLanguage;
+  final String? initialSourceText;
+  final String? sourceContextLabel;
+  final int initialSourceVersion;
   final ValueChanged<TranslatorPhraseResult>? onOperationRequested;
 
   @override
@@ -36,16 +42,77 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
     'translator_phrase_request_operation_button',
   );
   static const Key errorTextKey = Key('translator_phrase_error_text');
+  static const Key sourceContextCardKey = Key(
+    'translator_phrase_source_context_card',
+  );
 
   final TextEditingController _sourceTextController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _resultSectionKey = GlobalKey();
+
+  String? _activeSourceContextLabel;
+  int _lastAppliedInitialSourceVersion = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyInitialRegistrySource();
+  }
+
+  @override
+  void didUpdateWidget(covariant TranslatorPhraseScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.initialSourceVersion != widget.initialSourceVersion ||
+        oldWidget.initialSourceText != widget.initialSourceText ||
+        oldWidget.sourceContextLabel != widget.sourceContextLabel) {
+      _applyInitialRegistrySource();
+    }
+  }
 
   @override
   void dispose() {
     _sourceTextController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _applyInitialRegistrySource() {
+    if (_lastAppliedInitialSourceVersion == widget.initialSourceVersion) {
+      return;
+    }
+
+    _lastAppliedInitialSourceVersion = widget.initialSourceVersion;
+    _activeSourceContextLabel = _normalizedOptionalText(
+      widget.sourceContextLabel,
+    );
+
+    final String? initialSourceText = _normalizedOptionalText(
+      widget.initialSourceText,
+    );
+
+    if (initialSourceText == null) {
+      return;
+    }
+
+    _sourceTextController.text = initialSourceText;
+    _sourceTextController.selection = TextSelection.collapsed(
+      offset: initialSourceText.length,
+    );
+  }
+
+  String? _normalizedOptionalText(String? value) {
+    if (value == null) {
+      return null;
+    }
+
+    final String normalized = value.trim();
+
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    return normalized;
   }
 
   void _translatePhrase() {
@@ -60,6 +127,9 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
 
     _sourceTextController.clear();
+    setState(() {
+      _activeSourceContextLabel = null;
+    });
     context.read<TranslatorPhraseCubit>().clear();
 
     if (_scrollController.hasClients) {
@@ -116,6 +186,13 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: <Widget>[
+            if (_activeSourceContextLabel != null) ...<Widget>[
+              _RegistrySourceContextCard(
+                title: _registrySourceContextTitle(widget.uiLanguage),
+                contextLabel: _activeSourceContextLabel!,
+              ),
+              const SizedBox(height: 12),
+            ],
             _StatusSummary(history: history),
             const SizedBox(height: 16),
             TextField(
@@ -216,6 +293,42 @@ final class _TranslatorPhraseScreenState extends State<TranslatorPhraseScreen> {
       },
     );
   }
+}
+
+final class _RegistrySourceContextCard extends StatelessWidget {
+  const _RegistrySourceContextCard({
+    required this.title,
+    required this.contextLabel,
+  });
+
+  final String title;
+  final String contextLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: _TranslatorPhraseScreenState.sourceContextCardKey,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            SelectableText(contextLabel),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _registrySourceContextTitle(RegistryStudioUiLanguage language) {
+  return switch (language) {
+    RegistryStudioUiLanguage.ru => 'Источник: Registry',
+    RegistryStudioUiLanguage.en => 'Source: Registry',
+    RegistryStudioUiLanguage.th => 'แหล่งที่มา: Registry',
+  };
 }
 
 final class _StatusSummary extends StatelessWidget {

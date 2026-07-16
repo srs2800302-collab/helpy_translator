@@ -10,6 +10,7 @@ final class RegistryDocumentExplorerScreen extends StatefulWidget {
     required this.sourceRevision,
     this.nodeActionsBuilder,
     this.nodeSearchTextBuilder,
+    this.onNodeTranslationRequested,
     super.key,
   });
 
@@ -27,6 +28,7 @@ final class RegistryDocumentExplorerScreen extends StatefulWidget {
   final Widget? Function(BuildContext context, RegistryDocumentNode node)?
   nodeActionsBuilder;
   final String? Function(RegistryDocumentNode node)? nodeSearchTextBuilder;
+  final ValueChanged<RegistryDocumentNode>? onNodeTranslationRequested;
 
   static String titleFor(RegistryStudioUiLanguage language) {
     return switch (language) {
@@ -169,6 +171,8 @@ final class _RegistryDocumentExplorerScreenState
                         node: node,
                         labels: labels,
                         nodeActionsBuilder: widget.nodeActionsBuilder,
+                        onNodeTranslationRequested:
+                            widget.onNodeTranslationRequested,
                       ),
                 ] else if (visibleNodes.isEmpty)
                   Card(
@@ -184,6 +188,8 @@ final class _RegistryDocumentExplorerScreenState
                       labels: labels,
                       flat: true,
                       nodeActionsBuilder: widget.nodeActionsBuilder,
+                      onNodeTranslationRequested:
+                          widget.onNodeTranslationRequested,
                     ),
               ],
             );
@@ -250,6 +256,7 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
     required this.labels,
     this.flat = false,
     this.nodeActionsBuilder,
+    this.onNodeTranslationRequested,
   });
 
   final RegistryDocumentNode node;
@@ -257,6 +264,7 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
   final bool flat;
   final Widget? Function(BuildContext context, RegistryDocumentNode node)?
   nodeActionsBuilder;
+  final ValueChanged<RegistryDocumentNode>? onNodeTranslationRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -267,14 +275,25 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
 
     if (flat || node.children.isEmpty) {
       return Card(
-        child: ListTile(
-          key: ValueKey<String>(
-            'registry_document_node_${node.headingPath.join('>')}',
-          ),
-          title: Text(node.title),
-          subtitle: Text(metadata),
-          trailing: const Icon(Icons.description_outlined),
-          onTap: () => _showSource(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            ListTile(
+              key: ValueKey<String>(
+                'registry_document_node_${node.headingPath.join('>')}',
+              ),
+              title: Text(node.title),
+              subtitle: Text(metadata),
+              trailing: const Icon(Icons.description_outlined),
+              onTap: () => _showSource(context),
+            ),
+            if (onNodeTranslationRequested != null)
+              _RegistryDocumentNodeTranslationAction(
+                node: node,
+                labels: labels,
+                onNodeTranslationRequested: onNodeTranslationRequested!,
+              ),
+          ],
         ),
       );
     }
@@ -288,6 +307,12 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
         subtitle: Text(metadata),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: <Widget>[
+          if (onNodeTranslationRequested != null)
+            _RegistryDocumentNodeTranslationAction(
+              node: node,
+              labels: labels,
+              onNodeTranslationRequested: onNodeTranslationRequested!,
+            ),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -301,6 +326,7 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
               node: child,
               labels: labels,
               nodeActionsBuilder: nodeActionsBuilder,
+              onNodeTranslationRequested: onNodeTranslationRequested,
             ),
         ],
       ),
@@ -348,6 +374,36 @@ final class _RegistryDocumentNodeTile extends StatelessWidget {
   }
 }
 
+final class _RegistryDocumentNodeTranslationAction extends StatelessWidget {
+  const _RegistryDocumentNodeTranslationAction({
+    required this.node,
+    required this.labels,
+    required this.onNodeTranslationRequested,
+  });
+
+  final RegistryDocumentNode node;
+  final _RegistryDocumentExplorerLabels labels;
+  final ValueChanged<RegistryDocumentNode> onNodeTranslationRequested;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          key: ValueKey<String>(
+            'registry_document_node_translate_${node.headingPath.join('>')}',
+          ),
+          onPressed: () => onNodeTranslationRequested(node),
+          icon: const Icon(Icons.translate_outlined),
+          label: Text(labels.sendToTranslator),
+        ),
+      ),
+    );
+  }
+}
+
 typedef _RegistryDocumentExplorerLabels = ({
   String rootSections,
   String sourceRevision,
@@ -358,6 +414,7 @@ typedef _RegistryDocumentExplorerLabels = ({
   String path,
   String lines,
   String openSource,
+  String sendToTranslator,
   String loadFailed,
   String noSections,
   String searchLabel,
@@ -378,6 +435,7 @@ _RegistryDocumentExplorerLabels _labels(RegistryStudioUiLanguage language) {
       path: 'Путь',
       lines: 'Строки',
       openSource: 'Открыть исходный текст',
+      sendToTranslator: 'В переводчик',
       loadFailed: 'Не удалось загрузить полный Registry',
       noSections: 'Разделы Registry не найдены',
       searchLabel: 'Поиск по Registry',
@@ -395,6 +453,7 @@ _RegistryDocumentExplorerLabels _labels(RegistryStudioUiLanguage language) {
       path: 'Path',
       lines: 'Lines',
       openSource: 'Open source text',
+      sendToTranslator: 'Send to translator',
       loadFailed: 'Failed to load the complete Registry',
       noSections: 'No Registry sections found',
       searchLabel: 'Search Registry',
@@ -412,6 +471,7 @@ _RegistryDocumentExplorerLabels _labels(RegistryStudioUiLanguage language) {
       path: 'เส้นทาง',
       lines: 'บรรทัด',
       openSource: 'เปิดข้อความต้นฉบับ',
+      sendToTranslator: 'ส่งไปยังตัวแปล',
       loadFailed: 'ไม่สามารถโหลด Registry ทั้งหมดได้',
       noSections: 'ไม่พบส่วนของ Registry',
       searchLabel: 'ค้นหาใน Registry',

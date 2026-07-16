@@ -73,6 +73,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   RegistryOperationComparisonViewData? _operationComparisonViewData;
   ServiceIntakeSourceBlock? _registryComparisonSource;
   ServiceIntakeSourceBlock? _registryComparisonTarget;
+  String? _translatorInitialSourceText;
+  String? _translatorSourceContextLabel;
+  int _translatorInitialSourceVersion = 0;
   RegistryStudioUiLanguage _selectedLanguage = RegistryStudioUiLanguage.ru;
   late final TranslatorPhraseCubit _translatorPhraseCubit;
 
@@ -195,6 +198,83 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         ),
       ),
     );
+  }
+
+  void _requestTranslatorFromRegistryNode(RegistryDocumentNode node) {
+    final Future<String>? sourceRevisionFuture = widget.registrySourceRevision;
+
+    if (sourceRevisionFuture == null) {
+      _openTranslatorFromRegistryNode(node, sourceRevision: null);
+      return;
+    }
+
+    sourceRevisionFuture
+        .then<void>((String sourceRevision) {
+          if (!mounted) {
+            return;
+          }
+
+          _openTranslatorFromRegistryNode(node, sourceRevision: sourceRevision);
+        })
+        .catchError((Object _) {
+          if (!mounted) {
+            return;
+          }
+
+          _openTranslatorFromRegistryNode(node, sourceRevision: null);
+        });
+  }
+
+  void _openTranslatorFromRegistryNode(
+    RegistryDocumentNode node, {
+    required String? sourceRevision,
+  }) {
+    final String sourceText = node.sourceText.trim();
+
+    if (sourceText.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _translatorInitialSourceText = sourceText;
+      _translatorSourceContextLabel = _registryTranslatorContextLabel(
+        node,
+        sourceRevision,
+      );
+      _translatorInitialSourceVersion += 1;
+      _selectedScreenIndex = _translatorScreenIndex;
+    });
+  }
+
+  String _registryTranslatorContextLabel(
+    RegistryDocumentNode node,
+    String? sourceRevision,
+  ) {
+    final ({String path, String lines, String revision}) labels =
+        switch (_selectedLanguage) {
+          RegistryStudioUiLanguage.ru => (
+            path: 'Путь',
+            lines: 'Строки',
+            revision: 'Исходная ревизия',
+          ),
+          RegistryStudioUiLanguage.en => (
+            path: 'Path',
+            lines: 'Lines',
+            revision: 'Source revision',
+          ),
+          RegistryStudioUiLanguage.th => (
+            path: 'เส้นทาง',
+            lines: 'บรรทัด',
+            revision: 'รีวิชันต้นทาง',
+          ),
+        };
+
+    return <String>[
+      '${labels.path}: ${node.headingPath.join(' / ')}',
+      '${labels.lines}: ${node.startLine}–${node.endLine}',
+      if (sourceRevision != null && sourceRevision.trim().isNotEmpty)
+        '${labels.revision}: ${sourceRevision.trim()}',
+    ].join('\n');
   }
 
   void _requestOperationFromTranslator(TranslatorPhraseResult result) {
@@ -340,6 +420,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           uiLanguage: _selectedLanguage,
           nodes: widget.registryDocumentNodes!,
           sourceRevision: widget.registrySourceRevision!,
+          onNodeTranslationRequested: _requestTranslatorFromRegistryNode,
         );
       }
 
@@ -362,6 +443,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                 uiLanguage: _selectedLanguage,
                 nodes: widget.registryDocumentNodes!,
                 sourceRevision: widget.registrySourceRevision!,
+                onNodeTranslationRequested: _requestTranslatorFromRegistryNode,
                 nodeSearchTextBuilder: (RegistryDocumentNode node) {
                   final ServiceIntakeSourceBlock? block =
                       blocksByRange[(node.startLine, node.endLine)];
@@ -561,6 +643,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       value: _translatorPhraseCubit,
       child: TranslatorPhraseScreen(
         uiLanguage: _selectedLanguage,
+        initialSourceText: _translatorInitialSourceText,
+        sourceContextLabel: _translatorSourceContextLabel,
+        initialSourceVersion: _translatorInitialSourceVersion,
         onOperationRequested: _requestOperationFromTranslator,
       ),
     );
