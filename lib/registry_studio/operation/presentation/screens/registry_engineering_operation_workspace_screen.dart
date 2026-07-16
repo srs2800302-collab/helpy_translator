@@ -563,6 +563,11 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String direct,
       String transitive,
       String paths,
+      String changeSummary,
+      String additions,
+      String deletions,
+      String replacements,
+      String unchanged,
       String changes,
     })
     comparisonLabels = switch (widget.uiLanguage) {
@@ -580,6 +585,11 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         direct: 'Прямые зависимости',
         transitive: 'Транзитивные зависимости',
         paths: 'Пути зависимостей',
+        changeSummary: 'Изменения',
+        additions: 'Добавления',
+        deletions: 'Удаления',
+        replacements: 'Замены',
+        unchanged: 'Без изменений',
         changes: 'Построчные изменения',
       ),
       RegistryStudioUiLanguage.en => (
@@ -596,6 +606,11 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         direct: 'Direct dependencies',
         transitive: 'Transitive dependencies',
         paths: 'Dependency paths',
+        changeSummary: 'Changes',
+        additions: 'Additions',
+        deletions: 'Deletions',
+        replacements: 'Replacements',
+        unchanged: 'Unchanged',
         changes: 'Line changes',
       ),
       RegistryStudioUiLanguage.th => (
@@ -612,9 +627,60 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         direct: 'การขึ้นต่อกันโดยตรง',
         transitive: 'การขึ้นต่อกันแบบส่งต่อ',
         paths: 'เส้นทางการขึ้นต่อกัน',
+        changeSummary: 'การเปลี่ยนแปลง',
+        additions: 'เพิ่ม',
+        deletions: 'ลบ',
+        replacements: 'แทนที่',
+        unchanged: 'ไม่เปลี่ยนแปลง',
         changes: 'การเปลี่ยนแปลงรายบรรทัด',
       ),
     };
+
+    int comparisonAdditionCount = 0;
+    int comparisonDeletionCount = 0;
+    int comparisonReplacementCount = 0;
+    int comparisonUnchangedCount = 0;
+    int pendingComparisonAdditions = 0;
+    int pendingComparisonDeletions = 0;
+
+    if (comparisonViewData != null) {
+      for (final String line in comparisonViewData.lineDiff.split('\n')) {
+        if (line.startsWith('  ')) {
+          final int finishedRunReplacements =
+              pendingComparisonAdditions < pendingComparisonDeletions
+              ? pendingComparisonAdditions
+              : pendingComparisonDeletions;
+          comparisonReplacementCount += finishedRunReplacements;
+          comparisonAdditionCount +=
+              pendingComparisonAdditions - finishedRunReplacements;
+          comparisonDeletionCount +=
+              pendingComparisonDeletions - finishedRunReplacements;
+          pendingComparisonAdditions = 0;
+          pendingComparisonDeletions = 0;
+          comparisonUnchangedCount += 1;
+          continue;
+        }
+
+        if (line.startsWith('+ ')) {
+          pendingComparisonAdditions += 1;
+          continue;
+        }
+
+        if (line.startsWith('- ')) {
+          pendingComparisonDeletions += 1;
+        }
+      }
+
+      final int trailingRunReplacements =
+          pendingComparisonAdditions < pendingComparisonDeletions
+          ? pendingComparisonAdditions
+          : pendingComparisonDeletions;
+      comparisonReplacementCount += trailingRunReplacements;
+      comparisonAdditionCount +=
+          pendingComparisonAdditions - trailingRunReplacements;
+      comparisonDeletionCount +=
+          pendingComparisonDeletions - trailingRunReplacements;
+    }
 
     final Widget operationStatusSection = comparisonViewData == null
         ? operationStatusContent
@@ -868,6 +934,44 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                                             .join(' → '),
                                                       ),
                                                     ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Card(
+                                            key: const Key(
+                                              'registry_operation_comparison_change_summary',
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text(
+                                                    comparisonLabels
+                                                        .changeSummary,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  SelectableText(
+                                                    '${comparisonLabels.additions}: '
+                                                    '$comparisonAdditionCount',
+                                                  ),
+                                                  SelectableText(
+                                                    '${comparisonLabels.deletions}: '
+                                                    '$comparisonDeletionCount',
+                                                  ),
+                                                  SelectableText(
+                                                    '${comparisonLabels.replacements}: '
+                                                    '$comparisonReplacementCount',
+                                                  ),
+                                                  SelectableText(
+                                                    '${comparisonLabels.unchanged}: '
+                                                    '$comparisonUnchangedCount',
+                                                  ),
                                                 ],
                                               ),
                                             ),

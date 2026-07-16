@@ -702,6 +702,20 @@ void main() {
       );
       expect(affectedSection, findsOneWidget);
 
+      final Finder changeSummarySection = find.byKey(
+        const Key('registry_operation_comparison_change_summary'),
+      );
+      await tester.dragUntilVisible(
+        changeSummarySection,
+        comparisonSheet,
+        const Offset(0, -300),
+      );
+      expect(changeSummarySection, findsOneWidget);
+      expect(find.textContaining('Добавления:'), findsOneWidget);
+      expect(find.textContaining('Удаления:'), findsOneWidget);
+      expect(find.textContaining('Замены:'), findsOneWidget);
+      expect(find.textContaining('Без изменений:'), findsOneWidget);
+
       final Finder diffSection = find.byKey(
         const Key('registry_operation_comparison_diff'),
       );
