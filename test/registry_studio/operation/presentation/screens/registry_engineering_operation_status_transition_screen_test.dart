@@ -131,6 +131,71 @@ void main() {
 
       expect(find.text('Блокеров нет'), findsOneWidget);
     });
+    testWidgets('shows external readiness blocker and prevents transition', (
+      WidgetTester tester,
+    ) async {
+      RegistryEngineeringOperationStatus? receivedStatus;
+
+      await tester.pumpWidget(
+        _testApp(
+          externalReadinessBlockers: const <String>[
+            'Semantic candidates unresolved.',
+          ],
+          onOperationTransitioned: (operation) {
+            receivedStatus = operation.status;
+          },
+        ),
+      );
+
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('readyForDecision').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Блокеры'), findsOneWidget);
+      expect(find.text('• Semantic candidates unresolved.'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+
+      expect(receivedStatus, isNull);
+      expect(
+        find.textContaining('Semantic candidates unresolved.'),
+        findsWidgets,
+      );
+      expect(find.text('Текущий статус:\nopen'), findsWidgets);
+    });
+
     testWidgets('transitions in-memory operation through existing use case', (
       WidgetTester tester,
     ) async {
@@ -389,6 +454,7 @@ Widget _testApp({
   RegistryEngineeringOperationStatus operationStatus =
       RegistryEngineeringOperationStatus.open,
   ValueChanged<RegistryEngineeringOperation>? onOperationTransitioned,
+  Iterable<String> externalReadinessBlockers = const <String>[],
 }) {
   final RegistryEngineeringOperation operation = _operationWith(
     operationStatus,
@@ -401,6 +467,7 @@ Widget _testApp({
       revisions: <RegistryEngineeringOperationRevision>[
         _revisionFor(operation),
       ],
+      externalReadinessBlockers: externalReadinessBlockers,
       transitionRegistryEngineeringOperationStatus:
           TransitionRegistryEngineeringOperationStatus(),
       onOperationTransitioned: onOperationTransitioned,

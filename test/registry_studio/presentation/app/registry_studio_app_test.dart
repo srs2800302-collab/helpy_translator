@@ -845,59 +845,19 @@ void main() {
     await tester.tap(transitionButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
+    expect(find.textContaining('Semantic candidates unresolved'), findsWidgets);
+    expect(find.text('Текущий статус:\nopen'), findsWidgets);
+    expect(find.text('Текущий статус:\nreadyForDecision'), findsNothing);
 
-    await tester.dragUntilVisible(
-      statusDropdown,
-      find.byType(ListView).first,
-      const Offset(0, -240),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(statusDropdown);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('decided').last);
-    await tester.pumpAndSettle();
-
-    final Finder decisionField = find.byKey(
-      const Key('registry_engineering_operation_decision_statement_field'),
-    );
-
-    await tester.scrollUntilVisible(
-      decisionField,
-      160,
-      scrollable: find.byType(Scrollable).first,
-      maxScrolls: 16,
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      decisionField,
-      'Approve registry source comparison.',
-    );
-
-    await tester.dragUntilVisible(
-      transitionButton,
-      find.byType(ListView).first,
-      const Offset(0, -240),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(transitionButton);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Текущий статус:\ndecided'), findsWidgets);
-    expect(
-      find.textContaining('Approve registry source comparison.'),
-      findsWidgets,
-    );
-
-    final TextField lockedWorkingContentEditor = tester.widget<TextField>(
+    final TextField editableWorkingContentEditor = tester.widget<TextField>(
       find.byKey(const Key('registry_operation_revision_content')),
     );
-    final FilledButton lockedSaveRevisionButton = tester.widget<FilledButton>(
+    final FilledButton editableSaveRevisionButton = tester.widget<FilledButton>(
       saveRevisionButton,
     );
 
-    expect(lockedWorkingContentEditor.readOnly, isTrue);
-    expect(lockedSaveRevisionButton.onPressed, isNull);
+    expect(editableWorkingContentEditor.readOnly, isFalse);
+    expect(editableSaveRevisionButton.onPressed, isNotNull);
   });
 
   testWidgets('switches top-level labels between RU EN and TH', (

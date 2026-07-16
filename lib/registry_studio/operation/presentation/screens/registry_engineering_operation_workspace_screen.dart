@@ -508,11 +508,29 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           ),
         };
 
+    final List<String> semanticReadinessBlockers =
+        widget.comparisonViewData == null
+        ? const <String>[]
+        : <String>[
+            switch (widget.uiLanguage) {
+              RegistryStudioUiLanguage.ru =>
+                'Semantic candidates unresolved: анализ semantic candidates '
+                    'для этой операции недоступен.',
+              RegistryStudioUiLanguage.en =>
+                'Semantic candidates unresolved: semantic candidate '
+                    'analysis is not available for this operation.',
+              RegistryStudioUiLanguage.th =>
+                'Semantic candidates unresolved: '
+                    'ยังไม่มีการวิเคราะห์ semantic candidates สำหรับงานนี้',
+            },
+          ];
+
     final Widget statusScreen =
         RegistryEngineeringOperationStatusTransitionScreen(
           uiLanguage: widget.uiLanguage,
           operation: currentOperation,
           revisions: _revisions,
+          externalReadinessBlockers: semanticReadinessBlockers,
           transitionRegistryEngineeringOperationStatus:
               widget.transitionRegistryEngineeringOperationStatus,
           onOperationTransitioned: _setCurrentOperation,

@@ -17,6 +17,7 @@ final class RegistryEngineeringOperationStatusTransitionScreen
     required this.revisions,
     required this.transitionRegistryEngineeringOperationStatus,
     this.onOperationTransitioned,
+    this.externalReadinessBlockers = const <String>[],
     super.key,
   });
 
@@ -25,6 +26,7 @@ final class RegistryEngineeringOperationStatusTransitionScreen
   final Iterable<RegistryEngineeringOperationRevision> revisions;
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
+  final Iterable<String> externalReadinessBlockers;
   final FutureOr<void> Function(RegistryEngineeringOperation)?
   onOperationTransitioned;
 
@@ -109,6 +111,27 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
         RegistryStudioUiLabels.forLanguage(
           widget.uiLanguage,
         ).operationStatusTransition;
+
+    final List<String> externalReadinessBlockers = widget
+        .externalReadinessBlockers
+        .map((String blocker) => blocker.trim())
+        .where((String blocker) => blocker.isNotEmpty)
+        .toList(growable: false);
+    final bool requestedStatusRequiresReadiness =
+        _requestedStatus ==
+            RegistryEngineeringOperationStatus.readyForDecision ||
+        _requestedStatus == RegistryEngineeringOperationStatus.decided;
+
+    if (requestedStatusRequiresReadiness &&
+        externalReadinessBlockers.isNotEmpty) {
+      setState(() {
+        _hasTransitioned = false;
+        _errorMessage =
+            '${labels.transitionFailedTitle}: '
+            '${externalReadinessBlockers.join(' ')}';
+      });
+      return;
+    }
 
     final RegistryEngineeringOperation transitionedOperation;
 
@@ -276,12 +299,18 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
     final bool hasEngineerDecision = _decisionStatementController.text
         .trim()
         .isNotEmpty;
+    final List<String> externalReadinessBlockers = widget
+        .externalReadinessBlockers
+        .map((String blocker) => blocker.trim())
+        .where((String blocker) => blocker.isNotEmpty)
+        .toList(growable: false);
     final List<String> readinessBlockers = <String>[
       if (!isAllowedTransition) readinessGateLabels.invalidTransition,
       if (requiresRevisionSet && revisions.isEmpty)
         readinessGateLabels.revisionRequired,
       if (requiresRevisionSet && !revisionsBelongToCurrentOperation)
         readinessGateLabels.revisionOwnershipMismatch,
+      if (requiresRevisionSet) ...externalReadinessBlockers,
       if (requiresEngineerDecision && !hasEngineerDecision)
         readinessGateLabels.decisionRequired,
     ];
