@@ -702,6 +702,12 @@ void main() {
       );
       expect(affectedSection, findsOneWidget);
 
+      expect(find.text('Основная затронутая identity'), findsOneWidget);
+      expect(find.text('Подтверждённые структурные связи'), findsOneWidget);
+      expect(find.text('Полный change graph'), findsOneWidget);
+      expect(find.textContaining(source.identity.entityId.value), findsWidgets);
+      expect(find.textContaining('depends_on'), findsWidgets);
+
       final Finder changeSummarySection = find.byKey(
         const Key('registry_operation_comparison_change_summary'),
       );

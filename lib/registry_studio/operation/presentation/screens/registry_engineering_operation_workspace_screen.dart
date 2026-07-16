@@ -560,6 +560,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String registryPath,
       String sourceEvidence,
       String affected,
+      String primaryAffected,
+      String confirmedStructural,
+      String noConfirmedStructural,
+      String fullChangeGraph,
       String direct,
       String transitive,
       String paths,
@@ -583,6 +587,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         registryPath: 'Registry path',
         sourceEvidence: 'Source Evidence',
         affected: 'Затронутые Registry identities',
+        primaryAffected: 'Основная затронутая identity',
+        confirmedStructural: 'Подтверждённые структурные связи',
+        noConfirmedStructural: 'Подтверждённых структурных связей нет',
+        fullChangeGraph: 'Полный change graph',
         direct: 'Прямые зависимости',
         transitive: 'Транзитивные зависимости',
         paths: 'Пути зависимостей',
@@ -605,6 +613,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         registryPath: 'Registry path',
         sourceEvidence: 'Source Evidence',
         affected: 'Affected Registry identities',
+        primaryAffected: 'Primary affected identity',
+        confirmedStructural: 'Confirmed structural dependencies',
+        noConfirmedStructural: 'No confirmed structural dependencies',
+        fullChangeGraph: 'Full change graph',
         direct: 'Direct dependencies',
         transitive: 'Transitive dependencies',
         paths: 'Dependency paths',
@@ -627,6 +639,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         registryPath: 'Registry path',
         sourceEvidence: 'Source Evidence',
         affected: 'Registry identities ที่ได้รับผลกระทบ',
+        primaryAffected: 'identity หลักที่ได้รับผลกระทบ',
+        confirmedStructural: 'ความสัมพันธ์เชิงโครงสร้างที่ยืนยันแล้ว',
+        noConfirmedStructural: 'ไม่มีความสัมพันธ์เชิงโครงสร้างที่ยืนยันแล้ว',
+        fullChangeGraph: 'change graph ทั้งหมด',
         direct: 'การขึ้นต่อกันโดยตรง',
         transitive: 'การขึ้นต่อกันแบบส่งต่อ',
         paths: 'เส้นทางการขึ้นต่อกัน',
@@ -886,6 +902,77 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                                       sheetContext,
                                                     ).textTheme.titleMedium,
                                                   ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    comparisonLabels
+                                                        .primaryAffected,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleSmall,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  SelectableText(
+                                                    comparisonViewData
+                                                        .dependencyGraph
+                                                        .primaryEntityId
+                                                        .value,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    comparisonLabels
+                                                        .confirmedStructural,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleSmall,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  if (comparisonViewData
+                                                      .dependencyGraph
+                                                      .dependencyEdges
+                                                      .isEmpty)
+                                                    SelectableText(
+                                                      comparisonLabels
+                                                          .noConfirmedStructural,
+                                                    ),
+                                                  for (final relation
+                                                      in comparisonViewData
+                                                          .dependencyGraph
+                                                          .dependencyEdges)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 4,
+                                                          ),
+                                                      child: SelectableText(
+                                                        '${relation.sourceEntityId.value} → '
+                                                        '${relation.targetEntityId.value} '
+                                                        '(${relation.meaning.value})',
+                                                      ),
+                                                    ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    comparisonLabels
+                                                        .fullChangeGraph,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleSmall,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  for (final relation
+                                                      in comparisonViewData
+                                                          .dependencyGraph
+                                                          .dependencyEdges)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 4,
+                                                          ),
+                                                      child: SelectableText(
+                                                        '${relation.sourceEntityId.value} → '
+                                                        '${relation.targetEntityId.value} '
+                                                        '(${relation.meaning.value})',
+                                                      ),
+                                                    ),
                                                   const SizedBox(height: 8),
                                                   Text(
                                                     comparisonLabels.direct,
