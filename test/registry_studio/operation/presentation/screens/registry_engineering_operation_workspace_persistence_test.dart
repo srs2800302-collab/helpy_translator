@@ -96,6 +96,7 @@ void main() {
         ),
         affectedBranchPaths: const <String>[],
         unaffectedIdentityExplanations: const <String>[],
+        semanticCandidateExplanations: const <String>[],
       );
 
       await tester.pumpWidget(

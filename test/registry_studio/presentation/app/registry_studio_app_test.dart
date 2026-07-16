@@ -697,6 +697,11 @@ void main() {
       '${unaffected.identity.entityId.value}: '
           'нет прямой или транзитивной связи в текущем RegistryDependencyGraph',
     ]);
+    expect(comparisonViewData.semanticCandidateExplanations, <String>[
+      '${unaffected.identity.entityId.value}: '
+          '"1. Что требуется сделать?" — '
+          'текстовое совпадение без подтверждённой semantic relation',
+    ]);
     expect(comparisonViewData.lineDiff, contains('- ### Plumbing → Кран'));
     expect(
       comparisonViewData.lineDiff,
@@ -750,6 +755,18 @@ void main() {
     expect(find.text('Полный change graph'), findsOneWidget);
     expect(find.textContaining(source.identity.entityId.value), findsWidgets);
     expect(find.textContaining('depends_on'), findsWidgets);
+
+    final Finder semanticCandidatesSection = find.byKey(
+      const Key('registry_operation_comparison_semantic_candidates'),
+    );
+    await tester.dragUntilVisible(
+      semanticCandidatesSection,
+      comparisonSheet,
+      const Offset(0, -300),
+    );
+    expect(semanticCandidatesSection, findsOneWidget);
+    expect(find.text('Semantic candidates'), findsOneWidget);
+    expect(find.textContaining('1. Что требуется сделать?'), findsWidgets);
 
     final Finder dependencyCoverageSection = find.byKey(
       const Key('registry_operation_comparison_dependency_coverage'),

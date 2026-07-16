@@ -359,6 +359,42 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
               'нет прямой или транзитивной связи в текущем RegistryDependencyGraph',
         )
         .toList(growable: false);
+    final Set<String> comparisonTextLines = <String>{
+      for (final String text in <String>[source.sourceText, target.sourceText])
+        for (final String line in text.split('\n'))
+          if (line.trim().isNotEmpty && !line.trim().startsWith('#'))
+            line.trim(),
+    };
+    final Set<String> semanticCandidateKeys = <String>{};
+    final List<String> semanticCandidateExplanations = <String>[];
+
+    for (final ServiceIntakeSourceBlock block in allServiceIntakeBlocks) {
+      if (affectedIdentityIds.contains(block.identity.entityId)) {
+        continue;
+      }
+
+      for (final String line in block.sourceText.split('\n')) {
+        final String normalizedLine = line.trim();
+
+        if (normalizedLine.isEmpty ||
+            normalizedLine.startsWith('#') ||
+            !comparisonTextLines.contains(normalizedLine)) {
+          continue;
+        }
+
+        final String candidateKey =
+            '${block.identity.entityId.value}\n$normalizedLine';
+
+        if (!semanticCandidateKeys.add(candidateKey)) {
+          continue;
+        }
+
+        semanticCandidateExplanations.add(
+          '${block.identity.entityId.value}: "$normalizedLine" — '
+          'текстовое совпадение без подтверждённой semantic relation',
+        );
+      }
+    }
 
     setState(() {
       _initialOperationProblemStatement = <String>[
@@ -410,6 +446,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         dependencyGraph: dependencyGraph,
         affectedBranchPaths: affectedBranchPaths,
         unaffectedIdentityExplanations: unaffectedIdentityExplanations,
+        semanticCandidateExplanations: semanticCandidateExplanations,
       );
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });

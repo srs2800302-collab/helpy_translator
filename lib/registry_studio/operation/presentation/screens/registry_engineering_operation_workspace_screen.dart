@@ -31,6 +31,7 @@ typedef RegistryOperationComparisonViewData = ({
   RegistryDependencyGraph dependencyGraph,
   List<String> affectedBranchPaths,
   List<String> unaffectedIdentityExplanations,
+  List<String> semanticCandidateExplanations,
 });
 
 final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
@@ -509,21 +510,13 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         };
 
     final List<String> semanticReadinessBlockers =
-        widget.comparisonViewData == null
-        ? const <String>[]
-        : <String>[
-            switch (widget.uiLanguage) {
-              RegistryStudioUiLanguage.ru =>
-                'Semantic candidates unresolved: анализ semantic candidates '
-                    'для этой операции недоступен.',
-              RegistryStudioUiLanguage.en =>
-                'Semantic candidates unresolved: semantic candidate '
-                    'analysis is not available for this operation.',
-              RegistryStudioUiLanguage.th =>
-                'Semantic candidates unresolved: '
-                    'ยังไม่มีการวิเคราะห์ semantic candidates สำหรับงานนี้',
-            },
-          ];
+        widget.comparisonViewData?.semanticCandidateExplanations
+            .map(
+              (String candidate) =>
+                  'Semantic candidates unresolved: $candidate',
+            )
+            .toList(growable: false) ??
+        const <String>[];
 
     final Widget statusScreen =
         RegistryEngineeringOperationStatusTransitionScreen(
@@ -583,6 +576,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String primaryAffected,
       String confirmedStructural,
       String noConfirmedStructural,
+      String semanticCandidates,
+      String noSemanticCandidates,
       String fullChangeGraph,
       String direct,
       String transitive,
@@ -613,6 +608,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         primaryAffected: 'Основная затронутая identity',
         confirmedStructural: 'Подтверждённые структурные связи',
         noConfirmedStructural: 'Подтверждённых структурных связей нет',
+        semanticCandidates: 'Semantic candidates',
+        noSemanticCandidates: 'Semantic candidates не найдены',
         fullChangeGraph: 'Полный change graph',
         direct: 'Прямые зависимости',
         transitive: 'Транзитивные зависимости',
@@ -642,6 +639,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         primaryAffected: 'Primary affected identity',
         confirmedStructural: 'Confirmed structural dependencies',
         noConfirmedStructural: 'No confirmed structural dependencies',
+        semanticCandidates: 'Semantic candidates',
+        noSemanticCandidates: 'No semantic candidates',
         fullChangeGraph: 'Full change graph',
         direct: 'Direct dependencies',
         transitive: 'Transitive dependencies',
@@ -671,6 +670,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         primaryAffected: 'identity หลักที่ได้รับผลกระทบ',
         confirmedStructural: 'ความสัมพันธ์เชิงโครงสร้างที่ยืนยันแล้ว',
         noConfirmedStructural: 'ไม่มีความสัมพันธ์เชิงโครงสร้างที่ยืนยันแล้ว',
+        semanticCandidates: 'Semantic candidates',
+        noSemanticCandidates: 'ไม่พบ semantic candidates',
         fullChangeGraph: 'change graph ทั้งหมด',
         direct: 'การขึ้นต่อกันโดยตรง',
         transitive: 'การขึ้นต่อกันแบบส่งต่อ',
@@ -1078,6 +1079,47 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                                               ) => id.value,
                                                             )
                                                             .join(' → '),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Card(
+                                            key: const Key(
+                                              'registry_operation_comparison_semantic_candidates',
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text(
+                                                    comparisonLabels
+                                                        .semanticCandidates,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  if (comparisonViewData
+                                                      .semanticCandidateExplanations
+                                                      .isEmpty)
+                                                    SelectableText(
+                                                      comparisonLabels
+                                                          .noSemanticCandidates,
+                                                    ),
+                                                  for (final String candidate
+                                                      in comparisonViewData
+                                                          .semanticCandidateExplanations)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 4,
+                                                          ),
+                                                      child: SelectableText(
+                                                        candidate,
                                                       ),
                                                     ),
                                                 ],
