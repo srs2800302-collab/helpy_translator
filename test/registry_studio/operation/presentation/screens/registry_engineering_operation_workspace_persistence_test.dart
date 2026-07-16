@@ -75,6 +75,7 @@ void main() {
       final RegistryOperationComparisonViewData comparisonViewData = (
         operationType: 'Service Intake comparison',
         projectAdapter: 'Helpy Service Intake',
+        sourceRevision: 'source-revision',
         sourceHeading: 'Source heading',
         sourceEntityId: RegistryEntityId('source'),
         sourceRegistryPath: 'source',

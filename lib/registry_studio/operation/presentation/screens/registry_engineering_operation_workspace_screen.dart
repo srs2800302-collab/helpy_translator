@@ -16,6 +16,7 @@ import 'package:helpy_translator/registry_studio/core/domain/value_objects/regis
 typedef RegistryOperationComparisonViewData = ({
   String operationType,
   String projectAdapter,
+  String sourceRevision,
   String sourceHeading,
   RegistryEntityId sourceEntityId,
   String sourceRegistryPath,
@@ -553,6 +554,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String operationContext,
       String operationType,
       String projectAdapter,
+      String sourceRevision,
       String source,
       String target,
       String registryPath,
@@ -569,6 +571,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         operationContext: 'Контекст операции',
         operationType: 'Тип операции',
         projectAdapter: 'Project adapter',
+        sourceRevision: 'Исходная ревизия',
         source: 'Источник',
         target: 'Цель изменения',
         registryPath: 'Registry path',
@@ -584,6 +587,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         operationContext: 'Operation context',
         operationType: 'Operation type',
         projectAdapter: 'Project adapter',
+        sourceRevision: 'Source revision',
         source: 'Source',
         target: 'Change target',
         registryPath: 'Registry path',
@@ -599,6 +603,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         operationContext: 'บริบทงาน',
         operationType: 'ประเภทงาน',
         projectAdapter: 'Project adapter',
+        sourceRevision: 'รีวิชันต้นทาง',
         source: 'ต้นทาง',
         target: 'เป้าหมายการเปลี่ยนแปลง',
         registryPath: 'Registry path',
@@ -640,6 +645,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                               SelectableText(
                                 '${comparisonLabels.projectAdapter}: '
                                 '${comparisonViewData.projectAdapter}',
+                              ),
+                              SelectableText(
+                                '${comparisonLabels.sourceRevision}: '
+                                '${comparisonViewData.sourceRevision}',
                               ),
                               const Divider(),
                               SelectableText(

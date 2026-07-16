@@ -595,6 +595,7 @@ void main() {
 
       expect(comparisonViewData.operationType, 'Service Intake comparison');
       expect(comparisonViewData.projectAdapter, 'Helpy Service Intake');
+      expect(comparisonViewData.sourceRevision, _sourceRevision);
       expect(comparisonViewData.sourceHeading, source.identity.heading);
       expect(comparisonViewData.sourceEntityId, source.identity.entityId);
       expect(
@@ -664,6 +665,14 @@ void main() {
       );
 
       expect(comparisonSummary, findsOneWidget);
+
+      final Finder operationContext = find.byKey(
+        const Key('registry_operation_context_card'),
+      );
+
+      expect(operationContext, findsOneWidget);
+      await tester.ensureVisible(operationContext);
+      expect(find.textContaining(_sourceRevision), findsOneWidget);
 
       await tester.ensureVisible(comparisonSummary);
       await tester.tap(comparisonSummary);

@@ -320,8 +320,9 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
 
   void _startOperationFromServiceIntakeComparison(
     ServiceIntakeSourceBlock source,
-    ServiceIntakeSourceBlock target,
-  ) {
+    ServiceIntakeSourceBlock target, {
+    required String sourceRevision,
+  }) {
     final String lineComparison = widget.compareRegistrySourceText.compare(
       source: source.sourceText,
       target: target.sourceText,
@@ -360,6 +361,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _operationComparisonViewData = (
         operationType: 'Service Intake comparison',
         projectAdapter: 'Helpy Service Intake',
+        sourceRevision: sourceRevision.trim(),
         sourceHeading: source.identity.heading,
         sourceEntityId: source.identity.entityId,
         sourceRegistryPath: source.identity.path.segments.join(' / '),
@@ -601,16 +603,24 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                           'service_intake_source_comparison_action',
                         ),
                         onPressed: comparisonReady
-                            ? () {
+                            ? () async {
                                 final ServiceIntakeSourceBlock source =
                                     _registryComparisonSource!;
                                 final ServiceIntakeSourceBlock target =
                                     _registryComparisonTarget!;
 
+                                final String sourceRevision =
+                                    await widget.registrySourceRevision!;
+
+                                if (!mounted || !context.mounted) {
+                                  return;
+                                }
+
                                 Navigator.of(context).pop();
                                 _startOperationFromServiceIntakeComparison(
                                   source,
                                   target,
+                                  sourceRevision: sourceRevision,
                                 );
                               }
                             : null,
