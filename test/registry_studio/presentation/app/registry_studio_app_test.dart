@@ -1022,6 +1022,67 @@ void main() {
       expect(find.text('Эквивалентная формулировка'), findsOneWidget);
     },
   );
+  testWidgets('blocks readiness for failed Translator candidate', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final TranslatorPhraseResult result = TranslatorPhraseResult(
+      sourceLanguage: 'ru',
+      sourceText: 'Проверить формулировку.',
+      status: TranslatorPhraseStatus.failed,
+      comment: 'Полный результат перевода не содержит секцию EN.',
+      candidateCanonicalPhrase: 'Проверить каноническую формулировку.',
+    );
+    final _FakeTranslatorPhraseProvider provider =
+        _FakeTranslatorPhraseProvider(result);
+
+    await tester.pumpWidget(_testApp(provider));
+
+    await tester.enterText(
+      find.byKey(const Key('translator_phrase_source_text_field')),
+      result.sourceText,
+    );
+    await tester.tap(
+      find.byKey(const Key('translator_phrase_translate_button')),
+    );
+    await tester.pumpAndSettle();
+
+    final Finder requestButton = find.byKey(
+      const Key('translator_phrase_request_operation_button'),
+    );
+    final Finder translatorList = find.descendant(
+      of: find.byType(TranslatorPhraseScreen),
+      matching: find.byType(ListView),
+    );
+
+    await tester.dragUntilVisible(
+      requestButton,
+      translatorList,
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(requestButton);
+    await tester.pumpAndSettle();
+
+    final Finder statusDropdown = find.byKey(
+      const Key('registry_engineering_operation_requested_status_dropdown'),
+    );
+    await tester.ensureVisible(statusDropdown);
+    await tester.tap(statusDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('readyForDecision').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(RegistryEngineeringOperationWorkspaceScreen),
+      findsOneWidget,
+    );
+    expect(find.text('Текущий статус:\nopen'), findsOneWidget);
+    expect(find.textContaining('Translation incomplete'), findsWidgets);
+  });
+
   testWidgets('starts engineering operation from Translator candidate', (
     WidgetTester tester,
   ) async {

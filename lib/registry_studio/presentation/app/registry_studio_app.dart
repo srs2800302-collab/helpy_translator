@@ -300,10 +300,15 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _operationPrimaryEntityId = null;
       _operationRelatedEntityIds = null;
       _operationComparisonViewData = null;
-      _operationReadinessBlockers =
-          result.status == TranslatorPhraseStatus.canonicalDrift
-          ? const <String>['Canonical drift unresolved']
-          : const <String>[];
+      _operationReadinessBlockers = switch (result.status) {
+        TranslatorPhraseStatus.canonicalDrift => const <String>[
+          'Canonical drift unresolved',
+        ],
+        TranslatorPhraseStatus.failed => const <String>[
+          'Translation incomplete',
+        ],
+        _ => const <String>[],
+      };
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
