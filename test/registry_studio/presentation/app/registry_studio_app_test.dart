@@ -722,6 +722,32 @@ void main() {
     await tester.ensureVisible(operationContext);
     expect(find.textContaining(_sourceRevision), findsOneWidget);
 
+    final Finder visibleChangeSummary = find.byKey(
+      const Key('registry_operation_visible_change_summary'),
+    );
+    final Finder visibleDependencySummary = find.byKey(
+      const Key('registry_operation_visible_dependency_summary'),
+    );
+    final Finder visibleSemanticCandidates = find.byKey(
+      const Key('registry_operation_visible_semantic_candidates'),
+    );
+
+    expect(visibleChangeSummary, findsOneWidget);
+    expect(visibleDependencySummary, findsOneWidget);
+    expect(visibleSemanticCandidates, findsOneWidget);
+
+    await tester.ensureVisible(visibleChangeSummary);
+    expect(find.textContaining('Добавления:'), findsWidgets);
+    expect(find.textContaining('Удаления:'), findsWidgets);
+    expect(find.textContaining('Замены:'), findsWidgets);
+
+    await tester.ensureVisible(visibleDependencySummary);
+    expect(find.text('Прямые зависимости'), findsOneWidget);
+    expect(find.text('Транзитивные зависимости'), findsOneWidget);
+
+    await tester.ensureVisible(visibleSemanticCandidates);
+    expect(find.textContaining('1. Что требуется сделать?'), findsWidgets);
+
     await tester.ensureVisible(comparisonSummary);
     await tester.tap(comparisonSummary);
     await tester.pumpAndSettle();
@@ -765,7 +791,7 @@ void main() {
       const Offset(0, -300),
     );
     expect(semanticCandidatesSection, findsOneWidget);
-    expect(find.text('Semantic candidates'), findsOneWidget);
+    expect(find.text('Semantic candidates'), findsWidgets);
     expect(find.textContaining('1. Что требуется сделать?'), findsWidgets);
 
     final Finder rejectSemanticCandidateButton = find.byKey(
@@ -802,11 +828,11 @@ void main() {
       const Offset(0, -300),
     );
     expect(changeSummarySection, findsOneWidget);
-    expect(find.textContaining('Добавления:'), findsOneWidget);
-    expect(find.textContaining('Удаления:'), findsOneWidget);
-    expect(find.textContaining('Замены:'), findsOneWidget);
-    expect(find.textContaining('Потенциальные перемещения:'), findsOneWidget);
-    expect(find.textContaining('Без изменений:'), findsOneWidget);
+    expect(find.textContaining('Добавления:'), findsWidgets);
+    expect(find.textContaining('Удаления:'), findsWidgets);
+    expect(find.textContaining('Замены:'), findsWidgets);
+    expect(find.textContaining('Потенциальные перемещения:'), findsWidgets);
+    expect(find.textContaining('Без изменений:'), findsWidgets);
 
     final Finder diffSection = find.byKey(
       const Key('registry_operation_comparison_diff'),
@@ -847,7 +873,7 @@ void main() {
       find.textContaining('Решения по semantic candidates'),
       findsOneWidget,
     );
-    expect(find.textContaining('Отклонено как unrelated'), findsOneWidget);
+    expect(find.textContaining('Отклонено как unrelated'), findsWidgets);
 
     final Finder proposalReviewButton = find.byKey(
       const Key('registry_operation_proposal_review_confirm'),

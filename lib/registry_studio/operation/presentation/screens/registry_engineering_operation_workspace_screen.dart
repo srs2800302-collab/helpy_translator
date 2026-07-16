@@ -894,6 +894,245 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                         ),
                       ),
                       Card(
+                        key: const Key(
+                          'registry_operation_visible_change_summary',
+                        ),
+                        margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                comparisonLabels.changeSummary,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              SelectableText(
+                                '${comparisonLabels.additions}: '
+                                '$comparisonAdditionCount',
+                              ),
+                              SelectableText(
+                                '${comparisonLabels.deletions}: '
+                                '$comparisonDeletionCount',
+                              ),
+                              SelectableText(
+                                '${comparisonLabels.replacements}: '
+                                '$comparisonReplacementCount',
+                              ),
+                              SelectableText(
+                                '${comparisonLabels.potentialMoves}: '
+                                '$comparisonPotentialMoveCount',
+                              ),
+                              SelectableText(
+                                '${comparisonLabels.unchanged}: '
+                                '$comparisonUnchangedCount',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Card(
+                        key: const Key(
+                          'registry_operation_visible_dependency_summary',
+                        ),
+                        margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                comparisonLabels.affected,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                comparisonLabels.direct,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 4),
+                              if (comparisonViewData
+                                  .dependencyGraph
+                                  .directDependencyIds
+                                  .isEmpty)
+                                const SelectableText('—'),
+                              for (final RegistryEntityId entityId
+                                  in comparisonViewData
+                                      .dependencyGraph
+                                      .directDependencyIds)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: SelectableText(entityId.value),
+                                ),
+                              const SizedBox(height: 8),
+                              Text(
+                                comparisonLabels.transitive,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 4),
+                              if (comparisonViewData
+                                  .dependencyGraph
+                                  .transitiveDependencyIds
+                                  .isEmpty)
+                                const SelectableText('—'),
+                              for (final RegistryEntityId entityId
+                                  in comparisonViewData
+                                      .dependencyGraph
+                                      .transitiveDependencyIds)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: SelectableText(entityId.value),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Card(
+                        key: const Key(
+                          'registry_operation_visible_semantic_candidates',
+                        ),
+                        margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                comparisonLabels.semanticCandidates,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              if (comparisonViewData
+                                  .semanticCandidateExplanations
+                                  .isEmpty)
+                                SelectableText(
+                                  comparisonLabels.noSemanticCandidates,
+                                ),
+                              for (
+                                int candidateIndex = 0;
+                                candidateIndex <
+                                    comparisonViewData
+                                        .semanticCandidateExplanations
+                                        .length;
+                                candidateIndex += 1
+                              )
+                                StatefulBuilder(
+                                  builder:
+                                      (
+                                        BuildContext context,
+                                        StateSetter setCandidateCardState,
+                                      ) {
+                                        final String
+                                        candidate = comparisonViewData
+                                            .semanticCandidateExplanations[candidateIndex];
+                                        final bool? decision =
+                                            _semanticCandidateDecisions[candidate];
+
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: <Widget>[
+                                              SelectableText(candidate),
+                                              if (decision != null) ...<Widget>[
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${comparisonLabels.semanticCandidateDecision}: '
+                                                  '${decision ? comparisonLabels.semanticCandidateConfirmed : comparisonLabels.semanticCandidateRejected}',
+                                                ),
+                                              ],
+                                              const SizedBox(height: 8),
+                                              Wrap(
+                                                spacing: 8,
+                                                runSpacing: 8,
+                                                children: <Widget>[
+                                                  OutlinedButton(
+                                                    key: ValueKey<String>(
+                                                      'registry_operation_visible_semantic_candidate_confirm_$candidateIndex',
+                                                    ),
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        _semanticCandidateDecisions =
+                                                            <String, bool>{
+                                                              ..._semanticCandidateDecisions,
+                                                              candidate: true,
+                                                            };
+                                                      });
+                                                      setCandidateCardState(
+                                                        () {},
+                                                      );
+                                                    },
+                                                    child: Text(
+                                                      comparisonLabels
+                                                          .semanticCandidateConfirm,
+                                                    ),
+                                                  ),
+                                                  OutlinedButton(
+                                                    key: ValueKey<String>(
+                                                      'registry_operation_visible_semantic_candidate_reject_$candidateIndex',
+                                                    ),
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        _semanticCandidateDecisions =
+                                                            <String, bool>{
+                                                              ..._semanticCandidateDecisions,
+                                                              candidate: false,
+                                                            };
+                                                      });
+                                                      setCandidateCardState(
+                                                        () {},
+                                                      );
+                                                    },
+                                                    child: Text(
+                                                      comparisonLabels
+                                                          .semanticCandidateReject,
+                                                    ),
+                                                  ),
+                                                  if (decision != null)
+                                                    TextButton(
+                                                      key: ValueKey<String>(
+                                                        'registry_operation_visible_semantic_candidate_clear_$candidateIndex',
+                                                      ),
+                                                      onPressed: () {
+                                                        setState(() {
+                                                          final Map<
+                                                            String,
+                                                            bool
+                                                          >
+                                                          next = <String, bool>{
+                                                            ..._semanticCandidateDecisions,
+                                                          };
+                                                          next.remove(
+                                                            candidate,
+                                                          );
+                                                          _semanticCandidateDecisions =
+                                                              next;
+                                                        });
+                                                        setCandidateCardState(
+                                                          () {},
+                                                        );
+                                                      },
+                                                      child: Text(
+                                                        comparisonLabels
+                                                            .semanticCandidateClear,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Card(
                         key: const Key('registry_operation_comparison_summary'),
                         margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                         child: ListTile(
