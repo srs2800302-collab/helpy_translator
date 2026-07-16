@@ -918,8 +918,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Semantic candidates unresolved'), findsNothing);
-    expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
-    expect(find.text('Текущий статус:\nopen'), findsNothing);
+    await tester.drag(find.byType(ListView).at(1), const Offset(0, 600));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Текущий статус:\nreadyForDecision', skipOffstage: false),
+      findsWidgets,
+    );
+    expect(
+      find.text('Текущий статус:\nopen', skipOffstage: false),
+      findsNothing,
+    );
 
     final TextField editableWorkingContentEditor = tester.widget<TextField>(
       find.byKey(const Key('registry_operation_revision_content')),
