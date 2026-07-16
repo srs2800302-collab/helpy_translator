@@ -50,6 +50,9 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
   static const Key resultCardKey = Key(
     'registry_engineering_operation_status_transition_result_card',
   );
+  static const Key latestRevisionCardKey = Key(
+    'registry_engineering_operation_latest_revision_card',
+  );
   static const Key errorTextKey = Key(
     'registry_engineering_operation_status_transition_error_text',
   );
@@ -171,6 +174,32 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
           widget.uiLanguage,
         ).operationStatusTransition;
     final String? errorMessage = _errorMessage;
+    final List<RegistryEngineeringOperationRevision> revisions = widget
+        .revisions
+        .toList(growable: false);
+    final RegistryEngineeringOperationRevision? latestRevision =
+        revisions.isEmpty ? null : revisions.last;
+    final ({String title, String original, String proposed, String working})
+    revisionLabels = switch (widget.uiLanguage) {
+      RegistryStudioUiLanguage.ru => (
+        title: 'Последняя редакция',
+        original: 'Исходное значение',
+        proposed: 'Предложенное значение',
+        working: 'Рабочая версия',
+      ),
+      RegistryStudioUiLanguage.en => (
+        title: 'Latest revision',
+        original: 'Original',
+        proposed: 'Proposed',
+        working: 'Working',
+      ),
+      RegistryStudioUiLanguage.th => (
+        title: 'ฉบับแก้ไขล่าสุด',
+        original: 'ค่าต้นฉบับ',
+        proposed: 'ค่าที่เสนอ',
+        working: 'เวอร์ชันการทำงาน',
+      ),
+    };
 
     return Material(
       child: SafeArea(
@@ -188,6 +217,14 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
               labels: labels,
               operation: _currentOperation,
             ),
+            if (latestRevision != null) ...<Widget>[
+              const SizedBox(height: 16),
+              _RegistryEngineeringOperationRevisionCard(
+                key: latestRevisionCardKey,
+                labels: revisionLabels,
+                revision: latestRevision,
+              ),
+            ],
             const SizedBox(height: 16),
             DropdownButtonFormField<RegistryEngineeringOperationStatus>(
               key: requestedStatusDropdownKey,
@@ -302,6 +339,46 @@ final class _RegistryEngineeringOperationStatusCard extends StatelessWidget {
                 label: labels.decisionStatementLabel,
                 value: operation.decisionStatement!,
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _RegistryEngineeringOperationRevisionCard extends StatelessWidget {
+  const _RegistryEngineeringOperationRevisionCard({
+    required this.labels,
+    required this.revision,
+    super.key,
+  });
+
+  final ({String title, String original, String proposed, String working})
+  labels;
+  final RegistryEngineeringOperationRevision revision;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(labels.title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            _TextValueRow(
+              label: labels.original,
+              value: revision.originalValue,
+            ),
+            _TextValueRow(
+              label: labels.proposed,
+              value: revision.proposedValue,
+            ),
+            _TextValueRow(
+              label: labels.working,
+              value: revision.workingContent,
+            ),
           ],
         ),
       ),

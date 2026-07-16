@@ -30,6 +30,26 @@ void main() {
       expect(find.text('Сменить статус'), findsOneWidget);
     });
 
+    testWidgets('shows latest revision values before transition', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(_testApp());
+
+      expect(find.text('Последняя редакция'), findsOneWidget);
+      expect(
+        find.text('Исходное значение:\nOriginal registry value.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Предложенное значение:\nProposed registry value.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Рабочая версия:\nApproved working content.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('transitions in-memory operation through existing use case', (
       WidgetTester tester,
     ) async {
@@ -44,14 +64,23 @@ void main() {
 
       await tester.tap(find.text('readyForDecision').last);
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
 
       await tester.tap(
         find.byKey(
           const Key('registry_engineering_operation_status_transition_button'),
         ),
+        warnIfMissed: false,
       );
       await tester.pumpAndSettle();
-
       expect(find.text('Статус изменён'), findsOneWidget);
       expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
       expect(find.text('Ошибка смены статуса'), findsNothing);
@@ -61,11 +90,28 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(_testApp());
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
 
       await tester.tap(
         find.byKey(
           const Key('registry_engineering_operation_status_transition_button'),
         ),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.textContaining('Ошибка смены статуса'),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 8,
       );
       await tester.pumpAndSettle();
 
@@ -114,14 +160,23 @@ void main() {
 
       await tester.tap(find.text('readyForDecision').last);
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
 
       await tester.tap(
         find.byKey(
           const Key('registry_engineering_operation_status_transition_button'),
         ),
+        warnIfMissed: false,
       );
       await tester.pumpAndSettle();
-
       expect(
         receivedStatus,
         RegistryEngineeringOperationStatus.readyForDecision,
@@ -159,14 +214,29 @@ void main() {
 
       await tester.enterText(decisionField, '  Approve canonical wording.  ');
 
-      final Finder transitionButton = find.byKey(
-        const Key('registry_engineering_operation_status_transition_button'),
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+
+        160,
+
+        scrollable: find.byType(Scrollable).first,
+
+        maxScrolls: 16,
       );
 
-      await tester.ensureVisible(transitionButton);
-      await tester.tap(transitionButton);
       await tester.pumpAndSettle();
 
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+
+        warnIfMissed: false,
+      );
+
+      await tester.pumpAndSettle();
       expect(
         receivedOperation?.status,
         RegistryEngineeringOperationStatus.decided,
@@ -215,6 +285,8 @@ RegistryEngineeringOperationRevision _revisionFor(
     operationId: operation.id,
     revisionNumber: 1,
     workingContent: 'Approved working content.',
+    originalValue: 'Original registry value.',
+    proposedValue: 'Proposed registry value.',
     previousRevisionId: null,
     primaryEntityId: RegistryEntityId('primary'),
     relatedEntityIds: const <RegistryEntityId>[],
