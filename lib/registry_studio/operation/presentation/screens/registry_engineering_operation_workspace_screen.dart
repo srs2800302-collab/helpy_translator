@@ -82,6 +82,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
   bool _initialProblemStatementConsumed = false;
   bool _isCreatingInitialOperation = false;
   String? _initialOperationCreationError;
+  Map<String, bool> _semanticCandidateDecisions = const <String, bool>{};
 
   @override
   void initState() {
@@ -98,6 +99,17 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           unawaited(_createInitialOperationIfNeeded());
         }
       });
+    }
+  }
+
+  @override
+  void didUpdateWidget(
+    covariant RegistryEngineeringOperationWorkspaceScreen oldWidget,
+  ) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!identical(oldWidget.comparisonViewData, widget.comparisonViewData)) {
+      _semanticCandidateDecisions = const <String, bool>{};
     }
   }
 
@@ -332,6 +344,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       setState(() {
         _currentOperation = null;
         _revisions = const <RegistryEngineeringOperationRevision>[];
+        _semanticCandidateDecisions = const <String, bool>{};
         _workingContentController.clear();
         _isSavingRevision = false;
         _isStartingNewOperation = false;
@@ -511,6 +524,10 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     final List<String> semanticReadinessBlockers =
         widget.comparisonViewData?.semanticCandidateExplanations
+            .where(
+              (String candidate) =>
+                  !_semanticCandidateDecisions.containsKey(candidate),
+            )
             .map(
               (String candidate) =>
                   'Semantic candidates unresolved: $candidate',
@@ -578,6 +595,12 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String noConfirmedStructural,
       String semanticCandidates,
       String noSemanticCandidates,
+      String semanticCandidateDecision,
+      String semanticCandidateConfirm,
+      String semanticCandidateReject,
+      String semanticCandidateConfirmed,
+      String semanticCandidateRejected,
+      String semanticCandidateClear,
       String fullChangeGraph,
       String direct,
       String transitive,
@@ -610,6 +633,12 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         noConfirmedStructural: 'Подтверждённых структурных связей нет',
         semanticCandidates: 'Semantic candidates',
         noSemanticCandidates: 'Semantic candidates не найдены',
+        semanticCandidateDecision: 'Решение инженера',
+        semanticCandidateConfirm: 'Подтвердить как зависимость',
+        semanticCandidateReject: 'Отклонить как unrelated',
+        semanticCandidateConfirmed: 'Подтверждено как зависимость',
+        semanticCandidateRejected: 'Отклонено как unrelated',
+        semanticCandidateClear: 'Снять решение',
         fullChangeGraph: 'Полный change graph',
         direct: 'Прямые зависимости',
         transitive: 'Транзитивные зависимости',
@@ -641,6 +670,12 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         noConfirmedStructural: 'No confirmed structural dependencies',
         semanticCandidates: 'Semantic candidates',
         noSemanticCandidates: 'No semantic candidates',
+        semanticCandidateDecision: 'Engineer decision',
+        semanticCandidateConfirm: 'Confirm dependency',
+        semanticCandidateReject: 'Reject as unrelated',
+        semanticCandidateConfirmed: 'Confirmed dependency',
+        semanticCandidateRejected: 'Rejected as unrelated',
+        semanticCandidateClear: 'Clear decision',
         fullChangeGraph: 'Full change graph',
         direct: 'Direct dependencies',
         transitive: 'Transitive dependencies',
@@ -672,6 +707,12 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         noConfirmedStructural: 'ไม่มีความสัมพันธ์เชิงโครงสร้างที่ยืนยันแล้ว',
         semanticCandidates: 'Semantic candidates',
         noSemanticCandidates: 'ไม่พบ semantic candidates',
+        semanticCandidateDecision: 'การตัดสินใจของวิศวกร',
+        semanticCandidateConfirm: 'ยืนยันว่าเป็น dependency',
+        semanticCandidateReject: 'ปฏิเสธว่าไม่เกี่ยวข้อง',
+        semanticCandidateConfirmed: 'ยืนยันว่าเป็น dependency แล้ว',
+        semanticCandidateRejected: 'ปฏิเสธว่าไม่เกี่ยวข้องแล้ว',
+        semanticCandidateClear: 'ล้างการตัดสินใจ',
         fullChangeGraph: 'change graph ทั้งหมด',
         direct: 'การขึ้นต่อกันโดยตรง',
         transitive: 'การขึ้นต่อกันแบบส่งต่อ',
@@ -1110,17 +1151,158 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                                       comparisonLabels
                                                           .noSemanticCandidates,
                                                     ),
-                                                  for (final String candidate
-                                                      in comparisonViewData
-                                                          .semanticCandidateExplanations)
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            bottom: 4,
-                                                          ),
-                                                      child: SelectableText(
-                                                        candidate,
-                                                      ),
+                                                  for (
+                                                    int candidateIndex = 0;
+                                                    candidateIndex <
+                                                        comparisonViewData
+                                                            .semanticCandidateExplanations
+                                                            .length;
+                                                    candidateIndex += 1
+                                                  )
+                                                    StatefulBuilder(
+                                                      builder:
+                                                          (
+                                                            BuildContext
+                                                            context,
+                                                            StateSetter
+                                                            setCandidateSheetState,
+                                                          ) {
+                                                            final String
+                                                            candidate =
+                                                                comparisonViewData
+                                                                    .semanticCandidateExplanations[candidateIndex];
+                                                            final bool?
+                                                            decision =
+                                                                _semanticCandidateDecisions[candidate];
+
+                                                            return Padding(
+                                                              padding:
+                                                                  const EdgeInsets.only(
+                                                                    bottom: 12,
+                                                                  ),
+                                                              child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: <Widget>[
+                                                                  SelectableText(
+                                                                    candidate,
+                                                                  ),
+                                                                  if (decision !=
+                                                                      null) ...<
+                                                                    Widget
+                                                                  >[
+                                                                    const SizedBox(
+                                                                      height: 4,
+                                                                    ),
+                                                                    Text(
+                                                                      '${comparisonLabels.semanticCandidateDecision}: '
+                                                                      '${decision ? comparisonLabels.semanticCandidateConfirmed : comparisonLabels.semanticCandidateRejected}',
+                                                                    ),
+                                                                  ],
+                                                                  const SizedBox(
+                                                                    height: 8,
+                                                                  ),
+                                                                  Wrap(
+                                                                    spacing: 8,
+                                                                    runSpacing:
+                                                                        8,
+                                                                    children: <Widget>[
+                                                                      OutlinedButton(
+                                                                        key:
+                                                                            ValueKey<
+                                                                              String
+                                                                            >(
+                                                                              'registry_operation_semantic_candidate_confirm_$candidateIndex',
+                                                                            ),
+                                                                        onPressed: () {
+                                                                          setState(() {
+                                                                            _semanticCandidateDecisions =
+                                                                                <
+                                                                                  String,
+                                                                                  bool
+                                                                                >{
+                                                                                  ..._semanticCandidateDecisions,
+                                                                                  candidate: true,
+                                                                                };
+                                                                          });
+                                                                          setCandidateSheetState(
+                                                                            () {},
+                                                                          );
+                                                                        },
+                                                                        child: Text(
+                                                                          comparisonLabels
+                                                                              .semanticCandidateConfirm,
+                                                                        ),
+                                                                      ),
+                                                                      OutlinedButton(
+                                                                        key:
+                                                                            ValueKey<
+                                                                              String
+                                                                            >(
+                                                                              'registry_operation_semantic_candidate_reject_$candidateIndex',
+                                                                            ),
+                                                                        onPressed: () {
+                                                                          setState(() {
+                                                                            _semanticCandidateDecisions =
+                                                                                <
+                                                                                  String,
+                                                                                  bool
+                                                                                >{
+                                                                                  ..._semanticCandidateDecisions,
+                                                                                  candidate: false,
+                                                                                };
+                                                                          });
+                                                                          setCandidateSheetState(
+                                                                            () {},
+                                                                          );
+                                                                        },
+                                                                        child: Text(
+                                                                          comparisonLabels
+                                                                              .semanticCandidateReject,
+                                                                        ),
+                                                                      ),
+                                                                      if (decision !=
+                                                                          null)
+                                                                        TextButton(
+                                                                          key:
+                                                                              ValueKey<
+                                                                                String
+                                                                              >(
+                                                                                'registry_operation_semantic_candidate_clear_$candidateIndex',
+                                                                              ),
+                                                                          onPressed: () {
+                                                                            setState(() {
+                                                                              final Map<
+                                                                                String,
+                                                                                bool
+                                                                              >
+                                                                              next =
+                                                                                  <
+                                                                                    String,
+                                                                                    bool
+                                                                                  >{
+                                                                                    ..._semanticCandidateDecisions,
+                                                                                  };
+                                                                              next.remove(
+                                                                                candidate,
+                                                                              );
+                                                                              _semanticCandidateDecisions = next;
+                                                                            });
+                                                                            setCandidateSheetState(
+                                                                              () {},
+                                                                            );
+                                                                          },
+                                                                          child: Text(
+                                                                            comparisonLabels.semanticCandidateClear,
+                                                                          ),
+                                                                        ),
+                                                                    ],
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          },
                                                     ),
                                                 ],
                                               ),

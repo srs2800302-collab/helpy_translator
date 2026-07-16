@@ -768,6 +768,15 @@ void main() {
     expect(find.text('Semantic candidates'), findsOneWidget);
     expect(find.textContaining('1. Что требуется сделать?'), findsWidgets);
 
+    final Finder rejectSemanticCandidateButton = find.byKey(
+      const ValueKey<String>('registry_operation_semantic_candidate_reject_0'),
+    );
+    await tester.ensureVisible(rejectSemanticCandidateButton);
+    await tester.pumpAndSettle();
+    await tester.tap(rejectSemanticCandidateButton);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Отклонено как unrelated'), findsWidgets);
+
     final Finder dependencyCoverageSection = find.byKey(
       const Key('registry_operation_comparison_dependency_coverage'),
     );
@@ -862,9 +871,9 @@ void main() {
     await tester.tap(transitionButton);
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Semantic candidates unresolved'), findsWidgets);
-    expect(find.text('Текущий статус:\nopen'), findsWidgets);
-    expect(find.text('Текущий статус:\nreadyForDecision'), findsNothing);
+    expect(find.textContaining('Semantic candidates unresolved'), findsNothing);
+    expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
+    expect(find.text('Текущий статус:\nopen'), findsNothing);
 
     final TextField editableWorkingContentEditor = tester.widget<TextField>(
       find.byKey(const Key('registry_operation_revision_content')),
