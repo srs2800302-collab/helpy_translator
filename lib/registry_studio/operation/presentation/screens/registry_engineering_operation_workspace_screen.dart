@@ -32,6 +32,7 @@ typedef RegistryOperationComparisonViewData = ({
   List<String> affectedBranchPaths,
   List<String> unaffectedIdentityExplanations,
   List<String> semanticCandidateExplanations,
+  List<String> conflictExplanations,
 });
 
 final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
@@ -550,6 +551,14 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
             .toList(growable: false) ??
         const <String>[];
 
+    final List<String> conflictReadinessBlockers =
+        widget.comparisonViewData?.conflictExplanations
+            .map((String conflict) => conflict.trim())
+            .where((String conflict) => conflict.isNotEmpty)
+            .map((String conflict) => 'Conflict unresolved: $conflict')
+            .toList(growable: false) ??
+        const <String>[];
+
     final List<String> proposalReadinessBlockers =
         widget.comparisonViewData != null &&
             _revisions.isNotEmpty &&
@@ -565,6 +574,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           externalReadinessBlockers: <String>[
             ...externalOperationReadinessBlockers,
             ...semanticReadinessBlockers,
+            ...conflictReadinessBlockers,
             ...proposalReadinessBlockers,
           ],
           transitionRegistryEngineeringOperationStatus:

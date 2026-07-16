@@ -458,6 +458,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         affectedBranchPaths: affectedBranchPaths,
         unaffectedIdentityExplanations: unaffectedIdentityExplanations,
         semanticCandidateExplanations: semanticCandidateExplanations,
+        conflictExplanations: const <String>[],
       );
       _operationReadinessBlockers = const <String>[];
       _selectedScreenIndex = _operationWorkspaceScreenIndex;

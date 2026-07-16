@@ -97,6 +97,7 @@ void main() {
         affectedBranchPaths: const <String>[],
         unaffectedIdentityExplanations: const <String>[],
         semanticCandidateExplanations: const <String>[],
+        conflictExplanations: const <String>[],
       );
 
       await tester.pumpWidget(
@@ -375,6 +376,7 @@ void main() {
       affectedBranchPaths: const <String>[],
       unaffectedIdentityExplanations: const <String>[],
       semanticCandidateExplanations: const <String>['candidate-a'],
+      conflictExplanations: const <String>[],
     );
 
     await persistence.saveEngineeringOperationWorkspace(
@@ -444,6 +446,105 @@ void main() {
     );
   });
 
+  testWidgets('blocks readiness when comparison conflict is unresolved', (
+    WidgetTester tester,
+  ) async {
+    const RegistryWorkSessionPersistence persistence =
+        RegistryWorkSessionPersistence();
+
+    final RegistryOperationComparisonViewData comparisonViewData = (
+      operationType: 'Service Intake comparison',
+      projectAdapter: 'Helpy Service Intake',
+      sourceRevision: 'source-revision',
+      sourceHeading: 'Source heading',
+      sourceEntityId: RegistryEntityId('source'),
+      sourceRegistryPath: 'source',
+      sourceEvidence: 'H2 Source owner → H3 Source heading; lines 1–10',
+      sourceText: 'Original source value.',
+      targetHeading: 'Target heading',
+      targetEntityId: RegistryEntityId('target'),
+      targetRegistryPath: 'target',
+      targetEvidence: 'H2 Target owner → H3 Target heading; lines 11–20',
+      targetText: 'Initial target value.',
+      lineDiff: '- Original source value.\n+ Initial target value.',
+      dependencyGraph: RegistryDependencyGraph(
+        primaryEntityId: RegistryEntityId('target'),
+        dependencyEdges: const [],
+        directDependencyIds: const <RegistryEntityId>[],
+        transitiveDependencyIds: const <RegistryEntityId>[],
+        dependencyPaths: const <Iterable<RegistryEntityId>>[],
+      ),
+      affectedBranchPaths: const <String>[],
+      unaffectedIdentityExplanations: const <String>[],
+      semanticCandidateExplanations: const <String>[],
+      conflictExplanations: const <String>[
+        'target: proposed value conflicts with existing approved wording',
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RegistryEngineeringOperationWorkspaceScreen(
+          uiLanguage: RegistryStudioUiLanguage.ru,
+          createRegistryEngineeringOperation:
+              CreateRegistryEngineeringOperation(),
+          transitionRegistryEngineeringOperationStatus:
+              TransitionRegistryEngineeringOperationStatus(),
+          workSessionPersistence: persistence,
+          revisionPrimaryEntityId: RegistryEntityId('target'),
+          initialProblemStatement: 'Compare source and target.',
+          initialWorkingContent: comparisonViewData.targetText,
+          comparisonViewData: comparisonViewData,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    await tester.pumpAndSettle();
+
+    final Finder proposalReviewButton = find.byKey(
+      const Key('registry_operation_proposal_review_confirm'),
+    );
+    await tester.ensureVisible(proposalReviewButton);
+    await tester.tap(proposalReviewButton);
+    await tester.pumpAndSettle();
+
+    final Finder statusDropdown = find.byKey(
+      const Key('registry_engineering_operation_requested_status_dropdown'),
+    );
+    final Finder transitionButton = find.byKey(
+      const Key('registry_engineering_operation_status_transition_button'),
+    );
+
+    await tester.dragUntilVisible(
+      statusDropdown,
+      find.byType(ListView).first,
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(statusDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('readyForDecision').last);
+    await tester.pumpAndSettle();
+
+    await tester.dragUntilVisible(
+      transitionButton,
+      find.byType(ListView).first,
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(transitionButton);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Conflict unresolved'), findsWidgets);
+
+    final RegistryEngineeringOperation? operation = await persistence
+        .loadEngineeringOperation();
+
+    expect(operation?.status, RegistryEngineeringOperationStatus.open);
+  });
+
   testWidgets('blocks readiness when comparison proposal is not reviewed', (
     WidgetTester tester,
   ) async {
@@ -475,6 +576,7 @@ void main() {
       affectedBranchPaths: const <String>[],
       unaffectedIdentityExplanations: const <String>[],
       semanticCandidateExplanations: const <String>[],
+      conflictExplanations: const <String>[],
     );
 
     await tester.pumpWidget(
