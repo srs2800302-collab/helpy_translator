@@ -843,6 +843,11 @@ void main() {
       find.byKey(const ValueKey<String>('registry_operation_revision_1')),
       findsOneWidget,
     );
+    expect(
+      find.textContaining('Решения по semantic candidates'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Отклонено как unrelated'), findsOneWidget);
 
     final Finder statusDropdown = find.byKey(
       const Key('registry_engineering_operation_requested_status_dropdown'),

@@ -255,6 +255,76 @@ void main() {
     ]);
   });
 
+  testWidgets('restores semantic candidate decisions into next revision', (
+    WidgetTester tester,
+  ) async {
+    const RegistryWorkSessionPersistence persistence =
+        RegistryWorkSessionPersistence();
+
+    final RegistryEngineeringOperation operation = RegistryEngineeringOperation(
+      id: RegistryEngineeringOperationId('operation-semantic'),
+      status: RegistryEngineeringOperationStatus.open,
+      problemStatement: 'Resolve semantic candidate.',
+    );
+    final RegistryEngineeringOperationRevision revision =
+        RegistryEngineeringOperationRevision(
+          id: 'operation-semantic-revision-1',
+          operationId: operation.id,
+          revisionNumber: 1,
+          workingContent: 'Saved working value.',
+          previousRevisionId: null,
+          primaryEntityId: RegistryEntityId('primary'),
+          relatedEntityIds: const <RegistryEntityId>[],
+          semanticCandidateDecisions: const <String, bool>{
+            'candidate-a': false,
+          },
+        );
+
+    await persistence.saveEngineeringOperationWorkspace(
+      operation: operation,
+      revisions: <RegistryEngineeringOperationRevision>[revision],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RegistryEngineeringOperationWorkspaceScreen(
+          uiLanguage: RegistryStudioUiLanguage.ru,
+          createRegistryEngineeringOperation:
+              CreateRegistryEngineeringOperation(),
+          transitionRegistryEngineeringOperationStatus:
+              TransitionRegistryEngineeringOperationStatus(),
+          workSessionPersistence: persistence,
+          revisionPrimaryEntityId: RegistryEntityId('primary'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Решения по semantic candidates'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Отклонено как unrelated: candidate-a'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('registry_operation_revision_content')),
+      'Next working value.',
+    );
+    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    await tester.pumpAndSettle();
+
+    final List<RegistryEngineeringOperationRevision> revisions =
+        await persistence.loadEngineeringOperationRevisions();
+
+    expect(revisions, hasLength(2));
+    expect(revisions.last.semanticCandidateDecisions, const <String, bool>{
+      'candidate-a': false,
+    });
+  });
+
   for (final RegistryEngineeringOperationStatus terminalStatus
       in <RegistryEngineeringOperationStatus>[
         RegistryEngineeringOperationStatus.decided,

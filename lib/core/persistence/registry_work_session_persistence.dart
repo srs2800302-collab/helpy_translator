@@ -132,20 +132,22 @@ final class RegistryWorkSessionPersistence {
       },
       'revisions': revisions
           .map(
-            (RegistryEngineeringOperationRevision revision) =>
-                <String, Object?>{
-                  'id': revision.id,
-                  'operationId': revision.operationId.value,
-                  'revisionNumber': revision.revisionNumber,
-                  'workingContent': revision.workingContent,
-                  'originalValue': revision.originalValue,
-                  'proposedValue': revision.proposedValue,
-                  'previousRevisionId': revision.previousRevisionId,
-                  'primaryEntityId': revision.primaryEntityId.value,
-                  'relatedEntityIds': revision.relatedEntityIds
-                      .map((RegistryEntityId id) => id.value)
-                      .toList(growable: false),
-                },
+            (
+              RegistryEngineeringOperationRevision revision,
+            ) => <String, Object?>{
+              'id': revision.id,
+              'operationId': revision.operationId.value,
+              'revisionNumber': revision.revisionNumber,
+              'workingContent': revision.workingContent,
+              'originalValue': revision.originalValue,
+              'proposedValue': revision.proposedValue,
+              'previousRevisionId': revision.previousRevisionId,
+              'primaryEntityId': revision.primaryEntityId.value,
+              'relatedEntityIds': revision.relatedEntityIds
+                  .map((RegistryEntityId id) => id.value)
+                  .toList(growable: false),
+              'semanticCandidateDecisions': revision.semanticCandidateDecisions,
+            },
           )
           .toList(growable: false),
     };

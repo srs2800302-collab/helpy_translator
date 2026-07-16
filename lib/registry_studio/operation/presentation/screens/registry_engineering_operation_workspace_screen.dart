@@ -138,6 +138,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     setState(() {
       _currentOperation = operation;
       _revisions = revisions;
+      _semanticCandidateDecisions = revisions.isEmpty
+          ? const <String, bool>{}
+          : revisions.last.semanticCandidateDecisions;
       _workingContentController.text = revisions.isEmpty
           ? widget.initialWorkingContent?.trim() ?? ''
           : revisions.last.workingContent;
@@ -413,6 +416,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           previousRevisionId: previous?.id,
           primaryEntityId: primaryEntityId,
           relatedEntityIds: relatedEntityIds,
+          semanticCandidateDecisions: _semanticCandidateDecisions,
         );
 
     final List<RegistryEngineeringOperationRevision> next =
@@ -1474,6 +1478,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String original,
       String proposed,
       String working,
+      String semanticDecisions,
+      String semanticConfirmed,
+      String semanticRejected,
     })
     labels = switch (widget.uiLanguage) {
       RegistryStudioUiLanguage.ru => (
@@ -1485,6 +1492,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         original: 'Исходное значение',
         proposed: 'Предложенное значение',
         working: 'Рабочая версия',
+        semanticDecisions: 'Решения по semantic candidates',
+        semanticConfirmed: 'Подтверждено как dependency',
+        semanticRejected: 'Отклонено как unrelated',
       ),
       RegistryStudioUiLanguage.en => (
         count: 'Revisions',
@@ -1495,6 +1505,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         original: 'Original',
         proposed: 'Proposed',
         working: 'Working',
+        semanticDecisions: 'Semantic candidate decisions',
+        semanticConfirmed: 'Confirmed dependency',
+        semanticRejected: 'Rejected as unrelated',
       ),
       RegistryStudioUiLanguage.th => (
         count: 'ฉบับแก้ไข',
@@ -1505,6 +1518,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         original: 'ค่าต้นฉบับ',
         proposed: 'ค่าที่เสนอ',
         working: 'เวอร์ชันการทำงาน',
+        semanticDecisions: 'การตัดสินใจ semantic candidates',
+        semanticConfirmed: 'ยืนยันว่าเป็น dependency แล้ว',
+        semanticRejected: 'ปฏิเสธว่าไม่เกี่ยวข้องแล้ว',
       ),
     };
 
@@ -1558,6 +1574,15 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                           final RegistryEngineeringOperationRevision revision =
                               _revisions[_revisions.length - index - 1];
 
+                          final String semanticDecisionEvidence = revision
+                              .semanticCandidateDecisions
+                              .entries
+                              .map(
+                                (MapEntry<String, bool> decision) =>
+                                    '${decision.value ? labels.semanticConfirmed : labels.semanticRejected}: ${decision.key}',
+                              )
+                              .join('\\n');
+
                           return ListTile(
                             key: ValueKey<String>(
                               'registry_operation_revision_'
@@ -1572,7 +1597,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                             subtitle: Text(
                               '${labels.original}: ${revision.originalValue}\n'
                               '${labels.proposed}: ${revision.proposedValue}\n'
-                              '${labels.working}: ${revision.workingContent}',
+                              '${labels.working}: ${revision.workingContent}'
+                              '${semanticDecisionEvidence.isEmpty ? '' : '\\n${labels.semanticDecisions}:\\n$semanticDecisionEvidence'}',
                             ),
                           );
                         },

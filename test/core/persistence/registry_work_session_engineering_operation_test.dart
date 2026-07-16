@@ -69,6 +69,10 @@ void main() {
       restoredRevisions.single.relatedEntityIds,
       revision.relatedEntityIds,
     );
+    expect(
+      restoredRevisions.single.semanticCandidateDecisions,
+      revision.semanticCandidateDecisions,
+    );
 
     await persistence.clearEngineeringOperationWorkspace();
 

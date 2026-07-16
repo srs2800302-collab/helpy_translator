@@ -110,6 +110,31 @@ final class RegistryEngineeringOperationRevision extends Equatable {
       );
     }
 
+    final Map<String, bool> normalizedSemanticCandidateDecisions =
+        <String, bool>{};
+
+    for (final MapEntry<String, bool> decision
+        in semanticCandidateDecisions.entries) {
+      final String candidate = decision.key.trim();
+
+      if (candidate.isEmpty) {
+        throw ArgumentError.value(
+          semanticCandidateDecisions,
+          'semanticCandidateDecisions',
+          'Semantic candidate decision key must not be empty.',
+        );
+      }
+
+      if (normalizedSemanticCandidateDecisions.containsKey(candidate)) {
+        throw ArgumentError(
+          'Semantic candidate decision keys must be unique after '
+          'normalization.',
+        );
+      }
+
+      normalizedSemanticCandidateDecisions[candidate] = decision.value;
+    }
+
     return RegistryEngineeringOperationRevision._(
       id: normalizedId,
       operationId: operationId,
@@ -121,6 +146,9 @@ final class RegistryEngineeringOperationRevision extends Equatable {
       primaryEntityId: primaryEntityId,
       relatedEntityIds: List<RegistryEntityId>.unmodifiable(
         normalizedRelatedEntityIds,
+      ),
+      semanticCandidateDecisions: Map<String, bool>.unmodifiable(
+        normalizedSemanticCandidateDecisions,
       ),
     );
   }
@@ -135,6 +163,7 @@ final class RegistryEngineeringOperationRevision extends Equatable {
     required this.previousRevisionId,
     required this.primaryEntityId,
     required this.relatedEntityIds,
+    required this.semanticCandidateDecisions,
   });
 
   final String id;
@@ -146,6 +175,7 @@ final class RegistryEngineeringOperationRevision extends Equatable {
   final String? previousRevisionId;
   final RegistryEntityId primaryEntityId;
   final List<RegistryEntityId> relatedEntityIds;
+  final Map<String, bool> semanticCandidateDecisions;
 
   @override
   List<Object?> get props => <Object?>[id];
