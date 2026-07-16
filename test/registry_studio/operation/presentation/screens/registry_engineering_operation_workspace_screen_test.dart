@@ -73,9 +73,11 @@ void main() {
       final Finder statusDropdown = find.byKey(
         const Key('registry_engineering_operation_requested_status_dropdown'),
       );
-      await Scrollable.ensureVisible(
-        tester.element(statusDropdown),
-        alignment: 0.5,
+      await tester.scrollUntilVisible(
+        statusDropdown,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
       );
       await tester.pumpAndSettle();
 
@@ -88,9 +90,11 @@ void main() {
       final Finder transitionButton = find.byKey(
         const Key('registry_engineering_operation_status_transition_button'),
       );
-      await Scrollable.ensureVisible(
-        tester.element(transitionButton),
-        alignment: 0.5,
+      await tester.scrollUntilVisible(
+        transitionButton,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
       );
       await tester.pumpAndSettle();
 
@@ -153,9 +157,11 @@ void main() {
         const Key('registry_engineering_operation_status_transition_button'),
       );
 
-      await Scrollable.ensureVisible(
-        tester.element(statusDropdown),
-        alignment: 0.5,
+      await tester.scrollUntilVisible(
+        statusDropdown,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
       );
       await tester.pumpAndSettle();
 
@@ -164,18 +170,22 @@ void main() {
       await tester.tap(find.text('readyForDecision').last);
       await tester.pumpAndSettle();
 
-      await Scrollable.ensureVisible(
-        tester.element(transitionButton),
-        alignment: 0.5,
+      await tester.scrollUntilVisible(
+        transitionButton,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
       );
       await tester.pumpAndSettle();
 
       await tester.tap(transitionButton);
       await tester.pumpAndSettle();
 
-      await Scrollable.ensureVisible(
-        tester.element(statusDropdown),
-        alignment: 0.5,
+      await tester.scrollUntilVisible(
+        statusDropdown,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
       );
       await tester.pumpAndSettle();
 
@@ -195,9 +205,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(decisionField, 'Approve canonical wording.');
 
-      await Scrollable.ensureVisible(
-        tester.element(transitionButton),
-        alignment: 0.5,
+      await tester.scrollUntilVisible(
+        transitionButton,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
       );
       await tester.pumpAndSettle();
 

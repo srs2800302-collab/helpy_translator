@@ -698,17 +698,37 @@ void main() {
         const Key('registry_engineering_operation_status_transition_button'),
       );
 
+      await tester.scrollUntilVisible(
+        statusDropdown,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(statusDropdown);
       await tester.pumpAndSettle();
       await tester.tap(find.text('readyForDecision').last);
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(transitionButton);
+      await tester.scrollUntilVisible(
+        transitionButton,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(transitionButton);
       await tester.pumpAndSettle();
 
       expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
 
+      await tester.scrollUntilVisible(
+        statusDropdown,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(statusDropdown);
       await tester.pumpAndSettle();
       await tester.tap(find.text('decided').last);
@@ -718,13 +738,25 @@ void main() {
         const Key('registry_engineering_operation_decision_statement_field'),
       );
 
-      await tester.ensureVisible(decisionField);
+      await tester.scrollUntilVisible(
+        decisionField,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
       await tester.enterText(
         decisionField,
         'Approve registry source comparison.',
       );
 
-      await tester.ensureVisible(transitionButton);
+      await tester.scrollUntilVisible(
+        transitionButton,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(transitionButton);
       await tester.pumpAndSettle();
 
