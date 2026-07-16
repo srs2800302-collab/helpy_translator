@@ -73,11 +73,17 @@ void main() {
           RegistryWorkSessionPersistence();
 
       final RegistryOperationComparisonViewData comparisonViewData = (
+        operationType: 'Service Intake comparison',
+        projectAdapter: 'Helpy Service Intake',
         sourceHeading: 'Source heading',
         sourceEntityId: RegistryEntityId('source'),
+        sourceRegistryPath: 'source',
+        sourceEvidence: 'H2 Source owner → H3 Source heading; lines 1–10',
         sourceText: 'Original source value.',
         targetHeading: 'Target heading',
         targetEntityId: RegistryEntityId('target'),
+        targetRegistryPath: 'target',
+        targetEvidence: 'H2 Target owner → H3 Target heading; lines 11–20',
         targetText: 'Initial target value.',
         lineDiff: '- Original source value.\n+ Initial target value.',
         dependencyGraph: RegistryDependencyGraph(

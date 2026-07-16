@@ -14,11 +14,17 @@ import 'package:helpy_translator/registry_studio/core/domain/entities/registry_e
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 
 typedef RegistryOperationComparisonViewData = ({
+  String operationType,
+  String projectAdapter,
   String sourceHeading,
   RegistryEntityId sourceEntityId,
+  String sourceRegistryPath,
+  String sourceEvidence,
   String sourceText,
   String targetHeading,
   RegistryEntityId targetEntityId,
+  String targetRegistryPath,
+  String targetEvidence,
   String targetText,
   String lineDiff,
   RegistryDependencyGraph dependencyGraph,
@@ -544,8 +550,13 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     final ({
       String title,
+      String operationContext,
+      String operationType,
+      String projectAdapter,
       String source,
       String target,
+      String registryPath,
+      String sourceEvidence,
       String affected,
       String direct,
       String transitive,
@@ -555,8 +566,13 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
     comparisonLabels = switch (widget.uiLanguage) {
       RegistryStudioUiLanguage.ru => (
         title: 'Сравнение Registry',
+        operationContext: 'Контекст операции',
+        operationType: 'Тип операции',
+        projectAdapter: 'Project adapter',
         source: 'Источник',
         target: 'Цель изменения',
+        registryPath: 'Registry path',
+        sourceEvidence: 'Source Evidence',
         affected: 'Затронутые Registry identities',
         direct: 'Прямые зависимости',
         transitive: 'Транзитивные зависимости',
@@ -565,8 +581,13 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       ),
       RegistryStudioUiLanguage.en => (
         title: 'Registry comparison',
+        operationContext: 'Operation context',
+        operationType: 'Operation type',
+        projectAdapter: 'Project adapter',
         source: 'Source',
         target: 'Change target',
+        registryPath: 'Registry path',
+        sourceEvidence: 'Source Evidence',
         affected: 'Affected Registry identities',
         direct: 'Direct dependencies',
         transitive: 'Transitive dependencies',
@@ -575,8 +596,13 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       ),
       RegistryStudioUiLanguage.th => (
         title: 'การเปรียบเทียบ Registry',
+        operationContext: 'บริบทงาน',
+        operationType: 'ประเภทงาน',
+        projectAdapter: 'Project adapter',
         source: 'ต้นทาง',
         target: 'เป้าหมายการเปลี่ยนแปลง',
+        registryPath: 'Registry path',
+        sourceEvidence: 'Source Evidence',
         affected: 'Registry identities ที่ได้รับผลกระทบ',
         direct: 'การขึ้นต่อกันโดยตรง',
         transitive: 'การขึ้นต่อกันแบบส่งต่อ',
@@ -589,233 +615,301 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         ? operationStatusContent
         : Column(
             children: <Widget>[
-              Card(
-                key: const Key('registry_operation_comparison_summary'),
-                margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                child: ListTile(
-                  leading: const Icon(Icons.compare_arrows),
-                  title: Text(comparisonLabels.title),
-                  subtitle: Text(
-                    '${comparisonViewData.sourceHeading}\n'
-                    '→ ${comparisonViewData.targetHeading}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    unawaited(
-                      showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (BuildContext sheetContext) {
-                          return SafeArea(
-                            child: FractionallySizedBox(
-                              heightFactor: 0.9,
-                              child: ListView(
-                                key: const Key(
-                                  'registry_operation_comparison_sheet',
-                                ),
-                                padding: const EdgeInsets.all(16),
-                                children: <Widget>[
-                                  Text(
-                                    comparisonLabels.title,
-                                    style: Theme.of(
-                                      sheetContext,
-                                    ).textTheme.titleLarge,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Card(
-                                    key: const Key(
-                                      'registry_operation_comparison_source',
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Text(
-                                            comparisonLabels.source,
-                                            style: Theme.of(
-                                              sheetContext,
-                                            ).textTheme.titleMedium,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          SelectableText(
-                                            comparisonViewData.sourceHeading,
-                                          ),
-                                          SelectableText(
-                                            comparisonViewData
-                                                .sourceEntityId
-                                                .value,
-                                          ),
-                                          const Divider(),
-                                          SelectableText(
-                                            comparisonViewData.sourceText,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  Card(
-                                    key: const Key(
-                                      'registry_operation_comparison_target',
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Text(
-                                            comparisonLabels.target,
-                                            style: Theme.of(
-                                              sheetContext,
-                                            ).textTheme.titleMedium,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          SelectableText(
-                                            comparisonViewData.targetHeading,
-                                          ),
-                                          SelectableText(
-                                            comparisonViewData
-                                                .targetEntityId
-                                                .value,
-                                          ),
-                                          const Divider(),
-                                          SelectableText(
-                                            comparisonViewData.targetText,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  Card(
-                                    key: const Key(
-                                      'registry_operation_comparison_affected',
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Text(
-                                            comparisonLabels.affected,
-                                            style: Theme.of(
-                                              sheetContext,
-                                            ).textTheme.titleMedium,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            comparisonLabels.direct,
-                                            style: Theme.of(
-                                              sheetContext,
-                                            ).textTheme.titleSmall,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          for (final RegistryEntityId entityId
-                                              in comparisonViewData
-                                                  .dependencyGraph
-                                                  .directDependencyIds)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 4,
-                                              ),
-                                              child: SelectableText(
-                                                entityId.value,
-                                              ),
-                                            ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            comparisonLabels.transitive,
-                                            style: Theme.of(
-                                              sheetContext,
-                                            ).textTheme.titleSmall,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          for (final RegistryEntityId entityId
-                                              in comparisonViewData
-                                                  .dependencyGraph
-                                                  .transitiveDependencyIds)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 4,
-                                              ),
-                                              child: SelectableText(
-                                                entityId.value,
-                                              ),
-                                            ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            comparisonLabels.paths,
-                                            style: Theme.of(
-                                              sheetContext,
-                                            ).textTheme.titleSmall,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          for (final RegistryEntityId entityId
-                                              in comparisonViewData
-                                                  .dependencyGraph
-                                                  .affectedEntityIds)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 6,
-                                              ),
-                                              child: SelectableText(
-                                                comparisonViewData
-                                                    .dependencyGraph
-                                                    .pathTo(entityId)
-                                                    .map(
-                                                      (RegistryEntityId id) =>
-                                                          id.value,
-                                                    )
-                                                    .join(' → '),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  Card(
-                                    key: const Key(
-                                      'registry_operation_comparison_diff',
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Text(
-                                            comparisonLabels.changes,
-                                            style: Theme.of(
-                                              sheetContext,
-                                            ).textTheme.titleMedium,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          SelectableText(
-                                            comparisonViewData.lineDiff,
-                                            style: Theme.of(sheetContext)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.copyWith(
-                                                  fontFamily: 'monospace',
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
+              Flexible(
+                flex: 2,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: <Widget>[
+                      Card(
+                        key: const Key('registry_operation_context_card'),
+                        margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                comparisonLabels.operationContext,
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                            ),
-                          );
-                        },
+                              const SizedBox(height: 12),
+                              SelectableText(
+                                '${comparisonLabels.operationType}: '
+                                '${comparisonViewData.operationType}',
+                              ),
+                              SelectableText(
+                                '${comparisonLabels.projectAdapter}: '
+                                '${comparisonViewData.projectAdapter}',
+                              ),
+                              const Divider(),
+                              SelectableText(
+                                '${comparisonLabels.source}: '
+                                '${comparisonViewData.sourceHeading}\n'
+                                '${comparisonViewData.sourceEntityId.value}\n'
+                                '${comparisonLabels.registryPath}: '
+                                '${comparisonViewData.sourceRegistryPath}\n'
+                                '${comparisonLabels.sourceEvidence}: '
+                                '${comparisonViewData.sourceEvidence}',
+                              ),
+                              const SizedBox(height: 8),
+                              SelectableText(
+                                '${comparisonLabels.target}: '
+                                '${comparisonViewData.targetHeading}\n'
+                                '${comparisonViewData.targetEntityId.value}\n'
+                                '${comparisonLabels.registryPath}: '
+                                '${comparisonViewData.targetRegistryPath}\n'
+                                '${comparisonLabels.sourceEvidence}: '
+                                '${comparisonViewData.targetEvidence}',
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    );
-                  },
+                      Card(
+                        key: const Key('registry_operation_comparison_summary'),
+                        margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        child: ListTile(
+                          leading: const Icon(Icons.compare_arrows),
+                          title: Text(comparisonLabels.title),
+                          subtitle: Text(
+                            '${comparisonViewData.sourceHeading}\n'
+                            '→ ${comparisonViewData.targetHeading}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            unawaited(
+                              showModalBottomSheet<void>(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (BuildContext sheetContext) {
+                                  return SafeArea(
+                                    child: FractionallySizedBox(
+                                      heightFactor: 0.9,
+                                      child: ListView(
+                                        key: const Key(
+                                          'registry_operation_comparison_sheet',
+                                        ),
+                                        padding: const EdgeInsets.all(16),
+                                        children: <Widget>[
+                                          Text(
+                                            comparisonLabels.title,
+                                            style: Theme.of(
+                                              sheetContext,
+                                            ).textTheme.titleLarge,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Card(
+                                            key: const Key(
+                                              'registry_operation_comparison_source',
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text(
+                                                    comparisonLabels.source,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  SelectableText(
+                                                    comparisonViewData
+                                                        .sourceHeading,
+                                                  ),
+                                                  SelectableText(
+                                                    comparisonViewData
+                                                        .sourceEntityId
+                                                        .value,
+                                                  ),
+                                                  const Divider(),
+                                                  SelectableText(
+                                                    comparisonViewData
+                                                        .sourceText,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Card(
+                                            key: const Key(
+                                              'registry_operation_comparison_target',
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text(
+                                                    comparisonLabels.target,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  SelectableText(
+                                                    comparisonViewData
+                                                        .targetHeading,
+                                                  ),
+                                                  SelectableText(
+                                                    comparisonViewData
+                                                        .targetEntityId
+                                                        .value,
+                                                  ),
+                                                  const Divider(),
+                                                  SelectableText(
+                                                    comparisonViewData
+                                                        .targetText,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Card(
+                                            key: const Key(
+                                              'registry_operation_comparison_affected',
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text(
+                                                    comparisonLabels.affected,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    comparisonLabels.direct,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleSmall,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  for (final RegistryEntityId
+                                                      entityId
+                                                      in comparisonViewData
+                                                          .dependencyGraph
+                                                          .directDependencyIds)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 4,
+                                                          ),
+                                                      child: SelectableText(
+                                                        entityId.value,
+                                                      ),
+                                                    ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    comparisonLabels.transitive,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleSmall,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  for (final RegistryEntityId
+                                                      entityId
+                                                      in comparisonViewData
+                                                          .dependencyGraph
+                                                          .transitiveDependencyIds)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 4,
+                                                          ),
+                                                      child: SelectableText(
+                                                        entityId.value,
+                                                      ),
+                                                    ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    comparisonLabels.paths,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleSmall,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  for (final RegistryEntityId
+                                                      entityId
+                                                      in comparisonViewData
+                                                          .dependencyGraph
+                                                          .affectedEntityIds)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 6,
+                                                          ),
+                                                      child: SelectableText(
+                                                        comparisonViewData
+                                                            .dependencyGraph
+                                                            .pathTo(entityId)
+                                                            .map(
+                                                              (
+                                                                RegistryEntityId
+                                                                id,
+                                                              ) => id.value,
+                                                            )
+                                                            .join(' → '),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Card(
+                                            key: const Key(
+                                              'registry_operation_comparison_diff',
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text(
+                                                    comparisonLabels.changes,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  SelectableText(
+                                                    comparisonViewData.lineDiff,
+                                                    style:
+                                                        Theme.of(sheetContext)
+                                                            .textTheme
+                                                            .bodySmall
+                                                            ?.copyWith(
+                                                              fontFamily:
+                                                                  'monospace',
+                                                            ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              Expanded(child: operationStatusContent),
+              Expanded(flex: 3, child: operationStatusContent),
             ],
           );
 

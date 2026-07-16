@@ -358,11 +358,25 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _operationPrimaryEntityId = target.identity.entityId;
       _operationRelatedEntityIds = dependencyGraph.affectedEntityIds;
       _operationComparisonViewData = (
+        operationType: 'Service Intake comparison',
+        projectAdapter: 'Helpy Service Intake',
         sourceHeading: source.identity.heading,
         sourceEntityId: source.identity.entityId,
+        sourceRegistryPath: source.identity.path.segments.join(' / '),
+        sourceEvidence:
+            'H${source.identity.ownerHeadingLevel} '
+            '${source.identity.ownerHeading} → '
+            'H${source.identity.headingLevel} ${source.identity.heading}; '
+            'lines ${source.startLine}–${source.endLine}',
         sourceText: source.sourceText.trim(),
         targetHeading: target.identity.heading,
         targetEntityId: target.identity.entityId,
+        targetRegistryPath: target.identity.path.segments.join(' / '),
+        targetEvidence:
+            'H${target.identity.ownerHeadingLevel} '
+            '${target.identity.ownerHeading} → '
+            'H${target.identity.headingLevel} ${target.identity.heading}; '
+            'lines ${target.startLine}–${target.endLine}',
         targetText: target.sourceText.trim(),
         lineDiff: lineComparison,
         dependencyGraph: dependencyGraph,

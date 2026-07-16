@@ -593,11 +593,49 @@ void main() {
       final RegistryOperationComparisonViewData comparisonViewData =
           workspace.comparisonViewData!;
 
+      expect(comparisonViewData.operationType, 'Service Intake comparison');
+      expect(comparisonViewData.projectAdapter, 'Helpy Service Intake');
       expect(comparisonViewData.sourceHeading, source.identity.heading);
       expect(comparisonViewData.sourceEntityId, source.identity.entityId);
+      expect(
+        comparisonViewData.sourceRegistryPath,
+        source.identity.path.segments.join(' / '),
+      );
+      expect(
+        comparisonViewData.sourceEvidence,
+        contains(
+          'H${source.identity.ownerHeadingLevel} ${source.identity.ownerHeading}',
+        ),
+      );
+      expect(
+        comparisonViewData.sourceEvidence,
+        contains('H${source.identity.headingLevel} ${source.identity.heading}'),
+      );
+      expect(
+        comparisonViewData.sourceEvidence,
+        contains('lines ${source.startLine}–${source.endLine}'),
+      );
       expect(comparisonViewData.sourceText, source.sourceText.trim());
       expect(comparisonViewData.targetHeading, target.identity.heading);
       expect(comparisonViewData.targetEntityId, target.identity.entityId);
+      expect(
+        comparisonViewData.targetRegistryPath,
+        target.identity.path.segments.join(' / '),
+      );
+      expect(
+        comparisonViewData.targetEvidence,
+        contains(
+          'H${target.identity.ownerHeadingLevel} ${target.identity.ownerHeading}',
+        ),
+      );
+      expect(
+        comparisonViewData.targetEvidence,
+        contains('H${target.identity.headingLevel} ${target.identity.heading}'),
+      );
+      expect(
+        comparisonViewData.targetEvidence,
+        contains('lines ${target.startLine}–${target.endLine}'),
+      );
       expect(comparisonViewData.targetText, target.sourceText.trim());
       expect(
         comparisonViewData.dependencyGraph.directDependencyIds,
@@ -698,11 +736,10 @@ void main() {
         const Key('registry_engineering_operation_status_transition_button'),
       );
 
-      await tester.scrollUntilVisible(
+      await tester.dragUntilVisible(
         statusDropdown,
-        160,
-        scrollable: find.byType(Scrollable).first,
-        maxScrolls: 16,
+        find.byType(ListView).first,
+        const Offset(0, -240),
       );
       await tester.pumpAndSettle();
       await tester.tap(statusDropdown);
@@ -710,11 +747,10 @@ void main() {
       await tester.tap(find.text('readyForDecision').last);
       await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(
+      await tester.dragUntilVisible(
         transitionButton,
-        160,
-        scrollable: find.byType(Scrollable).first,
-        maxScrolls: 16,
+        find.byType(ListView).first,
+        const Offset(0, -240),
       );
       await tester.pumpAndSettle();
       await tester.tap(transitionButton);
@@ -722,11 +758,10 @@ void main() {
 
       expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
 
-      await tester.scrollUntilVisible(
+      await tester.dragUntilVisible(
         statusDropdown,
-        160,
-        scrollable: find.byType(Scrollable).first,
-        maxScrolls: 16,
+        find.byType(ListView).first,
+        const Offset(0, -240),
       );
       await tester.pumpAndSettle();
       await tester.tap(statusDropdown);
@@ -750,11 +785,10 @@ void main() {
         'Approve registry source comparison.',
       );
 
-      await tester.scrollUntilVisible(
+      await tester.dragUntilVisible(
         transitionButton,
-        160,
-        scrollable: find.byType(Scrollable).first,
-        maxScrolls: 16,
+        find.byType(ListView).first,
+        const Offset(0, -240),
       );
       await tester.pumpAndSettle();
       await tester.tap(transitionButton);
