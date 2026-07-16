@@ -53,6 +53,9 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
   static const Key latestRevisionCardKey = Key(
     'registry_engineering_operation_latest_revision_card',
   );
+  static const Key readinessGateCardKey = Key(
+    'registry_engineering_operation_readiness_gate_card',
+  );
   static const Key errorTextKey = Key(
     'registry_engineering_operation_status_transition_error_text',
   );
@@ -201,6 +204,88 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
       ),
     };
 
+    final ({
+      String title,
+      String ready,
+      String blocked,
+      String invalidTransition,
+      String revisionRequired,
+      String revisionOwnershipMismatch,
+      String decisionRequired,
+    })
+    readinessGateLabels = switch (widget.uiLanguage) {
+      RegistryStudioUiLanguage.ru => (
+        title: 'Проверка готовности',
+        ready: 'Блокеров нет',
+        blocked: 'Блокеры',
+        invalidTransition: 'Переход статуса не разрешён',
+        revisionRequired: 'Требуется минимум одна редакция',
+        revisionOwnershipMismatch:
+            'Редакции должны принадлежать текущей операции',
+        decisionRequired: 'Требуется решение инженера',
+      ),
+      RegistryStudioUiLanguage.en => (
+        title: 'Readiness check',
+        ready: 'No blockers',
+        blocked: 'Blockers',
+        invalidTransition: 'Status transition is not allowed',
+        revisionRequired: 'At least one revision is required',
+        revisionOwnershipMismatch:
+            'Revisions must belong to the current operation',
+        decisionRequired: 'Engineer decision is required',
+      ),
+      RegistryStudioUiLanguage.th => (
+        title: 'การตรวจสอบความพร้อม',
+        ready: 'ไม่มีตัวบล็อก',
+        blocked: 'ตัวบล็อก',
+        invalidTransition: 'ไม่อนุญาตให้เปลี่ยนสถานะนี้',
+        revisionRequired: 'ต้องมีฉบับแก้ไขอย่างน้อยหนึ่งรายการ',
+        revisionOwnershipMismatch: 'ฉบับแก้ไขต้องเป็นของงานปัจจุบัน',
+        decisionRequired: 'ต้องมีการตัดสินใจของวิศวกร',
+      ),
+    };
+    final bool isAllowedTransition = switch (_currentOperation.status) {
+      RegistryEngineeringOperationStatus.open =>
+        _requestedStatus ==
+                RegistryEngineeringOperationStatus.awaitingContext ||
+            _requestedStatus ==
+                RegistryEngineeringOperationStatus.readyForDecision ||
+            _requestedStatus == RegistryEngineeringOperationStatus.cancelled,
+      RegistryEngineeringOperationStatus.awaitingContext =>
+        _requestedStatus ==
+                RegistryEngineeringOperationStatus.readyForDecision ||
+            _requestedStatus == RegistryEngineeringOperationStatus.cancelled,
+      RegistryEngineeringOperationStatus.readyForDecision =>
+        _requestedStatus ==
+                RegistryEngineeringOperationStatus.awaitingContext ||
+            _requestedStatus == RegistryEngineeringOperationStatus.decided ||
+            _requestedStatus == RegistryEngineeringOperationStatus.cancelled,
+      RegistryEngineeringOperationStatus.decided => false,
+      RegistryEngineeringOperationStatus.cancelled => false,
+    };
+    final bool requiresRevisionSet =
+        _requestedStatus ==
+            RegistryEngineeringOperationStatus.readyForDecision ||
+        _requestedStatus == RegistryEngineeringOperationStatus.decided;
+    final bool revisionsBelongToCurrentOperation = revisions.every(
+      (RegistryEngineeringOperationRevision revision) =>
+          revision.operationId == _currentOperation.id,
+    );
+    final bool requiresEngineerDecision =
+        _requestedStatus == RegistryEngineeringOperationStatus.decided;
+    final bool hasEngineerDecision = _decisionStatementController.text
+        .trim()
+        .isNotEmpty;
+    final List<String> readinessBlockers = <String>[
+      if (!isAllowedTransition) readinessGateLabels.invalidTransition,
+      if (requiresRevisionSet && revisions.isEmpty)
+        readinessGateLabels.revisionRequired,
+      if (requiresRevisionSet && !revisionsBelongToCurrentOperation)
+        readinessGateLabels.revisionOwnershipMismatch,
+      if (requiresEngineerDecision && !hasEngineerDecision)
+        readinessGateLabels.decisionRequired,
+    ];
+
     return Material(
       child: SafeArea(
         bottom: false,
@@ -225,6 +310,34 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
                 revision: latestRevision,
               ),
             ],
+            const SizedBox(height: 16),
+            Card(
+              key: readinessGateCardKey,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      readinessGateLabels.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    if (readinessBlockers.isEmpty)
+                      Text(readinessGateLabels.ready)
+                    else ...<Widget>[
+                      Text(readinessGateLabels.blocked),
+                      const SizedBox(height: 8),
+                      for (final String blocker in readinessBlockers)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text('• $blocker'),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
             DropdownButtonFormField<RegistryEngineeringOperationStatus>(
               key: requestedStatusDropdownKey,
@@ -259,6 +372,9 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
                 minLines: 3,
                 maxLines: 6,
                 textInputAction: TextInputAction.newline,
+                onChanged: (_) {
+                  setState(() {});
+                },
                 decoration: InputDecoration(
                   labelText: labels.decisionStatementLabel,
                   border: const OutlineInputBorder(),

@@ -26,7 +26,27 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Текущий статус:\nopen'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
       expect(find.text('Запрошенный статус'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
       expect(find.text('Сменить статус'), findsOneWidget);
     });
 
@@ -50,10 +70,81 @@ void main() {
       );
     });
 
+    testWidgets('shows readiness gate blockers before transition', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _testApp(
+          operationStatus: RegistryEngineeringOperationStatus.readyForDecision,
+        ),
+      );
+
+      expect(find.text('Проверка готовности'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('decided').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Блокеры'), findsOneWidget);
+      expect(find.text('• Требуется решение инженера'), findsOneWidget);
+
+      final Finder decisionField = find.byKey(
+        const Key('registry_engineering_operation_decision_statement_field'),
+      );
+
+      await tester.scrollUntilVisible(
+        decisionField,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(decisionField, 'Approve canonical wording.');
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_readiness_gate_card'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Блокеров нет'), findsOneWidget);
+    });
     testWidgets('transitions in-memory operation through existing use case', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(_testApp());
+
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
 
       await tester.tap(
         find.byKey(
@@ -134,7 +225,27 @@ void main() {
 
       expect(find.text('เปลี่ยนสถานะงานวิศวกรรม'), findsOneWidget);
       expect(find.text('งานปัจจุบัน'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
       expect(find.text('สถานะที่ต้องการ'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_status_transition_button'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
+
       expect(find.text('เปลี่ยนสถานะ'), findsOneWidget);
     });
 
@@ -150,6 +261,16 @@ void main() {
           },
         ),
       );
+
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
 
       await tester.tap(
         find.byKey(
@@ -195,6 +316,16 @@ void main() {
           },
         ),
       );
+
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('registry_engineering_operation_requested_status_dropdown'),
+        ),
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 16,
+      );
+      await tester.pumpAndSettle();
 
       await tester.tap(
         find.byKey(
