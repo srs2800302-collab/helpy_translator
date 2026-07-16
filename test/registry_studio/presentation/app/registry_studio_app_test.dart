@@ -1082,7 +1082,12 @@ Future<void> _selectAppScreen(WidgetTester tester, String label) async {
   await tester.tap(find.byKey(const Key('registry_studio_screen_selector')));
   await tester.pumpAndSettle();
 
-  await tester.tap(find.text(label).last);
+  final Finder screenMenuItem = find.ancestor(
+    of: find.text(label).last,
+    matching: find.byType(CheckedPopupMenuItem<int>),
+  );
+
+  await tester.tap(screenMenuItem);
   await tester.pumpAndSettle();
 }
 
