@@ -36,6 +36,10 @@ void main() {
           previousRevisionId: null,
           primaryEntityId: RegistryEntityId('primary'),
           relatedEntityIds: <RegistryEntityId>[RegistryEntityId('related')],
+          semanticCandidateDecisions: const <String, bool>{
+            'candidate-a': true,
+            'candidate-b': false,
+          },
         );
 
     await persistence.saveEngineeringOperationWorkspace(

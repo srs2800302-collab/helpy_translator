@@ -14,6 +14,7 @@ final class RegistryEngineeringOperationRevision extends Equatable {
     required String? previousRevisionId,
     required RegistryEntityId primaryEntityId,
     required Iterable<RegistryEntityId> relatedEntityIds,
+    Map<String, bool> semanticCandidateDecisions = const <String, bool>{},
   }) {
     final String normalizedId = id.trim();
 

@@ -239,6 +239,16 @@ final class RegistryWorkSessionPersistence {
               throw const FormatException('relatedEntityIds must be a list.');
             }
 
+            final Object? semanticCandidateDecisionsRaw =
+                revisionJson['semanticCandidateDecisions'];
+            final Map<String, bool> semanticCandidateDecisions =
+                semanticCandidateDecisionsRaw is Map
+                ? Map<String, dynamic>.from(semanticCandidateDecisionsRaw).map(
+                    (String candidate, dynamic decision) =>
+                        MapEntry<String, bool>(candidate, decision as bool),
+                  )
+                : const <String, bool>{};
+
             return RegistryEngineeringOperationRevision(
               id: revisionJson['id'] as String,
               operationId: RegistryEngineeringOperationId(
@@ -255,6 +265,7 @@ final class RegistryWorkSessionPersistence {
               relatedEntityIds: relatedRaw.cast<String>().map(
                 RegistryEntityId.new,
               ),
+              semanticCandidateDecisions: semanticCandidateDecisions,
             );
           })
           .toList(growable: false);

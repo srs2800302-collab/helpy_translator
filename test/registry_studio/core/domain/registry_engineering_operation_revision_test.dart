@@ -20,6 +20,10 @@ void main() {
             previousRevisionId: '  revision-1  ',
             primaryEntityId: RegistryEntityId('primary'),
             relatedEntityIds: sourceRelatedIds,
+            semanticCandidateDecisions: const <String, bool>{
+              '  candidate-a  ': true,
+              'candidate-b': false,
+            },
           );
 
       sourceRelatedIds.add(RegistryEntityId('late'));
@@ -97,6 +101,7 @@ void main() {
         String? originalValue,
         String? proposedValue,
         String? previousRevisionId,
+        Map<String, bool> semanticCandidateDecisions = const <String, bool>{},
       }) {
         return RegistryEngineeringOperationRevision(
           id: id,
