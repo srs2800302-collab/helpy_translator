@@ -4,6 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/application/source_indexing/registry_document_indexer.dart';
 import 'package:helpy_translator/registry_studio/core/application/source_indexing/registry_document_node.dart';
 
+const String _pinnedFullRegistrySnapshotPath =
+    'test/fixtures/registry_studio/source_indexing/Helpy_Architecture_Registry_v1.md';
+
+String get _fullRegistrySnapshotPath =>
+    Platform.environment['REGISTRY_STUDIO_FULL_REGISTRY_SNAPSHOT'] ??
+    _pinnedFullRegistrySnapshotPath;
+
 void main() {
   const RegistryDocumentIndexer indexer = RegistryDocumentIndexer();
 
@@ -80,54 +87,46 @@ void main() {
       },
     );
 
-    test(
-      'indexes the complete pinned production Registry snapshot',
-      () {
-        final String snapshotPath =
-            Platform.environment['REGISTRY_STUDIO_FULL_REGISTRY_SNAPSHOT']!;
-        final String source = File(snapshotPath).readAsStringSync();
+    test('indexes the complete pinned production Registry snapshot', () {
+      final String snapshotPath = _fullRegistrySnapshotPath;
+      final String source = File(snapshotPath).readAsStringSync();
 
-        final List<RegistryDocumentNode> roots = indexer.index(source);
-        final List<RegistryDocumentNode> nodes = _flattenNodes(roots);
+      final List<RegistryDocumentNode> roots = indexer.index(source);
+      final List<RegistryDocumentNode> nodes = _flattenNodes(roots);
 
-        expect(roots, hasLength(1));
-        expect(nodes, hasLength(534));
+      expect(roots, hasLength(1));
+      expect(nodes, hasLength(534));
 
-        expect(
-          <int, int>{
-            for (int level = 1; level <= 6; level++)
-              level: nodes
-                  .where(
-                    (RegistryDocumentNode node) => node.headingLevel == level,
-                  )
-                  .length,
-          },
-          <int, int>{1: 1, 2: 69, 3: 301, 4: 104, 5: 42, 6: 17},
-        );
+      expect(
+        <int, int>{
+          for (int level = 1; level <= 6; level++)
+            level: nodes
+                .where(
+                  (RegistryDocumentNode node) => node.headingLevel == level,
+                )
+                .length,
+        },
+        <int, int>{1: 1, 2: 69, 3: 301, 4: 104, 5: 42, 6: 17},
+      );
 
-        final RegistryDocumentNode root = roots.single;
-        final RegistryDocumentNode last = nodes.last;
+      final RegistryDocumentNode root = roots.single;
+      final RegistryDocumentNode last = nodes.last;
 
-        expect(root.title, 'Helpy Architecture Registry v1 Foundation');
-        expect(root.headingLevel, 1);
-        expect(root.startLine, 1);
-        expect(root.endLine, 14699);
-        expect(root.sourceText, source);
+      expect(root.title, 'Helpy Architecture Registry v1 Foundation');
+      expect(root.headingLevel, 1);
+      expect(root.startLine, 1);
+      expect(root.endLine, 14699);
+      expect(root.sourceText, source);
 
-        expect(last.title, 'Not Used');
-        expect(last.headingLevel, 3);
-        expect(last.startLine, 14690);
-        expect(last.endLine, 14699);
-        expect(
-          last.sourceText,
-          endsWith('• использование одного аккаунта несколькими людьми.\n'),
-        );
-      },
-      skip:
-          Platform.environment['REGISTRY_STUDIO_FULL_REGISTRY_SNAPSHOT'] == null
-          ? 'Full Registry snapshot path is not configured.'
-          : false,
-    );
+      expect(last.title, 'Not Used');
+      expect(last.headingLevel, 3);
+      expect(last.startLine, 14690);
+      expect(last.endLine, 14699);
+      expect(
+        last.sourceText,
+        endsWith('• использование одного аккаунта несколькими людьми.\n'),
+      );
+    });
 
     test('preserves duplicate titles under different parents', () {
       const String source =
