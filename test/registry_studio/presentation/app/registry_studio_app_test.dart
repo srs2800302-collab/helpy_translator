@@ -1066,6 +1066,15 @@ void main() {
     await tester.tap(requestButton);
     await tester.pumpAndSettle();
 
+    final Finder statusDropdown = find.byKey(
+      const Key('registry_engineering_operation_requested_status_dropdown'),
+    );
+    await tester.ensureVisible(statusDropdown);
+    await tester.tap(statusDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('readyForDecision').last);
+    await tester.pumpAndSettle();
+
     expect(
       find.byType(RegistryEngineeringOperationWorkspaceScreen),
       findsOneWidget,
@@ -1074,6 +1083,7 @@ void main() {
     expect(find.text('Текущий статус:\nopen'), findsOneWidget);
     expect(find.textContaining(result.sourceText), findsWidgets);
     expect(find.textContaining(result.candidateCanonicalPhrase!), findsWidgets);
+    expect(find.textContaining('Canonical drift unresolved'), findsWidgets);
 
     await _selectAppScreen(tester, 'Адаптивный переводчик');
 

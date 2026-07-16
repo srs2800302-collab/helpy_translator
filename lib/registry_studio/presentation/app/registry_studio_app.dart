@@ -23,6 +23,7 @@ import '../language/registry_studio_ui_language.dart';
 import '../screens/registry_document_explorer_screen.dart';
 import 'package:helpy_translator/core/persistence/registry_work_session_persistence.dart';
 import '../../translator/translator_phrase_result.dart';
+import '../../translator/translator_phrase_status.dart';
 
 final class RegistryStudioApp extends StatefulWidget {
   const RegistryStudioApp({
@@ -71,6 +72,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   RegistryEntityId? _operationPrimaryEntityId;
   List<RegistryEntityId>? _operationRelatedEntityIds;
   RegistryOperationComparisonViewData? _operationComparisonViewData;
+  List<String> _operationReadinessBlockers = const <String>[];
   ServiceIntakeSourceBlock? _registryComparisonSource;
   ServiceIntakeSourceBlock? _registryComparisonTarget;
   String? _translatorInitialSourceText;
@@ -298,6 +300,10 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _operationPrimaryEntityId = null;
       _operationRelatedEntityIds = null;
       _operationComparisonViewData = null;
+      _operationReadinessBlockers =
+          result.status == TranslatorPhraseStatus.canonicalDrift
+          ? const <String>['Canonical drift unresolved']
+          : const <String>[];
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -448,6 +454,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         unaffectedIdentityExplanations: unaffectedIdentityExplanations,
         semanticCandidateExplanations: semanticCandidateExplanations,
       );
+      _operationReadinessBlockers = const <String>[];
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
   }
@@ -456,7 +463,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
     if (_initialOperationWorkingContent == null &&
         _operationPrimaryEntityId == null &&
         _operationRelatedEntityIds == null &&
-        _operationComparisonViewData == null) {
+        _operationComparisonViewData == null &&
+        _operationReadinessBlockers.isEmpty) {
       return;
     }
 
@@ -465,6 +473,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
       _operationPrimaryEntityId = null;
       _operationRelatedEntityIds = null;
       _operationComparisonViewData = null;
+      _operationReadinessBlockers = const <String>[];
     });
   }
 
@@ -721,6 +730,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         revisionPrimaryEntityId: _operationPrimaryEntityId,
         revisionRelatedEntityIds: _operationRelatedEntityIds,
         comparisonViewData: _operationComparisonViewData,
+        readinessBlockers: _operationReadinessBlockers,
         uiLanguage: _selectedLanguage,
         createRegistryEngineeringOperation:
             widget.createRegistryEngineeringOperation,

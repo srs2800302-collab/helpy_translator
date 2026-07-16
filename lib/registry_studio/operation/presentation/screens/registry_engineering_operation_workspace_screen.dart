@@ -45,6 +45,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
     this.initialProblemStatement,
     this.initialWorkingContent,
     this.comparisonViewData,
+    this.readinessBlockers = const <String>[],
     this.onInitialProblemStatementConsumed,
     this.onWorkSessionCleared,
     super.key,
@@ -61,6 +62,7 @@ final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
   final String? initialProblemStatement;
   final String? initialWorkingContent;
   final RegistryOperationComparisonViewData? comparisonViewData;
+  final Iterable<String> readinessBlockers;
   final VoidCallback? onInitialProblemStatementConsumed;
   final VoidCallback? onWorkSessionCleared;
 
@@ -529,6 +531,12 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           ),
         };
 
+    final List<String> externalOperationReadinessBlockers = widget
+        .readinessBlockers
+        .map((String blocker) => blocker.trim())
+        .where((String blocker) => blocker.isNotEmpty)
+        .toList(growable: false);
+
     final List<String> semanticReadinessBlockers =
         widget.comparisonViewData?.semanticCandidateExplanations
             .where(
@@ -555,6 +563,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           operation: currentOperation,
           revisions: _revisions,
           externalReadinessBlockers: <String>[
+            ...externalOperationReadinessBlockers,
             ...semanticReadinessBlockers,
             ...proposalReadinessBlockers,
           ],
