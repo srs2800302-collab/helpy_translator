@@ -510,6 +510,17 @@ void main() {
         expect(revisionEditor.readOnly, isTrue);
         expect(saveRevisionButton.onPressed, isNull);
 
+        if (terminalStatus == RegistryEngineeringOperationStatus.decided) {
+          expect(
+            find.text('Решение инженера:\nApprove canonical wording.'),
+            findsWidgets,
+            reason:
+                'restored decided workspace exposes engineer decision evidence',
+          );
+        } else {
+          expect(find.textContaining('Решение инженера'), findsNothing);
+        }
+
         final Finder startNewButton = find.byKey(
           const Key('registry_engineering_operation_start_new_button'),
         );
