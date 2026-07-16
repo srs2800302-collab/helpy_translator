@@ -746,7 +746,15 @@ void main() {
     expect(find.text('Транзитивные зависимости'), findsOneWidget);
 
     await tester.ensureVisible(visibleSemanticCandidates);
+    expect(find.textContaining('Всего:'), findsOneWidget);
+    expect(find.textContaining('не закрыто:'), findsOneWidget);
     expect(find.textContaining('1. Что требуется сделать?'), findsWidgets);
+    expect(
+      find.byKey(
+        const Key('registry_operation_visible_semantic_candidates_reject_all'),
+      ),
+      findsOneWidget,
+    );
 
     await tester.ensureVisible(comparisonSummary);
     await tester.tap(comparisonSummary);

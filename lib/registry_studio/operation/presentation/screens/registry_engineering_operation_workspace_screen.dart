@@ -538,18 +538,23 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         .where((String blocker) => blocker.isNotEmpty)
         .toList(growable: false);
 
-    final List<String> semanticReadinessBlockers =
+    final List<String> unresolvedSemanticCandidateExplanations =
         widget.comparisonViewData?.semanticCandidateExplanations
             .where(
               (String candidate) =>
                   !_semanticCandidateDecisions.containsKey(candidate),
             )
-            .map(
-              (String candidate) =>
-                  'Semantic candidates unresolved: $candidate',
-            )
             .toList(growable: false) ??
         const <String>[];
+
+    final List<String> semanticReadinessBlockers = <String>[
+      for (final String candidate
+          in unresolvedSemanticCandidateExplanations.take(5))
+        'Semantic candidates unresolved: $candidate',
+      if (unresolvedSemanticCandidateExplanations.length > 5)
+        'Semantic candidates unresolved: '
+            '${unresolvedSemanticCandidateExplanations.length - 5} more',
+    ];
 
     final List<String> conflictReadinessBlockers =
         widget.comparisonViewData?.conflictExplanations
@@ -835,6 +840,22 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       }
     }
 
+    final int semanticCandidateCount =
+        comparisonViewData?.semanticCandidateExplanations.length ?? 0;
+    final int pendingSemanticCandidateCount = comparisonViewData == null
+        ? 0
+        : comparisonViewData.semanticCandidateExplanations
+              .where(
+                (String candidate) =>
+                    !_semanticCandidateDecisions.containsKey(candidate),
+              )
+              .length;
+    final List<String> visibleSemanticCandidateExplanations =
+        comparisonViewData?.semanticCandidateExplanations
+            .take(5)
+            .toList(growable: false) ??
+        const <String>[];
+
     final Widget operationStatusSection = comparisonViewData == null
         ? operationStatusContent
         : Column(
@@ -1003,6 +1024,58 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               const SizedBox(height: 8),
+                              SelectableText(
+                                'Всего: $semanticCandidateCount · '
+                                'не закрыто: $pendingSemanticCandidateCount',
+                              ),
+                              const SizedBox(height: 8),
+                              if (comparisonViewData
+                                  .semanticCandidateExplanations
+                                  .isNotEmpty)
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: <Widget>[
+                                    OutlinedButton(
+                                      key: const Key(
+                                        'registry_operation_visible_semantic_candidates_reject_all',
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _semanticCandidateDecisions =
+                                              <String, bool>{
+                                                ..._semanticCandidateDecisions,
+                                                for (final String candidate
+                                                    in comparisonViewData
+                                                        .semanticCandidateExplanations)
+                                                  candidate: false,
+                                              };
+                                        });
+                                      },
+                                      child: const Text(
+                                        'Отклонить все как unrelated',
+                                      ),
+                                    ),
+                                    TextButton(
+                                      key: const Key(
+                                        'registry_operation_visible_semantic_candidates_clear_all',
+                                      ),
+                                      onPressed:
+                                          _semanticCandidateDecisions.isEmpty
+                                          ? null
+                                          : () {
+                                              setState(() {
+                                                _semanticCandidateDecisions =
+                                                    const <String, bool>{};
+                                              });
+                                            },
+                                      child: Text(
+                                        comparisonLabels.semanticCandidateClear,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 8),
                               if (comparisonViewData
                                   .semanticCandidateExplanations
                                   .isEmpty)
@@ -1012,9 +1085,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                               for (
                                 int candidateIndex = 0;
                                 candidateIndex <
-                                    comparisonViewData
-                                        .semanticCandidateExplanations
-                                        .length;
+                                    visibleSemanticCandidateExplanations.length;
                                 candidateIndex += 1
                               )
                                 StatefulBuilder(
@@ -1023,9 +1094,8 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                         BuildContext context,
                                         StateSetter setCandidateCardState,
                                       ) {
-                                        final String
-                                        candidate = comparisonViewData
-                                            .semanticCandidateExplanations[candidateIndex];
+                                        final String candidate =
+                                            visibleSemanticCandidateExplanations[candidateIndex];
                                         final bool? decision =
                                             _semanticCandidateDecisions[candidate];
 
