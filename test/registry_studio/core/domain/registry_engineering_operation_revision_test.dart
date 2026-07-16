@@ -38,6 +38,42 @@ void main() {
       );
     });
 
+    test('stores normalized original and proposed values', () {
+      final RegistryEngineeringOperationRevision revision =
+          RegistryEngineeringOperationRevision(
+            id: 'revision-1',
+            operationId: RegistryEngineeringOperationId('operation-1'),
+            revisionNumber: 1,
+            workingContent: '  Current working version.  ',
+            originalValue: '  Original registry value.  ',
+            proposedValue: '  Proposed registry value.  ',
+            previousRevisionId: null,
+            primaryEntityId: RegistryEntityId('primary'),
+            relatedEntityIds: const <RegistryEntityId>[],
+          );
+
+      expect(revision.workingContent, 'Current working version.');
+      expect(revision.originalValue, 'Original registry value.');
+      expect(revision.proposedValue, 'Proposed registry value.');
+    });
+
+    test('defaults original and proposed values to working content', () {
+      final RegistryEngineeringOperationRevision revision =
+          RegistryEngineeringOperationRevision(
+            id: 'revision-1',
+            operationId: RegistryEngineeringOperationId('operation-1'),
+            revisionNumber: 1,
+            workingContent: '  Current working version.  ',
+            previousRevisionId: null,
+            primaryEntityId: RegistryEntityId('primary'),
+            relatedEntityIds: const <RegistryEntityId>[],
+          );
+
+      expect(revision.workingContent, 'Current working version.');
+      expect(revision.originalValue, 'Current working version.');
+      expect(revision.proposedValue, 'Current working version.');
+    });
+
     test('allows first revision without previous revision', () {
       final RegistryEngineeringOperationRevision revision =
           RegistryEngineeringOperationRevision(
@@ -58,6 +94,8 @@ void main() {
         String id = 'revision-1',
         int revisionNumber = 1,
         String workingContent = 'Working content.',
+        String? originalValue,
+        String? proposedValue,
         String? previousRevisionId,
       }) {
         return RegistryEngineeringOperationRevision(
@@ -65,6 +103,8 @@ void main() {
           operationId: RegistryEngineeringOperationId('operation-1'),
           revisionNumber: revisionNumber,
           workingContent: workingContent,
+          originalValue: originalValue,
+          proposedValue: proposedValue,
           previousRevisionId: previousRevisionId,
           primaryEntityId: RegistryEntityId('primary'),
           relatedEntityIds: const <RegistryEntityId>[],
@@ -74,6 +114,8 @@ void main() {
       expect(() => create(id: '   '), throwsArgumentError);
       expect(() => create(revisionNumber: 0), throwsArgumentError);
       expect(() => create(workingContent: '   '), throwsArgumentError);
+      expect(() => create(originalValue: '   '), throwsArgumentError);
+      expect(() => create(proposedValue: '   '), throwsArgumentError);
       expect(
         () => create(revisionNumber: 1, previousRevisionId: 'revision-0'),
         throwsArgumentError,

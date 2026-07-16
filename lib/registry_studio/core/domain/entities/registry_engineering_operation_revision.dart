@@ -9,6 +9,8 @@ final class RegistryEngineeringOperationRevision extends Equatable {
     required RegistryEngineeringOperationId operationId,
     required int revisionNumber,
     required String workingContent,
+    String? originalValue,
+    String? proposedValue,
     required String? previousRevisionId,
     required RegistryEntityId primaryEntityId,
     required Iterable<RegistryEntityId> relatedEntityIds,
@@ -57,12 +59,34 @@ final class RegistryEngineeringOperationRevision extends Equatable {
     }
 
     final String normalizedWorkingContent = workingContent.trim();
+    final String normalizedOriginalValue =
+        originalValue?.trim() ?? normalizedWorkingContent;
+    final String normalizedProposedValue =
+        proposedValue?.trim() ?? normalizedWorkingContent;
 
     if (normalizedWorkingContent.isEmpty) {
       throw ArgumentError.value(
         workingContent,
         'workingContent',
         'Registry engineering operation revision working content '
+            'must not be empty.',
+      );
+    }
+
+    if (normalizedOriginalValue.isEmpty) {
+      throw ArgumentError.value(
+        originalValue,
+        'originalValue',
+        'Registry engineering operation revision original value '
+            'must not be empty.',
+      );
+    }
+
+    if (normalizedProposedValue.isEmpty) {
+      throw ArgumentError.value(
+        proposedValue,
+        'proposedValue',
+        'Registry engineering operation revision proposed value '
             'must not be empty.',
       );
     }
@@ -90,6 +114,8 @@ final class RegistryEngineeringOperationRevision extends Equatable {
       operationId: operationId,
       revisionNumber: revisionNumber,
       workingContent: normalizedWorkingContent,
+      originalValue: normalizedOriginalValue,
+      proposedValue: normalizedProposedValue,
       previousRevisionId: normalizedPreviousRevisionId,
       primaryEntityId: primaryEntityId,
       relatedEntityIds: List<RegistryEntityId>.unmodifiable(
@@ -103,6 +129,8 @@ final class RegistryEngineeringOperationRevision extends Equatable {
     required this.operationId,
     required this.revisionNumber,
     required this.workingContent,
+    required this.originalValue,
+    required this.proposedValue,
     required this.previousRevisionId,
     required this.primaryEntityId,
     required this.relatedEntityIds,
@@ -112,6 +140,8 @@ final class RegistryEngineeringOperationRevision extends Equatable {
   final RegistryEngineeringOperationId operationId;
   final int revisionNumber;
   final String workingContent;
+  final String originalValue;
+  final String proposedValue;
   final String? previousRevisionId;
   final RegistryEntityId primaryEntityId;
   final List<RegistryEntityId> relatedEntityIds;
