@@ -119,13 +119,27 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.enterText(
-        find.byKey(const Key('registry_operation_revision_content')),
-        'Edited proposed value.',
+      final Finder revisionEditor = find.byKey(
+        const Key('registry_operation_revision_content'),
       );
-      await tester.tap(
-        find.byKey(const Key('registry_operation_save_revision')),
+      await tester.scrollUntilVisible(
+        revisionEditor,
+        600.0,
+        scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
+      await tester.enterText(revisionEditor, 'Edited proposed value.');
+
+      final Finder saveRevisionButton = find.byKey(
+        const Key('registry_operation_save_revision'),
+      );
+      await tester.scrollUntilVisible(
+        saveRevisionButton,
+        600.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(saveRevisionButton);
       await tester.pumpAndSettle();
 
       final List<RegistryEngineeringOperationRevision> revisions =
@@ -405,7 +419,12 @@ void main() {
     final Finder proposalReviewButton = find.byKey(
       const Key('registry_operation_proposal_review_confirm'),
     );
-    await tester.ensureVisible(proposalReviewButton);
+    await tester.scrollUntilVisible(
+      proposalReviewButton,
+      600.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(proposalReviewButton);
     await tester.pumpAndSettle();
 
@@ -416,10 +435,10 @@ void main() {
       const Key('registry_engineering_operation_status_transition_button'),
     );
 
-    await tester.dragUntilVisible(
+    await tester.scrollUntilVisible(
       statusDropdown,
-      find.byType(ListView).first,
-      const Offset(0, -240),
+      600.0,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(statusDropdown);
@@ -427,10 +446,10 @@ void main() {
     await tester.tap(find.text('readyForDecision').last);
     await tester.pumpAndSettle();
 
-    await tester.dragUntilVisible(
+    await tester.scrollUntilVisible(
       transitionButton,
-      find.byType(ListView).first,
-      const Offset(0, -240),
+      600.0,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(transitionButton);
@@ -500,13 +519,27 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    final Finder conflictSaveRevisionButton = find.byKey(
+      const Key('registry_operation_save_revision'),
+    );
+    await tester.scrollUntilVisible(
+      conflictSaveRevisionButton,
+      600.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(conflictSaveRevisionButton);
     await tester.pumpAndSettle();
 
     final Finder proposalReviewButton = find.byKey(
       const Key('registry_operation_proposal_review_confirm'),
     );
-    await tester.ensureVisible(proposalReviewButton);
+    await tester.scrollUntilVisible(
+      proposalReviewButton,
+      600.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(proposalReviewButton);
     await tester.pumpAndSettle();
 
@@ -517,10 +550,10 @@ void main() {
       const Key('registry_engineering_operation_status_transition_button'),
     );
 
-    await tester.dragUntilVisible(
+    await tester.scrollUntilVisible(
       statusDropdown,
-      find.byType(ListView).first,
-      const Offset(0, -240),
+      600.0,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(statusDropdown);
@@ -528,10 +561,10 @@ void main() {
     await tester.tap(find.text('readyForDecision').last);
     await tester.pumpAndSettle();
 
-    await tester.dragUntilVisible(
+    await tester.scrollUntilVisible(
       transitionButton,
-      find.byType(ListView).first,
-      const Offset(0, -240),
+      600.0,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(transitionButton);
@@ -597,7 +630,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('registry_operation_save_revision')));
+    final Finder proposalSaveRevisionButton = find.byKey(
+      const Key('registry_operation_save_revision'),
+    );
+    await tester.scrollUntilVisible(
+      proposalSaveRevisionButton,
+      600.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(proposalSaveRevisionButton);
     await tester.pumpAndSettle();
 
     final Finder statusDropdown = find.byKey(
@@ -607,10 +649,10 @@ void main() {
       const Key('registry_engineering_operation_status_transition_button'),
     );
 
-    await tester.dragUntilVisible(
+    await tester.scrollUntilVisible(
       statusDropdown,
-      find.byType(ListView).first,
-      const Offset(0, -240),
+      600.0,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(statusDropdown);
@@ -618,10 +660,10 @@ void main() {
     await tester.tap(find.text('readyForDecision').last);
     await tester.pumpAndSettle();
 
-    await tester.dragUntilVisible(
+    await tester.scrollUntilVisible(
       transitionButton,
-      find.byType(ListView).first,
-      const Offset(0, -240),
+      600.0,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(transitionButton);

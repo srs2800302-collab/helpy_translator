@@ -18,6 +18,7 @@ final class RegistryEngineeringOperationStatusTransitionScreen
     required this.transitionRegistryEngineeringOperationStatus,
     this.onOperationTransitioned,
     this.externalReadinessBlockers = const <String>[],
+    this.embedded = false,
     super.key,
   });
 
@@ -26,6 +27,7 @@ final class RegistryEngineeringOperationStatusTransitionScreen
   final Iterable<RegistryEngineeringOperationRevision> revisions;
   final TransitionRegistryEngineeringOperationStatus
   transitionRegistryEngineeringOperationStatus;
+  final bool embedded;
   final Iterable<String> externalReadinessBlockers;
   final FutureOr<void> Function(RegistryEngineeringOperation)?
   onOperationTransitioned;
@@ -319,6 +321,11 @@ final class _RegistryEngineeringOperationStatusTransitionScreenState
       child: SafeArea(
         bottom: false,
         child: ListView(
+          primary: widget.embedded ? false : null,
+          shrinkWrap: widget.embedded,
+          physics: widget.embedded
+              ? const NeverScrollableScrollPhysics()
+              : null,
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             Text(labels.title, style: Theme.of(context).textTheme.titleLarge),

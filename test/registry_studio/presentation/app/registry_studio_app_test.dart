@@ -855,8 +855,18 @@ void main() {
     Navigator.of(tester.element(comparisonSheet)).pop();
     await tester.pumpAndSettle();
 
+    final Finder revisionEditor = find.byKey(
+      const Key('registry_operation_revision_content'),
+    );
+    await tester.scrollUntilVisible(
+      revisionEditor,
+      600.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
     final TextField workingContentEditor = tester.widget<TextField>(
-      find.byKey(const Key('registry_operation_revision_content')),
+      revisionEditor,
     );
 
     expect(workingContentEditor.controller?.text, target.sourceText.trim());
@@ -869,7 +879,12 @@ void main() {
       const Key('registry_operation_save_revision'),
     );
 
-    await tester.ensureVisible(saveRevisionButton);
+    await tester.scrollUntilVisible(
+      saveRevisionButton,
+      600.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(saveRevisionButton);
     await tester.pumpAndSettle();
 
@@ -886,7 +901,12 @@ void main() {
     final Finder proposalReviewButton = find.byKey(
       const Key('registry_operation_proposal_review_confirm'),
     );
-    await tester.ensureVisible(proposalReviewButton);
+    await tester.scrollUntilVisible(
+      proposalReviewButton,
+      600.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(proposalReviewButton);
     await tester.pumpAndSettle();
 
@@ -897,10 +917,10 @@ void main() {
       const Key('registry_engineering_operation_status_transition_button'),
     );
 
-    await tester.dragUntilVisible(
+    await tester.scrollUntilVisible(
       statusDropdown,
-      find.byType(ListView).first,
-      const Offset(0, -240),
+      600.0,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(statusDropdown);
@@ -908,17 +928,19 @@ void main() {
     await tester.tap(find.text('readyForDecision').last);
     await tester.pumpAndSettle();
 
-    await tester.dragUntilVisible(
+    await tester.scrollUntilVisible(
       transitionButton,
-      find.byType(ListView).first,
-      const Offset(0, -240),
+      600.0,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(transitionButton);
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Semantic candidates unresolved'), findsNothing);
-    await tester.drag(find.byType(ListView).at(1), const Offset(0, 600));
+    await tester.ensureVisible(
+      find.text('Текущий статус:\nreadyForDecision', skipOffstage: false),
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -930,8 +952,18 @@ void main() {
       findsNothing,
     );
 
+    final Finder editableRevisionEditor = find.byKey(
+      const Key('registry_operation_revision_content'),
+    );
+    await tester.scrollUntilVisible(
+      editableRevisionEditor,
+      -600.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
     final TextField editableWorkingContentEditor = tester.widget<TextField>(
-      find.byKey(const Key('registry_operation_revision_content')),
+      editableRevisionEditor,
     );
     final FilledButton editableSaveRevisionButton = tester.widget<FilledButton>(
       saveRevisionButton,

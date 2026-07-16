@@ -576,6 +576,7 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
           uiLanguage: widget.uiLanguage,
           operation: currentOperation,
           revisions: _revisions,
+          embedded: widget.comparisonViewData != null,
           externalReadinessBlockers: <String>[
             ...externalOperationReadinessBlockers,
             ...semanticReadinessBlockers,
@@ -589,8 +590,14 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
 
     final Widget operationStatusContent = revisionsReadOnly
         ? Column(
+            mainAxisSize: widget.comparisonViewData != null
+                ? MainAxisSize.min
+                : MainAxisSize.max,
             children: <Widget>[
-              Expanded(child: statusScreen),
+              if (widget.comparisonViewData != null)
+                statusScreen
+              else
+                Expanded(child: statusScreen),
               SafeArea(
                 top: false,
                 child: Padding(
@@ -855,6 +862,177 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
             .take(5)
             .toList(growable: false) ??
         const <String>[];
+
+    final ({
+      String count,
+      String field,
+      String save,
+      String saving,
+      String item,
+      String original,
+      String proposed,
+      String working,
+      String semanticDecisions,
+      String semanticConfirmed,
+      String semanticRejected,
+      String reviewProposal,
+      String proposalReviewed,
+    })
+    labels = switch (widget.uiLanguage) {
+      RegistryStudioUiLanguage.ru => (
+        count: 'Редакции',
+        field: 'Полная рабочая версия',
+        save: 'Сохранить редакцию',
+        saving: 'Сохранение…',
+        item: 'Редакция',
+        original: 'Исходное значение',
+        proposed: 'Предложенное значение',
+        working: 'Рабочая версия',
+        semanticDecisions: 'Решения по semantic candidates',
+        semanticConfirmed: 'Подтверждено как dependency',
+        semanticRejected: 'Отклонено как unrelated',
+        reviewProposal: 'Подтвердить review proposal',
+        proposalReviewed: 'Proposal review подтверждён',
+      ),
+      RegistryStudioUiLanguage.en => (
+        count: 'Revisions',
+        field: 'Complete working version',
+        save: 'Save revision',
+        saving: 'Saving…',
+        item: 'Revision',
+        original: 'Original',
+        proposed: 'Proposed',
+        working: 'Working',
+        semanticDecisions: 'Semantic candidate decisions',
+        semanticConfirmed: 'Confirmed dependency',
+        semanticRejected: 'Rejected as unrelated',
+        reviewProposal: 'Confirm proposal review',
+        proposalReviewed: 'Proposal reviewed',
+      ),
+      RegistryStudioUiLanguage.th => (
+        count: 'ฉบับแก้ไข',
+        field: 'เวอร์ชันการทำงานฉบับเต็ม',
+        save: 'บันทึกฉบับแก้ไข',
+        saving: 'กำลังบันทึก…',
+        item: 'ฉบับแก้ไข',
+        original: 'ค่าต้นฉบับ',
+        proposed: 'ค่าที่เสนอ',
+        working: 'เวอร์ชันการทำงาน',
+        semanticDecisions: 'การตัดสินใจ semantic candidates',
+        semanticConfirmed: 'ยืนยันว่าเป็น dependency แล้ว',
+        semanticRejected: 'ปฏิเสธว่าไม่เกี่ยวข้องแล้ว',
+        reviewProposal: 'ยืนยัน proposal review',
+        proposalReviewed: 'ตรวจสอบ proposal แล้ว',
+      ),
+    };
+
+    final Widget revisionPanel = Material(
+      elevation: 6,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              TextField(
+                key: const Key('registry_operation_revision_content'),
+                controller: _workingContentController,
+                readOnly: revisionsReadOnly,
+                minLines: 2,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: labels.field,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text('${labels.count}: ${_revisions.length}'),
+                  ),
+                  FilledButton(
+                    key: const Key('registry_operation_save_revision'),
+                    onPressed: revisionsReadOnly || _isSavingRevision
+                        ? null
+                        : _saveRevision,
+                    child: Text(
+                      _isSavingRevision ? labels.saving : labels.save,
+                    ),
+                  ),
+                ],
+              ),
+              if (widget.comparisonViewData != null &&
+                  _revisions.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    key: const Key(
+                      'registry_operation_proposal_review_confirm',
+                    ),
+                    onPressed: revisionsReadOnly || _proposalReviewed
+                        ? null
+                        : () {
+                            setState(() {
+                              _proposalReviewed = true;
+                            });
+                          },
+                    child: Text(
+                      _proposalReviewed
+                          ? labels.proposalReviewed
+                          : labels.reviewProposal,
+                    ),
+                  ),
+                ),
+              ],
+              if (_revisions.isNotEmpty) ...<Widget>[
+                const Divider(),
+                SizedBox(
+                  height: 112,
+                  child: ListView.builder(
+                    itemCount: _revisions.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final RegistryEngineeringOperationRevision revision =
+                          _revisions[_revisions.length - index - 1];
+
+                      final String semanticDecisionEvidence = revision
+                          .semanticCandidateDecisions
+                          .entries
+                          .map(
+                            (MapEntry<String, bool> decision) =>
+                                '${decision.value ? labels.semanticConfirmed : labels.semanticRejected}: ${decision.key}',
+                          )
+                          .join('\\n');
+
+                      return ListTile(
+                        key: ValueKey<String>(
+                          'registry_operation_revision_'
+                          '${revision.revisionNumber}',
+                        ),
+                        dense: true,
+                        title: Text(
+                          '${labels.item} '
+                          '${revision.revisionNumber} · '
+                          '${revision.primaryEntityId.value}',
+                        ),
+                        subtitle: Text(
+                          '${labels.original}: ${revision.originalValue}\n'
+                          '${labels.proposed}: ${revision.proposedValue}\n'
+                          '${labels.working}: ${revision.workingContent}'
+                          '${semanticDecisionEvidence.isEmpty ? '' : '\\n${labels.semanticDecisions}:\\n$semanticDecisionEvidence'}',
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
 
     final Widget operationStatusSection = comparisonViewData == null
         ? operationStatusContent
@@ -1737,190 +1915,18 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                   },
                 ),
               ),
-              SizedBox(
-                height: MediaQuery.sizeOf(context).height * 0.9,
-                child: operationStatusContent,
-              ),
+              if (widget.revisionPrimaryEntityId != null) revisionPanel,
+              operationStatusContent,
             ],
           );
-
-    if (widget.revisionPrimaryEntityId == null) {
+    if (widget.comparisonViewData != null) {
       return operationStatusSection;
     }
-
-    final ({
-      String count,
-      String field,
-      String save,
-      String saving,
-      String item,
-      String original,
-      String proposed,
-      String working,
-      String semanticDecisions,
-      String semanticConfirmed,
-      String semanticRejected,
-      String reviewProposal,
-      String proposalReviewed,
-    })
-    labels = switch (widget.uiLanguage) {
-      RegistryStudioUiLanguage.ru => (
-        count: 'Редакции',
-        field: 'Полная рабочая версия',
-        save: 'Сохранить редакцию',
-        saving: 'Сохранение…',
-        item: 'Редакция',
-        original: 'Исходное значение',
-        proposed: 'Предложенное значение',
-        working: 'Рабочая версия',
-        semanticDecisions: 'Решения по semantic candidates',
-        semanticConfirmed: 'Подтверждено как dependency',
-        semanticRejected: 'Отклонено как unrelated',
-        reviewProposal: 'Подтвердить review proposal',
-        proposalReviewed: 'Proposal review подтверждён',
-      ),
-      RegistryStudioUiLanguage.en => (
-        count: 'Revisions',
-        field: 'Complete working version',
-        save: 'Save revision',
-        saving: 'Saving…',
-        item: 'Revision',
-        original: 'Original',
-        proposed: 'Proposed',
-        working: 'Working',
-        semanticDecisions: 'Semantic candidate decisions',
-        semanticConfirmed: 'Confirmed dependency',
-        semanticRejected: 'Rejected as unrelated',
-        reviewProposal: 'Confirm proposal review',
-        proposalReviewed: 'Proposal reviewed',
-      ),
-      RegistryStudioUiLanguage.th => (
-        count: 'ฉบับแก้ไข',
-        field: 'เวอร์ชันการทำงานฉบับเต็ม',
-        save: 'บันทึกฉบับแก้ไข',
-        saving: 'กำลังบันทึก…',
-        item: 'ฉบับแก้ไข',
-        original: 'ค่าต้นฉบับ',
-        proposed: 'ค่าที่เสนอ',
-        working: 'เวอร์ชันการทำงาน',
-        semanticDecisions: 'การตัดสินใจ semantic candidates',
-        semanticConfirmed: 'ยืนยันว่าเป็น dependency แล้ว',
-        semanticRejected: 'ปฏิเสธว่าไม่เกี่ยวข้องแล้ว',
-        reviewProposal: 'ยืนยัน proposal review',
-        proposalReviewed: 'ตรวจสอบ proposal แล้ว',
-      ),
-    };
 
     return Column(
       children: <Widget>[
         Expanded(child: operationStatusSection),
-        Material(
-          elevation: 6,
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  TextField(
-                    key: const Key('registry_operation_revision_content'),
-                    controller: _workingContentController,
-                    readOnly: revisionsReadOnly,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      labelText: labels.field,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text('${labels.count}: ${_revisions.length}'),
-                      ),
-                      FilledButton(
-                        key: const Key('registry_operation_save_revision'),
-                        onPressed: revisionsReadOnly || _isSavingRevision
-                            ? null
-                            : _saveRevision,
-                        child: Text(
-                          _isSavingRevision ? labels.saving : labels.save,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (widget.comparisonViewData != null &&
-                      _revisions.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        key: const Key(
-                          'registry_operation_proposal_review_confirm',
-                        ),
-                        onPressed: revisionsReadOnly || _proposalReviewed
-                            ? null
-                            : () {
-                                setState(() {
-                                  _proposalReviewed = true;
-                                });
-                              },
-                        child: Text(
-                          _proposalReviewed
-                              ? labels.proposalReviewed
-                              : labels.reviewProposal,
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (_revisions.isNotEmpty) ...<Widget>[
-                    const Divider(),
-                    SizedBox(
-                      height: 112,
-                      child: ListView.builder(
-                        itemCount: _revisions.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final RegistryEngineeringOperationRevision revision =
-                              _revisions[_revisions.length - index - 1];
-
-                          final String semanticDecisionEvidence = revision
-                              .semanticCandidateDecisions
-                              .entries
-                              .map(
-                                (MapEntry<String, bool> decision) =>
-                                    '${decision.value ? labels.semanticConfirmed : labels.semanticRejected}: ${decision.key}',
-                              )
-                              .join('\\n');
-
-                          return ListTile(
-                            key: ValueKey<String>(
-                              'registry_operation_revision_'
-                              '${revision.revisionNumber}',
-                            ),
-                            dense: true,
-                            title: Text(
-                              '${labels.item} '
-                              '${revision.revisionNumber} · '
-                              '${revision.primaryEntityId.value}',
-                            ),
-                            subtitle: Text(
-                              '${labels.original}: ${revision.originalValue}\n'
-                              '${labels.proposed}: ${revision.proposedValue}\n'
-                              '${labels.working}: ${revision.workingContent}'
-                              '${semanticDecisionEvidence.isEmpty ? '' : '\\n${labels.semanticDecisions}:\\n$semanticDecisionEvidence'}',
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
+        revisionPanel,
       ],
     );
   }
