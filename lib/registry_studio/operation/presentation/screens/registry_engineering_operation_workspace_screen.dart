@@ -829,6 +829,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String save,
       String saving,
       String item,
+      String original,
+      String proposed,
+      String working,
     })
     labels = switch (widget.uiLanguage) {
       RegistryStudioUiLanguage.ru => (
@@ -837,6 +840,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         save: 'Сохранить редакцию',
         saving: 'Сохранение…',
         item: 'Редакция',
+        original: 'Исходное значение',
+        proposed: 'Предложенное значение',
+        working: 'Рабочая версия',
       ),
       RegistryStudioUiLanguage.en => (
         count: 'Revisions',
@@ -844,6 +850,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         save: 'Save revision',
         saving: 'Saving…',
         item: 'Revision',
+        original: 'Original',
+        proposed: 'Proposed',
+        working: 'Working',
       ),
       RegistryStudioUiLanguage.th => (
         count: 'ฉบับแก้ไข',
@@ -851,6 +860,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         save: 'บันทึกฉบับแก้ไข',
         saving: 'กำลังบันทึก…',
         item: 'ฉบับแก้ไข',
+        original: 'ค่าต้นฉบับ',
+        proposed: 'ค่าที่เสนอ',
+        working: 'เวอร์ชันการทำงาน',
       ),
     };
 
@@ -916,9 +928,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                               '${revision.primaryEntityId.value}',
                             ),
                             subtitle: Text(
-                              'original: ${revision.originalValue}\n'
-                              'proposed: ${revision.proposedValue}\n'
-                              'working: ${revision.workingContent}',
+                              '${labels.original}: ${revision.originalValue}\n'
+                              '${labels.proposed}: ${revision.proposedValue}\n'
+                              '${labels.working}: ${revision.workingContent}',
                             ),
                           );
                         },

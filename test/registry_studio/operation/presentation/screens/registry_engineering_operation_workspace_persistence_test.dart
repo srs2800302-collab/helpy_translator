@@ -125,11 +125,11 @@ void main() {
       expect(revisions.single.proposedValue, 'Edited proposed value.');
       expect(revisions.single.workingContent, 'Edited proposed value.');
       expect(
-        find.textContaining('original: Original source value.'),
+        find.textContaining('Исходное значение: Original source value.'),
         findsOneWidget,
       );
       expect(
-        find.textContaining('proposed: Edited proposed value.'),
+        find.textContaining('Предложенное значение: Edited proposed value.'),
         findsOneWidget,
       );
     },
