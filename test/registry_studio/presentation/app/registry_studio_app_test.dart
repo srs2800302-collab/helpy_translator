@@ -439,408 +439,466 @@ void main() {
     expect(tester.widget<FilledButton>(comparisonButton).onPressed, isNull);
   });
 
-  testWidgets(
-    'starts comparison operation with target primary and source related',
-    (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 1600));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('starts comparison operation with target primary and source related', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      final _FakeTranslatorPhraseProvider provider =
-          _FakeTranslatorPhraseProvider(_translatorResult());
-      final ServiceIntakeSourceBlock source = _serviceIntakeSourceBlock();
-      final ServiceIntakeSourceBlock target = (
-        identity: (
-          entityId: RegistryEntityId(
-            'helpy.service_intake.plumbing.faucet.replace',
-          ),
-          path: RegistryPath(const <String>[
-            'helpy',
-            'service_intake',
-            'plumbing',
-            'faucet',
-            'replace',
-          ]),
-          ownerHeadingLevel: 2,
-          ownerHeading: 'Plumbing',
-          headingLevel: 3,
-          heading: 'Plumbing → Замена крана',
+    final _FakeTranslatorPhraseProvider provider =
+        _FakeTranslatorPhraseProvider(_translatorResult());
+    final ServiceIntakeSourceBlock source = _serviceIntakeSourceBlock();
+    final ServiceIntakeSourceBlock target = (
+      identity: (
+        entityId: RegistryEntityId(
+          'helpy.service_intake.plumbing.faucet.replace',
         ),
-        startLine: 120,
-        endLine: 130,
-        sourceText:
-            '### Plumbing → Замена крана\n'
-            '1. Что требуется сделать?\n'
-            '- Заменить существующий кран.\n',
-      );
-      final RegistryEntityId affectedEntityId = RegistryEntityId(
-        'registry.service_intake.plumbing.faucet.materials',
-      );
-      final RegistryEntityId transitiveEntityId = RegistryEntityId(
-        'registry.service_intake.plumbing.faucet.materials.guidance',
-      );
+        path: RegistryPath(const <String>[
+          'helpy',
+          'service_intake',
+          'plumbing',
+          'faucet',
+          'replace',
+        ]),
+        ownerHeadingLevel: 2,
+        ownerHeading: 'Plumbing',
+        headingLevel: 3,
+        heading: 'Plumbing → Замена крана',
+      ),
+      startLine: 120,
+      endLine: 130,
+      sourceText:
+          '### Plumbing → Замена крана\n'
+          '1. Что требуется сделать?\n'
+          '- Заменить существующий кран.\n',
+    );
+    final ServiceIntakeSourceBlock unaffected = (
+      identity: (
+        entityId: RegistryEntityId(
+          'helpy.service_intake.electrical.socket.install',
+        ),
+        path: RegistryPath(const <String>[
+          'helpy',
+          'service_intake',
+          'electrical',
+          'socket',
+          'install',
+        ]),
+        ownerHeadingLevel: 2,
+        ownerHeading: 'Electrical',
+        headingLevel: 3,
+        heading: 'Electrical → Установка розетки',
+      ),
+      startLine: 200,
+      endLine: 210,
+      sourceText:
+          '### Electrical → Установка розетки\n'
+          '1. Что требуется сделать?\n'
+          '- Установить розетку.\n',
+    );
+    final RegistryEntityId affectedEntityId = RegistryEntityId(
+      'registry.service_intake.plumbing.faucet.materials',
+    );
+    final RegistryEntityId transitiveEntityId = RegistryEntityId(
+      'registry.service_intake.plumbing.faucet.materials.guidance',
+    );
 
-      RegistryDocumentNode nodeFor(ServiceIntakeSourceBlock block) {
-        return RegistryDocumentNode(
-          title: block.identity.heading,
-          headingLevel: block.identity.headingLevel,
-          headingPath: <String>[
-            'Registry',
-            block.identity.ownerHeading,
-            block.identity.heading,
+    RegistryDocumentNode nodeFor(ServiceIntakeSourceBlock block) {
+      return RegistryDocumentNode(
+        title: block.identity.heading,
+        headingLevel: block.identity.headingLevel,
+        headingPath: <String>[
+          'Registry',
+          block.identity.ownerHeading,
+          block.identity.heading,
+        ],
+        startLine: block.startLine,
+        endLine: block.endLine,
+        sourceText: block.sourceText,
+        children: const <RegistryDocumentNode>[],
+      );
+    }
+
+    await tester.pumpWidget(
+      _testApp(
+        provider,
+        registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
+          <RegistryDocumentNode>[
+            nodeFor(source),
+            nodeFor(target),
+            nodeFor(unaffected),
           ],
-          startLine: block.startLine,
-          endLine: block.endLine,
-          sourceText: block.sourceText,
-          children: const <RegistryDocumentNode>[],
+        ),
+        registrySourceRevision: Future<String>.value(_sourceRevision),
+        serviceIntakeSourceBlocks: Future<List<ServiceIntakeSourceBlock>>.value(
+          <ServiceIntakeSourceBlock>[source, target, unaffected],
+        ),
+        relatedContextRelations: <RegistryRelation>[
+          RegistryRelation(
+            sourceEntityId: target.identity.entityId,
+            targetEntityId: affectedEntityId,
+            meaning: RegistryRelationMeaning('references'),
+          ),
+          RegistryRelation(
+            sourceEntityId: affectedEntityId,
+            targetEntityId: transitiveEntityId,
+            meaning: RegistryRelationMeaning('depends_on'),
+          ),
+        ],
+      ),
+    );
+
+    await _selectAppScreen(tester, 'Registry');
+
+    final Finder sourceHeading = find.text(source.identity.heading);
+    await tester.ensureVisible(sourceHeading);
+    await tester.tap(sourceHeading);
+    await tester.pumpAndSettle();
+
+    final Finder sourceButton = find.byKey(
+      ValueKey<String>(
+        'service_intake_compare_source_'
+        '${source.identity.entityId.value}',
+      ),
+    );
+    await tester.ensureVisible(sourceButton);
+    await tester.tap(sourceButton);
+    await tester.pumpAndSettle();
+
+    final Finder targetHeading = find.text(target.identity.heading);
+    await tester.ensureVisible(targetHeading);
+    await tester.tap(targetHeading);
+    await tester.pumpAndSettle();
+
+    final Finder targetButton = find.byKey(
+      ValueKey<String>(
+        'service_intake_compare_target_'
+        '${target.identity.entityId.value}',
+      ),
+    );
+    await tester.ensureVisible(targetButton);
+    await tester.tap(targetButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(targetHeading);
+    await tester.pumpAndSettle();
+
+    final Finder comparisonButton = find.byKey(
+      const Key('service_intake_source_comparison_action'),
+    );
+    await tester.ensureVisible(comparisonButton);
+    await tester.tap(comparisonButton);
+    await tester.pumpAndSettle();
+
+    final RegistryEngineeringOperationWorkspaceScreen workspace = tester
+        .widget<RegistryEngineeringOperationWorkspaceScreen>(
+          find.byType(RegistryEngineeringOperationWorkspaceScreen),
         );
-      }
 
-      await tester.pumpWidget(
-        _testApp(
-          provider,
-          registryDocumentNodes: Future<List<RegistryDocumentNode>>.value(
-            <RegistryDocumentNode>[nodeFor(source), nodeFor(target)],
-          ),
-          registrySourceRevision: Future<String>.value(_sourceRevision),
-          serviceIntakeSourceBlocks:
-              Future<List<ServiceIntakeSourceBlock>>.value(
-                <ServiceIntakeSourceBlock>[source, target],
-              ),
-          relatedContextRelations: <RegistryRelation>[
-            RegistryRelation(
-              sourceEntityId: target.identity.entityId,
-              targetEntityId: affectedEntityId,
-              meaning: RegistryRelationMeaning('references'),
-            ),
-            RegistryRelation(
-              sourceEntityId: affectedEntityId,
-              targetEntityId: transitiveEntityId,
-              meaning: RegistryRelationMeaning('depends_on'),
-            ),
-          ],
-        ),
-      );
+    expect(workspace.revisionPrimaryEntityId, target.identity.entityId);
+    expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
+      source.identity.entityId,
+      affectedEntityId,
+      transitiveEntityId,
+    ]);
+    for (final String expectedText in <String>[
+      source.identity.heading,
+      source.identity.entityId.value,
+      target.identity.heading,
+      target.identity.entityId.value,
+      'Установить и подключить кран.',
+      'Заменить существующий кран.',
+      '- ### Plumbing → Кран',
+      '+ ### Plumbing → Замена крана',
+      affectedEntityId.value,
+      transitiveEntityId.value,
+    ]) {
+      expect(find.textContaining(expectedText), findsWidgets);
+    }
+    expect(workspace.initialWorkingContent, target.sourceText.trim());
 
-      await _selectAppScreen(tester, 'Registry');
+    final RegistryOperationComparisonViewData comparisonViewData =
+        workspace.comparisonViewData!;
 
-      final Finder sourceHeading = find.text(source.identity.heading);
-      await tester.ensureVisible(sourceHeading);
-      await tester.tap(sourceHeading);
-      await tester.pumpAndSettle();
-
-      final Finder sourceButton = find.byKey(
-        ValueKey<String>(
-          'service_intake_compare_source_'
-          '${source.identity.entityId.value}',
-        ),
-      );
-      await tester.ensureVisible(sourceButton);
-      await tester.tap(sourceButton);
-      await tester.pumpAndSettle();
-
-      final Finder targetHeading = find.text(target.identity.heading);
-      await tester.ensureVisible(targetHeading);
-      await tester.tap(targetHeading);
-      await tester.pumpAndSettle();
-
-      final Finder targetButton = find.byKey(
-        ValueKey<String>(
-          'service_intake_compare_target_'
-          '${target.identity.entityId.value}',
-        ),
-      );
-      await tester.ensureVisible(targetButton);
-      await tester.tap(targetButton);
-      await tester.pumpAndSettle();
-
-      await tester.tap(targetHeading);
-      await tester.pumpAndSettle();
-
-      final Finder comparisonButton = find.byKey(
-        const Key('service_intake_source_comparison_action'),
-      );
-      await tester.ensureVisible(comparisonButton);
-      await tester.tap(comparisonButton);
-      await tester.pumpAndSettle();
-
-      final RegistryEngineeringOperationWorkspaceScreen workspace = tester
-          .widget<RegistryEngineeringOperationWorkspaceScreen>(
-            find.byType(RegistryEngineeringOperationWorkspaceScreen),
-          );
-
-      expect(workspace.revisionPrimaryEntityId, target.identity.entityId);
-      expect(workspace.revisionRelatedEntityIds?.toList(), <RegistryEntityId>[
-        source.identity.entityId,
+    expect(comparisonViewData.operationType, 'Service Intake comparison');
+    expect(comparisonViewData.projectAdapter, 'Helpy Service Intake');
+    expect(comparisonViewData.sourceRevision, _sourceRevision);
+    expect(comparisonViewData.sourceHeading, source.identity.heading);
+    expect(comparisonViewData.sourceEntityId, source.identity.entityId);
+    expect(
+      comparisonViewData.sourceRegistryPath,
+      source.identity.path.segments.join(' / '),
+    );
+    expect(
+      comparisonViewData.sourceEvidence,
+      contains(
+        'H${source.identity.ownerHeadingLevel} ${source.identity.ownerHeading}',
+      ),
+    );
+    expect(
+      comparisonViewData.sourceEvidence,
+      contains('H${source.identity.headingLevel} ${source.identity.heading}'),
+    );
+    expect(
+      comparisonViewData.sourceEvidence,
+      contains('lines ${source.startLine}–${source.endLine}'),
+    );
+    expect(comparisonViewData.sourceText, source.sourceText.trim());
+    expect(comparisonViewData.targetHeading, target.identity.heading);
+    expect(comparisonViewData.targetEntityId, target.identity.entityId);
+    expect(
+      comparisonViewData.targetRegistryPath,
+      target.identity.path.segments.join(' / '),
+    );
+    expect(
+      comparisonViewData.targetEvidence,
+      contains(
+        'H${target.identity.ownerHeadingLevel} ${target.identity.ownerHeading}',
+      ),
+    );
+    expect(
+      comparisonViewData.targetEvidence,
+      contains('H${target.identity.headingLevel} ${target.identity.heading}'),
+    );
+    expect(
+      comparisonViewData.targetEvidence,
+      contains('lines ${target.startLine}–${target.endLine}'),
+    );
+    expect(comparisonViewData.targetText, target.sourceText.trim());
+    expect(
+      comparisonViewData.dependencyGraph.directDependencyIds,
+      <RegistryEntityId>[source.identity.entityId, affectedEntityId],
+    );
+    expect(
+      comparisonViewData.dependencyGraph.transitiveDependencyIds,
+      <RegistryEntityId>[transitiveEntityId],
+    );
+    expect(
+      comparisonViewData.dependencyGraph.pathTo(transitiveEntityId),
+      <RegistryEntityId>[
+        target.identity.entityId,
         affectedEntityId,
         transitiveEntityId,
-      ]);
-      for (final String expectedText in <String>[
-        source.identity.heading,
-        source.identity.entityId.value,
-        target.identity.heading,
-        target.identity.entityId.value,
-        'Установить и подключить кран.',
-        'Заменить существующий кран.',
-        '- ### Plumbing → Кран',
-        '+ ### Plumbing → Замена крана',
-        affectedEntityId.value,
-        transitiveEntityId.value,
-      ]) {
-        expect(find.textContaining(expectedText), findsWidgets);
-      }
-      expect(workspace.initialWorkingContent, target.sourceText.trim());
+      ],
+    );
+    expect(
+      comparisonViewData.affectedBranchPaths,
+      contains(source.identity.path.segments.join(' / ')),
+    );
+    expect(
+      comparisonViewData.affectedBranchPaths,
+      contains(target.identity.path.segments.join(' / ')),
+    );
+    expect(
+      comparisonViewData.affectedBranchPaths,
+      isNot(contains(unaffected.identity.path.segments.join(' / '))),
+    );
+    expect(comparisonViewData.unaffectedIdentityExplanations, <String>[
+      '${unaffected.identity.entityId.value}: '
+          'нет прямой или транзитивной связи в текущем RegistryDependencyGraph',
+    ]);
+    expect(comparisonViewData.lineDiff, contains('- ### Plumbing → Кран'));
+    expect(
+      comparisonViewData.lineDiff,
+      contains('+ ### Plumbing → Замена крана'),
+    );
 
-      final RegistryOperationComparisonViewData comparisonViewData =
-          workspace.comparisonViewData!;
+    final Finder comparisonSummary = find.byKey(
+      const Key('registry_operation_comparison_summary'),
+    );
 
-      expect(comparisonViewData.operationType, 'Service Intake comparison');
-      expect(comparisonViewData.projectAdapter, 'Helpy Service Intake');
-      expect(comparisonViewData.sourceRevision, _sourceRevision);
-      expect(comparisonViewData.sourceHeading, source.identity.heading);
-      expect(comparisonViewData.sourceEntityId, source.identity.entityId);
-      expect(
-        comparisonViewData.sourceRegistryPath,
-        source.identity.path.segments.join(' / '),
-      );
-      expect(
-        comparisonViewData.sourceEvidence,
-        contains(
-          'H${source.identity.ownerHeadingLevel} ${source.identity.ownerHeading}',
-        ),
-      );
-      expect(
-        comparisonViewData.sourceEvidence,
-        contains('H${source.identity.headingLevel} ${source.identity.heading}'),
-      );
-      expect(
-        comparisonViewData.sourceEvidence,
-        contains('lines ${source.startLine}–${source.endLine}'),
-      );
-      expect(comparisonViewData.sourceText, source.sourceText.trim());
-      expect(comparisonViewData.targetHeading, target.identity.heading);
-      expect(comparisonViewData.targetEntityId, target.identity.entityId);
-      expect(
-        comparisonViewData.targetRegistryPath,
-        target.identity.path.segments.join(' / '),
-      );
-      expect(
-        comparisonViewData.targetEvidence,
-        contains(
-          'H${target.identity.ownerHeadingLevel} ${target.identity.ownerHeading}',
-        ),
-      );
-      expect(
-        comparisonViewData.targetEvidence,
-        contains('H${target.identity.headingLevel} ${target.identity.heading}'),
-      );
-      expect(
-        comparisonViewData.targetEvidence,
-        contains('lines ${target.startLine}–${target.endLine}'),
-      );
-      expect(comparisonViewData.targetText, target.sourceText.trim());
-      expect(
-        comparisonViewData.dependencyGraph.directDependencyIds,
-        <RegistryEntityId>[source.identity.entityId, affectedEntityId],
-      );
-      expect(
-        comparisonViewData.dependencyGraph.transitiveDependencyIds,
-        <RegistryEntityId>[transitiveEntityId],
-      );
-      expect(
-        comparisonViewData.dependencyGraph.pathTo(transitiveEntityId),
-        <RegistryEntityId>[
-          target.identity.entityId,
-          affectedEntityId,
-          transitiveEntityId,
-        ],
-      );
-      expect(comparisonViewData.lineDiff, contains('- ### Plumbing → Кран'));
-      expect(
-        comparisonViewData.lineDiff,
-        contains('+ ### Plumbing → Замена крана'),
-      );
+    expect(comparisonSummary, findsOneWidget);
 
-      final Finder comparisonSummary = find.byKey(
-        const Key('registry_operation_comparison_summary'),
-      );
+    final Finder operationContext = find.byKey(
+      const Key('registry_operation_context_card'),
+    );
 
-      expect(comparisonSummary, findsOneWidget);
+    expect(operationContext, findsOneWidget);
+    await tester.ensureVisible(operationContext);
+    expect(find.textContaining(_sourceRevision), findsOneWidget);
 
-      final Finder operationContext = find.byKey(
-        const Key('registry_operation_context_card'),
-      );
+    await tester.ensureVisible(comparisonSummary);
+    await tester.tap(comparisonSummary);
+    await tester.pumpAndSettle();
 
-      expect(operationContext, findsOneWidget);
-      await tester.ensureVisible(operationContext);
-      expect(find.textContaining(_sourceRevision), findsOneWidget);
+    final Finder comparisonSheet = find.byKey(
+      const Key('registry_operation_comparison_sheet'),
+    );
 
-      await tester.ensureVisible(comparisonSummary);
-      await tester.tap(comparisonSummary);
-      await tester.pumpAndSettle();
+    expect(comparisonSheet, findsOneWidget);
+    expect(
+      find.byKey(const Key('registry_operation_comparison_source')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('registry_operation_comparison_target')),
+      findsOneWidget,
+    );
 
-      final Finder comparisonSheet = find.byKey(
-        const Key('registry_operation_comparison_sheet'),
-      );
+    final Finder affectedSection = find.byKey(
+      const Key('registry_operation_comparison_affected'),
+    );
+    await tester.dragUntilVisible(
+      affectedSection,
+      comparisonSheet,
+      const Offset(0, -300),
+    );
+    expect(affectedSection, findsOneWidget);
 
-      expect(comparisonSheet, findsOneWidget);
-      expect(
-        find.byKey(const Key('registry_operation_comparison_source')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('registry_operation_comparison_target')),
-        findsOneWidget,
-      );
+    expect(find.text('Основная затронутая identity'), findsOneWidget);
+    expect(find.text('Подтверждённые структурные связи'), findsOneWidget);
+    expect(find.text('Полный change graph'), findsOneWidget);
+    expect(find.textContaining(source.identity.entityId.value), findsWidgets);
+    expect(find.textContaining('depends_on'), findsWidgets);
 
-      final Finder affectedSection = find.byKey(
-        const Key('registry_operation_comparison_affected'),
-      );
-      await tester.dragUntilVisible(
-        affectedSection,
-        comparisonSheet,
-        const Offset(0, -300),
-      );
-      expect(affectedSection, findsOneWidget);
+    final Finder dependencyCoverageSection = find.byKey(
+      const Key('registry_operation_comparison_dependency_coverage'),
+    );
+    await tester.dragUntilVisible(
+      dependencyCoverageSection,
+      comparisonSheet,
+      const Offset(0, -300),
+    );
+    expect(dependencyCoverageSection, findsOneWidget);
+    expect(find.text('Затронутые ветки'), findsOneWidget);
+    expect(find.text('Незатронутые identities'), findsOneWidget);
+    expect(
+      find.textContaining(unaffected.identity.entityId.value),
+      findsWidgets,
+    );
 
-      expect(find.text('Основная затронутая identity'), findsOneWidget);
-      expect(find.text('Подтверждённые структурные связи'), findsOneWidget);
-      expect(find.text('Полный change graph'), findsOneWidget);
-      expect(find.textContaining(source.identity.entityId.value), findsWidgets);
-      expect(find.textContaining('depends_on'), findsWidgets);
+    final Finder changeSummarySection = find.byKey(
+      const Key('registry_operation_comparison_change_summary'),
+    );
+    await tester.dragUntilVisible(
+      changeSummarySection,
+      comparisonSheet,
+      const Offset(0, -300),
+    );
+    expect(changeSummarySection, findsOneWidget);
+    expect(find.textContaining('Добавления:'), findsOneWidget);
+    expect(find.textContaining('Удаления:'), findsOneWidget);
+    expect(find.textContaining('Замены:'), findsOneWidget);
+    expect(find.textContaining('Потенциальные перемещения:'), findsOneWidget);
+    expect(find.textContaining('Без изменений:'), findsOneWidget);
 
-      final Finder changeSummarySection = find.byKey(
-        const Key('registry_operation_comparison_change_summary'),
-      );
-      await tester.dragUntilVisible(
-        changeSummarySection,
-        comparisonSheet,
-        const Offset(0, -300),
-      );
-      expect(changeSummarySection, findsOneWidget);
-      expect(find.textContaining('Добавления:'), findsOneWidget);
-      expect(find.textContaining('Удаления:'), findsOneWidget);
-      expect(find.textContaining('Замены:'), findsOneWidget);
-      expect(find.textContaining('Потенциальные перемещения:'), findsOneWidget);
-      expect(find.textContaining('Без изменений:'), findsOneWidget);
+    final Finder diffSection = find.byKey(
+      const Key('registry_operation_comparison_diff'),
+    );
+    await tester.dragUntilVisible(
+      diffSection,
+      comparisonSheet,
+      const Offset(0, -300),
+    );
+    expect(diffSection, findsOneWidget);
 
-      final Finder diffSection = find.byKey(
-        const Key('registry_operation_comparison_diff'),
-      );
-      await tester.dragUntilVisible(
-        diffSection,
-        comparisonSheet,
-        const Offset(0, -300),
-      );
-      expect(diffSection, findsOneWidget);
+    Navigator.of(tester.element(comparisonSheet)).pop();
+    await tester.pumpAndSettle();
 
-      Navigator.of(tester.element(comparisonSheet)).pop();
-      await tester.pumpAndSettle();
+    final TextField workingContentEditor = tester.widget<TextField>(
+      find.byKey(const Key('registry_operation_revision_content')),
+    );
 
-      final TextField workingContentEditor = tester.widget<TextField>(
-        find.byKey(const Key('registry_operation_revision_content')),
-      );
+    expect(workingContentEditor.controller?.text, target.sourceText.trim());
+    expect(
+      workingContentEditor.controller?.text,
+      isNot(contains('Построчные изменения:')),
+    );
 
-      expect(workingContentEditor.controller?.text, target.sourceText.trim());
-      expect(
-        workingContentEditor.controller?.text,
-        isNot(contains('Построчные изменения:')),
-      );
+    final Finder saveRevisionButton = find.byKey(
+      const Key('registry_operation_save_revision'),
+    );
 
-      final Finder saveRevisionButton = find.byKey(
-        const Key('registry_operation_save_revision'),
-      );
+    await tester.ensureVisible(saveRevisionButton);
+    await tester.tap(saveRevisionButton);
+    await tester.pumpAndSettle();
 
-      await tester.ensureVisible(saveRevisionButton);
-      await tester.tap(saveRevisionButton);
-      await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey<String>('registry_operation_revision_1')),
+      findsOneWidget,
+    );
 
-      expect(
-        find.byKey(const ValueKey<String>('registry_operation_revision_1')),
-        findsOneWidget,
-      );
+    final Finder statusDropdown = find.byKey(
+      const Key('registry_engineering_operation_requested_status_dropdown'),
+    );
+    final Finder transitionButton = find.byKey(
+      const Key('registry_engineering_operation_status_transition_button'),
+    );
 
-      final Finder statusDropdown = find.byKey(
-        const Key('registry_engineering_operation_requested_status_dropdown'),
-      );
-      final Finder transitionButton = find.byKey(
-        const Key('registry_engineering_operation_status_transition_button'),
-      );
+    await tester.dragUntilVisible(
+      statusDropdown,
+      find.byType(ListView).first,
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(statusDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('readyForDecision').last);
+    await tester.pumpAndSettle();
 
-      await tester.dragUntilVisible(
-        statusDropdown,
-        find.byType(ListView).first,
-        const Offset(0, -240),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(statusDropdown);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('readyForDecision').last);
-      await tester.pumpAndSettle();
+    await tester.dragUntilVisible(
+      transitionButton,
+      find.byType(ListView).first,
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(transitionButton);
+    await tester.pumpAndSettle();
 
-      await tester.dragUntilVisible(
-        transitionButton,
-        find.byType(ListView).first,
-        const Offset(0, -240),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(transitionButton);
-      await tester.pumpAndSettle();
+    expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
 
-      expect(find.text('Текущий статус:\nreadyForDecision'), findsWidgets);
+    await tester.dragUntilVisible(
+      statusDropdown,
+      find.byType(ListView).first,
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(statusDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('decided').last);
+    await tester.pumpAndSettle();
 
-      await tester.dragUntilVisible(
-        statusDropdown,
-        find.byType(ListView).first,
-        const Offset(0, -240),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(statusDropdown);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('decided').last);
-      await tester.pumpAndSettle();
+    final Finder decisionField = find.byKey(
+      const Key('registry_engineering_operation_decision_statement_field'),
+    );
 
-      final Finder decisionField = find.byKey(
-        const Key('registry_engineering_operation_decision_statement_field'),
-      );
+    await tester.scrollUntilVisible(
+      decisionField,
+      160,
+      scrollable: find.byType(Scrollable).first,
+      maxScrolls: 16,
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      decisionField,
+      'Approve registry source comparison.',
+    );
 
-      await tester.scrollUntilVisible(
-        decisionField,
-        160,
-        scrollable: find.byType(Scrollable).first,
-        maxScrolls: 16,
-      );
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        decisionField,
-        'Approve registry source comparison.',
-      );
+    await tester.dragUntilVisible(
+      transitionButton,
+      find.byType(ListView).first,
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(transitionButton);
+    await tester.pumpAndSettle();
 
-      await tester.dragUntilVisible(
-        transitionButton,
-        find.byType(ListView).first,
-        const Offset(0, -240),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(transitionButton);
-      await tester.pumpAndSettle();
+    expect(find.text('Текущий статус:\ndecided'), findsWidgets);
+    expect(
+      find.textContaining('Approve registry source comparison.'),
+      findsWidgets,
+    );
 
-      expect(find.text('Текущий статус:\ndecided'), findsWidgets);
-      expect(
-        find.textContaining('Approve registry source comparison.'),
-        findsWidgets,
-      );
+    final TextField lockedWorkingContentEditor = tester.widget<TextField>(
+      find.byKey(const Key('registry_operation_revision_content')),
+    );
+    final FilledButton lockedSaveRevisionButton = tester.widget<FilledButton>(
+      saveRevisionButton,
+    );
 
-      final TextField lockedWorkingContentEditor = tester.widget<TextField>(
-        find.byKey(const Key('registry_operation_revision_content')),
-      );
-      final FilledButton lockedSaveRevisionButton = tester.widget<FilledButton>(
-        saveRevisionButton,
-      );
-
-      expect(lockedWorkingContentEditor.readOnly, isTrue);
-      expect(lockedSaveRevisionButton.onPressed, isNull);
-    },
-  );
+    expect(lockedWorkingContentEditor.readOnly, isTrue);
+    expect(lockedSaveRevisionButton.onPressed, isNull);
+  });
 
   testWidgets('switches top-level labels between RU EN and TH', (
     WidgetTester tester,

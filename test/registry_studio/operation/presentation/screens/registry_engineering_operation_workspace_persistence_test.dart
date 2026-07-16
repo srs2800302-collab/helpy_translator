@@ -94,6 +94,8 @@ void main() {
           transitiveDependencyIds: const <RegistryEntityId>[],
           dependencyPaths: const <Iterable<RegistryEntityId>>[],
         ),
+        affectedBranchPaths: const <String>[],
+        unaffectedIdentityExplanations: const <String>[],
       );
 
       await tester.pumpWidget(

@@ -29,6 +29,8 @@ typedef RegistryOperationComparisonViewData = ({
   String targetText,
   String lineDiff,
   RegistryDependencyGraph dependencyGraph,
+  List<String> affectedBranchPaths,
+  List<String> unaffectedIdentityExplanations,
 });
 
 final class RegistryEngineeringOperationWorkspaceScreen extends StatefulWidget {
@@ -567,6 +569,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
       String direct,
       String transitive,
       String paths,
+      String affectedBranches,
+      String unaffected,
+      String noUnaffected,
       String changeSummary,
       String additions,
       String deletions,
@@ -594,6 +599,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         direct: 'Прямые зависимости',
         transitive: 'Транзитивные зависимости',
         paths: 'Пути зависимостей',
+        affectedBranches: 'Затронутые ветки',
+        unaffected: 'Незатронутые identities',
+        noUnaffected: 'Незатронутых identities нет',
         changeSummary: 'Изменения',
         additions: 'Добавления',
         deletions: 'Удаления',
@@ -620,6 +628,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         direct: 'Direct dependencies',
         transitive: 'Transitive dependencies',
         paths: 'Dependency paths',
+        affectedBranches: 'Affected branches',
+        unaffected: 'Unaffected identities',
+        noUnaffected: 'No unaffected identities',
         changeSummary: 'Changes',
         additions: 'Additions',
         deletions: 'Deletions',
@@ -646,6 +657,9 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
         direct: 'การขึ้นต่อกันโดยตรง',
         transitive: 'การขึ้นต่อกันแบบส่งต่อ',
         paths: 'เส้นทางการขึ้นต่อกัน',
+        affectedBranches: 'สาขาที่ได้รับผลกระทบ',
+        unaffected: 'identity ที่ไม่ได้รับผลกระทบ',
+        noUnaffected: 'ไม่มี identity ที่ไม่ได้รับผลกระทบ',
         changeSummary: 'การเปลี่ยนแปลง',
         additions: 'เพิ่ม',
         deletions: 'ลบ',
@@ -1046,6 +1060,67 @@ final class _RegistryEngineeringOperationWorkspaceScreenState
                                                               ) => id.value,
                                                             )
                                                             .join(' → '),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Card(
+                                            key: const Key(
+                                              'registry_operation_comparison_dependency_coverage',
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text(
+                                                    comparisonLabels
+                                                        .affectedBranches,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  for (final String path
+                                                      in comparisonViewData
+                                                          .affectedBranchPaths)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 4,
+                                                          ),
+                                                      child: SelectableText(
+                                                        path,
+                                                      ),
+                                                    ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    comparisonLabels.unaffected,
+                                                    style: Theme.of(
+                                                      sheetContext,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  if (comparisonViewData
+                                                      .unaffectedIdentityExplanations
+                                                      .isEmpty)
+                                                    SelectableText(
+                                                      comparisonLabels
+                                                          .noUnaffected,
+                                                    ),
+                                                  for (final String explanation
+                                                      in comparisonViewData
+                                                          .unaffectedIdentityExplanations)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 4,
+                                                          ),
+                                                      child: SelectableText(
+                                                        explanation,
                                                       ),
                                                     ),
                                                 ],

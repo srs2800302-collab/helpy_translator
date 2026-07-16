@@ -321,6 +321,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
   void _startOperationFromServiceIntakeComparison(
     ServiceIntakeSourceBlock source,
     ServiceIntakeSourceBlock target, {
+    required Iterable<ServiceIntakeSourceBlock> allServiceIntakeBlocks,
     required String sourceRevision,
   }) {
     final String lineComparison = widget.compareRegistrySourceText.compare(
@@ -333,6 +334,31 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
           seedRelatedEntityIds: <RegistryEntityId>[source.identity.entityId],
           relations: widget.relatedContextRelations,
         );
+    final Set<RegistryEntityId> affectedIdentityIds = <RegistryEntityId>{
+      target.identity.entityId,
+      ...dependencyGraph.affectedEntityIds,
+    };
+    final List<String> affectedBranchPaths = allServiceIntakeBlocks
+        .where(
+          (ServiceIntakeSourceBlock block) =>
+              affectedIdentityIds.contains(block.identity.entityId),
+        )
+        .map(
+          (ServiceIntakeSourceBlock block) =>
+              block.identity.path.segments.join(' / '),
+        )
+        .toList(growable: false);
+    final List<String> unaffectedIdentityExplanations = allServiceIntakeBlocks
+        .where(
+          (ServiceIntakeSourceBlock block) =>
+              !affectedIdentityIds.contains(block.identity.entityId),
+        )
+        .map(
+          (ServiceIntakeSourceBlock block) =>
+              '${block.identity.entityId.value}: '
+              'нет прямой или транзитивной связи в текущем RegistryDependencyGraph',
+        )
+        .toList(growable: false);
 
     setState(() {
       _initialOperationProblemStatement = <String>[
@@ -382,6 +408,8 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
         targetText: target.sourceText.trim(),
         lineDiff: lineComparison,
         dependencyGraph: dependencyGraph,
+        affectedBranchPaths: affectedBranchPaths,
+        unaffectedIdentityExplanations: unaffectedIdentityExplanations,
       );
       _selectedScreenIndex = _operationWorkspaceScreenIndex;
     });
@@ -620,6 +648,7 @@ final class _RegistryStudioAppState extends State<RegistryStudioApp> {
                                 _startOperationFromServiceIntakeComparison(
                                   source,
                                   target,
+                                  allServiceIntakeBlocks: blocks,
                                   sourceRevision: sourceRevision,
                                 );
                               }
