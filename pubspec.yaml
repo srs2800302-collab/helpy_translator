@@ -13,11 +13,6 @@ dependencies:
 
   flutter_bloc: ^9.1.1
   equatable: ^2.0.7
-  dio: ^5.8.0+1
-  flutter_dotenv: ^5.2.1
-  clipboard: ^0.1.3
-  intl: ^0.20.2
-  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
@@ -27,8 +22,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-  assets:
-    - .env
-    - docs/architecture/registry_studio/Registry_Studio_Clean_Rebuild_Guard_v1.md
-    - assets/registry_studio/helpy/service_intake_identity_manifest_v1.json
