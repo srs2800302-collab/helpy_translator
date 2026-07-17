@@ -2,7 +2,7 @@
 
 Стабильный Contract ID: `REGISTRY_STUDIO_ENGINEERING_CHANGE_PROPAGATION_AND_APPROVAL_V1`
 
-Объединённая редакция: `3`
+Объединённая редакция: `4`
 
 Роль документа: **единственный нормативный архитектурный и продуктовый контракт новой ветки**
 
@@ -957,6 +957,86 @@ Core:
 Новые категории, подкатегории, сущности, направления, сценарии, вопросы, фотографии, guidance, правила, процессы и будущие вложенные бизнес-блоки обнаруживаются из структурного Registry. Они не должны требовать расширения Core только из-за появления нового типа или уровня дерева.
 
 Конкретные виды узлов, их семантика и принадлежность к пользовательской бизнес-логике определяются project adapter и структурой конкретного Registry.
+
+### 9.2.1. Обязательная универсальность и подключение новых проектов
+
+Registry Studio ОБЯЗАН оставаться reusable, project-independent инженерной платформой для сопровождения Registry разных проектов.
+
+Helpy является первым project adapter и пилотным проектом для проверки продукта. Helpy НЕ ЯВЛЯЕТСЯ архитектурной моделью, встроенной в универсальные модули Registry Studio.
+
+После обкатки Registry Studio на первом проекте подключение нового или другого проекта ОБЯЗАНО требовать только:
+
+- добавления `adapters/<project>`;
+- project-specific configuration источника Registry;
+- получения точной source revision;
+- интерпретации конкретного формата и структуры Registry;
+- разрешения и сохранения стабильных structural identities проекта;
+- optional versioned semantic identity overlay;
+- определения business-scope ownership;
+- предоставления project-specific relations и dependency evidence;
+- регистрации adapter в `app` composition или конфигурации выбора проекта;
+- project-specific publication integration, когда она требуется проекту.
+
+Подключение нового проекта НЕ ДОЛЖНО требовать глобальной переработки или изменения:
+
+- `core`;
+- универсальных моделей и contracts областей `registry`, `canonical`, `maintenance`, `translator`, `publication` и `technical`;
+- `RegistryNode`, `RegistrySnapshot` и `RegistryStructuralIndex`;
+- рекурсивного Registry Explorer;
+- search и filters;
+- comparison revisions;
+- persistence и restoration;
+- history;
+- dependency analysis;
+- Translator handoff;
+- completeness и validation;
+- универсального publication workflow;
+- adapters уже подключённых проектов.
+
+Изменение универсального модуля допускается только для отдельно доказанного и утверждённого требования, которое действительно является общим для всех проектов, а не для размещения project-specific исключения.
+
+Все предположения о конкретном проекте ОБЯЗАНЫ оставаться вне универсальных модулей. К ним относятся:
+
+- repository owner, repository name, branch, source path и другие source coordinates;
+- GitHub, Markdown или иной конкретный transport и storage format;
+- текущая taxonomy узлов;
+- business rules;
+- фиксированное количество категорий, сущностей, сценариев или других узлов;
+- фиксированная глубина дерева;
+- project-specific identity ledger;
+- project-specific semantic classification;
+- project-specific relations и consumer evidence.
+
+Универсальная structural identity и подтверждённая semantic identity являются разными фактами:
+
+- `RegistryNodeId` является стабильной identity структурного узла и ОБЯЗАН сохраняться между revisions, пока сохраняется identity самого узла;
+- способ разрешения и сохранения `RegistryNodeId` принадлежит project adapter и versioned identity evidence проекта;
+- `RegistryEntityId` является identity подтверждённой semantic entity;
+- optional `RegistryIdentityOverlay` связывает `RegistryNodeId` с `RegistryEntityId`, когда такая связь доказана;
+- отсутствие semantic identity НЕ ДОЛЖНО скрывать structural node из Explorer, search, comparison, analysis или history;
+- display label, heading text, текущий `RegistryPath`, line number, source offset, content hash или Git commit SHA МОГУТ использоваться как matching evidence, но НЕ ДОЛЖНЫ самостоятельно заменять стабильную identity.
+
+Обязательным критерием архитектурной универсальности является подключение второго test project adapter, который отличается от Helpy:
+
+- источником;
+- форматом Registry;
+- структурой дерева;
+- типами узлов;
+- системой stable identities;
+- business-scope rules;
+- project-specific relations.
+
+Второй adapter ОБЯЗАН подключаться добавлением adapter-specific реализации и composition registration без переработки универсальных моделей и workflows.
+
+Архитектура считается нарушенной, если подключение второго проекта требует:
+
+- условия вида `if (projectId == ...)` в универсальных модулях;
+- добавления project-specific branch в Core;
+- расширения закрытого universal enum каждым новым типом узла проекта;
+- фиксации глубины или количества узлов;
+- переноса project-specific semantics в `registry`, `canonical`, `maintenance`, `translator`, `publication` или reusable `technical`;
+- изменения универсального workflow только из-за формата или структуры нового проекта.
+
 
 ### 9.3. Владение продуктовыми возможностями
 
