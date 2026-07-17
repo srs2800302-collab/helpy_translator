@@ -3,11 +3,15 @@ import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evi
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 
 void main() {
   group('RegistryNode', () {
     test('preserves project-independent recursive structure', () {
-      final RegistryEntityId rootId = RegistryEntityId('sample.registry.root');
+      final RegistryNodeId rootId = RegistryNodeId('sample.registry.root');
+      final RegistryEntityId businessScopeOwnerId = RegistryEntityId(
+        'sample.registry.business-scope',
+      );
       final List<SourceEvidence> leafEvidence = <SourceEvidence>[
         SourceEvidence(
           sourceDocumentPath: 'registry.source',
@@ -18,12 +22,12 @@ void main() {
         ),
       ];
       final RegistryNode leaf = RegistryNode(
-        id: RegistryEntityId('sample.registry.rule'),
+        id: RegistryNodeId('sample.registry.rule'),
         kindId: 'project.rule',
         path: RegistryPath(const <String>['root', 'domain', 'rule']),
         sourceEvidence: leafEvidence,
         content: 'Rule content',
-        businessScopeOwnerId: rootId,
+        businessScopeOwnerId: businessScopeOwnerId,
         children: const <RegistryNode>[],
       );
       final List<RegistryNode> children = <RegistryNode>[leaf];
@@ -41,7 +45,7 @@ void main() {
           ),
         ],
         content: 'Root content',
-        businessScopeOwnerId: rootId,
+        businessScopeOwnerId: businessScopeOwnerId,
         children: children,
       );
 
@@ -50,7 +54,7 @@ void main() {
 
       expect(root.kindId, 'project.root');
       expect(root.children, <RegistryNode>[leaf]);
-      expect(root.children.single.businessScopeOwnerId, rootId);
+      expect(root.children.single.businessScopeOwnerId, businessScopeOwnerId);
       expect(root.children.single.sourceEvidence, hasLength(1));
       expect(() => root.children.add(leaf), throwsUnsupportedError);
       expect(
@@ -60,7 +64,7 @@ void main() {
     });
 
     test('rejects invalid kind, missing evidence and unrelated child path', () {
-      final RegistryEntityId rootId = RegistryEntityId('sample.registry.root');
+      final RegistryNodeId rootId = RegistryNodeId('sample.registry.root');
       final SourceEvidence evidence = SourceEvidence(
         sourceDocumentPath: 'registry.source',
         sourceSnapshotFingerprint: 'sha256:sample',
@@ -96,7 +100,7 @@ void main() {
       );
 
       final RegistryNode unrelatedChild = RegistryNode(
-        id: RegistryEntityId('sample.registry.other'),
+        id: RegistryNodeId('sample.registry.other'),
         kindId: 'project.rule',
         path: RegistryPath(const <String>['other', 'rule']),
         sourceEvidence: <SourceEvidence>[evidence],

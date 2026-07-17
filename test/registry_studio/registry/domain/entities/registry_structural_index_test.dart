@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
-import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
@@ -13,7 +13,7 @@ void main() {
       const String sourceFingerprint = 'sha256:sample-source';
 
       final RegistryNode grandchild = RegistryNode(
-        id: RegistryEntityId('sample.registry.child.rule'),
+        id: RegistryNodeId('sample.registry.child.rule'),
         kindId: 'project.rule',
         path: RegistryPath(const <String>[
           'registry',
@@ -36,7 +36,7 @@ void main() {
       );
 
       final RegistryNode child = RegistryNode(
-        id: RegistryEntityId('sample.registry.child'),
+        id: RegistryNodeId('sample.registry.child'),
         kindId: 'project.block',
         path: RegistryPath(const <String>['registry', 'domain', 'child']),
         sourceEvidence: <SourceEvidence>[
@@ -54,7 +54,7 @@ void main() {
       );
 
       final RegistryNode firstRoot = RegistryNode(
-        id: RegistryEntityId('sample.registry.root'),
+        id: RegistryNodeId('sample.registry.root'),
         kindId: 'project.registry_root',
         path: RegistryPath(const <String>['registry']),
         sourceEvidence: <SourceEvidence>[
@@ -72,7 +72,7 @@ void main() {
       );
 
       final RegistryNode secondRoot = RegistryNode(
-        id: RegistryEntityId('sample.reference.root'),
+        id: RegistryNodeId('sample.reference.root'),
         kindId: 'project.reference_root',
         path: RegistryPath(const <String>['reference']),
         sourceEvidence: <SourceEvidence>[
@@ -113,7 +113,7 @@ void main() {
         secondRoot,
       ]);
       expect(index.snapshot, snapshot);
-      expect(index.nodesById[RegistryEntityId('sample.registry.child')], child);
+      expect(index.nodesById[RegistryNodeId('sample.registry.child')], child);
       expect(
         index.nodesByPath[RegistryPath(const <String>[
           'registry',
@@ -144,7 +144,7 @@ void main() {
       const String sourceDocumentPath = 'registry/source.document';
       const String sourceFingerprint = 'sha256:sample-source';
 
-      final RegistryEntityId duplicateId = RegistryEntityId(
+      final RegistryNodeId duplicateId = RegistryNodeId(
         'sample.registry.duplicate',
       );
 
@@ -206,7 +206,7 @@ void main() {
       ]);
 
       final RegistryNode firstRoot = RegistryNode(
-        id: RegistryEntityId('sample.registry.first'),
+        id: RegistryNodeId('sample.registry.first'),
         kindId: 'project.root',
         path: duplicatePath,
         sourceEvidence: <SourceEvidence>[
@@ -224,7 +224,7 @@ void main() {
       );
 
       final RegistryNode secondRoot = RegistryNode(
-        id: RegistryEntityId('sample.registry.second'),
+        id: RegistryNodeId('sample.registry.second'),
         kindId: 'project.root',
         path: duplicatePath,
         sourceEvidence: <SourceEvidence>[

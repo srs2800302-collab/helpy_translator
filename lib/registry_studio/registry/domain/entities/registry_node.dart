@@ -3,10 +3,11 @@ import 'package:equatable/equatable.dart';
 import '../../../core/domain/evidence/source_evidence.dart';
 import '../../../core/domain/value_objects/registry_entity_id.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
+import '../value_objects/registry_node_id.dart';
 
 final class RegistryNode extends Equatable {
   factory RegistryNode({
-    required RegistryEntityId id,
+    required RegistryNodeId id,
     required String kindId,
     required RegistryPath path,
     required Iterable<SourceEvidence> sourceEvidence,
@@ -81,7 +82,7 @@ final class RegistryNode extends Equatable {
     required this.children,
   });
 
-  final RegistryEntityId id;
+  final RegistryNodeId id;
   final String kindId;
   final RegistryPath path;
   final List<SourceEvidence> sourceEvidence;

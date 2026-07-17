@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
-import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
@@ -12,7 +12,7 @@ void main() {
       const String sourceFingerprint = 'sha256:sample-source';
 
       final RegistryNode child = RegistryNode(
-        id: RegistryEntityId('sample.registry.child'),
+        id: RegistryNodeId('sample.registry.child'),
         kindId: 'project.rule',
         path: RegistryPath(const <String>['registry', 'child']),
         sourceEvidence: <SourceEvidence>[
@@ -30,7 +30,7 @@ void main() {
       );
 
       final RegistryNode root = RegistryNode(
-        id: RegistryEntityId('sample.registry.root'),
+        id: RegistryNodeId('sample.registry.root'),
         kindId: 'project.registry_root',
         path: RegistryPath(const <String>['registry']),
         sourceEvidence: <SourceEvidence>[
@@ -77,7 +77,7 @@ void main() {
       const String sourceFingerprint = 'sha256:sample-source';
 
       final RegistryNode root = RegistryNode(
-        id: RegistryEntityId('sample.registry.root'),
+        id: RegistryNodeId('sample.registry.root'),
         kindId: 'project.registry_root',
         path: RegistryPath(const <String>['registry']),
         sourceEvidence: <SourceEvidence>[
@@ -162,7 +162,7 @@ void main() {
 
     test('rejects node evidence from another exact source snapshot', () {
       final RegistryNode root = RegistryNode(
-        id: RegistryEntityId('sample.registry.root'),
+        id: RegistryNodeId('sample.registry.root'),
         kindId: 'project.registry_root',
         path: RegistryPath(const <String>['registry']),
         sourceEvidence: <SourceEvidence>[
