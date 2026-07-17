@@ -1,216 +1,221 @@
-# Registry Studio — Unified Product, Architecture, Engineering Change, Approval and Canonical Contract
+# Registry Studio — единый контракт продукта, архитектуры, инженерных изменений, утверждения и канонических формулировок
 
-Stable Contract ID: `REGISTRY_STUDIO_ENGINEERING_CHANGE_PROPAGATION_AND_APPROVAL_V1`
+Стабильный Contract ID: `REGISTRY_STUDIO_ENGINEERING_CHANGE_PROPAGATION_AND_APPROVAL_V1`
 
-Unified revision: `2`
+Объединённая редакция: `3`
 
-Document role: **the single normative architecture and product contract for the new branch**
+Роль документа: **единственный нормативный архитектурный и продуктовый контракт новой ветки**
 
-Status: **APPROVED DRAFT — SINGLE NEW-BRANCH PRODUCT, ARCHITECTURE, UX, ENGINEERING CHANGE, APPROVAL AND CANONICAL SOURCE OF TRUTH**
+Статус: **УТВЕРЖДЁННЫЙ ПРОЕКТ — ЕДИНЫЙ ИСТОЧНИК ИСТИНЫ ДЛЯ ПРОДУКТА, АРХИТЕКТУРЫ, UX, ИНЖЕНЕРНЫХ ИЗМЕНЕНИЙ, УТВЕРЖДЕНИЯ И КАНОНИЧЕСКИХ ФОРМУЛИРОВОК НОВОЙ ВЕТКИ**
 
-Repository: `helpy_translator_registry_studio_clean`
+Репозиторий: `helpy_translator_registry_studio_clean`
 
-Target: a new recovery branch created only after exact repository `HEAD`, branch, worktree status, source files and recovery baseline are re-verified.
+Цель: новая recovery-ветка, создаваемая только после повторной проверки точных `HEAD`, ветки, состояния рабочего дерева, исходных файлов и recovery baseline.
 
-This document synchronizes and consolidates the complete requirements of:
+Нормативный язык документа и инженерного взаимодействия по Registry Studio — **русский**. Английский язык сохраняется только для идентификаторов, имён типов, каталогов, путей, API, схем, конфигурации, commit SHA, стабильных ключей и дословно импортированных source fragments. Любая модель или инженерный помощник ОБЯЗАН отвечать и объяснять решения по Registry Studio на русском языке, пока пользователь явно не запросит другой язык.
+
+Документ синхронизирует и объединяет полные требования из:
 
 - `Registry_Studio_Engineering_Change_Propagation_and_Approval_Contract_v1.md`;
 - `Registry_Studio_New_Branch_Product_Architecture_and_Canonical_Contract_v1.md`.
 
-It is the only normative Registry Studio architecture document for the new branch. The earlier documents remain historical evidence only and must not be used as competing sources of truth.
+Это единственный нормативный архитектурный документ Registry Studio для новой ветки. Предыдущие документы сохраняются только как исторические доказательства и ЗАПРЕЩЕНЫ как конкурирующие источники истины.
 
-The stable repository destination remains:
+Стабильный путь в репозитории сохраняется:
 
 `docs/architecture/registry_studio/Registry_Studio_Engineering_Change_Propagation_and_Approval_Contract_v1.md`
 
-Keeping the established path and stable Contract ID prevents stale references while the internal unified revision records the expanded product contract.
+Сохранение существующего пути и стабильного Contract ID предотвращает устаревшие ссылки, а номер объединённой редакции фиксирует развитие единого продуктового контракта.
 
 Recovery references:
 
-- clean universal Registry Core reference: commit `6fd3260`;
-- minimal Flutter/runtime composition reference: commit `a54136a`;
-- prototype `4f0a717`: UX and behavior reference only;
-- clean-rebuild tip `4bd60bc`: source of individually audited components only, not a continuation baseline.
+- чистая универсальная граница Registry Core: commit `6fd3260`;
+- минимальная Flutter/runtime composition: commit `a54136a`;
+- prototype `4f0a717`: только UX- и behavior-reference;
+- clean-rebuild tip `4bd60bc`: только источник отдельно проверенных компонентов, не baseline для продолжения старой архитектуры.
 
-Imported current Registry source:
+Импортированный текущий источник Registry:
 
-- repository: `srs2800302-collab/helpy`;
-- ref used for import: `main`;
-- path: `docs/architecture/Helpy_Architecture_Registry_v1.md`;
-- retrieved: `2026-07-17`;
-- downloaded source SHA-256: `dbe4e4fbaa934e3e48c0190088421ff93190cda65083352df7cd67ff641010b7`;
-- imported canonical-source block SHA-256: `96466d7b28f447056cdd5be79035c9d0c350c3ede6c3b7a9ae4714558e1f3c67`;
-- imported global-rules block SHA-256: `66a03252bc9013646e47215989c042e42651a0a6562079bf77ffbeae6f4fe2fe`.
-
----
-
-## 0. Contract authority and amendment rule
-
-The terms **MUST**, **MUST NOT**, **SHOULD**, and **MAY** are normative.
-
-This document controls:
-
-- product purpose;
-- visible workspaces and controls;
-- automatic analysis behavior;
-- Registry growth model;
-- canonical classification scope;
-- persistence and history;
-- Translator handoff;
-- impact analysis, review, approval, and publication;
-- the embedded engineer-maintained Canonical Dictionary.
-
-A future change to this contract requires:
-
-1. exact current document evidence;
-2. an explicit engineer decision;
-3. a visible diff;
-4. validation of contradictions with existing requirements;
-5. commit and revision evidence in the new branch.
-
-The earlier two source documents MUST NOT remain active normative contracts in the new branch. After this unified document is committed at the stable repository path, any copies are historical references only.
-
-The visible title of the dictionary MAY change. Its stable markers and `Dictionary ID` MUST NOT change without a versioned migration.
-
-
-## 1. Product mission
-
-Registry Studio is an engineering instrument for keeping a project Registry:
-
-- structurally clean;
-- semantically consistent;
-- canonically aligned;
-- traceable by exact source revision;
-- safe to change;
-- expandable without rebuilding Core.
-
-The product must immediately detect external Registry changes, explain their impact, guide the engineer through every problematic location, support formulation work through Translator, and apply only a complete engineer-approved change set.
-
-Registry Studio is not a workflow-management product. Internal comparisons, revisions, dependency analysis, completeness checks, proposals, validation, and patch preparation must operate automatically inside Registry Studio and appear only as contextual engineering information and actions.
-
-All mandatory engineering-change, dependency, revision, completeness, human-authority, Guidance-order, application-code dependency, and safe-publication requirements from the original approved change-propagation contract are preserved in Section 7, but are reconciled with the approved two-workspace UX and the recursive Registry model.
+- репозиторий: `srs2800302-collab/helpy`;
+- ref импорта: `main`;
+- путь: `docs/architecture/Helpy_Architecture_Registry_v1.md`;
+- дата получения: `2026-07-17`;
+- SHA-256 загруженного источника: `dbe4e4fbaa934e3e48c0190088421ff93190cda65083352df7cd67ff641010b7`;
+- SHA-256 импортированного canonical-source block: `96466d7b28f447056cdd5be79035c9d0c350c3ede6c3b7a9ae4714558e1f3c67`;
+- SHA-256 импортированного global-rules block: `66a03252bc9013646e47215989c042e42651a0a6562079bf77ffbeae6f4fe2fe`.
 
 ---
 
-## 2. Two primary engineer workspaces
+## 0. Полномочия контракта и правило внесения изменений
 
-The application has two primary workspaces:
+Термины **ОБЯЗАН**, **ЗАПРЕЩЕНО**, **СЛЕДУЕТ** и **ДОПУСКАЕТСЯ** являются нормативными.
+
+Документ определяет:
+
+- назначение продукта;
+- видимые рабочие пространства и элементы управления;
+- автоматическое поведение анализа;
+- модель расширения Registry;
+- область канонической классификации;
+- persistence и историю;
+- передачу контекста в Translator и обратно;
+- impact analysis, review, approval и publication;
+- встроенный Canonical Dictionary, поддерживаемый инженером.
+
+Будущее изменение контракта требует:
+
+1. точного доказательства текущего содержимого документа;
+2. явного решения инженера;
+3. видимого diff;
+4. проверки противоречий с существующими требованиями;
+5. commit- и revision-evidence в новой ветке.
+
+Два прежних исходных документа НЕ ДОЛЖНЫ оставаться действующими нормативными контрактами новой ветки. После фиксации этой объединённой редакции по стабильному пути любые копии считаются только историческими ссылками.
+
+Видимый заголовок словаря ДОПУСКАЕТСЯ изменять. Стабильные маркеры и `Dictionary ID` ЗАПРЕЩЕНО изменять без versioned migration.
+
+Язык исходного кода, identifiers, directory names, database/API/schema/configuration names остаётся английским. Бизнес-правила, UX, архитектурные решения, инженерные объяснения и взаимодействие с пользователем ведутся на русском языке.
+
+---
+
+## 1. Назначение продукта
+
+Registry Studio — инженерный инструмент для поддержания проектного Registry в состоянии, которое является:
+
+- структурно чистым;
+- семантически согласованным;
+- выровненным по каноническим формулировкам;
+- прослеживаемым до точной source revision;
+- безопасным для изменений;
+- расширяемым без перестройки Core.
+
+Продукт ОБЯЗАН сразу обнаруживать внешние изменения Registry, объяснять их влияние, проводить инженера через каждое проблемное место, поддерживать работу над формулировками через Translator и применять только полный change set, утверждённый инженером.
+
+Registry Studio не является продуктом управления workflow. Внутренние comparisons, revisions, dependency analysis, completeness checks, proposals, validation и подготовка patch ОБЯЗАНЫ работать автоматически внутри Registry Studio и отображаться только как контекстная инженерная информация и действия.
+
+Все обязательные требования к engineering change, dependencies, revisions, completeness, human authority, значимому порядку Guidance, application-code dependencies и safe publication из исходного утверждённого change-propagation contract сохранены в разделе 7 и согласованы с утверждённым UX двух рабочих пространств и рекурсивной моделью Registry.
+
+---
+
+## 2. Два основных рабочих пространства инженера
+
+Приложение содержит два основных рабочих пространства:
 
 ```text
 Registry Studio
 Translator
 ```
 
-They are separate in UI state and persistence but participate in one bidirectional engineering cycle.
+Они независимы по UI-state и persistence, но участвуют в одном двустороннем инженерном цикле.
 
-### 2.1. Registry Studio workspace
+### 2.1. Рабочее пространство Registry Studio
 
-Registry Studio is the primary workspace for:
+Registry Studio является основным рабочим пространством для:
 
-- loading and indexing the full Registry;
-- automatic analysis after every load;
-- detecting changes from the previous known revision;
-- detecting divergence from the last engineer-confirmed clean baseline;
-- browsing and searching the full Registry;
-- canonical status filtering;
-- displaying problematic and affected locations;
-- opening exact Registry blocks in context;
-- navigating previous/next problem without returning to the full tree;
-- sending a full phrase or selected fragment to Translator;
-- accepting a Translator draft back;
-- validating the proposed placement;
-- rebuilding impact analysis;
-- reviewing each affected location;
-- showing the final diff;
-- approving and applying the complete change set;
-- viewing recent analysis and applied-change history.
+- загрузки и индексации полного Registry;
+- автоматического анализа после каждой загрузки;
+- обнаружения изменений относительно предыдущей известной revision;
+- обнаружения расхождений с последним подтверждённым инженером clean baseline;
+- просмотра и поиска по полному Registry;
+- фильтрации по canonical status;
+- отображения проблемных и затронутых мест;
+- открытия точных блоков Registry в контексте;
+- перехода к предыдущей или следующей проблеме без возврата к полному дереву;
+- отправки полной фразы или выделенного фрагмента в Translator;
+- приёма draft из Translator;
+- проверки предложенного placement;
+- повторного построения impact analysis;
+- review каждого затронутого места;
+- отображения итогового diff;
+- утверждения и применения полного change set;
+- просмотра истории последних анализов и применённых изменений.
 
-### 2.2. Translator workspace
+### 2.2. Рабочее пространство Translator
 
-Translator is the primary workspace for:
+Translator является основным рабочим пространством для:
 
-- receiving a phrase or selected Registry fragment with exact context;
-- creating a new phrase from scratch;
-- manually editing engineer-authored content;
-- producing and checking RU / EN / TH;
-- reverse semantic checks;
-- terminology and semantic drift analysis;
-- warnings and audit commentary;
-- choosing the final engineer-authored formulation;
-- specifying the intended Registry target, operation, anchor, and placement;
-- returning a draft to Registry Studio for preflight validation.
+- получения фразы или выбранного фрагмента Registry с точным контекстом;
+- создания новой формулировки с нуля;
+- ручного редактирования инженерного текста;
+- подготовки и проверки RU / EN / TH;
+- обратных семантических проверок;
+- анализа терминологии и semantic drift;
+- предупреждений и audit commentary;
+- выбора окончательной формулировки инженером;
+- указания целевого Registry, operation, anchor и placement;
+- возврата draft в Registry Studio для preflight validation.
 
-Translator does not independently scan dependencies, publish Registry changes, or approve the complete Registry change. It is nevertheless a full engineer authoring tool, not a passive API capability.
+Translator не выполняет самостоятельное сканирование зависимостей, не публикует изменения Registry и не утверждает полное изменение Registry. При этом Translator является полноценным инженерным инструментом авторинга, а не пассивной API-capability.
 
 ---
 
-## 3. Mandatory visible UI contract
+## 3. Обязательный видимый UI-контракт
 
-### 3.1. Registry Studio screen
+### 3.1. Экран Registry Studio
 
-The Registry Studio screen contains:
+Экран Registry Studio содержит:
 
-1. Registry title and source revision.
-2. Compact problem/status summary.
-3. Canonical status counters and filters.
-4. Search.
-5. Full expandable Registry hierarchy.
-6. Contextual block view.
-7. Problem navigation.
-8. Translator handoff.
-9. Contextual impact, proposal, validation, and final-diff panels.
-10. Recent working-change history.
+1. Заголовок Registry и source revision.
+2. Компактную сводку проблем и статусов.
+3. Счётчики и фильтры canonical status.
+4. Поиск.
+5. Полную раскрываемую иерархию Registry.
+6. Контекстный просмотр блока.
+7. Навигацию по проблемам.
+8. Передачу контекста в Translator.
+9. Контекстные панели impact, proposal, validation и final diff.
+10. Историю последних рабочих изменений.
 
-No separate top-level screens or menu entries are permitted for:
+Отдельные верхнеуровневые экраны или пункты меню ЗАПРЕЩЕНЫ для:
 
-- Engineering Operation;
-- Engineering Task;
-- Comparison;
-- Status Transition;
-- Readiness Gate;
-- Related Context;
-- Dependency Graph;
-- Guard Record;
-- Revision Editor.
+- `Engineering Operation`;
+- `Engineering Task`;
+- `Comparison`;
+- `Status Transition`;
+- `Readiness Gate`;
+- `Related Context`;
+- `Dependency Graph`;
+- `Guard Record`;
+- `Revision Editor`.
 
-These remain internal product facts.
+Они остаются внутренними фактами продукта.
 
-### 3.2. Compact problem list
+### 3.2. Компактный список проблем
 
-A compact expandable problem list is placed near the top of Registry Studio, in the area previously used for the Registry selector/revision summary.
+Компактный раскрываемый список проблем располагается в верхней части Registry Studio, в области, ранее использованной для Registry selector/revision summary.
 
-It shows:
+Он показывает:
 
-- problem count;
-- changed-location count;
-- current revision;
-- clean baseline revision;
-- short entries with problem type and `RegistryPath`;
-- status icon, color, and text explanation.
+- количество проблем;
+- количество изменённых мест;
+- текущую revision;
+- revision clean baseline;
+- короткие записи с типом проблемы и `RegistryPath`;
+- status icon, цвет и текстовое объяснение.
 
-A button opens the same queue full-screen for dense review. The full-screen view is still part of Registry Studio, not a separate engineering product.
+Кнопка открывает ту же очередь в полноэкранном режиме для плотного review. Полноэкранное представление остаётся частью Registry Studio и не является отдельным инженерным продуктом.
 
-Selecting an item opens the exact Registry block directly. The engineer can then move to the previous or next problem without returning to the complete Registry tree.
+Выбор элемента сразу открывает точный блок Registry. После этого инженер может перейти к предыдущей или следующей проблеме без возврата к полному дереву Registry.
 
-### 3.3. Visual states
+### 3.3. Визуальные состояния
 
-Visual highlighting may use:
+Допускается следующая подсветка:
 
-- red — confirmed conflict or invalid state;
-- orange/yellow — review required or semantic candidate;
-- blue — confirmed affected or related location;
-- green — prepared and validated change;
-- gray — analyzed and proven unaffected or neutral.
+- красный — подтверждённый conflict или invalid state;
+- оранжевый/жёлтый — требуется review или найден semantic candidate;
+- синий — подтверждённое затронутое или связанное место;
+- зелёный — подготовленное и прошедшее validation изменение;
+- серый — проанализированное и доказанно незатронутое либо нейтральное место.
 
-Color is never the only signal. Every state must also include a text label, icon, and reason.
+Цвет никогда не является единственным сигналом. Каждое состояние ОБЯЗАНО дополнительно содержать текстовую метку, icon и причину.
 
-### 3.4. Canonical status controls
+### 3.4. Элементы управления canonical status
 
-Both primary workspaces show canonical status controls, but they operate on different datasets.
+Оба основных рабочих пространства показывают canonical status controls, но работают с разными наборами данных.
 
-Translator status counters describe the current Translator working session.
+Счётчики Translator описывают текущую рабочую сессию Translator.
 
-Registry Studio status counters describe all eligible business phrases in the currently loaded Registry revision:
+Счётчики Registry Studio описывают все допустимые бизнес-фразы в текущей загруженной revision Registry:
 
 ```text
 All
@@ -222,117 +227,117 @@ Drift
 Failed
 ```
 
-Pressing a status acts as a filter. For example, `Drift` immediately shows all business phrases classified as drift, their `RegistryPath`, and direct navigation to each exact block.
+Нажатие статуса работает как фильтр. Например, `Drift` немедленно показывает все бизнес-фразы с классификацией drift, их `RegistryPath` и прямую навигацию к каждому точному блоку.
 
-### 3.5. Exact existing button meanings
+### 3.5. Точное значение существующих кнопок
 
-- Globe icon: choose application interface language `RU / EN / TH`.
-- Circular refresh arrow on Registry screen: manually reload Registry and rerun automatic analysis.
-- Cross icon on Translator screen: clear only the current Translator workspace.
+- Значок глобуса: выбор языка интерфейса приложения `RU / EN / TH`.
+- Круговая стрелка обновления на экране Registry: ручная перезагрузка Registry и повторный автоматический анализ.
+- Значок крестика на экране Translator: очистка только текущего Translator workspace.
 
-The circular refresh action does not clear Registry Studio work.
+Круговая стрелка не очищает текущую работу Registry Studio.
 
-The Translator cross does not clear Registry Studio state.
+Крестик Translator не очищает состояние Registry Studio.
 
-Registry Studio current-work reset is a separate confirmed action and must not reuse the refresh icon.
+Сброс текущей работы Registry Studio является отдельным подтверждаемым действием и не должен использовать значок обновления.
 
 ---
 
-## 4. Automatic Registry analysis
+## 4. Автоматический анализ Registry
 
-### 4.1. Mandatory trigger
+### 4.1. Обязательный trigger
 
-Every successful Registry load, including application startup and manual refresh, automatically starts analysis. The engineer must not launch a separate comparison operation.
+Каждая успешная загрузка Registry, включая startup приложения и ручное обновление, автоматически запускает анализ. Инженер не запускает отдельную operation сравнения.
 
-### 4.2. Two comparison baselines
+### 4.2. Два baseline сравнения
 
-Registry Studio maintains:
+Registry Studio поддерживает:
 
-1. **Previous known revision** — used to show what changed since the last load.
-2. **Last engineer-confirmed clean baseline** — used to show what remains inconsistent with the accepted clean state.
+1. **Предыдущую известную revision** — для отображения изменений с последней загрузки.
+2. **Последний подтверждённый инженером clean baseline** — для отображения расхождений с принятым чистым состоянием.
 
-A newly loaded revision never becomes the clean baseline automatically.
+Новая загруженная revision никогда не становится clean baseline автоматически.
 
-### 4.3. Automatic analysis pipeline
+### 4.3. Автоматический pipeline анализа
 
 ```text
-load exact source revision
-→ build full structural index
-→ compare with previous known revision
-→ compare with last clean baseline
-→ detect additions
-→ detect removals
-→ detect replacements
-→ detect moves
-→ detect significant reordering
-→ resolve stable identities and paths
-→ classify eligible business phrases against Canonical Dictionary
-→ detect canonical drift, missing canonical coverage, conflicts, and duplicates
-→ rebuild direct and transitive impact
-→ classify confirmed dependencies and semantic candidates
-→ create or update the problem queue
-→ persist analysis and current engineer workspace
+загрузить точную source revision
+→ построить полный структурный индекс
+→ сравнить с предыдущей известной revision
+→ сравнить с последним clean baseline
+→ обнаружить добавления
+→ обнаружить удаления
+→ обнаружить замены
+→ обнаружить перемещения
+→ обнаружить значимое изменение порядка
+→ разрешить стабильные identities и paths
+→ классифицировать допустимые бизнес-фразы по Canonical Dictionary
+→ обнаружить canonical drift, отсутствие canonical coverage, conflicts и duplicates
+→ перестроить прямой и транзитивный impact
+→ классифицировать confirmed dependencies и semantic candidates
+→ создать или обновить очередь проблем
+→ сохранить анализ и текущее рабочее пространство инженера
 ```
 
-### 4.4. External administrator changes
+### 4.4. Внешние изменения администратора
 
-An administrator or another approved source may modify Registry business configuration at any time.
+Администратор или другой утверждённый источник может в любой момент изменить бизнес-конфигурацию Registry.
 
-Registry Studio must detect at the next load:
+При следующей загрузке Registry Studio ОБЯЗАН обнаружить:
 
-- changed entity or scenario;
-- added or removed category;
-- added or removed nested business block;
-- changed wording;
-- changed applicability;
-- changed requiredness;
-- changed photo reuse or limits;
-- changed Guidance order;
-- changed client, master, or global rule;
+- изменённую сущность или сценарий;
+- добавленную или удалённую категорию;
+- добавленный или удалённый вложенный бизнес-блок;
+- изменённую формулировку;
+- изменённую applicability;
+- изменённую requiredness;
+- изменённые правила reuse фотографий или limits;
+- изменённый порядок Guidance;
+- изменённое client, master или global rule;
 - canonical drift;
-- broken or newly introduced dependencies.
+- нарушенные или вновь появившиеся зависимости.
 
-The engineer must see the exact changed location and reason immediately.
+Инженер ОБЯЗАН сразу видеть точное изменённое место и причину.
 
 ---
 
-## 5. Dynamic recursive Registry model
+## 5. Динамическая рекурсивная модель Registry
 
-Registry is treated as a recursive tree of arbitrary depth and an extensible set of node kinds.
+Registry рассматривается как рекурсивное дерево произвольной глубины с расширяемым набором типов узлов.
 
-The architecture MUST NOT define a mandatory chain of levels. Categories, entities, directions, scenarios, questions, photo requirements, guidance, rules, processes, and other current structures are examples only.
+Архитектура НЕ ДОЛЖНА задавать обязательную цепочку уровней. Категории, сущности, направления, сценарии, вопросы, требования к фотографиям, guidance, правила, процессы и другие текущие структуры являются только примерами.
 
-Universal structural form:
+Универсальная структурная форма:
 
 ```text
 Registry
 └── RegistryNode
     ├── stable identity
-    ├── kind or semantic descriptor
+    ├── kind или semantic descriptor
     ├── RegistryPath
-    ├── Source Evidence
+    ├── SourceEvidence
     ├── content
     ├── business-scope ownership
     └── children: RegistryNode[]
 ```
 
-Any node MAY contain child nodes of existing or future types. A future project adapter or Registry schema MAY add semantic interpretation without changing universal Core.
+Любой узел МОЖЕТ содержать дочерние узлы существующих или будущих типов. Будущий project adapter или Registry schema МОЖЕТ добавлять семантическую интерпретацию без изменения универсального Core.
 
-No architecture, algorithm, UI, manifest, test, counter, persistence schema, or acceptance rule may depend on the current number of:
+Ни архитектура, ни алгоритм, ни UI, ни manifest, ни тест, ни счётчик, ни persistence schema, ни acceptance rule не могут зависеть от текущего количества:
 
-- root nodes;
-- categories;
-- nested levels;
-- node kinds;
-- entities;
-- scenarios;
-- phrases;
-- rules;
+- корневых узлов;
+- категорий;
+- уровней вложенности;
+- типов узлов;
+- сущностей;
+- сценариев;
+- фраз;
+- правил;
 - canonical entries.
 
-Structural indexing MUST discover the full Registry recursively.
+Структурная индексация ОБЯЗАНА рекурсивно обнаруживать весь Registry.
 
-Project-specific semantic overlays MAY add:
+Project-specific semantic overlays МОГУТ добавлять:
 
 - stable typed identity;
 - relations;
@@ -341,108 +346,108 @@ Project-specific semantic overlays MAY add:
 - validation;
 - business-scope classification.
 
-An overlay is evidence over the full structural index. It is never the boundary of Registry visibility or analysis.
+Overlay является доказательством поверх полного структурного индекса. Он никогда не является границей видимости или анализа Registry.
 
-New nodes and new node kinds MUST automatically:
+Новые узлы и новые типы узлов ОБЯЗАНЫ автоматически:
 
-- appear in Registry Explorer;
-- become searchable;
-- participate in revision comparison;
-- participate in problem detection;
-- participate in canonical analysis when classified inside eligible business scope;
-- participate in dependency analysis;
-- appear in analysis and change history;
-- require no universal Core redesign.
+- появляться в Registry Explorer;
+- становиться доступными для поиска;
+- участвовать в сравнении revisions;
+- участвовать в обнаружении проблем;
+- участвовать в canonical analysis, когда принадлежат допустимой бизнес-области;
+- участвовать в dependency analysis;
+- появляться в истории анализа и изменений;
+- не требовать переработки универсального Core.
 
-A static manifest is permitted only as a versioned evidence overlay for explicitly stable identities or relations.
+Статический manifest допускается только как versioned evidence overlay для явно стабильных identities или relations.
 
 ---
 
-## 6. Canonical business analysis and dictionary ownership
+## 6. Канонический анализ бизнес-логики и владение словарём
 
-### 6.1. Canonical source
+### 6.1. Канонический источник
 
-The Canonical Dictionary embedded in this contract is the engineer-maintained source of approved canonical business phrases and ordered canonical blocks for the new branch.
+Canonical Dictionary, встроенный в этот контракт, является поддерживаемым инженером источником утверждённых канонических бизнес-фраз и упорядоченных канонических блоков новой ветки.
 
-The current Registry heading `Canonical Photo Labels` is preserved as an imported collection name. It is not the permanent identity of the dictionary.
+Текущий заголовок Registry `Canonical Photo Labels` сохраняется как имя импортированной collection. Он не является постоянной identity словаря.
 
-Registry Studio MUST locate the dictionary through:
+Registry Studio ОБЯЗАН находить словарь по:
 
-- stable `Dictionary ID`;
-- explicit begin/end markers;
+- стабильному `Dictionary ID`;
+- явным begin/end markers;
 - version;
 - collection identifiers.
 
-Registry Studio MUST NOT depend on a visible Markdown heading because the visible title may be renamed.
+Registry Studio ЗАПРЕЩЕНО зависеть от видимого Markdown heading, поскольку видимый заголовок может быть переименован.
 
-### 6.2. Eligible business scope
+### 6.2. Допустимая бизнес-область
 
-Canonical classification applies only to Registry nodes that are structurally classified as user-facing business logic or as business rules directly controlling user-visible behavior.
+Canonical classification применяется только к узлам Registry, которые структурно классифицированы как пользовательская бизнес-логика или как бизнес-правила, непосредственно управляющие видимым пользователю поведением.
 
-This includes the complete recursive business subtree owned by:
+Сюда входит полное рекурсивное бизнес-поддерево, принадлежащее:
 
-- service or product catalog structures;
-- client rules and client-visible guidance;
-- master rules and master-visible guidance;
+- структурам каталога услуг или продуктов;
+- client rules и видимому клиенту guidance;
+- master rules и видимому мастеру guidance;
 - global business rules;
-- other current or future business owners defined by the project adapter or Registry schema.
+- другим текущим или будущим business owners, определённым project adapter или Registry schema.
 
-These are ownership classes, not a closed enumeration of node kinds.
+Это классы владения, а не закрытое перечисление типов узлов.
 
-A new category, nested level, scenario type, process type, rule type, or other business node MUST enter canonical analysis automatically when it belongs to eligible business scope.
+Новая категория, уровень вложенности, тип сценария, тип процесса, тип правила или иной бизнес-узел ОБЯЗАН автоматически попадать в canonical analysis, если принадлежит допустимой бизнес-области.
 
-### 6.3. Excluded technical scope
+### 6.3. Исключённая техническая область
 
-Canonical phrase statuses MUST NOT be assigned to technical Registry content merely because it contains text.
+Canonical phrase statuses НЕ ДОЛЖНЫ назначаться техническому содержимому Registry только потому, что оно содержит текст.
 
-Excluded by default:
+По умолчанию исключаются:
 
-- architecture implementation notes;
-- database schema and migrations;
+- заметки об архитектурной реализации;
+- database schema и migrations;
 - API internals;
 - CI configuration;
 - code-level contracts;
-- internal engineering procedures;
-- build and deployment instructions.
+- внутренние инженерные процедуры;
+- инструкции build и deployment.
 
-A technically located text is included only when structural evidence proves that it is user-facing business logic.
+Текст в техническом разделе включается только при наличии структурного доказательства, что он является пользовательской бизнес-логикой.
 
-### 6.4. Canonical classifications
+### 6.4. Канонические классификации
 
-Registry Studio distinguishes:
+Registry Studio различает:
 
-- `Exact` — exact canonical text after allowed technical normalization only;
-- `Equivalent` — separately approved equivalent with evidence;
-- `Review` — probable relation without sufficient proof;
-- `Drift` — a proven canonical application whose wording differs;
-- `Failed` — dictionary, translation, parsing, or validation failure preventing a reliable classification;
-- `Unclassified / Neutral` — eligible business phrase with no proven canonical relation.
+- `Exact` — точное каноническое совпадение после допустимой только технической нормализации;
+- `Equivalent` — отдельно утверждённый эквивалент с доказательством;
+- `Review` — вероятная связь без достаточного доказательства;
+- `Drift` — доказанное применение канонической формулировки с отличающимся текстом;
+- `Failed` — ошибка словаря, перевода, parsing или validation, не позволяющая выполнить надёжную классификацию;
+- `Unclassified / Neutral` — допустимая бизнес-фраза без доказанной канонической связи.
 
-Whitespace normalization MUST NOT change punctuation, negation, quantities, mandatory force, terminology, applicability, order, or business meaning.
+Нормализация пробелов НЕ ДОЛЖНА изменять пунктуацию, отрицание, количества, обязательную силу, терминологию, applicability, порядок или бизнес-смысл.
 
-Text similarity alone MUST NOT produce `Exact` or `Equivalent`.
+Text similarity само по себе НЕ ДОЛЖНО давать `Exact` или `Equivalent`.
 
-### 6.5. Engineer-maintained dictionary rules
+### 6.5. Правила словаря, поддерживаемого инженером
 
-An engineer adds or changes a canonical entry only inside the marked dictionary area at the end of this document.
+Инженер добавляет или изменяет canonical entry только внутри размеченной области словаря в конце этого документа.
 
-Every added or changed entry MUST have:
+Каждая добавленная или изменённая entry ОБЯЗАНА иметь:
 
-- an approved collection;
-- an explicit status;
-- canonical source-language text or an ordered canonical block;
-- applicability or scope when the phrase is not universally applicable;
-- RU / EN / TH review evidence before the entry is considered multilingual-complete;
-- duplicate, semantic duplicate, conflict, ambiguity, and terminology checks;
-- an engineer decision and history entry.
+- утверждённую collection;
+- явный status;
+- canonical source-language text или ordered canonical block;
+- applicability или scope, если фраза не универсальна;
+- RU / EN / TH review evidence до признания multilingual-complete;
+- проверки duplicate, semantic duplicate, conflict, ambiguity и terminology;
+- решение инженера и history entry.
 
-Registry Studio reads only approved entries inside the dictionary markers.
+Registry Studio читает только утверждённые entries внутри markers словаря.
 
-Governance prose, examples, evidence notes, and headings outside approved collections MUST NOT be classified as canonical phrases.
+Governance prose, examples, evidence notes и headings вне утверждённых collections НЕ ДОЛЖНЫ классифицироваться как canonical phrases.
 
-### 6.6. Canonical identity
+### 6.6. Каноническая identity
 
-For a phrase entry, stable technical identity is derived from:
+Для phrase entry стабильная техническая identity определяется из:
 
 ```text
 Dictionary ID
@@ -450,54 +455,54 @@ Dictionary ID
 + normalized approved source-language text hash
 ```
 
-For an ordered block, identity also includes the stable block key and approved item order.
+Для ordered block identity дополнительно включает stable block key и утверждённый порядок items.
 
-Changing canonical text creates a new versioned canonical identity. The previous identity remains in history and MUST NOT be silently overwritten.
+Изменение canonical text создаёт новую versioned canonical identity. Предыдущая identity сохраняется в истории и НЕ ДОЛЖНА молча перезаписываться.
 
 ---
 
-## 7. Engineering change propagation and approval
+## 7. Распространение и утверждение инженерных изменений
 
-This section preserves and synchronizes the mandatory engineering-change requirements of the original approved contract. These mechanics are internal Registry Studio capabilities. They MUST NOT reappear as separate top-level technical screens or as a user-managed generic operation lifecycle.
+Этот раздел сохраняет и синхронизирует обязательные требования исходного утверждённого engineering-change contract. Эти механизмы являются внутренними возможностями Registry Studio. Они НЕ ДОЛЖНЫ возвращаться как отдельные верхнеуровневые технические экраны или как управляемый пользователем generic operation lifecycle.
 
-### 7.1. Sources of change
+### 7.1. Источники изменения
 
-Registry Studio accepts three equivalent engineering inputs:
+Registry Studio принимает три равноправных инженерных входа:
 
-1. A change detected automatically after loading a new Registry revision.
-2. An Admin Panel-compatible business change request.
-3. A direct engineer-authored change or canonicalization task.
+1. Изменение, автоматически обнаруженное после загрузки новой revision Registry.
+2. Business change request, совместимый с Admin Panel.
+3. Прямое изменение инженера или задача canonicalization.
 
-Admin Panel is an external source of business intent. It does not own dependency discovery, semantic decisions, canonical approval, whole-change-set approval, publication, or application-code changes.
+Admin Panel является внешним источником business intent. Он не владеет dependency discovery, semantic decisions, canonical approval, whole-change-set approval, publication или изменениями application code.
 
-A direct engineering task follows the same requirements as an externally detected change.
+Прямая инженерная задача проходит те же требования, что и внешне обнаруженное изменение.
 
-### 7.2. Mandatory source facts
+### 7.2. Обязательные исходные факты
 
-Every internal `EngineeringChangeSet` MUST preserve or reconstruct:
+Каждый внутренний `EngineeringChangeSet` ОБЯЗАН сохранять или восстанавливать:
 
-- exact project and project adapter;
-- exact base source revision;
-- previous known revision;
-- last engineer-confirmed clean baseline revision;
-- source identity and target identity when applicable;
+- точный project и project adapter;
+- точную base source revision;
+- предыдущую известную revision;
+- revision последнего подтверждённого инженером clean baseline;
+- source identity и target identity, когда применимо;
 - `RegistryPath`;
 - `SourceEvidence`;
-- source span or structural evidence;
-- original value;
-- proposed value;
-- change origin;
-- change intent;
+- source span или structural evidence;
+- исходное значение;
+- предлагаемое значение;
+- origin изменения;
+- intent изменения;
 - owning Registry branch;
-- structural context;
-- affected language data;
+- структурный контекст;
+- затронутые language data;
 - audit lineage.
 
-A display label, current line number, heading text, or current phrase text MUST NOT replace stable identity.
+Display label, текущий line number, heading text или текущий phrase text НЕ ДОЛЖНЫ заменять стабильную identity.
 
-### 7.3. Supported change intents
+### 7.3. Поддерживаемые change intents
 
-Registry Studio may internally represent concrete change intents including:
+Registry Studio может внутренне представлять конкретные change intents, включая:
 
 - add;
 - remove;
@@ -508,80 +513,80 @@ Registry Studio may internally represent concrete change intents including:
 - insert after;
 - insert at start;
 - insert at end;
-- insert at an exact structural position;
-- copy an explicitly selected semantic block;
-- replace an explicitly selected semantic block;
-- copy an explicitly selected subtree;
-- revise a formulation;
-- prepare a Canonical Dictionary candidate;
-- update an approved canonical entry through a versioned change.
+- insert at exact structural position;
+- copy явно выбранного semantic block;
+- replace явно выбранного semantic block;
+- copy явно выбранного subtree;
+- revise formulation;
+- prepare Canonical Dictionary candidate;
+- update утверждённой canonical entry через versioned change.
 
-These are domain facts used by Registry Studio. They are not separate navigation screens.
+Это domain facts, используемые Registry Studio, а не отдельные экраны навигации.
 
-A change intent MUST reference exact stable source, target, container, item, and anchor identities whenever those facts exist.
+Change intent ОБЯЗАН ссылаться на точные стабильные source, target, container, item и anchor identities, когда такие факты существуют.
 
-### 7.4. Full dependency graph
+### 7.4. Полный граф зависимостей
 
-Registry Studio MUST build direct and transitive impact from the complete structural Registry index.
+Registry Studio ОБЯЗАН строить прямой и транзитивный impact из полного структурного индекса Registry.
 
-The graph MUST NOT be bounded by:
+Граф НЕ ДОЛЖЕН ограничиваться:
 
-- one root section;
-- one project-specific manifest;
-- one semantic overlay;
-- the current catalog size;
-- the current number of node kinds;
-- the current nesting depth;
-- only identical text.
+- одним корневым разделом;
+- одним project-specific manifest;
+- одним semantic overlay;
+- текущим размером каталога;
+- текущим количеством типов узлов;
+- текущей глубиной вложенности;
+- только идентичным текстом.
 
-Evidence may include:
+Доказательства могут включать:
 
 1. stable typed references;
-2. explicit `RegistryRelation`;
+2. явные `RegistryRelation`;
 3. adapter-defined reuse contracts;
 4. stable semantic identity;
-5. owner-block and applicability evidence;
-6. Scenario or process entry evidence;
-7. question, answer-option, qualifier, photo, limit, rule, and guidance references;
-8. Canonical Dictionary applications;
-9. application-code, backend, API, Admin Panel, or runtime-consumer evidence;
-10. exact normalized canonical reuse with full context.
+5. owner-block и applicability evidence;
+6. scenario или process entry evidence;
+7. ссылки на question, answer option, qualifier, photo, limit, rule и guidance;
+8. применения Canonical Dictionary;
+9. application-code, backend, API, Admin Panel или runtime-consumer evidence;
+10. точное normalized canonical reuse с полным контекстом.
 
-Textual or structural similarity without proof remains a semantic candidate.
+Текстовое или структурное сходство без доказательства остаётся semantic candidate.
 
-Graph traversal continues until all reachable confirmed dependencies and unresolved candidates are represented. Cycles MUST be handled deterministically.
+Обход графа продолжается, пока не представлены все достижимые confirmed dependencies и unresolved candidates. Cycles ОБЯЗАНЫ обрабатываться детерминированно.
 
-### 7.5. Classification of findings
+### 7.5. Классификация результатов
 
-Every discovered location is classified as one of:
+Каждое обнаруженное место классифицируется как одно из следующих.
 
-#### Confirmed dependency
+#### Подтверждённая зависимость (`Confirmed dependency`)
 
-The relation is proven by stable identity, typed reference, explicit relation, reuse contract, canonical-application evidence, or other project-adapter evidence.
+Связь доказана stable identity, typed reference, explicit relation, reuse contract, canonical-application evidence или иным доказательством project adapter.
 
-#### Semantic candidate
+#### Семантический кандидат (`Semantic candidate`)
 
-A relation is plausible but not proven. It requires an explicit engineer decision.
+Связь вероятна, но не доказана. Требуется явное решение инженера.
 
-#### Unaffected with evidence
+#### Незатронутое место с доказательством (`Unaffected with evidence`)
 
-A location may be excluded only when Registry Studio can explain why the change cannot affect it.
+Место может быть исключено только тогда, когда Registry Studio способен объяснить, почему изменение не может на него повлиять.
 
-Unknown is not equivalent to unaffected.
+Неизвестное не равно незатронутому.
 
-### 7.6. Context of each affected location
+### 7.6. Контекст каждого затронутого места
 
-Each affected location is reviewed in its full recursive branch context.
+Каждое затронутое место рассматривается в полном контексте своей рекурсивной ветки.
 
-Registry Studio MUST show:
+Registry Studio ОБЯЗАН показывать:
 
-- exact `RegistryPath`;
-- source and target identities when relevant;
+- точный `RegistryPath`;
+- source и target identities, когда применимо;
 - owner nodes;
 - ancestor context;
-- ordered siblings when order is meaningful;
-- original content;
-- proposed content;
+- ordered siblings, когда порядок значим;
+- исходный content;
+- предлагаемый content;
 - text diff;
 - structural diff;
 - additions;
@@ -590,75 +595,75 @@ Registry Studio MUST show:
 - moves;
 - reordered items;
 - applicability;
-- relations and evidence;
-- direct and transitive dependency paths;
+- relations и evidence;
+- прямые и транзитивные dependency paths;
 - canonical evidence;
-- RU / EN / TH state;
+- состояние RU / EN / TH;
 - warnings;
 - unresolved questions;
-- proposal reason.
+- причину proposal.
 
-Project-specific structures such as categories, entities, scenarios, questions, photo requirements, rules, guidance, and future node types are examples only. The universal contract does not prescribe a fixed branch chain.
+Project-specific структуры, такие как категории, сущности, сценарии, вопросы, требования к фотографиям, правила, guidance и будущие типы узлов, являются только примерами. Универсальный контракт не задаёт фиксированную последовательность ветки.
 
-### 7.7. Exact proposals and engineer decisions
+### 7.7. Точные proposals и решения инженера
 
-Registry Studio may prepare an exact proposal only when the result follows deterministically from proven evidence and full context.
+Registry Studio может подготовить точный proposal только тогда, когда результат детерминированно следует из доказанных фактов и полного контекста.
 
-An explicit engineer decision is mandatory when:
+Явное решение инженера обязательно, когда:
 
-- the relation is a semantic candidate;
-- the same phrase has different meaning or applicability;
-- business meaning changes;
-- applicability changes;
-- requiredness changes;
-- ordered behavior changes;
-- photo reuse or limit semantics change;
-- RU / EN / TH diverge;
-- a new canonical formulation is needed;
-- sources conflict;
-- dependency coverage is incomplete;
-- canonical drift or ambiguity remains;
-- deterministic placement cannot be proven.
+- relation является semantic candidate;
+- одна и та же фраза имеет другой смысл или applicability;
+- меняется business meaning;
+- меняется applicability;
+- меняется requiredness;
+- меняется ordered behavior;
+- меняется семантика photo reuse или limit;
+- RU / EN / TH расходятся;
+- требуется новая canonical formulation;
+- источники конфликтуют;
+- dependency coverage неполна;
+- остаётся canonical drift или ambiguity;
+- невозможно доказать deterministic placement.
 
-Each affected location has its own proposal and its own engineer decision.
+Каждое затронутое место имеет собственный proposal и собственное решение инженера.
 
-A single global `proposalReviewed` or equivalent boolean MUST NOT replace per-location decisions.
+Один глобальный `proposalReviewed` или эквивалентный boolean НЕ ДОЛЖЕН заменять решения по каждому месту.
 
-The engineer can:
+Инженер может:
 
-- accept;
-- reject;
-- edit;
-- replace with an engineer-authored solution;
-- send the phrase or selected fragment to Translator;
-- resolve a semantic candidate;
-- mark a location unaffected only with recorded reasoning.
+- принять;
+- отклонить;
+- отредактировать;
+- заменить собственным инженерным решением;
+- отправить фразу или выбранный фрагмент в Translator;
+- разрешить semantic candidate;
+- отметить место незатронутым только с зафиксированным обоснованием.
 
-### 7.8. Revisions and lineage
+### 7.8. Revisions и lineage
 
-Every content-changing step creates or updates a revision of the current `EngineeringChangeSet`.
+Каждый шаг, изменяющий content, создаёт или обновляет revision текущего `EngineeringChangeSet`.
 
-A revision preserves:
+Revision сохраняет:
 
 - affected stable identity;
 - original value;
 - proposed value;
-- complete working content;
+- полный working content;
 - change intent;
 - source of proposal;
 - dependency context;
-- per-location engineer decisions;
+- решения инженера по каждому месту;
 - previous revision lineage;
 - related identities;
-- RU / EN / TH results;
+- результаты RU / EN / TH;
 - Translator evidence;
-- validation and audit references.
+- validation и audit references.
 
-Changing content, placement, target, applicability, or source revision invalidates stale comparison, impact analysis, completeness, validation, final diff, and approval as required.
+Изменение content, placement, target, applicability или source revision инвалидирует устаревшие comparison, impact analysis, completeness, validation, final diff и approval в соответствии с фактическими зависимостями.
 
 ### 7.9. Completeness gate
 
-Registry Studio MUST block approval and apply while any relevant fact remains unresolved, including:
+Registry Studio ОБЯЗАН блокировать approval и apply, пока остаётся любой релевантный unresolved fact, включая:
 
 - not analyzed;
 - dependency unresolved;
@@ -675,173 +680,171 @@ Registry Studio MUST block approval and apply while any relevant fact remains un
 - stale source revision;
 - validation failed.
 
-Before readiness, Registry Studio MUST prove:
+До readiness Registry Studio ОБЯЗАН доказать:
 
-1. Available direct and transitive dependencies have been discovered.
-2. Every finding is classified.
-3. Every ambiguous location has an engineer decision.
-4. All affected RU / EN / TH data required by the project is checked.
-5. All revisions belong to one coherent change set.
-6. No internal conflict remains.
-7. Significant order is valid.
-8. Canonical conflicts and duplicates are resolved.
-9. Application-code and other runtime-consumer dependencies have a decision.
-10. The engineer can see the complete final diff.
-11. Final validation passes against the still-current source revision.
+1. Обнаружены доступные прямые и транзитивные зависимости.
+2. Каждый finding классифицирован.
+3. Каждое неоднозначное место имеет решение инженера.
+4. Проверены все затронутые RU / EN / TH data, требуемые проектом.
+5. Все revisions принадлежат одному согласованному change set.
+6. Не осталось внутренних conflicts.
+7. Значимый порядок корректен.
+8. Canonical conflicts и duplicates разрешены.
+9. Application-code и другие runtime-consumer dependencies имеют решение.
+10. Инженер видит полный final diff.
+11. Final validation проходит относительно всё ещё актуальной source revision.
 
-The gate is derived automatically from facts. The engineer does not manually select technical lifecycle statuses.
+Gate автоматически выводится из фактов. Инженер не выбирает вручную технические lifecycle statuses.
 
-### 7.10. Significant order
+### 7.10. Значимый порядок
 
-Order is domain semantics whenever the owning block declares ordered behavior.
+Порядок является domain semantics, когда owning block объявляет ordered behavior.
 
-Registry Studio MUST NOT:
+Registry Studio ЗАПРЕЩЕНО:
 
-- treat an ordered block as a set;
-- silently sort it;
-- reorder by text similarity;
-- merge items without role, stage, applicability, and workflow analysis;
-- copy an item without preserving or explicitly changing its position.
+- рассматривать ordered block как set;
+- молча сортировать его;
+- изменять порядок по text similarity;
+- объединять items без анализа role, stage, applicability и workflow;
+- копировать item без сохранения или явного изменения его позиции.
 
-For an ordered change, Registry Studio shows the original sequence, proposed sequence, additions, removals, moves, reason, and workflow impact.
+Для ordered change Registry Studio показывает исходную последовательность, предлагаемую последовательность, additions, removals, moves, причину и workflow impact.
 
-Placement requires an exact position or stable anchor when order matters.
+Placement требует точной позиции или stable anchor, когда порядок значим.
 
-### 7.11. Application-code and external-consumer dependencies
+### 7.11. Application-code и external-consumer dependencies
 
-A Registry change does not automatically modify Flutter, backend, API, Admin Panel, database, or another runtime consumer.
+Изменение Registry не изменяет автоматически Flutter, backend, API, Admin Panel, database или иной runtime consumer.
 
-When confirmed evidence shows such a dependency, Registry Studio MUST:
+Когда подтверждённые доказательства показывают такую зависимость, Registry Studio ОБЯЗАН:
 
-1. Show the dependency to the engineer.
-2. Add it to the same impact graph and change set.
-3. Require an engineer decision.
-4. Prevent completeness while it remains unresolved.
-5. Never modify or publish application code without explicit approval and an implementation capability designed for that target.
+1. Показать зависимость инженеру.
+2. Добавить её в тот же impact graph и change set.
+3. Потребовать решение инженера.
+4. Блокировать completeness, пока зависимость не разрешена.
+5. Никогда не изменять и не публиковать application code без явного approval и implementation capability, предназначенной для соответствующего target.
 
-### 7.12. Human authority
+### 7.12. Полномочия человека
 
-Registry Studio MUST NOT independently:
+Registry Studio НЕ ДОЛЖЕН самостоятельно:
 
-- approve business meaning;
-- resolve a semantic ambiguity;
-- declare a candidate canonical;
-- accept a proposal;
-- hide an unresolved dependency;
-- alter Registry;
-- publish Registry;
-- merge a pull request;
-- change application code.
+- утверждать business meaning;
+- разрешать semantic ambiguity;
+- объявлять candidate каноническим;
+- принимать proposal;
+- скрывать unresolved dependency;
+- изменять Registry;
+- публиковать Registry;
+- выполнять merge pull request;
+- изменять application code.
 
-Translator and Admin Panel also do not have this authority.
+Translator и Admin Panel также не обладают этими полномочиями.
 
-Only an authorized engineer approves the complete change set.
+Только авторизованный инженер утверждает полный change set.
 
-### 7.13. Safe apply
+### 7.13. Безопасное применение
 
-After whole-change-set approval, Registry Studio may apply only the exact previously displayed and validated set.
+После whole-change-set approval Registry Studio может применить только точный набор, ранее показанный и прошедший validation.
 
-If the source revision has changed:
+Если source revision изменилась:
 
-- apply stops;
-- source context is reloaded;
-- comparison and dependency analysis are repeated;
-- stale approval is invalidated;
-- a new engineer approval is required.
+- apply останавливается;
+- source context загружается заново;
+- comparison и dependency analysis повторяются;
+- stale approval инвалидируется;
+- требуется новое approval инженера.
 
-Partial apply is forbidden when it would leave Registry inconsistent.
+Partial apply запрещён, когда он оставляет Registry в несогласованном состоянии.
 
-After apply, Registry Studio preserves:
+После apply Registry Studio сохраняет:
 
-- final approved diff;
-- all affected identities and paths;
+- окончательный утверждённый diff;
+- все затронутые identities и paths;
 - base revision;
 - resulting revision;
-- engineer decision references;
-- canonical and Translator evidence;
-- validation result;
-- publication result;
-- failure or rollback evidence.
+- ссылки на решения инженера;
+- canonical и Translator evidence;
+- результат validation;
+- результат publication;
+- failure или rollback evidence.
 
-### 7.14. First complete usable vertical
-
-The first complete product vertical is:
+### 7.14. Первый полный рабочий вертикальный сценарий
 
 ```text
-new Registry revision, Admin Panel-compatible input, or direct engineer task
-→ exact change reconstruction
-→ complete structural and canonical analysis
-→ full direct and transitive dependency graph
-→ confirmed dependencies and semantic candidates
-→ contextual proposals for every affected location
-→ engineer editing and decisions
-→ Translator round-trip when needed
-→ repeated comparison and dependency analysis
-→ automatic completeness gate
-→ final full diff
-→ explicit whole-change-set approval
+новая revision Registry, Admin Panel-compatible input или прямая задача инженера
+→ точное восстановление изменения
+→ полный структурный и канонический анализ
+→ полный граф прямых и транзитивных зависимостей
+→ confirmed dependencies и semantic candidates
+→ контекстные proposals для каждого затронутого места
+→ редактирование и решения инженера
+→ round-trip через Translator при необходимости
+→ повторные comparison и dependency analysis
+→ автоматический completeness gate
+→ полный final diff
+→ явное whole-change-set approval
 → deterministic guarded apply
-→ resulting revision or failure/rollback evidence
+→ resulting revision или failure/rollback evidence
 ```
 
-Search, source blocks, free editing, isolated revisions, comparison alone, or a technical operation screen do not constitute completion of the primary product workflow.
+Search, source blocks, свободное редактирование, изолированные revisions, только comparison или технический operation screen не являются завершением основного продуктового workflow.
 
 ---
 
-## 8. Bidirectional Registry Studio ↔ Translator cycle
+## 8. Двусторонний цикл Registry Studio ↔ Translator
 
-### 7.1. Registry Studio to Translator
+### 8.1. Передача из Registry Studio в Translator
 
-The engineer may send:
+Инженер может отправить:
 
-- a complete phrase;
-- a selected fragment;
-- a complete semantic block;
-- multiple explicitly selected related lines.
+- полную фразу;
+- выбранный фрагмент;
+- полный semantic block;
+- несколько явно выбранных связанных строк.
 
-The handoff includes:
+Handoff включает:
 
-- `RegistryEntityId` when available;
+- `RegistryEntityId`, когда доступен;
 - `RegistryPath`;
-- exact source revision;
-- source span and evidence;
+- точную source revision;
+- source span и evidence;
 - owning category/entity/scenario/block;
-- original content;
-- detected problem;
-- related-location context;
-- current canonical evidence.
+- исходный content;
+- обнаруженную проблему;
+- контекст связанных мест;
+- текущее canonical evidence.
 
-### 7.2. Translator authoring
+### 8.2. Авторинг в Translator
 
-The engineer may:
+Инженер может:
 
-- revise the received formulation;
-- create a new formulation;
-- edit RU / EN / TH manually;
-- inspect reverse checks;
-- inspect warnings;
-- choose the final wording;
-- choose intended placement.
+- изменить полученную формулировку;
+- создать новую формулировку;
+- вручную редактировать RU / EN / TH;
+- просматривать reverse checks;
+- просматривать warnings;
+- выбирать окончательный текст;
+- выбирать intended placement.
 
-### 7.3. Registry placement request
+### 8.3. RegistryPlacementRequest
 
-The returned draft contains a concrete `RegistryPlacementRequest`:
+Возвращаемый draft содержит конкретный `RegistryPlacementRequest`:
 
-- content to place;
+- content для размещения;
 - target Registry;
-- exact base revision;
-- target identity or container;
+- точную base revision;
+- target identity или container;
 - target `RegistryPath`;
 - operation type;
-- anchor identity or exact structural anchor;
+- anchor identity или точный structural anchor;
 - placement position;
 - intended application scope;
-- engineer rationale;
-- Translator evidence and warnings.
+- rationale инженера;
+- Translator evidence и warnings.
 
-Supported placement intent includes:
+Поддерживаемые placement intents включают:
 
-- replace selected formulation;
+- replace выбранной formulation;
 - insert before;
 - insert after;
 - insert at start;
@@ -850,67 +853,82 @@ Supported placement intent includes:
 - add new element;
 - replace semantic block;
 - copy semantic block;
-- prepare a Canonical Dictionary candidate.
+- prepare Canonical Dictionary candidate.
 
-Order-sensitive Guidance always requires explicit placement or anchor.
+Order-sensitive Guidance всегда требует явного placement или anchor.
 
-### 7.4. Registry Studio preflight
+### 8.4. Preflight в Registry Studio
 
-A returned Translator draft does not immediately change Registry.
+Возвращённый draft Translator не изменяет Registry немедленно.
 
-Registry Studio first checks:
+Registry Studio сначала проверяет:
 
-- base revision freshness;
-- exact target existence;
-- exact anchor existence;
+- актуальность base revision;
+- существование exact target;
+- существование exact anchor;
 - structural compatibility;
 - semantic-block compatibility;
 - significant ordering;
-- duplicate creation;
-- Canonical Dictionary conflicts;
-- direct and transitive dependencies;
+- создание duplicates;
+- conflicts с Canonical Dictionary;
+- прямые и транзитивные dependencies;
 - semantic candidates;
-- affected RU / EN / TH data;
-- final structural and textual diff.
+- затронутые RU / EN / TH data;
+- итоговый structural и textual diff.
 
-The draft becomes one or more concrete location proposals only after preflight.
+Draft превращается в один или несколько конкретных proposals по местам только после preflight.
 
-### 7.5. Engineer review and apply
+### 8.5. Review и apply инженером
 
-The engineer can accept, reject, or edit each affected-location proposal.
+Инженер может принять, отклонить или отредактировать proposal каждого затронутого места.
 
-Registry Studio may apply only when:
+Registry Studio может выполнить apply только когда:
 
-- every affected location is analyzed;
-- every semantic candidate is resolved;
-- all required language checks are complete;
-- canonical conflicts are resolved;
-- validation passes;
-- the final diff is shown;
-- the whole change set is explicitly approved;
-- the source revision is still current.
+- проанализировано каждое затронутое место;
+- разрешён каждый semantic candidate;
+- завершены все обязательные language checks;
+- разрешены canonical conflicts;
+- validation проходит;
+- показан final diff;
+- явно утверждён весь change set;
+- source revision остаётся актуальной.
 
 ---
 
-## 9. Internal architecture model
+## 9. Внутренняя архитектурная модель
 
-### 8.1. Architecture style
+### 9.1. Архитектурный стиль
 
-Registry Studio is a modular monolith organized by product capability.
+Registry Studio реализуется как модульный монолит, организованный вокруг конкретных продуктовых возможностей и двух основных рабочих пространств инженера:
 
-It is not organized around:
+```text
+Registry Studio
+Translator
+```
 
-- Translator ownership;
+Comparison, обнаружение изменений, dependency analysis, revisions, proposals, completeness, validation, подготовка итогового diff, история и подготовка publication являются внутренними возможностями Registry Studio.
+
+Они не должны становиться:
+
+- отдельными верхнеуровневыми продуктами;
+- техническими пунктами навигации;
+- отдельными экранами инженерных операций;
+- вручную управляемым generic workflow.
+
+Архитектура не должна строиться вокруг:
+
+- владения Registry со стороны Translator;
 - generic workflow engine;
 - generic operation lifecycle;
-- technical screens;
-- a central orchestrator;
-- universal repositories or result envelopes;
-- helper, wrapper, facade, utility, or manager layers replacing domain ownership.
+- технических operation screens;
+- центрального runtime orchestrator;
+- God App, God Workspace или глобального God Cubit;
+- универсальных repositories и result envelopes;
+- helper, wrapper, facade, utility, coordinator или manager, заменяющих ясное предметное владение.
 
-### 8.2. Clean universal Core
+### 9.2. Чистый универсальный Core
 
-Initial Core is taken from the clean `6fd3260` boundary without redesign:
+Начальный универсальный Core берётся из чистой архитектурной границы commit `6fd3260` без преждевременного расширения:
 
 - `RegistryEntity`;
 - `RegistryEntityId`;
@@ -920,655 +938,744 @@ Initial Core is taken from the clean `6fd3260` boundary without redesign:
 - `RegistryRelation`;
 - `RegistryRelationMeaning`;
 - `RegistrySemanticContractIdentity`;
-- related-context contracts.
+- контракты related context.
 
 Core:
 
-- imports no Flutter;
-- imports no presentation;
-- imports no infrastructure;
-- imports no Translator;
-- imports no Helpy-specific semantics;
-- knows no GitHub, HTTP, SharedPreferences, Admin Panel, or concrete Registry format.
+- не импортирует Flutter;
+- не импортирует presentation;
+- не импортирует infrastructure;
+- не импортирует Translator;
+- не импортирует project-specific adapter;
+- не содержит Helpy-specific semantics;
+- не знает о GitHub, HTTP, local storage, Admin Panel, Markdown или конкретном формате Registry;
+- не задаёт фиксированную глубину Registry;
+- не задаёт обязательную последовательность бизнес-уровней;
+- не использует текущее количество узлов как архитектурную границу;
+- не требует изменения при появлении новых project-specific типов бизнес-узлов.
 
-### 8.3. Concrete internal change aggregate
+Новые категории, подкатегории, сущности, направления, сценарии, вопросы, фотографии, guidance, правила, процессы и будущие вложенные бизнес-блоки обнаруживаются из структурного Registry. Они не должны требовать расширения Core только из-за появления нового типа или уровня дерева.
 
-A concrete internal `EngineeringChangeSet` may own:
+Конкретные виды узлов, их семантика и принадлежность к пользовательской бизнес-логике определяются project adapter и структурой конкретного Registry.
 
-- exact base revision;
-- detected or engineer-authored change;
-- source/target or placement request;
-- comparison result;
-- impact graph;
-- per-location proposals;
-- engineer decisions;
+### 9.3. Владение продуктовыми возможностями
+
+Registry Studio разделяется на конкретные области владения:
+
+- `registry` владеет точным Registry snapshot, рекурсивным деревом, структурным индексом, search, navigation, refresh, очередью проблем и контекстом clean baseline;
+- `canonical` владеет чтением Canonical Dictionary, canonical identities, классификацией фраз и canonical findings;
+- `maintenance` владеет автоматическим анализом изменений, comparison, dependency impact, `EngineeringChangeSet`, proposals по каждому месту, решениями инженера, revisions, completeness, validation, итоговым diff и историей работы;
+- `translator` владеет инженерной работой над формулировками, проверками RU / EN / TH, reverse checks, warnings, placement intent и двусторонней передачей контекста;
+- `publication` владеет построением deterministic patch, проверкой актуальности revision, безопасным apply и publication evidence;
+- `adapters` владеют структурой и семантикой конкретного проекта, business-scope ownership, project-specific relations и доказательствами внешних зависимостей;
+- `technical` владеет техническими реализациями configuration, networking, serialization и storage.
+
+Ни одна область не должна поглощать решения другой области только ради упрощения wiring.
+
+### 9.4. Конкретный внутренний агрегат изменения
+
+Внутренний `EngineeringChangeSet` может владеть:
+
+- точной base revision;
+- предыдущей известной revision;
+- последним подтверждённым clean baseline;
+- обнаруженным или созданным инженером change intent;
+- source, target или placement request;
+- результатом comparison;
+- dependency impact;
+- proposals по каждому затронутому месту;
+- решениями инженера по каждому месту;
 - Translator candidates;
-- revisions;
+- revisions и lineage;
+- canonical findings;
 - completeness facts;
 - validation;
-- final diff;
+- итоговым diff;
 - approval;
 - publication evidence.
 
-It is not a top-level screen, menu entry, or user-selected lifecycle.
+`EngineeringChangeSet` не является отдельным верхнеуровневым экраном, пунктом меню, generic operation framework или вручную переключаемым lifecycle. Это внутреннее предметное состояние текущей инженерной работы Registry Studio.
 
-### 8.4. Derived state
+### 9.5. Производное состояние
 
-Readiness and progress are derived from factual state. The user does not manually choose technical statuses.
+Readiness и progress вычисляются из фактического состояния работы. Инженер не выбирает вручную технические lifecycle statuses.
 
-Any content change invalidates stale analysis, validation, final diff, and approval as required.
+Изменение content, placement, target, applicability, dependency, source revision, engineer decision или другого значимого факта должно инвалидировать устаревшие analysis, validation, final diff и approval в соответствии с их фактическими зависимостями.
 
 ---
 
-## 10. Target physical hierarchy
+## 10. Целевая иерархия владения
 
-Directories define ownership boundaries. Files are created only when a real working vertical needs them.
+Каталоги фиксируют устойчивые границы ответственности. Конкретные файлы и более глубокие каталоги создаются только тогда, когда они требуются реализуемому рабочему вертикальному сценарию.
+
+### 10.1. Минимальные физические границы
 
 ```text
 lib/
 ├── main.dart
 ├── app/
 │   ├── bootstrap/
-│   │   └── registry_studio_composition.dart
 │   ├── shell/
-│   │   ├── registry_studio_app.dart
-│   │   └── primary_workspace_navigation.dart
-│   └── startup/
-│       └── startup_failure_screen.dart
+│   └── localization/
 │
 ├── registry_studio/
 │   ├── core/
-│   │   ├── domain/
-│   │   │   ├── contracts/
-│   │   │   ├── entities/
-│   │   │   ├── evidence/
-│   │   │   └── value_objects/
-│   │   └── application/
-│   │       └── related_context/
-│   │
 │   ├── registry/
-│   │   ├── domain/
-│   │   │   ├── registry_snapshot.dart
-│   │   │   ├── registry_document.dart
-│   │   │   ├── registry_document_node.dart
-│   │   │   ├── registry_clean_baseline.dart
-│   │   │   ├── registry_analysis.dart
-│   │   │   └── registry_problem.dart
-│   │   ├── application/
-│   │   │   ├── load_registry_snapshot.dart
-│   │   │   ├── reload_registry.dart
-│   │   │   ├── index_registry_document.dart
-│   │   │   ├── analyze_loaded_registry.dart
-│   │   │   ├── search_registry.dart
-│   │   │   ├── filter_registry_problems.dart
-│   │   │   └── confirm_clean_baseline.dart
-│   │   ├── infrastructure/
-│   │   │   ├── registry_snapshot_source.dart
-│   │   │   └── markdown_registry_document_parser.dart
-│   │   ├── persistence/
-│   │   │   └── registry_workspace_persistence.dart
-│   │   └── presentation/
-│   │       ├── registry_screen.dart
-│   │       ├── registry_state.dart
-│   │       ├── registry_problem_queue.dart
-│   │       ├── registry_problem_queue_fullscreen.dart
-│   │       ├── registry_block_context.dart
-│   │       ├── canonical_status_filter.dart
-│   │       ├── registry_history_panel.dart
-│   │       └── contextual_review/
-│   │           ├── change_summary_panel.dart
-│   │           ├── impact_panel.dart
-│   │           ├── proposal_panel.dart
-│   │           ├── validation_panel.dart
-│   │           └── final_diff_panel.dart
-│   │
 │   ├── canonical/
-│   │   ├── domain/
-│   │   │   ├── canonical_dictionary.dart
-│   │   │   ├── canonical_dictionary_entry.dart
-│   │   │   ├── canonical_phrase_finding.dart
-│   │   │   └── canonical_phrase_status.dart
-│   │   ├── application/
-│   │   │   ├── load_canonical_dictionary.dart
-│   │   │   ├── identify_business_phrase_scope.dart
-│   │   │   └── classify_registry_business_phrases.dart
-│   │   └── persistence/
-│   │       └── canonical_analysis_persistence.dart
-│   │
+│   ├── maintenance/
 │   ├── translator/
-│   │   ├── domain/
-│   │   │   ├── translator_formulation_draft.dart
-│   │   │   ├── translator_phrase_result.dart
-│   │   │   ├── translator_phrase_status.dart
-│   │   │   └── registry_placement_request.dart
-│   │   ├── application/
-│   │   │   ├── prepare_registry_handoff.dart
-│   │   │   ├── translate_registry_phrase.dart
-│   │   │   ├── prepare_registry_placement_request.dart
-│   │   │   └── return_draft_to_registry.dart
-│   │   ├── infrastructure/
-│   │   │   └── typhoon_translator_phrase_provider.dart
-│   │   ├── persistence/
-│   │   │   └── translator_workspace_persistence.dart
-│   │   └── presentation/
-│   │       ├── translator_screen.dart
-│   │       ├── translator_state.dart
-│   │       └── registry_handoff_panel.dart
-│   │
-│   ├── impact_analysis/
-│   │   ├── domain/
-│   │   │   ├── registry_dependency_graph.dart
-│   │   │   ├── dependency_finding.dart
-│   │   │   ├── dependency_evidence.dart
-│   │   │   └── dependency_classification.dart
-│   │   └── application/
-│   │       ├── build_registry_dependency_graph.dart
-│   │       ├── classify_dependency_findings.dart
-│   │       └── explain_unaffected_location.dart
-│   │
-│   ├── change_review/
-│   │   ├── domain/
-│   │   │   ├── engineering_change_set.dart
-│   │   │   ├── engineering_change_set_revision.dart
-│   │   │   ├── registry_change_proposal.dart
-│   │   │   ├── engineer_decision.dart
-│   │   │   ├── completeness_issue.dart
-│   │   │   ├── change_set_validation.dart
-│   │   │   └── change_set_approval.dart
-│   │   ├── application/
-│   │   │   ├── preflight_registry_placement.dart
-│   │   │   ├── prepare_change_proposals.dart
-│   │   │   ├── record_engineer_decision.dart
-│   │   │   ├── revise_change_set.dart
-│   │   │   ├── evaluate_completeness.dart
-│   │   │   ├── validate_change_set.dart
-│   │   │   └── approve_change_set.dart
-│   │   └── persistence/
-│   │       └── change_set_persistence.dart
-│   │
-│   ├── history/
-│   │   ├── domain/
-│   │   │   ├── registry_analysis_history_entry.dart
-│   │   │   └── applied_change_history_entry.dart
-│   │   ├── application/
-│   │   │   ├── record_registry_analysis.dart
-│   │   │   ├── record_applied_change.dart
-│   │   │   └── load_recent_work_history.dart
-│   │   └── persistence/
-│   │       └── registry_history_persistence.dart
-│   │
 │   ├── publication/
-│   │   ├── domain/
-│   │   │   ├── registry_patch.dart
-│   │   │   ├── publication_evidence.dart
-│   │   │   └── rollback_evidence.dart
-│   │   ├── application/
-│   │   │   ├── build_registry_patch.dart
-│   │   │   ├── verify_base_revision.dart
-│   │   │   └── apply_approved_change_set.dart
-│   │   └── infrastructure/
-│   │       └── github_registry_change_publisher.dart
-│   │
 │   └── adapters/
 │       └── helpy/
-│           ├── registry_source/
-│           ├── business_scope/
-│           ├── service_intake/
-│           ├── client_rules/
-│           ├── master_rules/
-│           ├── global_rules/
-│           ├── canonical_dictionary/
-│           ├── admin_panel/
-│           └── application_code/
 │
 └── technical/
     ├── config/
     ├── network/
-    └── local_storage/
+    └── storage/
 ```
 
-Presentation does not import concrete infrastructure. App bootstrap wires concrete implementations.
+Эта иерархия является контрактом владения, а не требованием заранее создать пустые каталоги, placeholder-файлы или speculative abstractions.
 
-No empty speculative directory tree is created in advance.
+### 10.2. Ответственность модулей
+
+#### `app`
+
+`app` владеет только композицией приложения:
+
+- запуском;
+- созданием зависимостей;
+- двумя основными рабочими пространствами;
+- application shell;
+- выбором языка интерфейса `RU / EN / TH`;
+- координацией восстановления состояния;
+- отображением startup failure.
+
+`app` не владеет analysis Registry, canonical classification, dependency logic, proposals, validation или publication decisions.
+
+#### `core`
+
+`core` владеет только минимальными project-independent Registry contracts, определёнными в разделе 9.2.
+
+#### `registry`
+
+`registry` владеет:
+
+- точной source revision и `RegistrySnapshot`;
+- рекурсивным представлением узлов Registry;
+- полным структурным индексом;
+- search и filters;
+- Registry Explorer;
+- выбранным `RegistryPath` и выбранным block;
+- переходом к предыдущему и следующему проблемному месту;
+- ручной перезагрузкой по кнопке с круговой стрелкой;
+- восстановлением открытого контекста после перезагрузки;
+- ссылками на предыдущую revision и clean baseline;
+- контекстным отображением результатов `maintenance`.
+
+Дерево Registry может иметь произвольную глубину и расширяемый набор project-specific типов узлов.
+
+#### `canonical`
+
+`canonical` владеет:
+
+- стабильной identity Canonical Dictionary;
+- чтением словаря между стабильными markers;
+- collections и versioned entries;
+- canonical phrase identities;
+- статусами `Exact`, `Equivalent`, `Review`, `Drift` и `Failed`;
+- не классифицированными допустимыми бизнес-фразами;
+- доказательствами связи entries словаря с применениями в Registry.
+
+`canonical` не содержит жёстко заданного дерева категорий. Область пользовательской бизнес-логики передаётся project adapter на основании структурного владения.
+
+#### `maintenance`
+
+`maintenance` является внутренней инженерной capability Registry Studio и владеет:
+
+- автоматическим сравнением с предыдущей revision;
+- автоматическим сравнением с последним clean baseline;
+- обнаружением изменений;
+- анализом значимого порядка;
+- классификацией проблем;
+- прямым и транзитивным dependency analysis;
+- confirmed dependencies и semantic candidates;
+- `EngineeringChangeSet`;
+- proposals по каждому месту;
+- решениями инженера;
+- revisions;
+- completeness;
+- validation;
+- итоговым diff;
+- историей текущей и завершённой работы.
+
+Более глубокие области владения могут появляться постепенно:
+
+```text
+maintenance/
+├── analysis/
+├── impact/
+├── change_set/
+├── review/
+├── validation/
+└── history/
+```
+
+Они создаются только при появлении реализованной ответственности и являются внутренними capability boundaries, а не дополнительными экранами продукта.
+
+#### `translator`
+
+`translator` владеет:
+
+- независимым состоянием Translator workspace;
+- исходной formulation;
+- ручным редактированием инженером;
+- значениями RU / EN / TH;
+- reverse checks;
+- warnings;
+- formulation draft;
+- Registry handoff context;
+- target, operation, anchor, position и rationale;
+- возвратом конкретного placement request в Registry Studio.
+
+Translator не утверждает полный change set, не определяет достоверность dependencies, не применяет изменения Registry и не публикует Registry.
+
+#### `publication`
+
+`publication` владеет:
+
+- построением deterministic Registry patch;
+- проверкой актуальности base revision;
+- проверкой соответствия patch утверждённому final diff;
+- безопасным применением полного утверждённого change set;
+- resulting revision;
+- publication evidence;
+- failure evidence;
+- rollback evidence.
+
+`publication` не создаёт business proposals и не принимает инженерные решения.
+
+#### `adapters/helpy`
+
+Helpy adapter владеет всей Helpy-specific информацией:
+
+- конкретным источником и форматом Registry;
+- project-specific структурной интерпретацией;
+- рекурсивным business-scope ownership;
+- текущими и будущими типами бизнес-узлов;
+- категориями и их произвольной вложенностью;
+- client rules, master rules и global rules;
+- интеграцией Canonical Dictionary;
+- Admin Panel evidence;
+- backend, API и application-code dependencies;
+- доказательствами других внешних consumers;
+- project-specific semantic relations.
+
+Helpy adapter не должен делать универсальный Core зависимым от Helpy. Новый проект получает собственный adapter без изменения Core и без изменения основного рабочего сценария Registry Studio.
+
+#### `technical`
+
+`technical` владеет повторно используемыми техническими реализациями:
+
+- configuration;
+- networking;
+- local storage;
+- serialization;
+- platform lifecycle integration.
+
+Технические реализации не принимают бизнес-решений и не выполняют инженерное approval.
+
+### 10.3. Направление зависимостей
+
+Целевое направление зависимостей:
+
+```text
+app
+→ registry / canonical / maintenance / translator / publication
+
+registry / canonical / maintenance / translator / publication
+→ core
+
+project adapters
+→ project-facing contracts соответствующих capabilities
+→ core
+
+technical implementations
+→ infrastructure ports конкретного владельца
+```
+
+Обязательные ограничения:
+
+- `core` не зависит от внешних модулей;
+- presentation не импортирует конкретные GitHub, HTTP или storage implementations;
+- `maintenance` не зависит от presentation;
+- Translator не импортируется в Core;
+- Helpy не импортируется в Core;
+- `publication` не утверждает change set;
+- technical infrastructure не классифицирует бизнес-смысл;
+- service locator запрещён;
+- глобальное mutable runtime state запрещено;
+- generic `Repository<T>` запрещён без доказанной конкретной ответственности.
+
+### 10.4. Правило поэтапного создания
+
+Физическая структура расширяется только через рабочие вертикальные сценарии.
+
+Перед созданием нового production type, каталога, abstraction или service реализация должна доказать:
+
+1. ответственность существует в утверждённом продуктовом workflow;
+2. существующий владелец не может корректно её принять;
+3. новый владелец имеет конкретную domain или application responsibility;
+4. новый элемент не создаёт generic workflow engine или central orchestrator;
+5. новый элемент не кодирует текущее количество узлов Registry;
+6. новый элемент не кодирует текущую глубину Registry;
+7. новый элемент не кодирует закрытый набор project-specific типов;
+8. новый элемент используется текущим вертикальным сценарием;
+9. направление dependencies соответствует этому контракту.
+
+Пустые speculative packages, placeholder abstractions, convenience wrappers и future-framework scaffolding запрещены.
 
 ---
 
-## 11. Persistence and restoration
+## 11. Persistence и восстановление состояния
 
-### 10.1. Independent workspace persistence
+### 11.1. Независимая persistence рабочих пространств
 
-Registry Studio and Translator have separate persisted workspaces.
+Registry Studio и Translator имеют отдельные persisted workspaces.
 
-On application backgrounding, process death, closing, and restart, each workspace restores its last state until its own explicit reset action.
+При уходе приложения в background, завершении процесса, закрытии и повторном запуске каждое рабочее пространство восстанавливает последнее состояние до собственного явного reset action.
 
-### 10.2. Registry Studio persisted state
+### 11.2. Сохраняемое состояние Registry Studio
 
-Registry Studio preserves:
+Registry Studio сохраняет:
 
-- loaded revision;
-- previous known revision;
-- clean baseline revision;
-- latest analysis;
-- problem queue;
-- selected status filter;
-- search and filters;
-- open `RegistryPath`;
-- selected block;
-- problem navigation position;
-- current internal change set;
-- proposals and engineer decisions;
-- returned Translator draft;
-- unapproved final diff.
+- загруженную revision;
+- предыдущую известную revision;
+- revision clean baseline;
+- последний analysis;
+- очередь проблем;
+- выбранный status filter;
+- search и filters;
+- открытый `RegistryPath`;
+- выбранный block;
+- позицию навигации по проблемам;
+- текущий внутренний change set;
+- proposals и решения инженера;
+- возвращённый Translator draft;
+- неутверждённый final diff.
 
-### 10.3. Translator persisted state
+### 11.3. Сохраняемое состояние Translator
 
-Translator preserves:
+Translator сохраняет:
 
 - source content;
-- Registry context when provided;
-- RU / EN / TH working values;
+- Registry context, когда он передан;
+- рабочие значения RU / EN / TH;
 - reverse checks;
 - warnings;
-- current result;
-- intended target and placement request;
-- unreturned draft.
+- текущий результат;
+- intended target и placement request;
+- не возвращённый draft.
 
-### 10.4. Independent clearing
+### 11.4. Независимая очистка
 
-Translator cross clears only current Translator state and unreturned Translator handoff draft.
+Крестик Translator очищает только текущее состояние Translator и не возвращённый Translator handoff draft.
 
-Registry Studio reset clears only current unfinished Registry Studio work:
+Reset Registry Studio очищает только текущую незавершённую работу Registry Studio:
 
 - selection;
-- temporary filters when specified by the reset contract;
-- current draft change set;
-- unapproved proposals and decisions;
-- unapproved final diff.
+- временные filters, когда это определено reset contract;
+- текущий draft change set;
+- неутверждённые proposals и decisions;
+- неутверждённый final diff.
 
-Registry Studio reset does not delete:
+Reset Registry Studio не удаляет:
 
-- latest Registry snapshot;
+- последний Registry snapshot;
 - clean baseline;
 - analysis history;
 - applied-change history;
 - publication evidence;
 - Translator workspace.
 
-Any destructive reset requires explicit confirmation describing exactly what is deleted and preserved.
+Любой destructive reset требует явного подтверждения с точным описанием удаляемых и сохраняемых данных.
 
-### 10.5. Manual reload behavior
+### 11.5. Поведение ручного обновления
 
-Registry circular refresh:
+Круговая стрелка Registry:
 
-- loads the latest exact revision;
-- reruns analysis;
-- attempts to restore open context by stable identity and path;
-- reports moved, changed, or deleted targets explicitly;
-- does not clear current work.
+- загружает последнюю точную revision;
+- повторно запускает analysis;
+- пытается восстановить открытый контекст по stable identity и path;
+- явно сообщает о перемещённом, изменённом или удалённом target;
+- не очищает текущую работу.
 
 ---
 
-## 12. History
+## 12. История
 
-History is mandatory.
+История обязательна.
 
-Registry Studio stores:
+Registry Studio сохраняет:
 
-- load timestamp;
+- timestamp загрузки;
 - source revision;
 - previous revision;
-- clean baseline revision;
-- detected changes;
-- detected problems;
-- engineer decisions;
-- Translator handoffs and returned drafts;
-- accepted and rejected proposals;
+- revision clean baseline;
+- обнаруженные изменения;
+- обнаруженные проблемы;
+- решения инженера;
+- handoffs в Translator и возвращённые drafts;
+- принятые и отклонённые proposals;
 - final diff;
-- applied patch;
+- применённый patch;
 - resulting revision;
 - validation;
-- publication success, failure, or rollback evidence.
+- evidence успеха publication, failure или rollback.
 
-History is presented as recent engineering work inside Registry Studio, not as a generic operation lifecycle screen.
+История отображается как последние инженерные работы внутри Registry Studio, а не как экран generic operation lifecycle.
 
 ---
 
-## 13. Dependency and impact rules
+## 13. Правила dependencies и impact
 
-Impact analysis covers the full structural Registry plus project-adapter evidence.
+Impact analysis охватывает полный структурный Registry и доказательства project adapter.
 
-Evidence precedence:
+Приоритет доказательств:
 
 1. stable typed reference;
-2. explicit `RegistryRelation`;
+2. явный `RegistryRelation`;
 3. adapter-defined reuse contract;
-4. stable identity and owning business block;
-5. exact normalized canonical reuse with context evidence;
-6. structural or textual similarity as semantic candidate only.
+4. stable identity и owning business block;
+5. точный normalized canonical reuse с контекстным доказательством;
+6. structural или textual similarity только как semantic candidate.
 
-Required outputs:
+Обязательные результаты:
 
 - direct dependencies;
 - transitive dependencies;
 - dependency paths;
-- confirmed relations and evidence;
-- semantic candidates and reasons;
+- confirmed relations и evidence;
+- semantic candidates и причины;
 - unresolved coverage;
 - affected branches;
-- unaffected locations only when exclusion evidence exists;
-- cycle handling;
+- unaffected locations только при наличии exclusion evidence;
+- обработка cycles;
 - deterministic ordering.
 
-Text similarity alone never becomes confirmed dependency.
+Text similarity само по себе никогда не становится confirmed dependency.
 
 ---
 
-## 14. Safe publication
+## 14. Безопасная publication
 
-Registry Studio generates a deterministic patch only from the final approved change set.
+Registry Studio генерирует deterministic patch только из окончательного утверждённого change set.
 
-Before apply:
+Перед apply:
 
-- base revision must match;
-- final diff must match approved content;
-- validation must still pass;
-- every affected location must have an engineer decision;
-- no unresolved candidate or conflict may remain.
+- base revision должна совпадать;
+- final diff должен совпадать с утверждённым content;
+- validation должна по-прежнему проходить;
+- каждое затронутое место должно иметь решение инженера;
+- не должно оставаться unresolved candidate или conflict.
 
-Partial application is forbidden when it would leave Registry inconsistent.
+Partial application запрещено, когда оно оставляет Registry в несогласованном состоянии.
 
-After apply, save:
+После apply сохраняются:
 
-- approved diff;
+- утверждённый diff;
 - source revision;
 - resulting revision;
-- all affected identities and paths;
-- validation result;
+- все затронутые identities и paths;
+- результат validation;
 - publication evidence;
-- failure or rollback evidence.
+- failure или rollback evidence.
 
 ---
 
-## 15. Language contract
+## 15. Языковой контракт
 
-Application interface supports:
+Интерфейс приложения поддерживает:
 
 - RU;
 - EN;
 - TH.
 
-The globe icon opens a compact selector. The selected interface language persists across restarts.
+Значок глобуса открывает компактный selector. Выбранный язык интерфейса сохраняется между запусками.
 
-The Registry content language and the UI language are separate concerns.
+Язык содержимого Registry и язык UI являются разными сущностями.
 
-All engineer-facing explanations must remain clear in the selected interface language. Code identifiers, paths, APIs, schemas, and configuration remain English.
+Нормативный язык архитектурного контракта, инженерного review и взаимодействия с пользователем по Registry Studio — русский. Модель или инженерный помощник НЕ ДОЛЖЕН переходить на английский язык из-за английских identifiers или source fragments.
+
+Все explanations для инженера должны быть ясными на выбранном языке интерфейса. Code identifiers, paths, APIs, schemas и configuration остаются английскими.
 
 ---
 
-## 16. Implementation sequence
+## 16. Последовательность реализации
 
-### Stage 0 — Recovery foundation
+### Этап 0 — Recovery foundation
 
-- create recovery branch from the verified technical baseline;
-- preserve the clean Core from `6fd3260`;
-- remove premature generic operation and workspace ownership;
-- establish minimal composition;
-- prove clean tests, analyze, build, and APK.
+- создать recovery branch от проверенного technical baseline;
+- сохранить чистый Core из `6fd3260`;
+- удалить преждевременное generic operation и workspace ownership;
+- установить минимальную composition;
+- доказать успешные tests, analyze, build и APK.
 
-### Stage 1 — Full Registry visibility and persistence
+### Этап 1 — Полная видимость Registry и persistence
 
 - exact source snapshot;
-- full structural index;
-- expandable/searchable Registry;
-- circular manual refresh;
-- automatic session persistence and restore;
-- previous-revision tracking;
-- history of loads.
+- полный structural index;
+- раскрываемый и доступный для поиска Registry;
+- ручное обновление круговой стрелкой;
+- автоматическая persistence и restore сессии;
+- отслеживание previous revision;
+- история загрузок.
 
-### Stage 2 — Automatic change analysis
+### Этап 2 — Автоматический анализ изменений
 
-- previous revision comparison;
-- clean baseline comparison;
-- problem queue;
-- exact problem navigation;
-- full-screen problem queue;
-- change history.
+- comparison с previous revision;
+- comparison с clean baseline;
+- очередь проблем;
+- точная навигация по проблемам;
+- полноэкранная очередь проблем;
+- история изменений.
 
-### Stage 3 — Canonical business analysis
+### Этап 3 — Канонический анализ бизнес-логики
 
-- load Canonical Dictionary;
-- structurally discover eligible business scope;
-- classify all eligible business phrases;
-- status counters and filters in Registry;
-- exact navigation by canonical status;
-- no fixed catalog counts, level sequence, or closed node-kind list.
+- загрузить Canonical Dictionary;
+- структурно обнаружить допустимую бизнес-область;
+- классифицировать все допустимые бизнес-фразы;
+- status counters и filters в Registry;
+- точная навигация по canonical status;
+- отсутствие фиксированного количества каталога, последовательности уровней или закрытого списка node kinds.
 
-### Stage 4 — Bidirectional Translator handoff
+### Этап 4 — Двусторонняя передача в Translator
 
-- send phrase/selection with exact context;
-- edit or create formulation;
-- RU / EN / TH and reverse checks;
+- отправка phrase/selection с точным контекстом;
+- редактирование или создание formulation;
+- RU / EN / TH и reverse checks;
 - placement request;
-- return to Registry Studio;
-- independent persistence and clearing.
+- возврат в Registry Studio;
+- независимые persistence и clearing.
 
-### Stage 5 — Impact, proposals, and engineer review
+### Этап 5 — Impact, proposals и review инженера
 
 - preflight;
 - direct/transitive dependency graph;
-- confirmed versus candidate classification;
-- per-location proposals;
+- классификация confirmed и candidate;
+- proposals по каждому месту;
 - contextual review panels;
-- completeness and validation;
+- completeness и validation;
 - final diff.
 
-### Stage 6 — Safe apply
+### Этап 6 — Безопасный apply
 
 - whole-set approval;
 - deterministic patch;
-- stale-revision rejection;
+- rejection stale revision;
 - guarded publication;
-- resulting revision and rollback evidence.
+- resulting revision и rollback evidence.
 
-Each stage ends with a usable APK and explicit engineer acceptance before the next stage begins.
-
----
-
-## 17. Non-negotiable prohibitions
-
-The rebuild must not:
-
-- recreate Translator-centric ownership;
-- create a generic workflow engine;
-- expose internal operation lifecycle as product navigation;
-- create a God App, God Workspace, or global God Cubit;
-- use fixed catalog counts;
-- use a static manifest as Registry scope;
-- use line numbers as permanent identity;
-- classify technical Registry sections as canonical business phrases;
-- treat text similarity as confirmed dependency;
-- apply a partial inconsistent change set;
-- apply against a stale revision;
-- let Translator or Admin Panel approve or publish Registry changes;
-- lose unfinished work on backgrounding or restart;
-- make one workspace reset clear the other;
-- make refresh behave as reset;
-- create speculative helpers, wrappers, managers, facades, utilities, or generic repositories.
+Каждый этап завершается рабочим APK и явным acceptance инженера до начала следующего этапа.
 
 ---
 
-## 18. Product acceptance capabilities
+## 17. Безусловные запреты
 
-The implementation is conformant only when all capability groups below are factually demonstrated.
+Rebuild ЗАПРЕЩЕНО:
 
-### Registry state and automatic analysis
-
-- Open Registry Studio and show the exact current source revision.
-- Automatically analyze every successful load and manual refresh.
-- Show changes from the previous known revision.
-- Show divergence from the last engineer-confirmed clean baseline.
-- Preserve the clean baseline until explicit engineer confirmation changes it.
-
-### Problem navigation
-
-- Show a compact problem queue in Registry Studio.
-- Open the same queue full-screen without creating a separate technical product screen.
-- Open each exact problematic Registry block directly.
-- Move to previous and next problem without returning to the complete tree.
-- Show exact `RegistryPath`, evidence, reason, revision, and status.
-
-### Dynamic Registry coverage
-
-- Recursively browse and search an arbitrarily expanding Registry tree.
-- Discover new node types and nesting through structural indexing and project schema.
-- Avoid fixed category, entity, scenario, phrase, or depth assumptions.
-- Keep structurally visible branches visible even when no semantic manifest entry exists.
-
-### Canonical analysis
-
-- Read the embedded dictionary by stable markers and `Dictionary ID`, not by visible heading.
-- Restrict status counters to eligible business scope.
-- Filter Registry phrases by `Exact`, `Equivalent`, `Review`, `Drift`, `Failed`, and neutral state.
-- Open each status result in exact Registry context.
-- Preserve distinction between canonical ownership, translation quality, and dependency evidence.
-- Allow an authorized engineer to add a new canonical phrase through a reviewed dictionary change.
-
-### Registry Studio and Translator cycle
-
-- Send a full phrase, selected fragment, or selected block to Translator with exact Registry context.
-- Edit an existing phrase or create a new formulation.
-- Produce and inspect RU / EN / TH and reverse checks.
-- Specify target, operation, anchor, position, applicability, and rationale.
-- Return the draft to Registry Studio without publishing directly.
-
-### Internal analysis and engineer decision
-
-- Automatically execute preflight, structural comparison, text diff, impact analysis, duplicate checks, canonical checks, completeness, and validation.
-- Separate confirmed dependencies from semantic candidates.
-- Show every affected-location proposal in context.
-- Require an explicit engineer decision for every unresolved place.
-- Invalidate stale analysis and approval after relevant content or source-revision changes.
-
-### Safe apply and evidence
-
-- Show the final complete diff.
-- Require whole-change-set approval.
-- Reject apply when the source revision is stale.
-- Apply only the exact approved set.
-- Return resulting revision or explicit failure/rollback evidence.
-- Preserve immutable publication evidence and history.
-
-### Persistence and independent clearing
-
-- Restore unfinished Registry Studio and Translator work after backgrounding, process death, closing, and restart.
-- Keep Registry Studio and Translator workspace states independent.
-- Make the Translator cross clear only Translator work.
-- Make Registry circular refresh reload and reanalyze without clearing current work.
-- Make Registry Studio reset a separate confirmed action.
-- Preserve Registry history, clean baseline, and applied-change evidence after current-work reset.
+- воссоздавать Translator-centric ownership;
+- создавать generic workflow engine;
+- выставлять внутренний operation lifecycle как продуктовую навигацию;
+- создавать God App, God Workspace или глобальный God Cubit;
+- использовать фиксированное количество элементов каталога;
+- использовать static manifest как границу Registry scope;
+- использовать line numbers как постоянную identity;
+- классифицировать технические разделы Registry как canonical business phrases;
+- считать text similarity подтверждённой зависимостью;
+- применять частичный несогласованный change set;
+- применять изменение к stale revision;
+- позволять Translator или Admin Panel утверждать либо публиковать изменения Registry;
+- терять незавершённую работу при backgrounding или restart;
+- очищать одно рабочее пространство reset другого;
+- делать refresh эквивалентом reset;
+- создавать speculative helpers, wrappers, managers, facades, utilities или generic repositories.
 
 ---
 
-## 19. Contract synchronization record
+## 18. Проверяемые возможности продукта
 
-This unified revision was prepared from the two source documents below:
+Реализация соответствует контракту только тогда, когда все группы возможностей ниже доказаны фактически.
 
-- original engineering-change contract SHA-256: `3ffa5e50a109d8f47c19ece84d93ff61f2cc91e1d3763a9308a007a1bd95e5c6`;
-- new-branch product/architecture/canonical contract SHA-256: `87c0307c44f8058ae14866805afca64ad6ad4c48659ca00b873a9f5aa1394db0`.
+### Состояние Registry и автоматический анализ
 
-Synchronization rules applied:
+- Открыть Registry Studio и показать точную текущую source revision.
+- Автоматически анализировать каждую успешную загрузку и ручное обновление.
+- Показывать изменения относительно предыдущей известной revision.
+- Показывать расхождения с последним подтверждённым инженером clean baseline.
+- Сохранять clean baseline до его явного изменения инженером.
 
-- no current catalog count is retained as an architecture boundary;
-- no fixed branch-depth sequence is retained as a universal model;
-- original dependency, proposal, revision, completeness, human-authority, ordered-Guidance, application-code dependency, and safe-apply requirements are preserved;
-- internal engineering mechanics remain automatic and contextual inside Registry Studio;
-- Registry Studio and Translator remain the only primary engineer workspaces;
-- the embedded Canonical Dictionary remains engineer-maintained inside this single contract;
-- the established repository path and stable Contract ID remain authoritative.
+### Навигация по проблемам
 
-The old standalone documents are superseded after this unified revision is committed to the new branch.
+- Показывать компактную очередь проблем в Registry Studio.
+- Открывать ту же очередь полноэкранно без создания отдельного технического product screen.
+- Напрямую открывать каждый точный проблемный блок Registry.
+- Переходить к предыдущей и следующей проблеме без возврата к полному дереву.
+- Показывать точные `RegistryPath`, evidence, reason, revision и status.
+
+### Динамическое покрытие Registry
+
+- Рекурсивно просматривать и искать по Registry tree произвольного расширения.
+- Обнаруживать новые node types и вложенность через structural indexing и project schema.
+- Не использовать фиксированные предположения о categories, entities, scenarios, phrases или depth.
+- Сохранять видимость структурно обнаруженных веток даже при отсутствии semantic manifest entry.
+
+### Канонический анализ
+
+- Читать встроенный словарь по stable markers и `Dictionary ID`, а не по видимому heading.
+- Ограничивать status counters допустимой бизнес-областью.
+- Фильтровать Registry phrases по `Exact`, `Equivalent`, `Review`, `Drift`, `Failed` и neutral state.
+- Открывать каждый status result в точном контексте Registry.
+- Сохранять различие между canonical ownership, translation quality и dependency evidence.
+- Позволять авторизованному инженеру добавлять новую canonical phrase через reviewed dictionary change.
+
+### Цикл Registry Studio и Translator
+
+- Отправлять полную phrase, выбранный fragment или выбранный block в Translator с точным Registry context.
+- Редактировать существующую phrase или создавать новую formulation.
+- Подготавливать и проверять RU / EN / TH и reverse checks.
+- Указывать target, operation, anchor, position, applicability и rationale.
+- Возвращать draft в Registry Studio без прямой publication.
+
+### Внутренний анализ и решение инженера
+
+- Автоматически выполнять preflight, structural comparison, text diff, impact analysis, duplicate checks, canonical checks, completeness и validation.
+- Разделять confirmed dependencies и semantic candidates.
+- Показывать proposal каждого затронутого места в контексте.
+- Требовать явное решение инженера для каждого unresolved place.
+- Инвалидировать stale analysis и approval после релевантных изменений content или source revision.
+
+### Безопасный apply и evidence
+
+- Показывать полный final diff.
+- Требовать whole-change-set approval.
+- Отклонять apply при stale source revision.
+- Применять только точный утверждённый набор.
+- Возвращать resulting revision или явное failure/rollback evidence.
+- Сохранять immutable publication evidence и history.
+
+### Persistence и независимая очистка
+
+- Восстанавливать незавершённую работу Registry Studio и Translator после backgrounding, process death, закрытия и restart.
+- Сохранять независимость состояний Registry Studio и Translator workspace.
+- Крестиком Translator очищать только работу Translator.
+- Круговой стрелкой Registry выполнять reload и reanalysis без очистки текущей работы.
+- Реализовать reset Registry Studio как отдельное подтверждаемое действие.
+- Сохранять Registry history, clean baseline и applied-change evidence после reset текущей работы.
 
 ---
 
-## 20. Final product definition
+## 19. Запись синхронизации контракта
+
+Эта объединённая редакция подготовлена из двух исходных документов:
+
+- SHA-256 исходного engineering-change contract: `3ffa5e50a109d8f47c19ece84d93ff61f2cc91e1d3763a9308a007a1bd95e5c6`;
+- SHA-256 нового product/architecture/canonical contract ветки: `87c0307c44f8058ae14866805afca64ad6ad4c48659ca00b873a9f5aa1394db0`.
+
+Применённые правила синхронизации:
+
+- текущее количество элементов каталога не используется как архитектурная граница;
+- фиксированная последовательность глубины ветки не используется как универсальная модель;
+- сохранены исходные требования к dependencies, proposals, revisions, completeness, human authority, ordered Guidance, application-code dependencies и safe apply;
+- внутренние инженерные механизмы остаются автоматическими и контекстными внутри Registry Studio;
+- Registry Studio и Translator остаются единственными основными рабочими пространствами инженера;
+- встроенный Canonical Dictionary поддерживается инженером внутри этого единого контракта;
+- установленный путь в репозитории и стабильный Contract ID остаются authoritative;
+- нормативный текст контракта приведён к русскому языку без перевода стабильных технических identifiers и без изменения утверждённых канонических фраз.
+
+После commit этой объединённой русской редакции прежняя англоязычная редакция и старые standalone documents считаются superseded.
+
+---
+
+## 20. Итоговое определение продукта
 
 ```text
-Registry Studio continuously monitors and explains Registry state
-→ engineer opens exact problematic business locations
-→ Translator helps author or revise the formulation
-→ engineer returns a precise placement request
-→ Registry Studio validates the request across the full Registry
-→ engineer reviews every affected location
-→ Registry Studio applies only the complete approved change
-→ clean baseline and history remain traceable
+Registry Studio непрерывно отслеживает и объясняет состояние Registry
+→ инженер открывает точные проблемные бизнес-места
+→ Translator помогает создать или изменить формулировку
+→ инженер возвращает точный placement request
+→ Registry Studio проверяет request по полному Registry
+→ инженер рассматривает каждое затронутое место
+→ Registry Studio применяет только полное утверждённое изменение
+→ clean baseline и history сохраняют полную прослеживаемость
 ```
 
-Registry Studio and Translator are the two main engineer workspaces.
+Registry Studio и Translator являются двумя основными рабочими пространствами инженера.
 
-Registry Studio remains the owner of Registry integrity, automatic analysis, impact, review, approval context, and safe apply.
+Registry Studio остаётся владельцем целостности Registry, автоматического analysis, impact, review, approval context и safe apply.
 
-Translator remains the engineer’s formulation workspace with precise return-to-Registry placement intent.
+Translator остаётся рабочим пространством инженера для формулировок с точным intent возврата и placement в Registry.
 
-The engineer remains the final decision authority.
+Инженер остаётся окончательной инстанцией принятия решения.
+
 ---
 
-## 21. Embedded Canonical Business Phrase Dictionary
+## 21. Встроенный словарь канонических бизнес-формулировок
 
 <!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:BEGIN -->
 
 Dictionary ID: `REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1`
 
-Dictionary version: `1`
+Версия словаря: `1`
 
-Status: **APPROVED / STORED**
+Статус: **APPROVED / STORED**
 
-Visible title: **Canonical Business Phrase Dictionary**
+Видимый заголовок: **Словарь канонических бизнес-формулировок (`Canonical Business Phrase Dictionary`)**
 
-Legacy imported collection titles:
+Импортированные legacy titles collections:
 
 - `Canonical Photo Labels`;
 - `Canonical Client Labels`;
 - `Canonical Master Workflow Blocks`;
 - `Global Platform Rules`.
 
-Source import:
+Источник импорта:
 
 - source path: `docs/architecture/Helpy_Architecture_Registry_v1.md`;
-- source ref used for import: `main`;
-- retrieved: `2026-07-17`;
+- source ref: `main`;
+- дата получения: `2026-07-17`;
 - source SHA-256: `dbe4e4fbaa934e3e48c0190088421ff93190cda65083352df7cd67ff641010b7`;
-- imported canonical-source block SHA-256: `96466d7b28f447056cdd5be79035c9d0c350c3ede6c3b7a9ae4714558e1f3c67`;
-- imported global-rules block SHA-256: `66a03252bc9013646e47215989c042e42651a0a6562079bf77ffbeae6f4fe2fe`.
+- SHA-256 импортированного canonical-source block: `96466d7b28f447056cdd5be79035c9d0c350c3ede6c3b7a9ae4714558e1f3c67`;
+- SHA-256 импортированного global-rules block: `66a03252bc9013646e47215989c042e42651a0a6562079bf77ffbeae6f4fe2fe`.
 
-### Dictionary maintenance contract
+### Контракт сопровождения словаря
 
-Only an authorized engineer may approve a new canonical entry.
+Только авторизованный инженер может утвердить новую canonical entry.
 
-A new phrase or block is added in this order:
+Новая фраза или блок добавляются в следующем порядке:
 
 ```text
-engineer identifies a reusable business formulation
-→ duplicate and conflict analysis
-→ applicability analysis
-→ Translator RU / EN / TH review
-→ reverse semantic verification
-→ engineer approval
-→ add or version the dictionary entry
-→ Registry Studio reindexes the dictionary
-→ Registry applications are analyzed and proposed
+инженер определяет повторно используемую бизнес-формулировку
+→ анализ duplicates и conflicts
+→ анализ applicability
+→ review RU / EN / TH в Translator
+→ обратная семантическая проверка
+→ approval инженера
+→ добавление или versioning entry словаря
+→ повторная индексация словаря Registry Studio
+→ анализ применений в Registry и подготовка proposals
 ```
 
-The dictionary does not authorize automatic replacement of every similar phrase.
+Словарь не разрешает автоматическую замену каждой похожей фразы.
 
-An exact canonical entry may have different valid applicability. Applicability is evaluated in the full Registry branch context.
+Одна точная canonical entry может иметь разные допустимые applicability. Applicability оценивается в полном контексте ветки Registry.
 
-The phrase text below is copied from the current Registry source. It is not rewritten in this contract.
+Тексты утверждённых фраз и блоков ниже перенесены из текущего источника Registry и не переписываются этим контрактом. Стабильные legacy titles и отдельные source evidence fragments могут оставаться на английском языке как дословные identifiers или доказательства.
 
 ### Collection: `helpy.canonical.general_preparation`
 
-Entry type: `phrase_with_applicability`
+Тип записи: `phrase_with_applicability`
 
-Status: **APPROVED / STORED**
+Статус: **APPROVED / STORED**
 
 Правила применения утверждённых формулировок:
 
@@ -1580,9 +1687,9 @@ Status: **APPROVED / STORED**
 
 ### Collection: `helpy.canonical.photo_labels`
 
-Entry type: `phrase`
+Тип записи: `phrase`
 
-Status: **APPROVED / STORED**
+Статус: **APPROVED / STORED**
 
 - Фотография оборудования в упаковке.
 - Фотография нового оборудования в упаковке.
@@ -1637,13 +1744,13 @@ Status: **APPROVED / STORED**
 
 ### Collection: `helpy.canonical.client_labels`
 
-Entry type: `phrase`
+Тип записи: `phrase`
 
-Status: **APPROVED / STORED**
+Статус: **APPROVED / STORED**
 
-### Canonical Client Labels
+### Канонические формулировки для клиента (`Canonical Client Labels`)
 
-Status: APPROVED / STORED ✅
+Статус: APPROVED / STORED ✅
 
 Утверждённые формулировки:
 - Вы не обязаны разбираться в технических характеристиках.
@@ -1689,13 +1796,13 @@ Status: APPROVED / STORED ✅
 
 ### Collection: `helpy.canonical.master_workflow_blocks`
 
-Entry type: `ordered_block`
+Тип записи: `ordered_block`
 
-Status: **APPROVED / STORED**
+Статус: **APPROVED / STORED**
 
-### Canonical Master Workflow Blocks
+### Канонические рабочие блоки мастера (`Canonical Master Workflow Blocks`)
 
-Status: APPROVED / STORED ✅
+Статус: APPROVED / STORED ✅
 
 Правило использования:
 - Если сущность не требует специальной логики, используется канонический блок без изменений.
@@ -1730,113 +1837,113 @@ Status: APPROVED / STORED ✅
 - Канонические блоки не переписываются.
 - Добавляются только действительно необходимые технические особенности оборудования.
 
-#### Compatibility Check Before Work
+#### Проверка совместимости до начала работ (`Compatibility Check Before Work`)
 - Перед распаковкой мастер обязан убедиться в наличии технической возможности установки и подключения оборудования.
 - При выявлении несовместимости мастер обязан сообщить об этом клиенту через чат приложения.
 
-#### Equipment Inspection Before Installation and Connection
+#### Осмотр оборудования до установки и подключения (`Equipment Inspection Before Installation and Connection`)
 - Мастер обязан выполнить осмотр оборудования на наличие механических повреждений.
 - При выявлении повреждений мастер обязан направить фотографии клиенту через чат приложения до продолжения работ.
 - При подтверждении клиентом продолжения работ фотографии становятся доказательной базой заказа.
 - Мастер обязан проверить комплектацию оборудования и наличие штатных элементов установки и подключения.
 - Мастер вправе отказаться от продолжения работ, если безопасное выполнение работ невозможно.
 
-#### Equipment Removal
+#### Демонтаж оборудования (`Equipment Removal`)
 - Мастер выполняет отключение и демонтаж оборудования в пределах стоимости услуги.
 - Демонтированное оборудование является собственностью клиента и остаётся на объекте.
 
-#### Installation and Connection
+#### Установка и подключение (`Installation and Connection`)
 - Дополнительные комплектующие и расходные материалы являются отдельной договорённостью между клиентом и мастером.
 - Мастер обязан использовать штатные элементы установки и подключения, предусмотренные производителем.
 - Подключение оборудования выполняется в соответствии с требованиями производителя.
 - Мастер устанавливает и подключает оборудование в пределах стоимости услуги.
 - Утилизация упаковки не входит в стоимость услуги, поскольку является собственностью клиента.
 
-#### Functional Verification
+#### Проверка работоспособности (`Functional Verification`)
 - Мастер обязан проверить отсутствие протечек.
 - Мастер обязан подтвердить корректную работу оборудования в пределах стоимости услуги.
 
 ### Collection: `helpy.canonical.global_business_rules`
 
-Entry type: `ordered_rule_block`
+Тип записи: `ordered_rule_block`
 
-Status: **APPROVED / STORED**
+Статус: **APPROVED / STORED**
 
-Confirmed Rules:
+Подтверждённые правила:
 
-### Rule #1 — Client-Safe Scope Rule
+### Правило № 1 — Безопасная область действий клиента (`Client-Safe Scope Rule`)
 Клиент отвечает только на вопросы, которые он объективно может понять.
 Платформа не должна требовать от клиента технической диагностики, разборки оборудования, действий с электричеством или иных действий, которые могут быть небезопасны или ухудшить его положение.
 
-Evidence:
+Доказательства:
 - Plumbing: клиент отвечает только на объективно понятные вопросы.
 - Plumbing Electric Shower: клиент не разбирает розетки, автоматы или проводку и не выполняет действий, связанных с электричеством.
 - Locks: платформа не должна заставлять клиента выполнять действия, которые могут ухудшить его положение как покупателя оборудования.
 
-### Rule #2 — Equipment Packaging Protection Rule
+### Правило № 2 — Защита упаковки оборудования (`Equipment Packaging Protection Rule`)
 Если клиент уже приобрёл новое оборудование самостоятельно, Helpy не требует вскрытия упаковки до проверки совместимости мастером.
 Фотографии упаковки должны позволять увидеть модель, характеристики, размеры и комплектацию, если они указаны производителем.
 Клиент должен сохранять право на возврат, обмен и гарантийное обслуживание.
 
-Evidence:
+Доказательства:
 - Plumbing: клиент не должен вскрывать упаковку оборудования для создания заказа.
 - Plumbing: при фотографировании упаковки клиент предоставляет упаковку со всей информацией на ней.
 - Locks: платформа не требует вскрывать упаковку, нарушать заводские пломбы, раскладывать комплектующие или извлекать оборудование из коробки.
 
-### Rule #3 — Equipment Compatibility Before Demolition Rule
+### Правило № 3 — Проверка совместимости до демонтажа (`Equipment Compatibility Before Demolition Rule`)
 Если работа предполагает замену оборудования, мастер обязан проверить новое оборудование до демонтажа существующего.
 Проверка включает совместимость, комплектность, целостность и возможность установки.
 Только после проверки мастер приступает к демонтажу.
 
-Evidence:
+Доказательства:
 - Plumbing faucet replacement: мастер проверяет совместимость до демонтажа.
 - Plumbing toilet/electric shower replacement: новое оборудование должно быть проверено до работ.
 - Locks: проверка нового оборудования до демонтажа существующего закреплена как Global Equipment Verification Rule.
 
-### Rule #4 — Structured Scope Before Chat Rule
+### Правило № 4 — Структурированное ТЗ до чата (`Structured Scope Before Chat Rule`)
 Форма заказа собирает первоначальное техническое задание и закрывает визуальную часть ТЗ.
 Чат завершает текстовую часть ТЗ, уточняет скрытые работы, материалы, доступ и фиксирует окончательную стоимость.
 Чат не заменяет структурированную форму заказа.
 
-Evidence:
+Доказательства:
 - Plumbing: форма собирает первоначальное ТЗ и закрывает визуальную часть.
 - Plumbing: чат завершает текстовую часть ТЗ и фиксирует окончательную стоимость.
-- Structured Job Scope Contract: Initial job scope is formed from structured questions, answers and required photos.
+- `Structured Job Scope Contract`: первоначальный scope заказа формируется из структурированных вопросов, ответов и обязательных фотографий.
 
-### Rule #5 — No Extra Photo Requests In Chat Rule
+### Правило № 5 — Запрет дополнительных запросов фотографий в чате (`No Extra Photo Requests In Chat Rule`)
 Мастер не может запрашивать дополнительные фотографии в чате, если обязательные фотографии уже определены формой заказа.
 Фото-ТЗ должно формироваться через approved photo requirements.
 Исключения возможны только через будущие утверждённые правила жизненного цикла чата.
 
-Evidence:
+Доказательства:
 - Plumbing faucet/mixer: мастер не может запрашивать фотографии в чате.
 - Plumbing blockage: мастер не может запрашивать дополнительные фотографии в чате.
 - Plumbing electric shower: мастер не может запрашивать дополнительные фотографии в чате.
 
-### Rule #6 — One-Time Final Price Rule
+### Правило № 6 — Однократное изменение окончательной цены (`One-Time Final Price Rule`)
 Окончательная стоимость заказа может быть изменена мастером только один раз до выбора мастера.
 Изменение требует обоснования, обсуждения с клиентом и согласования.
 После согласования клиентом и выбора мастера Final Agreed Price становится неизменяемым финансовым фактом заказа.
 
-Evidence:
+Доказательства:
 - Plumbing: окончательная цена фиксируется мастером один раз и после согласования становится неизменяемой.
 - Client Expected Price / Final Price Contract: мастер может один раз предложить изменение цены до выбора мастера.
-- Final Price Architecture Decision: job-level financial snapshot is immutable after master selection.
+- Final Price Architecture Decision: job-level financial snapshot является неизменяемым после выбора мастера.
 
-### Rule #7 — Platform Boundary / Ownership Rule
+### Правило № 7 — Границы ответственности платформы (`Platform Boundary / Ownership Rule`)
 Helpy не включает в услугу действия, которые не утверждены как часть сервиса платформы.
 Материалы, дополнительные работы, утилизация, вынос демонтированного оборудования, личные вещи клиента, транспортировка, хранение, публичные зоны и вопросы собственности/права доступа не входят в платформенную ответственность, если отдельный контракт явно не утверждает обратное.
 
-Evidence:
-- Furniture: master does not move, sort or store client belongings.
+Доказательства:
+- Furniture: мастер не перемещает, не сортирует и не хранит личные вещи клиента.
 - Plumbing: демонтированное оборудование остаётся собственностью клиента; вынос/утилизация не являются услугой Helpy.
 - Locks: Helpy не работает с вопросами собственности, аренды и права доступа.
 - Air Conditioning: материалы и дополнительные работы согласуются через чат; платформа не участвует в покупке материалов.
 
-### Dictionary change history
+### История изменений словаря
 
-| Dictionary version | Date | Change | Evidence |
+| Версия словаря | Дата | Изменение | Доказательство |
 |---|---|---|---|
-| `1` | `2026-07-17` | Initial import of the current approved general preparation phrases, `Canonical Photo Labels`, `Canonical Client Labels`, `Canonical Master Workflow Blocks`, and confirmed Global Platform Rules into the new-branch contract. | Source path, source hashes, and exact imported text recorded above. |
+| `1` | `2026-07-17` | Первичный импорт текущих утверждённых общих подготовительных фраз, `Canonical Photo Labels`, `Canonical Client Labels`, `Canonical Master Workflow Blocks` и подтверждённых Global Platform Rules в контракт новой ветки. | Путь источника, source hashes и точный импортированный текст зафиксированы выше. |
 
 <!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->
