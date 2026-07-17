@@ -1,0 +1,145 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+enum RegistryStudioWorkspace { registryStudio, translator }
+
+final class RegistryStudioWorkspaceCubit
+    extends Cubit<RegistryStudioWorkspace> {
+  RegistryStudioWorkspaceCubit()
+    : super(RegistryStudioWorkspace.registryStudio);
+
+  void select(RegistryStudioWorkspace workspace) {
+    if (state == workspace) {
+      return;
+    }
+
+    emit(workspace);
+  }
+}
+
+final class RegistryStudioShell extends StatelessWidget {
+  const RegistryStudioShell({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider<RegistryStudioWorkspaceCubit>(
+      create: (_) => RegistryStudioWorkspaceCubit(),
+      child: const _RegistryStudioShellView(),
+    );
+  }
+}
+
+final class _RegistryStudioShellView extends StatelessWidget {
+  const _RegistryStudioShellView();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<RegistryStudioWorkspaceCubit, RegistryStudioWorkspace>(
+      builder: (BuildContext context, RegistryStudioWorkspace workspace) {
+        final int selectedIndex = RegistryStudioWorkspace.values.indexOf(
+          workspace,
+        );
+
+        return Scaffold(
+          appBar: AppBar(title: Text(_titleFor(workspace))),
+          body: IndexedStack(
+            index: selectedIndex,
+            children: const <Widget>[
+              _RegistryStudioWorkspaceView(),
+              _TranslatorWorkspaceView(),
+            ],
+          ),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: selectedIndex,
+            onDestinationSelected: (int index) {
+              context.read<RegistryStudioWorkspaceCubit>().select(
+                RegistryStudioWorkspace.values[index],
+              );
+            },
+            destinations: const <NavigationDestination>[
+              NavigationDestination(
+                icon: Icon(Icons.account_tree_outlined),
+                selectedIcon: Icon(Icons.account_tree),
+                label: 'Registry Studio',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.translate_outlined),
+                selectedIcon: Icon(Icons.translate),
+                label: 'Translator',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _titleFor(RegistryStudioWorkspace workspace) {
+    return switch (workspace) {
+      RegistryStudioWorkspace.registryStudio => 'Registry Studio',
+      RegistryStudioWorkspace.translator => 'Translator',
+    };
+  }
+}
+
+final class _RegistryStudioWorkspaceView extends StatelessWidget {
+  const _RegistryStudioWorkspaceView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SafeArea(
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(Icons.account_tree_outlined, size: 48),
+              SizedBox(height: 16),
+              Text(
+                'Registry Studio',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Просмотр и сопровождение структурного Registry',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+final class _TranslatorWorkspaceView extends StatelessWidget {
+  const _TranslatorWorkspaceView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SafeArea(
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(Icons.translate_outlined, size: 48),
+              SizedBox(height: 16),
+              Text(
+                'Translator',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Перевод и проверка формулировок RU / EN / TH',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
