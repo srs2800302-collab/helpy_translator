@@ -85,6 +85,67 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     );
   }
 
+  Future<void> _confirmCurrentAsCleanBaseline() async {
+    final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
+
+    final RegistryExplorerState currentState = cubit.state;
+
+    if (currentState is! RegistryExplorerLoaded) {
+      return;
+    }
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Подтвердить clean baseline?'),
+          content: Text(
+            'Revision ${currentState.snapshot.sourceRevision} '
+            'будет сохранена как последнее принятое инженером '
+            'чистое состояние Registry. Это действие не является '
+            'утверждением change set или publication.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('Подтвердить'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted || confirmed != true) {
+      return;
+    }
+
+    try {
+      await cubit.confirmCurrentAsCleanBaseline();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final String message = error.toString().trim();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.isEmpty ? 'Не удалось сохранить clean baseline.' : message,
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _scrollController
@@ -178,6 +239,13 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
+                                  if (loaded.cleanBaselineSnapshot != null)
+                                    Text(
+                                      'Clean baseline: '
+                                      '${loaded.cleanBaselineSnapshot!.sourceRevision}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                 ],
                               ),
                             ),
@@ -196,47 +264,117 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       child: ListView.separated(
                         controller: _scrollController,
                         itemCount:
-                            (loaded.comparison?.changes.length ?? 0) +
+                            (loaded.previousComparison?.changes.length ?? 0) +
+                            (loaded.cleanBaselineComparison?.changes.length ??
+                                0) +
                             loaded.index.nodes.length +
-                            2,
+                            3,
                         separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (BuildContext context, int itemIndex) {
-                          final List<RegistryNodeChange> changes =
-                              loaded.comparison?.changes ??
+                          final List<RegistryNodeChange> previousChanges =
+                              loaded.previousComparison?.changes ??
                               const <RegistryNodeChange>[];
 
-                          final int registryHeaderIndex = changes.length + 1;
+                          final List<RegistryNodeChange> cleanChanges =
+                              loaded.cleanBaselineComparison?.changes ??
+                              const <RegistryNodeChange>[];
+
+                          final int cleanSummaryIndex =
+                              previousChanges.length + 1;
+
+                          final int registryHeaderIndex =
+                              cleanSummaryIndex + cleanChanges.length + 1;
 
                           if (itemIndex == 0) {
                             return ListTile(
                               key: const ValueKey<String>(
-                                'registry-comparison-summary',
+                                'registry-previous-comparison-summary',
                               ),
                               title: Text(
-                                loaded.comparison == null
-                                    ? 'Изменения: нет предыдущей revision'
-                                    : 'Изменения: ${changes.length}',
+                                loaded.previousComparison == null
+                                    ? 'Изменения с предыдущей revision: '
+                                          'нет baseline'
+                                    : 'Изменения с предыдущей revision: '
+                                          '${previousChanges.length}',
                               ),
-                              subtitle: loaded.comparison == null
+                              subtitle: loaded.previousComparison == null
                                   ? const Text(
                                       'Предыдущая известная revision '
                                       'отсутствует.',
                                     )
                                   : Text(
                                       'Добавлено: '
-                                      '${loaded.comparison!.addedCount} · '
+                                      '${loaded.previousComparison!.addedCount} · '
                                       'Удалено: '
-                                      '${loaded.comparison!.removedCount} · '
+                                      '${loaded.previousComparison!.removedCount} · '
                                       'Изменено: '
-                                      '${loaded.comparison!.changedCount}',
+                                      '${loaded.previousComparison!.changedCount}',
                                     ),
                             );
                           }
 
-                          if (itemIndex <= changes.length) {
-                            final RegistryNodeChange change =
-                                changes[itemIndex - 1];
+                          if (itemIndex == cleanSummaryIndex) {
+                            final bool isCurrentCleanBaseline =
+                                loaded.cleanBaselineSnapshot?.sourceRevision ==
+                                loaded.snapshot.sourceRevision;
 
+                            return ListTile(
+                              key: const ValueKey<String>(
+                                'registry-clean-baseline-summary',
+                              ),
+                              title: Text(
+                                loaded.cleanBaselineComparison == null
+                                    ? 'Clean baseline: не подтверждён'
+                                    : 'Расхождения с clean baseline: '
+                                          '${cleanChanges.length}',
+                              ),
+                              subtitle: loaded.cleanBaselineComparison == null
+                                  ? const Text(
+                                      'Новая revision не принимается '
+                                      'как clean baseline автоматически.',
+                                    )
+                                  : Text(
+                                      'Baseline: '
+                                      '${loaded.cleanBaselineSnapshot!.sourceRevision}\n'
+                                      'Добавлено: '
+                                      '${loaded.cleanBaselineComparison!.addedCount} · '
+                                      'Удалено: '
+                                      '${loaded.cleanBaselineComparison!.removedCount} · '
+                                      'Изменено: '
+                                      '${loaded.cleanBaselineComparison!.changedCount}',
+                                    ),
+                              trailing: IconButton(
+                                tooltip: isCurrentCleanBaseline
+                                    ? 'Текущая revision уже является '
+                                          'clean baseline'
+                                    : 'Подтвердить текущую revision '
+                                          'как clean baseline',
+                                onPressed: isCurrentCleanBaseline
+                                    ? null
+                                    : _confirmCurrentAsCleanBaseline,
+                                icon: Icon(
+                                  isCurrentCleanBaseline
+                                      ? Icons.verified_outlined
+                                      : Icons.verified_user_outlined,
+                                ),
+                              ),
+                            );
+                          }
+
+                          RegistryNodeChange? change;
+                          String? comparisonKey;
+
+                          if (itemIndex > 0 && itemIndex < cleanSummaryIndex) {
+                            change = previousChanges[itemIndex - 1];
+                            comparisonKey = 'previous';
+                          } else if (itemIndex > cleanSummaryIndex &&
+                              itemIndex < registryHeaderIndex) {
+                            change =
+                                cleanChanges[itemIndex - cleanSummaryIndex - 1];
+                            comparisonKey = 'clean';
+                          }
+
+                          if (change != null) {
                             final RegistryNode node =
                                 change.currentNode ?? change.previousNode!;
 
@@ -311,6 +449,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             return ListTile(
                               key: ValueKey<String>(
                                 'registry-change-'
+                                '$comparisonKey-'
                                 '${change.kind.name}-'
                                 '${node.id.value}',
                               ),

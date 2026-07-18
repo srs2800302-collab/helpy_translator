@@ -5,12 +5,15 @@ final class RegistryRevisionState {
     required String sourceDocumentPath,
     required String currentRevision,
     String? previousRevision,
+    String? cleanBaselineRevision,
   }) {
     final String normalizedProjectId = projectId.trim();
     final String normalizedProjectAdapterId = projectAdapterId.trim();
     final String normalizedSourceDocumentPath = sourceDocumentPath.trim();
     final String normalizedCurrentRevision = currentRevision.trim();
     final String? normalizedPreviousRevision = previousRevision?.trim();
+    final String? normalizedCleanBaselineRevision = cleanBaselineRevision
+        ?.trim();
 
     if (normalizedProjectId.isEmpty) {
       throw ArgumentError.value(
@@ -62,12 +65,23 @@ final class RegistryRevisionState {
       );
     }
 
+    if (normalizedCleanBaselineRevision != null &&
+        normalizedCleanBaselineRevision.isEmpty) {
+      throw ArgumentError.value(
+        cleanBaselineRevision,
+        'cleanBaselineRevision',
+        'Registry revision state clean baseline revision '
+            'must not be empty.',
+      );
+    }
+
     return RegistryRevisionState._(
       projectId: normalizedProjectId,
       projectAdapterId: normalizedProjectAdapterId,
       sourceDocumentPath: normalizedSourceDocumentPath,
       currentRevision: normalizedCurrentRevision,
       previousRevision: normalizedPreviousRevision,
+      cleanBaselineRevision: normalizedCleanBaselineRevision,
     );
   }
 
@@ -77,6 +91,7 @@ final class RegistryRevisionState {
     required this.sourceDocumentPath,
     required this.currentRevision,
     required this.previousRevision,
+    required this.cleanBaselineRevision,
   });
 
   final String projectId;
@@ -84,6 +99,7 @@ final class RegistryRevisionState {
   final String sourceDocumentPath;
   final String currentRevision;
   final String? previousRevision;
+  final String? cleanBaselineRevision;
 }
 
 abstract interface class RegistryRevisionStateStore {

@@ -10,8 +10,11 @@ final class JsonFileRegistryRevisionStateStore
   const JsonFileRegistryRevisionStateStore({this.applicationSupportDirectory});
 
   static const String directoryName = 'registry_studio';
-  static const String fileName = 'registry_revision_state_v1.json';
-  static const String _formatVersion = 'v1';
+  static const String fileName = 'registry_revision_state_v2.json';
+  static const String legacyFileName = 'registry_revision_state_v1.json';
+
+  static const String _formatVersion = 'v2';
+  static const String _legacyFormatVersion = 'v1';
 
   final Directory? applicationSupportDirectory;
 
@@ -41,13 +44,25 @@ final class JsonFileRegistryRevisionStateStore
       '$directoryName',
     );
 
-    final File stateFile = File(
+    final File currentStateFile = File(
       '${stateDirectory.path}'
       '${Platform.pathSeparator}'
       '$fileName',
     );
 
-    if (!await stateFile.exists()) {
+    final File legacyStateFile = File(
+      '${stateDirectory.path}'
+      '${Platform.pathSeparator}'
+      '$legacyFileName',
+    );
+
+    final File stateFile;
+
+    if (await currentStateFile.exists()) {
+      stateFile = currentStateFile;
+    } else if (await legacyStateFile.exists()) {
+      stateFile = legacyStateFile;
+    } else {
       return null;
     }
 
@@ -67,14 +82,33 @@ final class JsonFileRegistryRevisionStateStore
 
     final Map<String, Object?> state = decodedState.cast<String, Object?>();
 
-    const Set<String> expectedKeys = <String>{
-      'version',
-      'projectId',
-      'projectAdapterId',
-      'sourceDocumentPath',
-      'currentRevision',
-      'previousRevision',
-    };
+    final Object? version = state['version'];
+    final Set<String> expectedKeys;
+
+    if (version == _legacyFormatVersion) {
+      expectedKeys = const <String>{
+        'version',
+        'projectId',
+        'projectAdapterId',
+        'sourceDocumentPath',
+        'currentRevision',
+        'previousRevision',
+      };
+    } else if (version == _formatVersion) {
+      expectedKeys = const <String>{
+        'version',
+        'projectId',
+        'projectAdapterId',
+        'sourceDocumentPath',
+        'currentRevision',
+        'previousRevision',
+        'cleanBaselineRevision',
+      };
+    } else {
+      throw const FormatException(
+        'Registry revision state version is unsupported.',
+      );
+    }
 
     final Set<String> actualKeys = state.keys.toSet();
 
@@ -83,23 +117,21 @@ final class JsonFileRegistryRevisionStateStore
       throw const FormatException('Registry revision state schema is invalid.');
     }
 
-    if (state['version'] != _formatVersion) {
-      throw const FormatException(
-        'Registry revision state version is unsupported.',
-      );
-    }
-
     final Object? projectId = state['projectId'];
     final Object? projectAdapterId = state['projectAdapterId'];
     final Object? sourceDocumentPath = state['sourceDocumentPath'];
     final Object? currentRevision = state['currentRevision'];
     final Object? previousRevision = state['previousRevision'];
+    final Object? cleanBaselineRevision = version == _formatVersion
+        ? state['cleanBaselineRevision']
+        : null;
 
     if (projectId is! String ||
         projectAdapterId is! String ||
         sourceDocumentPath is! String ||
         currentRevision is! String ||
-        previousRevision != null && previousRevision is! String) {
+        previousRevision != null && previousRevision is! String ||
+        cleanBaselineRevision != null && cleanBaselineRevision is! String) {
       throw const FormatException(
         'Registry revision state field types are invalid.',
       );
@@ -112,6 +144,7 @@ final class JsonFileRegistryRevisionStateStore
         sourceDocumentPath: sourceDocumentPath,
         currentRevision: currentRevision,
         previousRevision: previousRevision as String?,
+        cleanBaselineRevision: cleanBaselineRevision as String?,
       );
     } on ArgumentError catch (error) {
       throw FormatException(
@@ -163,7 +196,7 @@ final class JsonFileRegistryRevisionStateStore
 
     try {
       await temporaryFile.writeAsString(
-        '${jsonEncode(<String, Object?>{'version': _formatVersion, 'projectId': state.projectId, 'projectAdapterId': state.projectAdapterId, 'sourceDocumentPath': state.sourceDocumentPath, 'currentRevision': state.currentRevision, 'previousRevision': state.previousRevision})}\n',
+        '${jsonEncode(<String, Object?>{'version': _formatVersion, 'projectId': state.projectId, 'projectAdapterId': state.projectAdapterId, 'sourceDocumentPath': state.sourceDocumentPath, 'currentRevision': state.currentRevision, 'previousRevision': state.previousRevision, 'cleanBaselineRevision': state.cleanBaselineRevision})}\n',
         flush: true,
       );
 

@@ -168,6 +168,192 @@ void main() {
   );
 
   test(
+    'changes clean baseline only after explicit engineer confirmation',
+    () async {
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => snapshot,
+          ]);
+
+      final _MemoryRegistryRevisionStateStore store =
+          _MemoryRegistryRevisionStateStore();
+
+      final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+        snapshotLoader: loader,
+        snapshotRevisionLoader: loader,
+        revisionStateStore: store,
+        snapshotComparator: const RegistrySnapshotComparator(),
+      );
+
+      addTearDown(cubit.close);
+
+      await cubit.restore();
+
+      RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.cleanBaselineSnapshot, isNull);
+      expect(loaded.cleanBaselineComparison, isNull);
+      expect(store.state?.cleanBaselineRevision, isNull);
+      expect(store.saveCount, 1);
+
+      await cubit.confirmCurrentAsCleanBaseline();
+
+      loaded = cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.cleanBaselineSnapshot, same(snapshot));
+      expect(loaded.cleanBaselineComparison, isNotNull);
+      expect(loaded.cleanBaselineComparison!.changes, isEmpty);
+      expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
+      expect(store.saveCount, 2);
+
+      await cubit.confirmCurrentAsCleanBaseline();
+
+      expect(store.saveCount, 2);
+    },
+  );
+
+  test(
+    'restores a distinct persisted clean baseline and both comparisons',
+    () async {
+      const String cleanFingerprint =
+          'git-blob:dddddddddddddddddddddddddddddddddddddddd';
+
+      final RegistryNode currentRoot = snapshot.roots.single;
+      final RegistryNode currentChild = currentRoot.children.single;
+
+      final RegistryNode cleanChild = RegistryNode(
+        id: currentChild.id,
+        kindId: currentChild.kindId,
+        path: currentChild.path,
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            sourceSnapshotFingerprint: cleanFingerprint,
+            headingPath: currentChild.path.segments,
+            startLine: 3,
+            endLine: 4,
+          ),
+        ],
+        content: 'Clean baseline domain content.',
+        businessScopeOwnerId: currentChild.businessScopeOwnerId,
+        children: const <RegistryNode>[],
+      );
+
+      final RegistryNode cleanRoot = RegistryNode(
+        id: currentRoot.id,
+        kindId: currentRoot.kindId,
+        path: currentRoot.path,
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            sourceSnapshotFingerprint: cleanFingerprint,
+            headingPath: currentRoot.path.segments,
+            startLine: 1,
+            endLine: 4,
+          ),
+        ],
+        content: currentRoot.content,
+        businessScopeOwnerId: currentRoot.businessScopeOwnerId,
+        children: <RegistryNode>[cleanChild],
+      );
+
+      final RegistrySnapshot previousSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: '0000000000000000000000000000000000000000',
+        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+        sourceContent: snapshot.sourceContent,
+        roots: snapshot.roots,
+      );
+
+      final RegistrySnapshot cleanBaselineSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: 'ffffffffffffffffffffffffffffffffffffffff',
+        sourceSnapshotFingerprint: cleanFingerprint,
+        sourceContent:
+            '# Registry\n'
+            'Root content.\n'
+            '## Domain\n'
+            'Clean baseline domain content.\n',
+        roots: <RegistryNode>[cleanRoot],
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(
+            <Future<RegistrySnapshot> Function()>[],
+            exactSnapshots: <String, RegistrySnapshot>{
+              snapshot.sourceRevision: snapshot,
+              previousSnapshot.sourceRevision: previousSnapshot,
+              cleanBaselineSnapshot.sourceRevision: cleanBaselineSnapshot,
+            },
+          );
+
+      final _MemoryRegistryRevisionStateStore store =
+          _MemoryRegistryRevisionStateStore(
+            state: RegistryRevisionState(
+              projectId: snapshot.projectId,
+              projectAdapterId: snapshot.projectAdapterId,
+              sourceDocumentPath: snapshot.sourceDocumentPath,
+              currentRevision: snapshot.sourceRevision,
+              previousRevision: previousSnapshot.sourceRevision,
+              cleanBaselineRevision: cleanBaselineSnapshot.sourceRevision,
+            ),
+          );
+
+      final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+        snapshotLoader: loader,
+        snapshotRevisionLoader: loader,
+        revisionStateStore: store,
+        snapshotComparator: const RegistrySnapshotComparator(),
+      );
+
+      addTearDown(cubit.close);
+
+      await cubit.restore();
+
+      final RegistryExplorerLoaded loaded =
+          cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.snapshot, same(snapshot));
+      expect(loaded.previousSnapshot, same(previousSnapshot));
+      expect(loaded.cleanBaselineSnapshot, same(cleanBaselineSnapshot));
+
+      expect(loaded.previousComparison, isNotNull);
+      expect(loaded.previousComparison!.changes, isEmpty);
+
+      expect(loaded.cleanBaselineComparison, isNotNull);
+      expect(
+        loaded.cleanBaselineComparison!.previousRevision,
+        cleanBaselineSnapshot.sourceRevision,
+      );
+      expect(
+        loaded.cleanBaselineComparison!.currentRevision,
+        snapshot.sourceRevision,
+      );
+      expect(loaded.cleanBaselineComparison!.addedCount, 0);
+      expect(loaded.cleanBaselineComparison!.removedCount, 0);
+      expect(loaded.cleanBaselineComparison!.changedCount, 1);
+
+      expect(loader.loadCount, 0);
+      expect(loader.requestedRevisions, <String>[
+        snapshot.sourceRevision,
+        previousSnapshot.sourceRevision,
+        cleanBaselineSnapshot.sourceRevision,
+      ]);
+
+      expect(store.loadCount, 1);
+      expect(store.saveCount, 0);
+      expect(
+        store.state?.cleanBaselineRevision,
+        cleanBaselineSnapshot.sourceRevision,
+      );
+    },
+  );
+
+  test(
     'restores persisted current and previous snapshots without loading latest',
     () async {
       final RegistrySnapshot previousSnapshot = RegistrySnapshot(
@@ -418,123 +604,211 @@ void main() {
     },
   );
 
-  testWidgets('shows automatic structural changes after manual refresh', (
-    WidgetTester tester,
-  ) async {
-    const String currentFingerprint =
-        'git-blob:cccccccccccccccccccccccccccccccccccccccc';
+  testWidgets(
+    'shows previous and clean baseline changes after manual refresh',
+    (WidgetTester tester) async {
+      const String currentFingerprint =
+          'git-blob:cccccccccccccccccccccccccccccccccccccccc';
 
-    final RegistryNode previousRoot = snapshot.roots.single;
-    final RegistryNode previousChild = previousRoot.children.single;
+      final RegistryNode previousRoot = snapshot.roots.single;
 
-    final RegistryNode changedChild = RegistryNode(
-      id: previousChild.id,
-      kindId: previousChild.kindId,
-      path: previousChild.path,
-      sourceEvidence: <SourceEvidence>[
-        SourceEvidence(
-          sourceDocumentPath: snapshot.sourceDocumentPath,
-          sourceSnapshotFingerprint: currentFingerprint,
-          headingPath: previousChild.path.segments,
-          startLine: 3,
-          endLine: 4,
+      final RegistryNode previousChild = previousRoot.children.single;
+
+      final RegistryNode changedChild = RegistryNode(
+        id: previousChild.id,
+        kindId: previousChild.kindId,
+        path: previousChild.path,
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            sourceSnapshotFingerprint: currentFingerprint,
+            headingPath: previousChild.path.segments,
+            startLine: 3,
+            endLine: 4,
+          ),
+        ],
+        content: 'Updated domain content.',
+        businessScopeOwnerId: previousChild.businessScopeOwnerId,
+        children: const <RegistryNode>[],
+      );
+
+      final RegistryNode addedChild = RegistryNode(
+        id: RegistryNodeId('project.registry.node.000003'),
+        kindId: 'project.registry.heading.2',
+        path: RegistryPath(const <String>['Registry', 'Added Domain']),
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            sourceSnapshotFingerprint: currentFingerprint,
+            headingPath: const <String>['Registry', 'Added Domain'],
+            startLine: 5,
+            endLine: 6,
+          ),
+        ],
+        content: 'Added domain content.',
+        businessScopeOwnerId: null,
+        children: const <RegistryNode>[],
+      );
+
+      final RegistryNode currentRoot = RegistryNode(
+        id: previousRoot.id,
+        kindId: previousRoot.kindId,
+        path: previousRoot.path,
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            sourceSnapshotFingerprint: currentFingerprint,
+            headingPath: previousRoot.path.segments,
+            startLine: 1,
+            endLine: 6,
+          ),
+        ],
+        content: previousRoot.content,
+        businessScopeOwnerId: previousRoot.businessScopeOwnerId,
+        children: <RegistryNode>[changedChild, addedChild],
+      );
+
+      final RegistrySnapshot updatedSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: '4444444444444444444444444444444444444444',
+        sourceSnapshotFingerprint: currentFingerprint,
+        sourceContent:
+            '# Registry\n'
+            'Root content.\n'
+            '## Domain\n'
+            'Updated domain content.\n'
+            '## Added Domain\n'
+            'Added domain content.\n',
+        roots: <RegistryNode>[currentRoot],
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => snapshot,
+            () async => updatedSnapshot,
+          ]);
+
+      final _MemoryRegistryRevisionStateStore store =
+          _MemoryRegistryRevisionStateStore();
+
+      await tester.pumpWidget(
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: store,
         ),
-      ],
-      content: 'Updated domain content.',
-      businessScopeOwnerId: previousChild.businessScopeOwnerId,
-      children: const <RegistryNode>[],
-    );
+      );
 
-    final RegistryNode addedChild = RegistryNode(
-      id: RegistryNodeId('project.registry.node.000003'),
-      kindId: 'project.registry.heading.2',
-      path: RegistryPath(const <String>['Registry', 'Added Domain']),
-      sourceEvidence: <SourceEvidence>[
-        SourceEvidence(
-          sourceDocumentPath: snapshot.sourceDocumentPath,
-          sourceSnapshotFingerprint: currentFingerprint,
-          headingPath: const <String>['Registry', 'Added Domain'],
-          startLine: 5,
-          endLine: 6,
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Изменения с предыдущей revision: нет baseline'),
+        findsOneWidget,
+      );
+
+      expect(find.text('Clean baseline: не подтверждён'), findsOneWidget);
+
+      await tester.tap(
+        find.byTooltip('Подтвердить текущую revision как clean baseline'),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Подтвердить clean baseline?'), findsOneWidget);
+
+      await tester.tap(find.text('Подтвердить'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Clean baseline: ${snapshot.sourceRevision}'),
+        findsOneWidget,
+      );
+
+      expect(find.text('Расхождения с clean baseline: 0'), findsOneWidget);
+
+      expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
+
+      await tester.tap(find.byTooltip('Перезагрузить Registry'));
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Изменения с предыдущей revision: 2'), findsOneWidget);
+
+      expect(find.text('Расхождения с clean baseline: 2'), findsOneWidget);
+
+      final Finder previousSummary = find.byKey(
+        const ValueKey<String>('registry-previous-comparison-summary'),
+      );
+
+      final Finder cleanSummary = find.byKey(
+        const ValueKey<String>('registry-clean-baseline-summary'),
+      );
+
+      expect(
+        find.descendant(
+          of: previousSummary,
+          matching: find.text('Добавлено: 1 · Удалено: 0 · Изменено: 1'),
         ),
-      ],
-      content: 'Added domain content.',
-      businessScopeOwnerId: null,
-      children: const <RegistryNode>[],
-    );
+        findsOneWidget,
+      );
 
-    final RegistryNode currentRoot = RegistryNode(
-      id: previousRoot.id,
-      kindId: previousRoot.kindId,
-      path: previousRoot.path,
-      sourceEvidence: <SourceEvidence>[
-        SourceEvidence(
-          sourceDocumentPath: snapshot.sourceDocumentPath,
-          sourceSnapshotFingerprint: currentFingerprint,
-          headingPath: previousRoot.path.segments,
-          startLine: 1,
-          endLine: 6,
+      expect(
+        find.descendant(
+          of: cleanSummary,
+          matching: find.textContaining(
+            'Добавлено: 1 · Удалено: 0 · Изменено: 1',
+          ),
         ),
-      ],
-      content: previousRoot.content,
-      businessScopeOwnerId: previousRoot.businessScopeOwnerId,
-      children: <RegistryNode>[changedChild, addedChild],
-    );
+        findsOneWidget,
+      );
 
-    final RegistrySnapshot updatedSnapshot = RegistrySnapshot(
-      projectId: snapshot.projectId,
-      projectAdapterId: snapshot.projectAdapterId,
-      sourceDocumentPath: snapshot.sourceDocumentPath,
-      sourceRevision: '4444444444444444444444444444444444444444',
-      sourceSnapshotFingerprint: currentFingerprint,
-      sourceContent:
-          '# Registry\n'
-          'Root content.\n'
-          '## Domain\n'
-          'Updated domain content.\n'
-          '## Added Domain\n'
-          'Added domain content.\n',
-      roots: <RegistryNode>[currentRoot],
-    );
+      final Finder previousChangedRow = find.byKey(
+        ValueKey<String>(
+          'registry-change-previous-changed-'
+          '${previousChild.id.value}',
+        ),
+      );
 
-    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
-      <Future<RegistrySnapshot> Function()>[
-        () async => snapshot,
-        () async => updatedSnapshot,
-      ],
-    );
+      final Finder previousAddedRow = find.byKey(
+        ValueKey<String>(
+          'registry-change-previous-added-'
+          '${addedChild.id.value}',
+        ),
+      );
 
-    await tester.pumpWidget(
-      RegistryStudioApplication(
-        registrySnapshotLoader: loader,
-        registrySnapshotRevisionLoader: loader,
-        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
-      ),
-    );
+      expect(previousChangedRow, findsOneWidget);
+      expect(previousAddedRow, findsOneWidget);
 
-    await tester.pumpAndSettle();
+      final Finder cleanChangedRow = find.byKey(
+        ValueKey<String>(
+          'registry-change-clean-changed-'
+          '${previousChild.id.value}',
+        ),
+      );
 
-    expect(find.text('Изменения: нет предыдущей revision'), findsOneWidget);
+      final Finder cleanAddedRow = find.byKey(
+        ValueKey<String>(
+          'registry-change-clean-added-'
+          '${addedChild.id.value}',
+        ),
+      );
 
-    await tester.tap(find.byTooltip('Перезагрузить Registry'));
+      await tester.scrollUntilVisible(
+        cleanAddedRow,
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
 
-    await tester.pumpAndSettle();
+      expect(cleanChangedRow, findsOneWidget);
+      expect(cleanAddedRow, findsOneWidget);
 
-    expect(find.text('Изменения: 2'), findsOneWidget);
+      expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
 
-    expect(
-      find.text('Добавлено: 1 · Удалено: 0 · Изменено: 1'),
-      findsOneWidget,
-    );
-
-    expect(find.text('Изменено: Domain'), findsOneWidget);
-
-    expect(find.text('Добавлено: Added Domain'), findsOneWidget);
-
-    expect(find.textContaining('Изменено: содержимое'), findsOneWidget);
-
-    expect(loader.loadCount, 2);
-  });
+      expect(loader.loadCount, 2);
+    },
+  );
 
   testWidgets(
     'loads the complete Registry, reloads it and preserves workspace navigation',

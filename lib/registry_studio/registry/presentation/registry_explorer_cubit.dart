@@ -21,13 +21,17 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
     required this.snapshot,
     required this.index,
     required this.previousSnapshot,
-    required this.comparison,
+    required this.previousComparison,
+    required this.cleanBaselineSnapshot,
+    required this.cleanBaselineComparison,
   });
 
   final RegistrySnapshot snapshot;
   final RegistryStructuralIndex index;
   final RegistrySnapshot? previousSnapshot;
-  final RegistrySnapshotComparison? comparison;
+  final RegistrySnapshotComparison? previousComparison;
+  final RegistrySnapshot? cleanBaselineSnapshot;
+  final RegistrySnapshotComparison? cleanBaselineComparison;
 }
 
 final class RegistryExplorerFailure extends RegistryExplorerState {
@@ -53,6 +57,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   bool _retryRefresh = false;
   RegistrySnapshot? _currentSnapshot;
   RegistrySnapshot? _previousSnapshot;
+  RegistrySnapshot? _cleanBaselineSnapshot;
 
   Future<void> restore() async {
     if (_isLoading) {
@@ -69,6 +74,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
       late final RegistrySnapshot snapshot;
       RegistrySnapshot? previousSnapshot;
+      RegistrySnapshot? cleanBaselineSnapshot;
 
       if (persistedState == null) {
         snapshot = await snapshotLoader.loadSnapshot();
@@ -105,13 +111,50 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             );
           }
         }
+
+        final String? cleanBaselineRevision =
+            persistedState.cleanBaselineRevision;
+
+        if (cleanBaselineRevision != null) {
+          if (cleanBaselineRevision == snapshot.sourceRevision) {
+            cleanBaselineSnapshot = snapshot;
+          } else if (previousSnapshot != null &&
+              cleanBaselineRevision == previousSnapshot.sourceRevision) {
+            cleanBaselineSnapshot = previousSnapshot;
+          } else {
+            cleanBaselineSnapshot = await snapshotRevisionLoader
+                .loadSnapshotAtRevision(cleanBaselineRevision);
+          }
+
+          if (cleanBaselineSnapshot.projectId != persistedState.projectId ||
+              cleanBaselineSnapshot.projectAdapterId !=
+                  persistedState.projectAdapterId ||
+              cleanBaselineSnapshot.sourceDocumentPath !=
+                  persistedState.sourceDocumentPath ||
+              cleanBaselineSnapshot.sourceRevision != cleanBaselineRevision) {
+            throw StateError(
+              'Restored clean baseline Registry snapshot '
+              'does not match the persisted revision coordinates.',
+            );
+          }
+        }
       }
 
       final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
-      final RegistrySnapshotComparison? comparison = previousSnapshot == null
+
+      final RegistrySnapshotComparison? previousComparison =
+          previousSnapshot == null
           ? null
           : snapshotComparator.compare(
               previousIndex: RegistryStructuralIndex(previousSnapshot),
+              currentIndex: index,
+            );
+
+      final RegistrySnapshotComparison? cleanBaselineComparison =
+          cleanBaselineSnapshot == null
+          ? null
+          : snapshotComparator.compare(
+              previousIndex: RegistryStructuralIndex(cleanBaselineSnapshot),
               currentIndex: index,
             );
 
@@ -123,12 +166,14 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             sourceDocumentPath: snapshot.sourceDocumentPath,
             currentRevision: snapshot.sourceRevision,
             previousRevision: null,
+            cleanBaselineRevision: null,
           ),
         );
       }
 
       _currentSnapshot = snapshot;
       _previousSnapshot = previousSnapshot;
+      _cleanBaselineSnapshot = cleanBaselineSnapshot;
 
       if (!isClosed) {
         emit(
@@ -136,7 +181,9 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             snapshot: snapshot,
             index: index,
             previousSnapshot: previousSnapshot,
-            comparison: comparison,
+            previousComparison: previousComparison,
+            cleanBaselineSnapshot: cleanBaselineSnapshot,
+            cleanBaselineComparison: cleanBaselineComparison,
           ),
         );
       }
@@ -185,11 +232,23 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         }
       }
 
+      final RegistrySnapshot? cleanBaselineSnapshot = _cleanBaselineSnapshot;
+
       final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
-      final RegistrySnapshotComparison? comparison = previousSnapshot == null
+
+      final RegistrySnapshotComparison? previousComparison =
+          previousSnapshot == null
           ? null
           : snapshotComparator.compare(
               previousIndex: RegistryStructuralIndex(previousSnapshot),
+              currentIndex: index,
+            );
+
+      final RegistrySnapshotComparison? cleanBaselineComparison =
+          cleanBaselineSnapshot == null
+          ? null
+          : snapshotComparator.compare(
+              previousIndex: RegistryStructuralIndex(cleanBaselineSnapshot),
               currentIndex: index,
             );
 
@@ -200,6 +259,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           sourceDocumentPath: snapshot.sourceDocumentPath,
           currentRevision: snapshot.sourceRevision,
           previousRevision: previousSnapshot?.sourceRevision,
+          cleanBaselineRevision: cleanBaselineSnapshot?.sourceRevision,
         ),
       );
 
@@ -213,7 +273,9 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             snapshot: snapshot,
             index: index,
             previousSnapshot: previousSnapshot,
-            comparison: comparison,
+            previousComparison: previousComparison,
+            cleanBaselineSnapshot: cleanBaselineSnapshot,
+            cleanBaselineComparison: cleanBaselineComparison,
           ),
         );
       }
@@ -224,6 +286,72 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         emit(
           RegistryExplorerFailure(
             message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
+          ),
+        );
+      }
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<void> confirmCurrentAsCleanBaseline() async {
+    if (_isLoading) {
+      return;
+    }
+
+    final RegistrySnapshot? currentSnapshot = _currentSnapshot;
+
+    if (currentSnapshot == null) {
+      throw StateError('Current Registry snapshot is unavailable.');
+    }
+
+    if (_cleanBaselineSnapshot?.sourceRevision ==
+        currentSnapshot.sourceRevision) {
+      return;
+    }
+
+    _isLoading = true;
+
+    try {
+      final RegistrySnapshot? previousSnapshot = _previousSnapshot;
+
+      await revisionStateStore.saveRevisionState(
+        RegistryRevisionState(
+          projectId: currentSnapshot.projectId,
+          projectAdapterId: currentSnapshot.projectAdapterId,
+          sourceDocumentPath: currentSnapshot.sourceDocumentPath,
+          currentRevision: currentSnapshot.sourceRevision,
+          previousRevision: previousSnapshot?.sourceRevision,
+          cleanBaselineRevision: currentSnapshot.sourceRevision,
+        ),
+      );
+
+      final RegistryStructuralIndex index = RegistryStructuralIndex(
+        currentSnapshot,
+      );
+
+      final RegistrySnapshotComparison? previousComparison =
+          previousSnapshot == null
+          ? null
+          : snapshotComparator.compare(
+              previousIndex: RegistryStructuralIndex(previousSnapshot),
+              currentIndex: index,
+            );
+
+      final RegistrySnapshotComparison cleanBaselineComparison =
+          snapshotComparator.compare(previousIndex: index, currentIndex: index);
+
+      _cleanBaselineSnapshot = currentSnapshot;
+
+      if (!isClosed) {
+        emit(
+          RegistryExplorerLoaded(
+            snapshot: currentSnapshot,
+            index: index,
+            previousSnapshot: previousSnapshot,
+            previousComparison: previousComparison,
+            cleanBaselineSnapshot: currentSnapshot,
+            cleanBaselineComparison: cleanBaselineComparison,
           ),
         );
       }
