@@ -4,6 +4,33 @@ import '../../../core/domain/value_objects/registry_path.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
 import 'github_registry_document_source.dart';
 
+final class HelpyRegistryNodeIdentityLedger {
+  const HelpyRegistryNodeIdentityLedger._({
+    required this.version,
+    required this.projectId,
+    required this.registryDocumentPath,
+    required this.initialSourceRevision,
+    required this.initialSourceSnapshotFingerprint,
+    required this.entries,
+    required this.identitiesByPath,
+    required this.parentIdByNodeId,
+    required this.maximumAssignedSequence,
+  });
+
+  final String version;
+  final String projectId;
+  final String registryDocumentPath;
+  final String initialSourceRevision;
+  final String initialSourceSnapshotFingerprint;
+
+  final List<({RegistryNodeId id, RegistryPath path, RegistryNodeId? parentId})>
+  entries;
+
+  final Map<RegistryPath, RegistryNodeId> identitiesByPath;
+  final Map<RegistryNodeId, RegistryNodeId?> parentIdByNodeId;
+  final int maximumAssignedSequence;
+}
+
 final class HelpyRegistryNodeIdentityLedgerSource {
   factory HelpyRegistryNodeIdentityLedgerSource({
     required GitHubRegistryDocumentSource documentSource,
@@ -30,6 +57,7 @@ final class HelpyRegistryNodeIdentityLedgerSource {
 
   static const String _expectedVersion = 'v1';
   static const String _expectedProjectId = 'helpy';
+  static const String _nodeIdPrefix = 'helpy.registry.node.';
   static const String registryDocumentPath =
       'docs/architecture/Helpy_Architecture_Registry_v1.md';
 
@@ -43,7 +71,7 @@ final class HelpyRegistryNodeIdentityLedgerSource {
 
   final GitHubRegistryDocumentSource documentSource;
 
-  Future<Map<RegistryPath, RegistryNodeId>> load({
+  Future<HelpyRegistryNodeIdentityLedger> load({
     required String exactRevision,
   }) async {
     final ledgerDocument = await documentSource.load(
@@ -66,7 +94,7 @@ final class HelpyRegistryNodeIdentityLedgerSource {
     return decode(ledgerDocument.content);
   }
 
-  static Map<RegistryPath, RegistryNodeId> decode(String ledgerContent) {
+  static HelpyRegistryNodeIdentityLedger decode(String ledgerContent) {
     if (ledgerContent.trim().isEmpty) {
       throw const FormatException(
         'Helpy Registry node identity ledger must not be empty.',
@@ -345,18 +373,60 @@ final class HelpyRegistryNodeIdentityLedgerSource {
       );
     }
 
+    final List<
+      ({RegistryNodeId id, RegistryPath path, RegistryNodeId? parentId})
+    >
+    immutableEntries =
+        List<
+          ({RegistryNodeId id, RegistryPath path, RegistryNodeId? parentId})
+        >.unmodifiable(
+          entries.map(
+            (entry) => (
+              id: entry.id,
+              path: entry.path,
+              parentId: entry.parentNodeId == null
+                  ? null
+                  : RegistryNodeId(entry.parentNodeId!),
+            ),
+          ),
+        );
+
     final Map<RegistryPath, RegistryNodeId> identitiesByPath =
         <RegistryPath, RegistryNodeId>{
-          for (final ({
-                RegistryNodeId id,
-                RegistryPath path,
-                String? parentNodeId,
-              })
-              entry
-              in entries)
-            entry.path: entry.id,
+          for (final entry in immutableEntries) entry.path: entry.id,
         };
 
-    return Map<RegistryPath, RegistryNodeId>.unmodifiable(identitiesByPath);
+    final Map<RegistryNodeId, RegistryNodeId?> parentIdByNodeId =
+        <RegistryNodeId, RegistryNodeId?>{
+          for (final entry in immutableEntries) entry.id: entry.parentId,
+        };
+
+    int maximumAssignedSequence = 0;
+
+    for (final entry in immutableEntries) {
+      final int assignedSequence = int.parse(
+        entry.id.value.substring(_nodeIdPrefix.length),
+      );
+
+      if (assignedSequence > maximumAssignedSequence) {
+        maximumAssignedSequence = assignedSequence;
+      }
+    }
+
+    return HelpyRegistryNodeIdentityLedger._(
+      version: _expectedVersion,
+      projectId: _expectedProjectId,
+      registryDocumentPath: registryDocumentPath,
+      initialSourceRevision: sourceRevision,
+      initialSourceSnapshotFingerprint: sourceFingerprint,
+      entries: immutableEntries,
+      identitiesByPath: Map<RegistryPath, RegistryNodeId>.unmodifiable(
+        identitiesByPath,
+      ),
+      parentIdByNodeId: Map<RegistryNodeId, RegistryNodeId?>.unmodifiable(
+        parentIdByNodeId,
+      ),
+      maximumAssignedSequence: maximumAssignedSequence,
+    );
   }
 }

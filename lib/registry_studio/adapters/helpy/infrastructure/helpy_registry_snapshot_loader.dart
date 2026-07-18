@@ -48,10 +48,13 @@ final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
       );
     }
 
-    final Map<RegistryPath, RegistryNodeId> identitiesByPath =
+    final HelpyRegistryNodeIdentityLedger identityLedger =
         await identityLedgerSource.load(
           exactRevision: sourceDocument.sourceRevision,
         );
+
+    final Map<RegistryPath, RegistryNodeId> identitiesByPath =
+        identityLedger.identitiesByPath;
 
     final List<HelpyRegistryDocumentNode> interpretedRoots = documentInterpreter
         .interpret(sourceDocument.content);

@@ -79,19 +79,47 @@ void main() {
             ),
           );
 
-      final Map<RegistryPath, RegistryNodeId> identities = await source.load(
+      final HelpyRegistryNodeIdentityLedger ledger = await source.load(
         exactRevision: _exactRevision,
       );
 
-      expect(identities, hasLength(2));
+      final RegistryNodeId rootId = RegistryNodeId(
+        'helpy.registry.node.000001',
+      );
+      final RegistryNodeId domainId = RegistryNodeId(
+        'helpy.registry.node.000002',
+      );
+
+      expect(ledger.version, 'v1');
+      expect(ledger.projectId, 'helpy');
       expect(
-        identities[RegistryPath(const <String>['Registry'])],
-        RegistryNodeId('helpy.registry.node.000001'),
+        ledger.registryDocumentPath,
+        HelpyRegistryNodeIdentityLedgerSource.registryDocumentPath,
+      );
+      expect(ledger.initialSourceRevision, _exactRevision);
+      expect(ledger.initialSourceSnapshotFingerprint, 'git-blob:$_blobSha');
+      expect(ledger.entries, hasLength(2));
+      expect(ledger.entries[0].id, rootId);
+      expect(ledger.entries[0].parentId, isNull);
+      expect(ledger.entries[1].id, domainId);
+      expect(ledger.entries[1].parentId, rootId);
+      expect(ledger.identitiesByPath, hasLength(2));
+      expect(
+        ledger.identitiesByPath[RegistryPath(const <String>['Registry'])],
+        rootId,
       );
       expect(
-        identities[RegistryPath(const <String>['Registry', 'Domain'])],
-        RegistryNodeId('helpy.registry.node.000002'),
+        ledger.identitiesByPath[RegistryPath(const <String>[
+          'Registry',
+          'Domain',
+        ])],
+        domainId,
       );
+      expect(ledger.parentIdByNodeId, hasLength(2));
+      expect(ledger.parentIdByNodeId.containsKey(rootId), isTrue);
+      expect(ledger.parentIdByNodeId[rootId], isNull);
+      expect(ledger.parentIdByNodeId[domainId], rootId);
+      expect(ledger.maximumAssignedSequence, 2);
 
       expect(requests, hasLength(2));
       expect(requests.map((request) => request.path).toSet(), <String>{
@@ -124,23 +152,82 @@ void main() {
       );
     });
 
-    test('decodes an immutable path-to-identity lookup', () {
-      final Map<RegistryPath, RegistryNodeId> identities =
+    test('decodes immutable metadata and structural identity evidence', () {
+      final HelpyRegistryNodeIdentityLedger ledger =
           HelpyRegistryNodeIdentityLedgerSource.decode(_validLedger);
 
-      expect(identities, hasLength(2));
+      final RegistryNodeId rootId = RegistryNodeId(
+        'helpy.registry.node.000001',
+      );
+      final RegistryNodeId domainId = RegistryNodeId(
+        'helpy.registry.node.000002',
+      );
+
+      expect(ledger.version, 'v1');
+      expect(ledger.projectId, 'helpy');
       expect(
-        identities[RegistryPath(const <String>['Registry'])],
-        RegistryNodeId('helpy.registry.node.000001'),
+        ledger.registryDocumentPath,
+        HelpyRegistryNodeIdentityLedgerSource.registryDocumentPath,
+      );
+      expect(ledger.initialSourceRevision, _exactRevision);
+      expect(ledger.initialSourceSnapshotFingerprint, 'git-blob:$_blobSha');
+
+      expect(ledger.entries, hasLength(2));
+      expect(ledger.entries[0].id, rootId);
+      expect(ledger.entries[0].path, RegistryPath(const <String>['Registry']));
+      expect(ledger.entries[0].parentId, isNull);
+      expect(ledger.entries[1].id, domainId);
+      expect(
+        ledger.entries[1].path,
+        RegistryPath(const <String>['Registry', 'Domain']),
+      );
+      expect(ledger.entries[1].parentId, rootId);
+
+      expect(ledger.identitiesByPath, hasLength(2));
+      expect(
+        ledger.identitiesByPath[RegistryPath(const <String>['Registry'])],
+        rootId,
       );
       expect(
-        identities[RegistryPath(const <String>['Registry', 'Domain'])],
-        RegistryNodeId('helpy.registry.node.000002'),
+        ledger.identitiesByPath[RegistryPath(const <String>[
+          'Registry',
+          'Domain',
+        ])],
+        domainId,
+      );
+
+      expect(ledger.parentIdByNodeId, hasLength(2));
+      expect(ledger.parentIdByNodeId.containsKey(rootId), isTrue);
+      expect(ledger.parentIdByNodeId[rootId], isNull);
+      expect(ledger.parentIdByNodeId[domainId], rootId);
+      expect(ledger.maximumAssignedSequence, 2);
+
+      expect(
+        () =>
+            ledger.identitiesByPath[RegistryPath(const <String>[
+              'Registry',
+              'Other',
+            ])] = RegistryNodeId(
+              'helpy.registry.node.000003',
+            ),
+        throwsUnsupportedError,
       );
 
       expect(
-        () => identities[RegistryPath(const <String>['Registry', 'Other'])] =
-            RegistryNodeId('helpy.registry.node.000003'),
+        () =>
+            ledger.parentIdByNodeId[RegistryNodeId(
+                  'helpy.registry.node.000003',
+                )] =
+                rootId,
+        throwsUnsupportedError,
+      );
+
+      expect(
+        () => ledger.entries.add((
+          id: RegistryNodeId('helpy.registry.node.000003'),
+          path: RegistryPath(const <String>['Registry', 'Other']),
+          parentId: rootId,
+        )),
         throwsUnsupportedError,
       );
     });
