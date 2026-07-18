@@ -13,10 +13,15 @@ final class RegistryExplorerLoading extends RegistryExplorerState {
 }
 
 final class RegistryExplorerLoaded extends RegistryExplorerState {
-  const RegistryExplorerLoaded({required this.snapshot, required this.index});
+  const RegistryExplorerLoaded({
+    required this.snapshot,
+    required this.index,
+    required this.previousSnapshot,
+  });
 
   final RegistrySnapshot snapshot;
   final RegistryStructuralIndex index;
+  final RegistrySnapshot? previousSnapshot;
 }
 
 final class RegistryExplorerFailure extends RegistryExplorerState {
@@ -32,6 +37,8 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   final RegistrySnapshotLoader snapshotLoader;
 
   bool _isLoading = false;
+  RegistrySnapshot? _currentSnapshot;
+  RegistrySnapshot? _previousSnapshot;
 
   Future<void> load() async {
     if (_isLoading) {
@@ -44,10 +51,25 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     try {
       final RegistrySnapshot snapshot = await snapshotLoader.loadSnapshot();
 
+      final RegistrySnapshot? currentSnapshot = _currentSnapshot;
+
+      if (currentSnapshot != null &&
+          currentSnapshot.sourceRevision != snapshot.sourceRevision) {
+        _previousSnapshot = currentSnapshot;
+      }
+
+      _currentSnapshot = snapshot;
+
       final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
 
       if (!isClosed) {
-        emit(RegistryExplorerLoaded(snapshot: snapshot, index: index));
+        emit(
+          RegistryExplorerLoaded(
+            snapshot: snapshot,
+            index: index,
+            previousSnapshot: _previousSnapshot,
+          ),
+        );
       }
     } catch (error) {
       if (!isClosed) {

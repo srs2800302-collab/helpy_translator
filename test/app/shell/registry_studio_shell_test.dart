@@ -10,6 +10,7 @@ import 'package:helpy_translator/registry_studio/registry/application/contracts/
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
+import 'package:helpy_translator/registry_studio/registry/presentation/registry_explorer_cubit.dart';
 
 void main() {
   late RegistrySnapshot snapshot;
@@ -89,6 +90,56 @@ void main() {
       ]);
     });
   });
+
+  test(
+    'tracks the previous exact Registry revision only after a revision change',
+    () async {
+      final RegistrySnapshot updatedSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: '2222222222222222222222222222222222222222',
+        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+        sourceContent: snapshot.sourceContent,
+        roots: snapshot.roots,
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => snapshot,
+            () async => updatedSnapshot,
+            () async => updatedSnapshot,
+          ]);
+
+      final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+        snapshotLoader: loader,
+      );
+
+      addTearDown(cubit.close);
+
+      await cubit.load();
+
+      RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.snapshot.sourceRevision, snapshot.sourceRevision);
+      expect(loaded.previousSnapshot, isNull);
+
+      await cubit.load();
+
+      loaded = cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.snapshot.sourceRevision, updatedSnapshot.sourceRevision);
+      expect(loaded.previousSnapshot?.sourceRevision, snapshot.sourceRevision);
+
+      await cubit.load();
+
+      loaded = cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.snapshot.sourceRevision, updatedSnapshot.sourceRevision);
+      expect(loaded.previousSnapshot?.sourceRevision, snapshot.sourceRevision);
+      expect(loader.loadCount, 3);
+    },
+  );
 
   testWidgets(
     'loads the complete Registry, reloads it and preserves workspace navigation',
