@@ -258,6 +258,56 @@ void main() {
         expect(index.nodesById, hasLength(2));
         expect(index.parentIdByNodeId[domain.id], root.id);
 
+        requests.clear();
+
+        final RegistrySnapshot exactRevisionSnapshot = await successfulLoader
+            .loadSnapshotAtRevision(successCommitSha);
+
+        expect(
+          requests.where((request) => request.path.contains('/commits/')),
+          isEmpty,
+        );
+
+        expect(
+          requests.where(
+            (request) => request.path == _registryDocumentRequestPath,
+          ),
+          hasLength(2),
+        );
+
+        expect(
+          requests.where(
+            (request) => request.path == _ledgerDocumentRequestPath,
+          ),
+          hasLength(2),
+        );
+
+        expect(
+          requests
+              .where(
+                (request) =>
+                    request.path == _registryDocumentRequestPath ||
+                    request.path == _ledgerDocumentRequestPath,
+              )
+              .map((request) => request.ref)
+              .toSet(),
+          <String?>{successCommitSha},
+        );
+
+        expect(exactRevisionSnapshot.sourceRevision, successCommitSha);
+        expect(
+          exactRevisionSnapshot.sourceSnapshotFingerprint,
+          'git-blob:$successBlobSha',
+        );
+        expect(
+          exactRevisionSnapshot.roots.single.id,
+          RegistryNodeId('helpy.registry.node.000001'),
+        );
+        expect(
+          exactRevisionSnapshot.roots.single.children.single.id,
+          RegistryNodeId('helpy.registry.node.000002'),
+        );
+
         final int requestCountBeforeRepositoryMismatch = requests.length;
 
         final HelpyRegistrySnapshotLoader mismatchedRepositoryLoader =

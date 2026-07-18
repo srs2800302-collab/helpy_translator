@@ -1,6 +1,7 @@
 import '../../../core/domain/evidence/source_evidence.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
 import '../../../registry/application/contracts/registry_snapshot_loader.dart';
+import '../../../registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../../registry/domain/entities/registry_node.dart';
 import '../../../registry/domain/entities/registry_snapshot.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
@@ -34,7 +35,8 @@ final class HelpyRegistryMissingNodeIdentityException implements Exception {
   }
 }
 
-final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
+final class HelpyRegistrySnapshotLoader
+    implements RegistrySnapshotLoader, RegistrySnapshotRevisionLoader {
   const HelpyRegistrySnapshotLoader({
     required this.documentSource,
     required this.identityLedgerSource,
@@ -49,7 +51,16 @@ final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
   final HelpyRegistryDocumentInterpreter documentInterpreter;
 
   @override
-  Future<RegistrySnapshot> loadSnapshot() async {
+  Future<RegistrySnapshot> loadSnapshot() {
+    return _loadSnapshot();
+  }
+
+  @override
+  Future<RegistrySnapshot> loadSnapshotAtRevision(String sourceRevision) {
+    return _loadSnapshot(exactRevision: sourceRevision);
+  }
+
+  Future<RegistrySnapshot> _loadSnapshot({String? exactRevision}) async {
     final GitHubRegistryDocumentSource identityLedgerDocumentSource =
         identityLedgerSource.documentSource;
 
@@ -64,7 +75,9 @@ final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
       );
     }
 
-    final sourceDocument = await documentSource.load();
+    final sourceDocument = await documentSource.load(
+      exactRevision: exactRevision,
+    );
 
     if (sourceDocument.documentPath !=
         HelpyRegistryNodeIdentityLedgerSource.registryDocumentPath) {
