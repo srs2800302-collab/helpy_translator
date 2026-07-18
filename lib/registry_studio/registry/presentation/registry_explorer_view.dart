@@ -20,8 +20,62 @@ final class RegistryExplorerView extends StatelessWidget {
   }
 }
 
-final class _RegistryExplorerView extends StatelessWidget {
+final class _RegistryExplorerView extends StatefulWidget {
   const _RegistryExplorerView();
+
+  @override
+  State<_RegistryExplorerView> createState() => _RegistryExplorerViewState();
+}
+
+final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
+  final ScrollController _scrollController = ScrollController();
+
+  bool _showScrollToTop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_updateScrollToTopVisibility);
+  }
+
+  void _updateScrollToTopVisibility() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    final bool shouldShow =
+        _scrollController.position.pixels >
+        _scrollController.position.viewportDimension;
+
+    if (shouldShow == _showScrollToTop) {
+      return;
+    }
+
+    setState(() {
+      _showScrollToTop = shouldShow;
+    });
+  }
+
+  Future<void> _scrollToTop() async {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    await _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_updateScrollToTopVisibility)
+      ..dispose();
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,69 +125,95 @@ final class _RegistryExplorerView extends StatelessWidget {
             ),
           ),
           RegistryExplorerLoaded(:final snapshot, :final index) => SafeArea(
-            child: Column(
+            child: Stack(
+              fit: StackFit.expand,
               children: <Widget>[
-                Material(
-                  color: Theme.of(context).colorScheme.surfaceContainerLow,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                'Проект: ${snapshot.projectId}',
-                                style: Theme.of(context).textTheme.titleMedium,
+                Column(
+                  children: <Widget>[
+                    Material(
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Проект: ${snapshot.projectId}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('Узлов: ${index.nodes.length}'),
+                                  Text(
+                                    'Revision: '
+                                    '${snapshot.sourceRevision}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text('Узлов: ${index.nodes.length}'),
-                              Text(
-                                'Revision: '
-                                '${snapshot.sourceRevision}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
+                            ),
+                            IconButton(
+                              tooltip: 'Перезагрузить Registry',
+                              onPressed: context
+                                  .read<RegistryExplorerCubit>()
+                                  .load,
+                              icon: const Icon(Icons.refresh),
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          tooltip: 'Перезагрузить Registry',
-                          onPressed: context.read<RegistryExplorerCubit>().load,
-                          icon: const Icon(Icons.refresh),
-                        ),
-                      ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.separated(
+                        controller: _scrollController,
+                        itemCount: index.nodes.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (BuildContext context, int nodeIndex) {
+                          final RegistryNode node = index.nodes[nodeIndex];
+
+                          final evidence = node.sourceEvidence.first;
+
+                          return ListTile(
+                            key: ValueKey<String>(node.id.value),
+                            leading: Icon(
+                              node.children.isEmpty
+                                  ? Icons.description_outlined
+                                  : Icons.account_tree_outlined,
+                            ),
+                            title: Text(node.path.segments.last),
+                            subtitle: Text(
+                              '${node.path.segments.join(' → ')}\n'
+                              'Строки ${evidence.startLine}–'
+                              '${evidence.endLine}',
+                            ),
+                            isThreeLine: true,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                if (_showScrollToTop)
+                  Positioned(
+                    right: 8,
+                    bottom: 4,
+                    child: IconButton(
+                      tooltip: 'Наверх',
+                      iconSize: 32,
+                      onPressed: _scrollToTop,
+                      icon: Icon(
+                        Icons.arrow_upward,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.68),
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: index.nodes.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (BuildContext context, int nodeIndex) {
-                      final RegistryNode node = index.nodes[nodeIndex];
-
-                      final evidence = node.sourceEvidence.first;
-
-                      return ListTile(
-                        key: ValueKey<String>(node.id.value),
-                        leading: Icon(
-                          node.children.isEmpty
-                              ? Icons.description_outlined
-                              : Icons.account_tree_outlined,
-                        ),
-                        title: Text(node.path.segments.last),
-                        subtitle: Text(
-                          '${node.path.segments.join(' → ')}\n'
-                          'Строки ${evidence.startLine}–'
-                          '${evidence.endLine}',
-                        ),
-                        isThreeLine: true,
-                      );
-                    },
-                  ),
-                ),
               ],
             ),
           ),

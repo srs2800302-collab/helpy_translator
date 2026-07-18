@@ -160,6 +160,117 @@ void main() {
     },
   );
 
+  testWidgets(
+    'shows scroll-to-top action after scrolling and returns to the first node',
+    (WidgetTester tester) async {
+      const String documentPath = 'long-registry.md';
+      const String fingerprint =
+          'git-blob:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+
+      final List<RegistryNode> children = List<RegistryNode>.generate(40, (
+        int index,
+      ) {
+        final int nodeNumber = index + 2;
+        final String label = 'Node ${index + 1}';
+
+        return RegistryNode(
+          id: RegistryNodeId(
+            'project.registry.node.'
+            '${nodeNumber.toString().padLeft(6, '0')}',
+          ),
+          kindId: 'project.registry.heading.2',
+          path: RegistryPath(<String>['Registry', label]),
+          sourceEvidence: <SourceEvidence>[
+            SourceEvidence(
+              sourceDocumentPath: documentPath,
+              sourceSnapshotFingerprint: fingerprint,
+              headingPath: <String>['Registry', label],
+              startLine: nodeNumber,
+              endLine: nodeNumber,
+            ),
+          ],
+          content: '$label content.',
+          businessScopeOwnerId: null,
+          children: const <RegistryNode>[],
+        );
+      });
+
+      final RegistryNode root = RegistryNode(
+        id: RegistryNodeId('project.registry.node.000001'),
+        kindId: 'project.registry.heading.1',
+        path: RegistryPath(const <String>['Registry']),
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: documentPath,
+            sourceSnapshotFingerprint: fingerprint,
+            headingPath: const <String>['Registry'],
+            startLine: 1,
+            endLine: children.length + 1,
+          ),
+        ],
+        content: 'Root content.',
+        businessScopeOwnerId: null,
+        children: children,
+      );
+
+      final RegistrySnapshot longSnapshot = RegistrySnapshot(
+        projectId: 'project',
+        projectAdapterId: 'project.registry.adapter.v1',
+        sourceDocumentPath: documentPath,
+        sourceRevision: '2222222222222222222222222222222222222222',
+        sourceSnapshotFingerprint: fingerprint,
+        sourceContent: <String>[
+          '# Registry',
+          ...children.map(
+            (RegistryNode node) => '## ${node.path.segments.last}',
+          ),
+        ].join('\n'),
+        roots: <RegistryNode>[root],
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => longSnapshot,
+          ]);
+
+      await tester.pumpWidget(
+        RegistryStudioApplication(registrySnapshotLoader: loader),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Наверх'), findsNothing);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -1600));
+      await tester.pumpAndSettle();
+
+      final ScrollableState scrolledState = tester.state<ScrollableState>(
+        find.byType(Scrollable).first,
+      );
+
+      expect(
+        scrolledState.position.pixels,
+        greaterThan(scrolledState.position.viewportDimension),
+      );
+      expect(find.byTooltip('Наверх'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Наверх'));
+      await tester.pumpAndSettle();
+
+      final ScrollableState restoredState = tester.state<ScrollableState>(
+        find.byType(Scrollable).first,
+      );
+
+      expect(restoredState.position.pixels, closeTo(0, 0.1));
+      expect(find.byTooltip('Наверх'), findsNothing);
+      expect(
+        find.byKey(const ValueKey<String>('project.registry.node.000001')),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('shows Registry failure and retries through the same loader', (
     WidgetTester tester,
   ) async {
