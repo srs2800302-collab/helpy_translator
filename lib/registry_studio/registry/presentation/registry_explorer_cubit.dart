@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../maintenance/analysis/application/registry_snapshot_comparator.dart';
+import '../../maintenance/analysis/domain/entities/registry_snapshot_comparison.dart';
 import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
@@ -19,11 +21,13 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
     required this.snapshot,
     required this.index,
     required this.previousSnapshot,
+    required this.comparison,
   });
 
   final RegistrySnapshot snapshot;
   final RegistryStructuralIndex index;
   final RegistrySnapshot? previousSnapshot;
+  final RegistrySnapshotComparison? comparison;
 }
 
 final class RegistryExplorerFailure extends RegistryExplorerState {
@@ -37,11 +41,13 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     required this.snapshotLoader,
     required this.snapshotRevisionLoader,
     required this.revisionStateStore,
+    required this.snapshotComparator,
   }) : super(const RegistryExplorerLoading());
 
   final RegistrySnapshotLoader snapshotLoader;
   final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
   final RegistryRevisionStateStore revisionStateStore;
+  final RegistrySnapshotComparator snapshotComparator;
 
   bool _isLoading = false;
   bool _retryRefresh = false;
@@ -102,6 +108,12 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       }
 
       final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
+      final RegistrySnapshotComparison? comparison = previousSnapshot == null
+          ? null
+          : snapshotComparator.compare(
+              previousIndex: RegistryStructuralIndex(previousSnapshot),
+              currentIndex: index,
+            );
 
       if (persistedState == null) {
         await revisionStateStore.saveRevisionState(
@@ -124,6 +136,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             snapshot: snapshot,
             index: index,
             previousSnapshot: previousSnapshot,
+            comparison: comparison,
           ),
         );
       }
@@ -173,6 +186,12 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       }
 
       final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
+      final RegistrySnapshotComparison? comparison = previousSnapshot == null
+          ? null
+          : snapshotComparator.compare(
+              previousIndex: RegistryStructuralIndex(previousSnapshot),
+              currentIndex: index,
+            );
 
       await revisionStateStore.saveRevisionState(
         RegistryRevisionState(
@@ -194,6 +213,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             snapshot: snapshot,
             index: index,
             previousSnapshot: previousSnapshot,
+            comparison: comparison,
           ),
         );
       }

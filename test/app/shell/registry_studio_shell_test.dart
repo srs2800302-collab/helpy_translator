@@ -6,6 +6,7 @@ import 'package:helpy_translator/app/bootstrap/registry_studio_application.dart'
 import 'package:helpy_translator/app/shell/registry_studio_shell.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
+import 'package:helpy_translator/registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
@@ -120,6 +121,7 @@ void main() {
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        snapshotComparator: const RegistrySnapshotComparator(),
       );
 
       addTearDown(cubit.close);
@@ -202,6 +204,7 @@ void main() {
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        snapshotComparator: const RegistrySnapshotComparator(),
       );
 
       addTearDown(cubit.close);
@@ -272,6 +275,7 @@ void main() {
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        snapshotComparator: const RegistrySnapshotComparator(),
       );
 
       addTearDown(cubit.close);
@@ -333,6 +337,7 @@ void main() {
       snapshotLoader: loader,
       snapshotRevisionLoader: loader,
       revisionStateStore: store,
+      snapshotComparator: const RegistrySnapshotComparator(),
     );
 
     addTearDown(cubit.close);
@@ -412,6 +417,124 @@ void main() {
       expect(loader.loadCount, 2);
     },
   );
+
+  testWidgets('shows automatic structural changes after manual refresh', (
+    WidgetTester tester,
+  ) async {
+    const String currentFingerprint =
+        'git-blob:cccccccccccccccccccccccccccccccccccccccc';
+
+    final RegistryNode previousRoot = snapshot.roots.single;
+    final RegistryNode previousChild = previousRoot.children.single;
+
+    final RegistryNode changedChild = RegistryNode(
+      id: previousChild.id,
+      kindId: previousChild.kindId,
+      path: previousChild.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: currentFingerprint,
+          headingPath: previousChild.path.segments,
+          startLine: 3,
+          endLine: 4,
+        ),
+      ],
+      content: 'Updated domain content.',
+      businessScopeOwnerId: previousChild.businessScopeOwnerId,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode addedChild = RegistryNode(
+      id: RegistryNodeId('project.registry.node.000003'),
+      kindId: 'project.registry.heading.2',
+      path: RegistryPath(const <String>['Registry', 'Added Domain']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: currentFingerprint,
+          headingPath: const <String>['Registry', 'Added Domain'],
+          startLine: 5,
+          endLine: 6,
+        ),
+      ],
+      content: 'Added domain content.',
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode currentRoot = RegistryNode(
+      id: previousRoot.id,
+      kindId: previousRoot.kindId,
+      path: previousRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: currentFingerprint,
+          headingPath: previousRoot.path.segments,
+          startLine: 1,
+          endLine: 6,
+        ),
+      ],
+      content: previousRoot.content,
+      businessScopeOwnerId: previousRoot.businessScopeOwnerId,
+      children: <RegistryNode>[changedChild, addedChild],
+    );
+
+    final RegistrySnapshot updatedSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '4444444444444444444444444444444444444444',
+      sourceSnapshotFingerprint: currentFingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n'
+          '## Domain\n'
+          'Updated domain content.\n'
+          '## Added Domain\n'
+          'Added domain content.\n',
+      roots: <RegistryNode>[currentRoot],
+    );
+
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[
+        () async => snapshot,
+        () async => updatedSnapshot,
+      ],
+    );
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Изменения: нет предыдущей revision'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Перезагрузить Registry'));
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Изменения: 2'), findsOneWidget);
+
+    expect(
+      find.text('Добавлено: 1 · Удалено: 0 · Изменено: 1'),
+      findsOneWidget,
+    );
+
+    expect(find.text('Изменено: Domain'), findsOneWidget);
+
+    expect(find.text('Добавлено: Added Domain'), findsOneWidget);
+
+    expect(find.textContaining('Изменено: содержимое'), findsOneWidget);
+
+    expect(loader.loadCount, 2);
+  });
 
   testWidgets(
     'loads the complete Registry, reloads it and preserves workspace navigation',

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_snapshot_loader.dart';
+import '../../registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
@@ -60,6 +61,7 @@ final class RegistryStudioApplication extends StatelessWidget {
         registrySnapshotLoader: registrySnapshotLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
         registryRevisionStateStore: registryRevisionStateStore,
+        registrySnapshotComparator: const RegistrySnapshotComparator(),
       ),
     );
   }

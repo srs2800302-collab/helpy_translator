@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
@@ -27,12 +28,14 @@ final class RegistryStudioShell extends StatelessWidget {
     required this.registrySnapshotLoader,
     required this.registrySnapshotRevisionLoader,
     required this.registryRevisionStateStore,
+    required this.registrySnapshotComparator,
     super.key,
   });
 
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
   final RegistryRevisionStateStore registryRevisionStateStore;
+  final RegistrySnapshotComparator registrySnapshotComparator;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +45,7 @@ final class RegistryStudioShell extends StatelessWidget {
         registrySnapshotLoader: registrySnapshotLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
         registryRevisionStateStore: registryRevisionStateStore,
+        registrySnapshotComparator: registrySnapshotComparator,
       ),
     );
   }
@@ -52,11 +56,13 @@ final class _RegistryStudioShellView extends StatelessWidget {
     required this.registrySnapshotLoader,
     required this.registrySnapshotRevisionLoader,
     required this.registryRevisionStateStore,
+    required this.registrySnapshotComparator,
   });
 
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
   final RegistryRevisionStateStore registryRevisionStateStore;
+  final RegistrySnapshotComparator registrySnapshotComparator;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +81,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
                 snapshotLoader: registrySnapshotLoader,
                 snapshotRevisionLoader: registrySnapshotRevisionLoader,
                 revisionStateStore: registryRevisionStateStore,
+                snapshotComparator: registrySnapshotComparator,
               ),
               const _TranslatorWorkspaceView(),
             ],

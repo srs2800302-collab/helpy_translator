@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../maintenance/analysis/application/registry_snapshot_comparator.dart';
+import '../../maintenance/analysis/domain/entities/registry_node_change.dart';
 import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
@@ -12,12 +14,14 @@ final class RegistryExplorerView extends StatelessWidget {
     required this.snapshotLoader,
     required this.snapshotRevisionLoader,
     required this.revisionStateStore,
+    required this.snapshotComparator,
     super.key,
   });
 
   final RegistrySnapshotLoader snapshotLoader;
   final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
   final RegistryRevisionStateStore revisionStateStore;
+  final RegistrySnapshotComparator snapshotComparator;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +30,7 @@ final class RegistryExplorerView extends StatelessWidget {
         snapshotLoader: snapshotLoader,
         snapshotRevisionLoader: snapshotRevisionLoader,
         revisionStateStore: revisionStateStore,
+        snapshotComparator: snapshotComparator,
       )..restore(),
       child: const _RegistryExplorerView(),
     );
@@ -190,9 +195,144 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                     Expanded(
                       child: ListView.separated(
                         controller: _scrollController,
-                        itemCount: loaded.index.nodes.length,
+                        itemCount:
+                            (loaded.comparison?.changes.length ?? 0) +
+                            loaded.index.nodes.length +
+                            2,
                         separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (BuildContext context, int nodeIndex) {
+                        itemBuilder: (BuildContext context, int itemIndex) {
+                          final List<RegistryNodeChange> changes =
+                              loaded.comparison?.changes ??
+                              const <RegistryNodeChange>[];
+
+                          final int registryHeaderIndex = changes.length + 1;
+
+                          if (itemIndex == 0) {
+                            return ListTile(
+                              key: const ValueKey<String>(
+                                'registry-comparison-summary',
+                              ),
+                              title: Text(
+                                loaded.comparison == null
+                                    ? 'Изменения: нет предыдущей revision'
+                                    : 'Изменения: ${changes.length}',
+                              ),
+                              subtitle: loaded.comparison == null
+                                  ? const Text(
+                                      'Предыдущая известная revision '
+                                      'отсутствует.',
+                                    )
+                                  : Text(
+                                      'Добавлено: '
+                                      '${loaded.comparison!.addedCount} · '
+                                      'Удалено: '
+                                      '${loaded.comparison!.removedCount} · '
+                                      'Изменено: '
+                                      '${loaded.comparison!.changedCount}',
+                                    ),
+                            );
+                          }
+
+                          if (itemIndex <= changes.length) {
+                            final RegistryNodeChange change =
+                                changes[itemIndex - 1];
+
+                            final RegistryNode node =
+                                change.currentNode ?? change.previousNode!;
+
+                            final evidence = node.sourceEvidence.first;
+
+                            final List<String> details = <String>[
+                              node.path.segments.join(' → '),
+                            ];
+
+                            switch (change.kind) {
+                              case RegistryNodeChangeKind.added:
+                                details.add('Причина: добавлен новый узел.');
+                                break;
+                              case RegistryNodeChangeKind.removed:
+                                details.add('Причина: узел удалён.');
+                                break;
+                              case RegistryNodeChangeKind.changed:
+                                details.add(
+                                  'Изменено: '
+                                  '${change.aspects.map((RegistryNodeChangeAspect aspect) {
+                                    return switch (aspect) {
+                                      RegistryNodeChangeAspect.kind => 'тип',
+                                      RegistryNodeChangeAspect.path => 'путь',
+                                      RegistryNodeChangeAspect.content => 'содержимое',
+                                      RegistryNodeChangeAspect.businessScopeOwner => 'владелец бизнес-области',
+                                    };
+                                  }).join(', ')}',
+                                );
+
+                                if (change.aspects.contains(
+                                  RegistryNodeChangeAspect.path,
+                                )) {
+                                  details
+                                    ..add(
+                                      'Было: '
+                                      '${change.previousNode!.path.segments.join(' → ')}',
+                                    )
+                                    ..add(
+                                      'Стало: '
+                                      '${change.currentNode!.path.segments.join(' → ')}',
+                                    );
+                                }
+                                break;
+                            }
+
+                            details.add(
+                              'Строки ${evidence.startLine}–'
+                              '${evidence.endLine}',
+                            );
+
+                            final String title = switch (change.kind) {
+                              RegistryNodeChangeKind.added =>
+                                'Добавлено: '
+                                    '${node.path.segments.last}',
+                              RegistryNodeChangeKind.removed =>
+                                'Удалено: '
+                                    '${node.path.segments.last}',
+                              RegistryNodeChangeKind.changed =>
+                                'Изменено: '
+                                    '${node.path.segments.last}',
+                            };
+
+                            final IconData icon = switch (change.kind) {
+                              RegistryNodeChangeKind.added =>
+                                Icons.add_circle_outline,
+                              RegistryNodeChangeKind.removed =>
+                                Icons.remove_circle_outline,
+                              RegistryNodeChangeKind.changed =>
+                                Icons.edit_outlined,
+                            };
+
+                            return ListTile(
+                              key: ValueKey<String>(
+                                'registry-change-'
+                                '${change.kind.name}-'
+                                '${node.id.value}',
+                              ),
+                              leading: Icon(icon),
+                              title: Text(title),
+                              subtitle: Text(details.join('\n')),
+                              isThreeLine: true,
+                              dense: true,
+                            );
+                          }
+
+                          if (itemIndex == registryHeaderIndex) {
+                            return const ListTile(
+                              key: ValueKey<String>('full-registry-header'),
+                              title: Text('Полный Registry'),
+                              dense: true,
+                            );
+                          }
+
+                          final int nodeIndex =
+                              itemIndex - registryHeaderIndex - 1;
+
                           final RegistryNode node =
                               loaded.index.nodes[nodeIndex];
 
