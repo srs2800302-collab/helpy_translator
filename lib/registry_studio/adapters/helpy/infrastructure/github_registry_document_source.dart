@@ -100,69 +100,85 @@ final class GitHubRegistryDocumentSource {
       String sourceSnapshotFingerprint,
     })
   >
-  load() async {
+  load({String? exactRevision}) async {
     final HttpClient client = HttpClient();
 
     try {
-      final Uri revisionUri = apiBaseUri.replace(
-        pathSegments: <String>['repos', owner, repository, 'commits', ref],
-        queryParameters: const <String, String>{},
-      );
+      late final String sourceRevision;
 
-      final HttpClientRequest revisionRequest = await client.getUrl(
-        revisionUri,
-      );
+      if (exactRevision == null) {
+        final Uri revisionUri = apiBaseUri.replace(
+          pathSegments: <String>['repos', owner, repository, 'commits', ref],
+          queryParameters: const <String, String>{},
+        );
 
-      revisionRequest.headers.set(
-        HttpHeaders.acceptHeader,
-        'application/vnd.github+json',
-      );
-      revisionRequest.headers.set(
-        HttpHeaders.userAgentHeader,
-        'registry-studio',
-      );
-      revisionRequest.headers.set('X-GitHub-Api-Version', '2026-03-10');
+        final HttpClientRequest revisionRequest = await client.getUrl(
+          revisionUri,
+        );
 
-      if (token.isNotEmpty) {
         revisionRequest.headers.set(
-          HttpHeaders.authorizationHeader,
-          'Bearer $token',
+          HttpHeaders.acceptHeader,
+          'application/vnd.github+json',
         );
-      }
-
-      final HttpClientResponse revisionResponse = await revisionRequest.close();
-      final String revisionResponseBody = await utf8.decoder
-          .bind(revisionResponse)
-          .join();
-
-      if (revisionResponse.statusCode < 200 ||
-          revisionResponse.statusCode >= 300) {
-        throw HttpException(
-          'GitHub Registry revision resolution failed: '
-          'HTTP ${revisionResponse.statusCode}.',
-          uri: revisionUri,
+        revisionRequest.headers.set(
+          HttpHeaders.userAgentHeader,
+          'registry-studio',
         );
+        revisionRequest.headers.set('X-GitHub-Api-Version', '2026-03-10');
+
+        if (token.isNotEmpty) {
+          revisionRequest.headers.set(
+            HttpHeaders.authorizationHeader,
+            'Bearer $token',
+          );
+        }
+
+        final HttpClientResponse revisionResponse = await revisionRequest
+            .close();
+        final String revisionResponseBody = await utf8.decoder
+            .bind(revisionResponse)
+            .join();
+
+        if (revisionResponse.statusCode < 200 ||
+            revisionResponse.statusCode >= 300) {
+          throw HttpException(
+            'GitHub Registry revision resolution failed: '
+            'HTTP ${revisionResponse.statusCode}.',
+            uri: revisionUri,
+          );
+        }
+
+        final Object? decodedRevision = jsonDecode(revisionResponseBody);
+
+        if (decodedRevision is! Map<String, dynamic>) {
+          throw const FormatException(
+            'GitHub revision response must be a JSON object.',
+          );
+        }
+
+        final Object? revisionValue = decodedRevision['sha'];
+
+        if (revisionValue is! String ||
+            !_gitObjectShaPattern.hasMatch(revisionValue)) {
+          throw const FormatException(
+            'GitHub revision response must contain an exact '
+            'lowercase 40-character commit SHA.',
+          );
+        }
+
+        sourceRevision = revisionValue;
+      } else {
+        if (!_gitObjectShaPattern.hasMatch(exactRevision)) {
+          throw ArgumentError.value(
+            exactRevision,
+            'exactRevision',
+            'GitHub exact revision must be a lowercase '
+                '40-character commit SHA.',
+          );
+        }
+
+        sourceRevision = exactRevision;
       }
-
-      final Object? decodedRevision = jsonDecode(revisionResponseBody);
-
-      if (decodedRevision is! Map<String, dynamic>) {
-        throw const FormatException(
-          'GitHub revision response must be a JSON object.',
-        );
-      }
-
-      final Object? revisionValue = decodedRevision['sha'];
-
-      if (revisionValue is! String ||
-          !_gitObjectShaPattern.hasMatch(revisionValue)) {
-        throw const FormatException(
-          'GitHub revision response must contain an exact '
-          'lowercase 40-character commit SHA.',
-        );
-      }
-
-      final String sourceRevision = revisionValue;
 
       final Uri documentUri = apiBaseUri.replace(
         pathSegments: <String>[
