@@ -1,38 +1,31 @@
 import 'dart:convert';
 
-import 'package:flutter/services.dart';
-
 import '../../../core/domain/value_objects/registry_path.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
+import 'github_registry_document_source.dart';
 
 final class HelpyRegistryNodeIdentityLedgerSource {
   factory HelpyRegistryNodeIdentityLedgerSource({
-    required AssetBundle assetBundle,
-    String assetPath = defaultAssetPath,
+    required GitHubRegistryDocumentSource documentSource,
   }) {
-    final String normalizedAssetPath = assetPath.trim();
-
-    if (normalizedAssetPath.isEmpty) {
+    if (documentSource.documentPath != ledgerDocumentPath) {
       throw ArgumentError.value(
-        assetPath,
-        'assetPath',
-        'Helpy Registry node identity ledger asset path must not be empty.',
+        documentSource.documentPath,
+        'documentSource',
+        'Helpy Registry node identity ledger source must use '
+            'the registered ledger document path.',
       );
     }
 
     return HelpyRegistryNodeIdentityLedgerSource._(
-      assetBundle: assetBundle,
-      assetPath: normalizedAssetPath,
+      documentSource: documentSource,
     );
   }
 
-  const HelpyRegistryNodeIdentityLedgerSource._({
-    required this.assetBundle,
-    required this.assetPath,
-  });
+  const HelpyRegistryNodeIdentityLedgerSource._({required this.documentSource});
 
-  static const String defaultAssetPath =
-      'assets/registry_studio/helpy/'
+  static const String ledgerDocumentPath =
+      'docs/architecture/registry_studio/'
       'registry_node_identity_ledger_v1.json';
 
   static const String _expectedVersion = 'v1';
@@ -48,19 +41,39 @@ final class HelpyRegistryNodeIdentityLedgerSource {
     r'^helpy\.registry\.node\.[0-9]{6,}$',
   );
 
-  final AssetBundle assetBundle;
-  final String assetPath;
+  final GitHubRegistryDocumentSource documentSource;
 
-  Future<Map<RegistryPath, RegistryNodeId>> load() async {
-    final String assetContent = await assetBundle.loadString(assetPath);
+  Future<Map<RegistryPath, RegistryNodeId>> load({
+    required String exactRevision,
+  }) async {
+    final ledgerDocument = await documentSource.load(
+      exactRevision: exactRevision,
+    );
 
-    if (assetContent.trim().isEmpty) {
+    if (ledgerDocument.documentPath != ledgerDocumentPath) {
+      throw const FormatException(
+        'Helpy Registry node identity ledger source path is invalid.',
+      );
+    }
+
+    if (ledgerDocument.sourceRevision != exactRevision) {
+      throw StateError(
+        'Helpy Registry node identity ledger was not loaded from '
+        'the requested exact revision.',
+      );
+    }
+
+    return decode(ledgerDocument.content);
+  }
+
+  static Map<RegistryPath, RegistryNodeId> decode(String ledgerContent) {
+    if (ledgerContent.trim().isEmpty) {
       throw const FormatException(
         'Helpy Registry node identity ledger must not be empty.',
       );
     }
 
-    final Object? decodedLedger = jsonDecode(assetContent);
+    final Object? decodedLedger = jsonDecode(ledgerContent);
 
     if (decodedLedger is! Map<Object?, Object?>) {
       throw const FormatException(

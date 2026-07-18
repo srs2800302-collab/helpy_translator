@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
@@ -25,7 +24,13 @@ final class RegistryStudioApplication extends StatelessWidget {
           ref: 'main',
         ),
         identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
-          assetBundle: rootBundle,
+          documentSource: GitHubRegistryDocumentSource(
+            owner: 'srs2800302-collab',
+            repository: 'helpy',
+            documentPath:
+                HelpyRegistryNodeIdentityLedgerSource.ledgerDocumentPath,
+            ref: 'main',
+          ),
         ),
       ),
     );

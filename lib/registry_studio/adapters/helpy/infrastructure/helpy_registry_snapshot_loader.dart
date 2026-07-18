@@ -24,8 +24,19 @@ final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
 
   @override
   Future<RegistrySnapshot> loadSnapshot() async {
-    final Map<RegistryPath, RegistryNodeId> identitiesByPath =
-        await identityLedgerSource.load();
+    final GitHubRegistryDocumentSource identityLedgerDocumentSource =
+        identityLedgerSource.documentSource;
+
+    if (documentSource.owner.toLowerCase() !=
+            identityLedgerDocumentSource.owner.toLowerCase() ||
+        documentSource.repository.toLowerCase() !=
+            identityLedgerDocumentSource.repository.toLowerCase() ||
+        documentSource.apiBaseUri != identityLedgerDocumentSource.apiBaseUri) {
+      throw StateError(
+        'Helpy Registry document and identity ledger must use '
+        'the same GitHub repository source.',
+      );
+    }
 
     final sourceDocument = await documentSource.load();
 
@@ -36,6 +47,11 @@ final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
         'structural identity ledger: ${sourceDocument.documentPath}.',
       );
     }
+
+    final Map<RegistryPath, RegistryNodeId> identitiesByPath =
+        await identityLedgerSource.load(
+          exactRevision: sourceDocument.sourceRevision,
+        );
 
     final List<HelpyRegistryDocumentNode> interpretedRoots = documentInterpreter
         .interpret(sourceDocument.content);

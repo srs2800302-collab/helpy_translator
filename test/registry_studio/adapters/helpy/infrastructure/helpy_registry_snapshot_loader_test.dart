@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
@@ -14,12 +13,20 @@ import 'package:helpy_translator/registry_studio/registry/domain/value_objects/r
 const String _registryDocumentPath =
     HelpyRegistryNodeIdentityLedgerSource.registryDocumentPath;
 
+const String _ledgerDocumentPath =
+    HelpyRegistryNodeIdentityLedgerSource.ledgerDocumentPath;
+
 const String _registryDocumentRequestPath =
     '/repos/owner/repository/contents/'
     'docs/architecture/Helpy_Architecture_Registry_v1.md';
 
 const String _otherDocumentRequestPath =
     '/repos/owner/repository/contents/other.md';
+
+const String _ledgerDocumentRequestPath =
+    '/repos/owner/repository/contents/'
+    'docs/architecture/registry_studio/'
+    'registry_node_identity_ledger_v1.json';
 
 void main() {
   group('HelpyRegistrySnapshotLoader', () {
@@ -71,6 +78,18 @@ void main() {
           extraCommitSha: extraContent,
         };
 
+        final Map<String, String> ledgerBlobByCommit = <String, String>{
+          successCommitSha: 'dddddddddddddddddddddddddddddddddddddddd',
+          missingCommitSha: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+          extraCommitSha: 'ffffffffffffffffffffffffffffffffffffffff',
+        };
+
+        final Map<String, String> ledgerContentByCommit = <String, String>{
+          successCommitSha: _completeLedger,
+          missingCommitSha: _rootOnlyLedger,
+          extraCommitSha: _completeLedger,
+        };
+
         final HttpServer server = await HttpServer.bind(
           InternetAddress.loopbackIPv4,
           0,
@@ -80,7 +99,19 @@ void main() {
           await server.close(force: true);
         });
 
+        final List<({String path, String? ref, String accept})> requests =
+            <({String path, String? ref, String accept})>[];
+
         server.listen((HttpRequest request) async {
+          final String accept =
+              request.headers.value(HttpHeaders.acceptHeader) ?? '';
+
+          requests.add((
+            path: request.uri.path,
+            ref: request.uri.queryParameters['ref'],
+            accept: accept,
+          ));
+
           final List<String> pathSegments = request.uri.pathSegments;
 
           if (pathSegments.length == 5 &&
@@ -106,12 +137,19 @@ void main() {
           }
 
           if (request.uri.path == _registryDocumentRequestPath ||
-              request.uri.path == _otherDocumentRequestPath) {
+              request.uri.path == _otherDocumentRequestPath ||
+              request.uri.path == _ledgerDocumentRequestPath) {
             final String? commitSha = request.uri.queryParameters['ref'];
-            final String? blobSha = blobByCommit[commitSha];
-            final String? content = contentByCommit[commitSha];
-            final String accept =
-                request.headers.value(HttpHeaders.acceptHeader) ?? '';
+            final bool isLedger =
+                request.uri.path == _ledgerDocumentRequestPath;
+
+            final String? blobSha = isLedger
+                ? ledgerBlobByCommit[commitSha]
+                : blobByCommit[commitSha];
+
+            final String? content = isLedger
+                ? ledgerContentByCommit[commitSha]
+                : contentByCommit[commitSha];
 
             if (blobSha == null || content == null) {
               request.response.statusCode = HttpStatus.notFound;
@@ -154,14 +192,37 @@ void main() {
                 apiBaseUri: apiBaseUri,
               ),
               identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
-                assetBundle: _MemoryAssetBundle(const <String, String>{
-                  'success.json': _completeLedger,
-                }),
-                assetPath: 'success.json',
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
               ),
             );
 
         final RegistrySnapshot snapshot = await successfulLoader.loadSnapshot();
+
+        expect(
+          requests.where((request) => request.path.contains('/commits/')),
+          hasLength(1),
+        );
+
+        expect(
+          requests.where(
+            (request) => request.path == _ledgerDocumentRequestPath,
+          ),
+          hasLength(2),
+        );
+
+        expect(
+          requests
+              .where((request) => request.path == _ledgerDocumentRequestPath)
+              .map((request) => request.ref)
+              .toSet(),
+          <String?>{successCommitSha},
+        );
 
         expect(snapshot.projectId, HelpyRegistrySnapshotLoader.projectId);
         expect(
@@ -196,6 +257,35 @@ void main() {
         expect(index.nodesById, hasLength(2));
         expect(index.parentIdByNodeId[domain.id], root.id);
 
+        final int requestCountBeforeRepositoryMismatch = requests.length;
+
+        final HelpyRegistrySnapshotLoader mismatchedRepositoryLoader =
+            HelpyRegistrySnapshotLoader(
+              documentSource: GitHubRegistryDocumentSource(
+                owner: 'owner',
+                repository: 'repository',
+                documentPath: _registryDocumentPath,
+                ref: 'success',
+                apiBaseUri: apiBaseUri,
+              ),
+              identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'another-owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
+              ),
+            );
+
+        await expectLater(
+          mismatchedRepositoryLoader.loadSnapshot(),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(requests, hasLength(requestCountBeforeRepositoryMismatch));
+
         final HelpyRegistrySnapshotLoader mismatchedDocumentLoader =
             HelpyRegistrySnapshotLoader(
               documentSource: GitHubRegistryDocumentSource(
@@ -206,10 +296,13 @@ void main() {
                 apiBaseUri: apiBaseUri,
               ),
               identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
-                assetBundle: _MemoryAssetBundle(const <String, String>{
-                  'mismatched.json': _completeLedger,
-                }),
-                assetPath: 'mismatched.json',
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
               ),
             );
 
@@ -228,10 +321,13 @@ void main() {
                 apiBaseUri: apiBaseUri,
               ),
               identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
-                assetBundle: _MemoryAssetBundle(const <String, String>{
-                  'missing.json': _rootOnlyLedger,
-                }),
-                assetPath: 'missing.json',
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
               ),
             );
 
@@ -250,10 +346,13 @@ void main() {
                 apiBaseUri: apiBaseUri,
               ),
               identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
-                assetBundle: _MemoryAssetBundle(const <String, String>{
-                  'extra.json': _completeLedger,
-                }),
-                assetPath: 'extra.json',
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
               ),
             );
 
@@ -314,22 +413,3 @@ const String _rootOnlyLedger = '''
   ]
 }
 ''';
-
-final class _MemoryAssetBundle extends CachingAssetBundle {
-  _MemoryAssetBundle(this.assets);
-
-  final Map<String, String> assets;
-
-  @override
-  Future<ByteData> load(String key) async {
-    final String? content = assets[key];
-
-    if (content == null) {
-      throw StateError('Missing test asset: $key');
-    }
-
-    final Uint8List bytes = Uint8List.fromList(utf8.encode(content));
-
-    return ByteData.sublistView(bytes);
-  }
-}

@@ -1,48 +1,132 @@
 import 'dart:convert';
-import 'package:flutter/services.dart';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 
+const String _exactRevision = '0123456789abcdef0123456789abcdef01234567';
+
+const String _blobSha = '89abcdef0123456789abcdef0123456789abcdef';
+
+const String _ledgerRequestPath =
+    '/repos/owner/repository/contents/'
+    'docs/architecture/registry_studio/'
+    'registry_node_identity_ledger_v1.json';
+
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   group('HelpyRegistryNodeIdentityLedgerSource', () {
-    test('loads the registered production identity ledger asset', () async {
-      final HelpyRegistryNodeIdentityLedgerSource source =
-          HelpyRegistryNodeIdentityLedgerSource(assetBundle: rootBundle);
-
-      final Map<RegistryPath, RegistryNodeId> identities = await source.load();
-
-      expect(identities, isNotEmpty);
-      expect(
-        identities[RegistryPath(const <String>[
-          'Helpy Architecture Registry v1 Foundation',
-        ])],
-        RegistryNodeId('helpy.registry.node.000001'),
+    test('loads ledger content from a provided exact revision', () async {
+      final HttpServer server = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        0,
       );
-      expect(
-        identities[RegistryPath(const <String>[
-          'Helpy Architecture Registry v1 Foundation',
-          'Contract Map / Architecture Groups',
-        ])],
-        RegistryNodeId('helpy.registry.node.000002'),
-      );
-    });
 
-    test('loads a validated immutable path-to-identity lookup', () async {
-      const String assetPath = 'ledger.json';
+      addTearDown(() async {
+        await server.close(force: true);
+      });
+
+      final List<({String path, String? ref, String accept})> requests =
+          <({String path, String? ref, String accept})>[];
+
+      server.listen((HttpRequest request) async {
+        final String accept =
+            request.headers.value(HttpHeaders.acceptHeader) ?? '';
+
+        requests.add((
+          path: request.uri.path,
+          ref: request.uri.queryParameters['ref'],
+          accept: accept,
+        ));
+
+        if (request.uri.path == _ledgerRequestPath &&
+            request.uri.queryParameters['ref'] == _exactRevision &&
+            accept == 'application/vnd.github.object+json') {
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(
+            jsonEncode(<String, Object>{'type': 'file', 'sha': _blobSha}),
+          );
+          await request.response.close();
+          return;
+        }
+
+        if (request.uri.path == _ledgerRequestPath &&
+            request.uri.queryParameters['ref'] == _exactRevision &&
+            accept == 'application/vnd.github.raw+json') {
+          request.response.headers.contentType = ContentType.text;
+          request.response.write(_validLedger);
+          await request.response.close();
+          return;
+        }
+
+        request.response.statusCode = HttpStatus.notFound;
+        await request.response.close();
+      });
 
       final HelpyRegistryNodeIdentityLedgerSource source =
           HelpyRegistryNodeIdentityLedgerSource(
-            assetBundle: _MemoryAssetBundle(<String, String>{
-              assetPath: _validLedger,
-            }),
-            assetPath: assetPath,
+            documentSource: GitHubRegistryDocumentSource(
+              owner: 'owner',
+              repository: 'repository',
+              documentPath:
+                  HelpyRegistryNodeIdentityLedgerSource.ledgerDocumentPath,
+              ref: 'main',
+              apiBaseUri: Uri.parse(
+                'http://${server.address.address}:${server.port}/',
+              ),
+            ),
           );
 
-      final Map<RegistryPath, RegistryNodeId> identities = await source.load();
+      final Map<RegistryPath, RegistryNodeId> identities = await source.load(
+        exactRevision: _exactRevision,
+      );
+
+      expect(identities, hasLength(2));
+      expect(
+        identities[RegistryPath(const <String>['Registry'])],
+        RegistryNodeId('helpy.registry.node.000001'),
+      );
+      expect(
+        identities[RegistryPath(const <String>['Registry', 'Domain'])],
+        RegistryNodeId('helpy.registry.node.000002'),
+      );
+
+      expect(requests, hasLength(2));
+      expect(requests.map((request) => request.path).toSet(), <String>{
+        _ledgerRequestPath,
+      });
+      expect(requests.map((request) => request.ref).toSet(), <String?>{
+        _exactRevision,
+      });
+      expect(requests.map((request) => request.accept), <String>[
+        'application/vnd.github.object+json',
+        'application/vnd.github.raw+json',
+      ]);
+      expect(
+        requests.any((request) => request.path.contains('/commits/')),
+        isFalse,
+      );
+    });
+
+    test('rejects a configured non-ledger document path', () {
+      expect(
+        () => HelpyRegistryNodeIdentityLedgerSource(
+          documentSource: GitHubRegistryDocumentSource(
+            owner: 'owner',
+            repository: 'repository',
+            documentPath: 'other.json',
+            ref: 'main',
+          ),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('decodes an immutable path-to-identity lookup', () {
+      final Map<RegistryPath, RegistryNodeId> identities =
+          HelpyRegistryNodeIdentityLedgerSource.decode(_validLedger);
 
       expect(identities, hasLength(2));
       expect(
@@ -61,237 +145,129 @@ void main() {
       );
     });
 
-    test('rejects an invalid root schema or metadata', () async {
-      const String assetPath = 'ledger.json';
+    test('rejects an invalid root schema or metadata', () {
+      final Map<String, dynamic> invalidSchema =
+          jsonDecode(_validLedger) as Map<String, dynamic>;
 
-      final HelpyRegistryNodeIdentityLedgerSource invalidSchemaSource =
-          HelpyRegistryNodeIdentityLedgerSource(
-            assetBundle: _MemoryAssetBundle(<String, String>{
-              assetPath: '''
-{
-  "version": "v1",
-  "projectId": "helpy",
-  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
-  "initialSourceRevision": "0123456789abcdef0123456789abcdef01234567",
-  "initialSourceSnapshotFingerprint": "git-blob:89abcdef0123456789abcdef0123456789abcdef",
-  "entries": [],
-  "unexpected": true
-}
-''',
-            }),
-            assetPath: assetPath,
-          );
+      invalidSchema['unexpected'] = true;
 
-      await expectLater(
-        invalidSchemaSource.load(),
-        throwsA(isA<FormatException>()),
-      );
-
-      final HelpyRegistryNodeIdentityLedgerSource invalidMetadataSource =
-          HelpyRegistryNodeIdentityLedgerSource(
-            assetBundle: _MemoryAssetBundle(<String, String>{
-              assetPath: '''
-{
-  "version": "v1",
-  "projectId": "another-project",
-  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
-  "initialSourceRevision": "0123456789abcdef0123456789abcdef01234567",
-  "initialSourceSnapshotFingerprint": "git-blob:89abcdef0123456789abcdef0123456789abcdef",
-  "entries": [
-    {
-      "nodeId": "helpy.registry.node.000001",
-      "headingPath": ["Registry"],
-      "parentNodeId": null
-    }
-  ]
-}
-''',
-            }),
-            assetPath: assetPath,
-          );
-
-      await expectLater(
-        invalidMetadataSource.load(),
-        throwsA(isA<FormatException>()),
-      );
-    });
-
-    test('rejects duplicate node identities and heading paths', () async {
-      const String assetPath = 'ledger.json';
-
-      final HelpyRegistryNodeIdentityLedgerSource duplicateIdentitySource =
-          HelpyRegistryNodeIdentityLedgerSource(
-            assetBundle: _MemoryAssetBundle(<String, String>{
-              assetPath: '''
-{
-  "version": "v1",
-  "projectId": "helpy",
-  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
-  "initialSourceRevision": "0123456789abcdef0123456789abcdef01234567",
-  "initialSourceSnapshotFingerprint": "git-blob:89abcdef0123456789abcdef0123456789abcdef",
-  "entries": [
-    {
-      "nodeId": "helpy.registry.node.000001",
-      "headingPath": ["Registry"],
-      "parentNodeId": null
-    },
-    {
-      "nodeId": "helpy.registry.node.000001",
-      "headingPath": ["Other"],
-      "parentNodeId": null
-    }
-  ]
-}
-''',
-            }),
-            assetPath: assetPath,
-          );
-
-      await expectLater(
-        duplicateIdentitySource.load(),
-        throwsA(isA<FormatException>()),
-      );
-
-      final HelpyRegistryNodeIdentityLedgerSource duplicatePathSource =
-          HelpyRegistryNodeIdentityLedgerSource(
-            assetBundle: _MemoryAssetBundle(<String, String>{
-              assetPath: '''
-{
-  "version": "v1",
-  "projectId": "helpy",
-  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
-  "initialSourceRevision": "0123456789abcdef0123456789abcdef01234567",
-  "initialSourceSnapshotFingerprint": "git-blob:89abcdef0123456789abcdef0123456789abcdef",
-  "entries": [
-    {
-      "nodeId": "helpy.registry.node.000001",
-      "headingPath": ["Registry"],
-      "parentNodeId": null
-    },
-    {
-      "nodeId": "helpy.registry.node.000002",
-      "headingPath": ["Registry"],
-      "parentNodeId": null
-    }
-  ]
-}
-''',
-            }),
-            assetPath: assetPath,
-          );
-
-      await expectLater(
-        duplicatePathSource.load(),
-        throwsA(isA<FormatException>()),
-      );
-    });
-
-    test('rejects unknown or structurally inconsistent parents', () async {
-      const String assetPath = 'ledger.json';
-
-      final HelpyRegistryNodeIdentityLedgerSource unknownParentSource =
-          HelpyRegistryNodeIdentityLedgerSource(
-            assetBundle: _MemoryAssetBundle(<String, String>{
-              assetPath: '''
-{
-  "version": "v1",
-  "projectId": "helpy",
-  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
-  "initialSourceRevision": "0123456789abcdef0123456789abcdef01234567",
-  "initialSourceSnapshotFingerprint": "git-blob:89abcdef0123456789abcdef0123456789abcdef",
-  "entries": [
-    {
-      "nodeId": "helpy.registry.node.000001",
-      "headingPath": ["Registry"],
-      "parentNodeId": null
-    },
-    {
-      "nodeId": "helpy.registry.node.000002",
-      "headingPath": ["Registry", "Domain"],
-      "parentNodeId": "helpy.registry.node.999999"
-    }
-  ]
-}
-''',
-            }),
-            assetPath: assetPath,
-          );
-
-      await expectLater(
-        unknownParentSource.load(),
-        throwsA(isA<FormatException>()),
-      );
-
-      final HelpyRegistryNodeIdentityLedgerSource invalidPrefixSource =
-          HelpyRegistryNodeIdentityLedgerSource(
-            assetBundle: _MemoryAssetBundle(<String, String>{
-              assetPath: '''
-{
-  "version": "v1",
-  "projectId": "helpy",
-  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
-  "initialSourceRevision": "0123456789abcdef0123456789abcdef01234567",
-  "initialSourceSnapshotFingerprint": "git-blob:89abcdef0123456789abcdef0123456789abcdef",
-  "entries": [
-    {
-      "nodeId": "helpy.registry.node.000001",
-      "headingPath": ["Registry"],
-      "parentNodeId": null
-    },
-    {
-      "nodeId": "helpy.registry.node.000002",
-      "headingPath": ["Other", "Domain"],
-      "parentNodeId": "helpy.registry.node.000001"
-    }
-  ]
-}
-''',
-            }),
-            assetPath: assetPath,
-          );
-
-      await expectLater(
-        invalidPrefixSource.load(),
-        throwsA(isA<FormatException>()),
-      );
-    });
-
-    test('rejects invalid identity values and empty asset paths', () async {
       expect(
-        () => HelpyRegistryNodeIdentityLedgerSource(
-          assetBundle: _MemoryAssetBundle(const <String, String>{}),
-          assetPath: ' ',
+        () => HelpyRegistryNodeIdentityLedgerSource.decode(
+          jsonEncode(invalidSchema),
         ),
-        throwsArgumentError,
+        throwsA(isA<FormatException>()),
       );
 
-      const String assetPath = 'ledger.json';
+      final Map<String, dynamic> invalidMetadata =
+          jsonDecode(_validLedger) as Map<String, dynamic>;
 
-      final HelpyRegistryNodeIdentityLedgerSource invalidIdentitySource =
-          HelpyRegistryNodeIdentityLedgerSource(
-            assetBundle: _MemoryAssetBundle(<String, String>{
-              assetPath: '''
-{
-  "version": "v1",
-  "projectId": "helpy",
-  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
-  "initialSourceRevision": "0123456789abcdef0123456789abcdef01234567",
-  "initialSourceSnapshotFingerprint": "git-blob:89abcdef0123456789abcdef0123456789abcdef",
-  "entries": [
-    {
-      "nodeId": "Registry heading",
-      "headingPath": ["Registry"],
-      "parentNodeId": null
-    }
-  ]
-}
-''',
-            }),
-            assetPath: assetPath,
-          );
+      invalidMetadata['projectId'] = 'another-project';
 
-      await expectLater(
-        invalidIdentitySource.load(),
+      expect(
+        () => HelpyRegistryNodeIdentityLedgerSource.decode(
+          jsonEncode(invalidMetadata),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rejects duplicate node identities and heading paths', () {
+      final Map<String, dynamic> duplicateIdentity =
+          jsonDecode(_validLedger) as Map<String, dynamic>;
+
+      final List<dynamic> duplicateIdentityEntries =
+          duplicateIdentity['entries'] as List<dynamic>;
+
+      duplicateIdentityEntries.add(<String, Object?>{
+        'nodeId': 'helpy.registry.node.000001',
+        'headingPath': <String>['Other'],
+        'parentNodeId': null,
+      });
+
+      expect(
+        () => HelpyRegistryNodeIdentityLedgerSource.decode(
+          jsonEncode(duplicateIdentity),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+
+      final Map<String, dynamic> duplicatePath =
+          jsonDecode(_validLedger) as Map<String, dynamic>;
+
+      final List<dynamic> duplicatePathEntries =
+          duplicatePath['entries'] as List<dynamic>;
+
+      duplicatePathEntries.add(<String, Object?>{
+        'nodeId': 'helpy.registry.node.000003',
+        'headingPath': <String>['Registry', 'Domain'],
+        'parentNodeId': 'helpy.registry.node.000001',
+      });
+
+      expect(
+        () => HelpyRegistryNodeIdentityLedgerSource.decode(
+          jsonEncode(duplicatePath),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rejects unknown or structurally inconsistent parents', () {
+      final Map<String, dynamic> unknownParent =
+          jsonDecode(_validLedger) as Map<String, dynamic>;
+
+      final List<dynamic> unknownParentEntries =
+          unknownParent['entries'] as List<dynamic>;
+
+      final Map<String, dynamic> unknownParentChild =
+          unknownParentEntries[1] as Map<String, dynamic>;
+
+      unknownParentChild['parentNodeId'] = 'helpy.registry.node.999999';
+
+      expect(
+        () => HelpyRegistryNodeIdentityLedgerSource.decode(
+          jsonEncode(unknownParent),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+
+      final Map<String, dynamic> invalidPrefix =
+          jsonDecode(_validLedger) as Map<String, dynamic>;
+
+      final List<dynamic> invalidPrefixEntries =
+          invalidPrefix['entries'] as List<dynamic>;
+
+      final Map<String, dynamic> invalidPrefixChild =
+          invalidPrefixEntries[1] as Map<String, dynamic>;
+
+      invalidPrefixChild['headingPath'] = <String>['Other', 'Domain'];
+
+      expect(
+        () => HelpyRegistryNodeIdentityLedgerSource.decode(
+          jsonEncode(invalidPrefix),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rejects invalid identity values and empty content', () {
+      final Map<String, dynamic> invalidIdentity =
+          jsonDecode(_validLedger) as Map<String, dynamic>;
+
+      final List<dynamic> entries = invalidIdentity['entries'] as List<dynamic>;
+
+      final Map<String, dynamic> root = entries.first as Map<String, dynamic>;
+
+      root['nodeId'] = 'Registry heading';
+
+      expect(
+        () => HelpyRegistryNodeIdentityLedgerSource.decode(
+          jsonEncode(invalidIdentity),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+
+      expect(
+        () => HelpyRegistryNodeIdentityLedgerSource.decode(' '),
         throwsA(isA<FormatException>()),
       );
     });
@@ -319,22 +295,3 @@ const String _validLedger = '''
   ]
 }
 ''';
-
-final class _MemoryAssetBundle extends CachingAssetBundle {
-  _MemoryAssetBundle(this.assets);
-
-  final Map<String, String> assets;
-
-  @override
-  Future<ByteData> load(String key) async {
-    final String? content = assets[key];
-
-    if (content == null) {
-      throw StateError('Missing test asset: $key');
-    }
-
-    final Uint8List bytes = Uint8List.fromList(utf8.encode(content));
-
-    return ByteData.sublistView(bytes);
-  }
-}
