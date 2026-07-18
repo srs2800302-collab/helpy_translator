@@ -37,7 +37,7 @@ final class HelpyRegistryNodeIdentityLedgerSource {
 
   static const String _expectedVersion = 'v1';
   static const String _expectedProjectId = 'helpy';
-  static const String _expectedRegistryDocumentPath =
+  static const String registryDocumentPath =
       'docs/architecture/Helpy_Architecture_Registry_v1.md';
 
   static final RegExp _sourceRevisionPattern = RegExp(r'^[0-9a-f]{40}$');
@@ -106,7 +106,7 @@ final class HelpyRegistryNodeIdentityLedgerSource {
       );
     }
 
-    if (ledger['registryDocumentPath'] != _expectedRegistryDocumentPath) {
+    if (ledger['registryDocumentPath'] != registryDocumentPath) {
       throw const FormatException(
         'Helpy Registry node identity ledger document path is invalid.',
       );
