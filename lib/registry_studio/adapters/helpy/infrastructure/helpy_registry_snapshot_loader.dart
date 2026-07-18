@@ -107,16 +107,6 @@ final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
       );
     }
 
-    for (final RegistryPath identityPath in identitiesByPath.keys) {
-      if (!nodesByPath.containsKey(identityPath)) {
-        throw FormatException(
-          'Helpy Registry node identity ledger contains an identity '
-          'without a matching Registry node: '
-          '${identityPath.segments.join(' → ')}.',
-        );
-      }
-    }
-
     final List<RegistryNode> roots = <RegistryNode>[];
 
     for (final HelpyRegistryDocumentNode interpretedRoot in interpretedRoots) {

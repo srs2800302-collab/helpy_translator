@@ -24,7 +24,7 @@ const String _otherDocumentRequestPath =
 void main() {
   group('HelpyRegistrySnapshotLoader', () {
     test(
-      'loads an exact snapshot and rejects incomplete identity coverage',
+      'loads an exact snapshot and tolerates retired identity evidence',
       () async {
         const String successCommitSha =
             '1111111111111111111111111111111111111111';
@@ -240,7 +240,7 @@ void main() {
           throwsA(isA<FormatException>()),
         );
 
-        final HelpyRegistrySnapshotLoader unusedIdentityLoader =
+        final HelpyRegistrySnapshotLoader retiredIdentityLoader =
             HelpyRegistrySnapshotLoader(
               documentSource: GitHubRegistryDocumentSource(
                 owner: 'owner',
@@ -257,10 +257,20 @@ void main() {
               ),
             );
 
-        await expectLater(
-          unusedIdentityLoader.loadSnapshot(),
-          throwsA(isA<FormatException>()),
+        final RegistrySnapshot retiredIdentitySnapshot =
+            await retiredIdentityLoader.loadSnapshot();
+
+        expect(retiredIdentitySnapshot.sourceRevision, extraCommitSha);
+        expect(
+          retiredIdentitySnapshot.roots.single.id,
+          RegistryNodeId('helpy.registry.node.000001'),
         );
+        expect(retiredIdentitySnapshot.roots.single.children, isEmpty);
+
+        final RegistryStructuralIndex retiredIdentityIndex =
+            RegistryStructuralIndex(retiredIdentitySnapshot);
+
+        expect(retiredIdentityIndex.nodesById, hasLength(1));
       },
     );
   });
