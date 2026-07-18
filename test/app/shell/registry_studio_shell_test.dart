@@ -94,7 +94,7 @@ void main() {
   });
 
   test(
-    'tracks the previous exact Registry revision only after a revision change',
+    'tracks the previous exact Registry revision only after manual refresh',
     () async {
       final RegistrySnapshot updatedSnapshot = RegistrySnapshot(
         projectId: snapshot.projectId,
@@ -113,43 +113,60 @@ void main() {
             () async => updatedSnapshot,
           ]);
 
-      final _MemoryRegistryRevisionStateStore revisionStateStore =
+      final _MemoryRegistryRevisionStateStore store =
           _MemoryRegistryRevisionStateStore();
 
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
-        revisionStateStore: revisionStateStore,
+        revisionStateStore: store,
       );
 
       addTearDown(cubit.close);
 
-      await cubit.load();
+      await cubit.restore();
 
       RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
 
-      expect(loaded.snapshot.sourceRevision, snapshot.sourceRevision);
+      expect(loaded.snapshot, same(snapshot));
       expect(loaded.previousSnapshot, isNull);
+      expect(loader.loadCount, 1);
+      expect(loader.requestedRevisions, isEmpty);
+      expect(store.loadCount, 1);
+      expect(store.saveCount, 1);
+      expect(store.state?.currentRevision, snapshot.sourceRevision);
+      expect(store.state?.previousRevision, isNull);
 
-      await cubit.load();
+      await cubit.refresh();
 
       loaded = cubit.state as RegistryExplorerLoaded;
 
-      expect(loaded.snapshot.sourceRevision, updatedSnapshot.sourceRevision);
-      expect(loaded.previousSnapshot?.sourceRevision, snapshot.sourceRevision);
+      expect(loaded.snapshot, same(updatedSnapshot));
+      expect(loaded.previousSnapshot, same(snapshot));
+      expect(loader.loadCount, 2);
+      expect(loader.requestedRevisions, isEmpty);
+      expect(store.loadCount, 1);
+      expect(store.saveCount, 2);
+      expect(store.state?.currentRevision, updatedSnapshot.sourceRevision);
+      expect(store.state?.previousRevision, snapshot.sourceRevision);
 
-      await cubit.load();
+      await cubit.refresh();
 
       loaded = cubit.state as RegistryExplorerLoaded;
 
-      expect(loaded.snapshot.sourceRevision, updatedSnapshot.sourceRevision);
-      expect(loaded.previousSnapshot?.sourceRevision, snapshot.sourceRevision);
+      expect(loaded.snapshot, same(updatedSnapshot));
+      expect(loaded.previousSnapshot, same(snapshot));
       expect(loader.loadCount, 3);
+      expect(loader.requestedRevisions, isEmpty);
+      expect(store.loadCount, 1);
+      expect(store.saveCount, 3);
+      expect(store.state?.currentRevision, updatedSnapshot.sourceRevision);
+      expect(store.state?.previousRevision, snapshot.sourceRevision);
     },
   );
 
   test(
-    'restores the previous full snapshot when persisted current equals latest',
+    'restores persisted current and previous snapshots without loading latest',
     () async {
       final RegistrySnapshot previousSnapshot = RegistrySnapshot(
         projectId: snapshot.projectId,
@@ -163,8 +180,9 @@ void main() {
 
       final _QueuedRegistrySnapshotLoader loader =
           _QueuedRegistrySnapshotLoader(
-            <Future<RegistrySnapshot> Function()>[() async => snapshot],
+            <Future<RegistrySnapshot> Function()>[],
             exactSnapshots: <String, RegistrySnapshot>{
+              snapshot.sourceRevision: snapshot,
               previousSnapshot.sourceRevision: previousSnapshot,
             },
           );
@@ -188,26 +206,38 @@ void main() {
 
       addTearDown(cubit.close);
 
-      await cubit.load();
+      await cubit.restore();
 
       final RegistryExplorerLoaded loaded =
           cubit.state as RegistryExplorerLoaded;
 
       expect(loaded.snapshot, same(snapshot));
       expect(loaded.previousSnapshot, same(previousSnapshot));
+      expect(loader.loadCount, 0);
       expect(loader.requestedRevisions, <String>[
+        snapshot.sourceRevision,
         previousSnapshot.sourceRevision,
       ]);
+      expect(store.loadCount, 1);
+      expect(store.saveCount, 0);
       expect(store.state?.currentRevision, snapshot.sourceRevision);
       expect(store.state?.previousRevision, previousSnapshot.sourceRevision);
-      expect(store.loadCount, 1);
-      expect(store.saveCount, 1);
     },
   );
 
   test(
-    'moves persisted current to previous when latest revision changes',
+    'loads latest only on refresh and moves restored current to previous',
     () async {
+      final RegistrySnapshot previousSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: '0000000000000000000000000000000000000000',
+        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+        sourceContent: snapshot.sourceContent,
+        roots: snapshot.roots,
+      );
+
       final RegistrySnapshot latestSnapshot = RegistrySnapshot(
         projectId: snapshot.projectId,
         projectAdapterId: snapshot.projectAdapterId,
@@ -223,6 +253,7 @@ void main() {
             <Future<RegistrySnapshot> Function()>[() async => latestSnapshot],
             exactSnapshots: <String, RegistrySnapshot>{
               snapshot.sourceRevision: snapshot,
+              previousSnapshot.sourceRevision: previousSnapshot,
             },
           );
 
@@ -233,7 +264,7 @@ void main() {
               projectAdapterId: snapshot.projectAdapterId,
               sourceDocumentPath: snapshot.sourceDocumentPath,
               currentRevision: snapshot.sourceRevision,
-              previousRevision: '0000000000000000000000000000000000000000',
+              previousRevision: previousSnapshot.sourceRevision,
             ),
           );
 
@@ -245,20 +276,94 @@ void main() {
 
       addTearDown(cubit.close);
 
-      await cubit.load();
+      await cubit.restore();
 
-      final RegistryExplorerLoaded loaded =
-          cubit.state as RegistryExplorerLoaded;
+      RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.snapshot, same(snapshot));
+      expect(loaded.previousSnapshot, same(previousSnapshot));
+      expect(loader.loadCount, 0);
+      expect(loader.requestedRevisions, <String>[
+        snapshot.sourceRevision,
+        previousSnapshot.sourceRevision,
+      ]);
+      expect(store.loadCount, 1);
+      expect(store.saveCount, 0);
+
+      await cubit.refresh();
+
+      loaded = cubit.state as RegistryExplorerLoaded;
 
       expect(loaded.snapshot, same(latestSnapshot));
       expect(loaded.previousSnapshot, same(snapshot));
-      expect(loader.requestedRevisions, <String>[snapshot.sourceRevision]);
-      expect(store.state?.currentRevision, latestSnapshot.sourceRevision);
-      expect(store.state?.previousRevision, snapshot.sourceRevision);
+      expect(loader.loadCount, 1);
+      expect(loader.requestedRevisions, <String>[
+        snapshot.sourceRevision,
+        previousSnapshot.sourceRevision,
+      ]);
       expect(store.loadCount, 1);
       expect(store.saveCount, 1);
+      expect(store.state?.currentRevision, latestSnapshot.sourceRevision);
+      expect(store.state?.previousRevision, snapshot.sourceRevision);
     },
   );
+
+  test('retries a failed manual refresh as refresh', () async {
+    final RegistrySnapshot latestSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '3333333333333333333333333333333333333333',
+      sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+      sourceContent: snapshot.sourceContent,
+      roots: snapshot.roots,
+    );
+
+    final _QueuedRegistrySnapshotLoader loader =
+        _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+          () async => snapshot,
+          () => Future<RegistrySnapshot>.error(StateError('refresh offline')),
+          () async => latestSnapshot,
+        ]);
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+      snapshotLoader: loader,
+      snapshotRevisionLoader: loader,
+      revisionStateStore: store,
+    );
+
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+
+    expect(cubit.state, isA<RegistryExplorerLoaded>());
+    expect(loader.loadCount, 1);
+    expect(store.loadCount, 1);
+    expect(store.saveCount, 1);
+
+    await cubit.refresh();
+
+    expect(cubit.state, isA<RegistryExplorerFailure>());
+    expect(loader.loadCount, 2);
+    expect(store.loadCount, 1);
+    expect(store.saveCount, 1);
+
+    await cubit.retry();
+
+    final RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.snapshot, same(latestSnapshot));
+    expect(loaded.previousSnapshot, same(snapshot));
+    expect(loader.loadCount, 3);
+    expect(loader.requestedRevisions, isEmpty);
+    expect(store.loadCount, 1);
+    expect(store.saveCount, 2);
+    expect(store.state?.currentRevision, latestSnapshot.sourceRevision);
+    expect(store.state?.previousRevision, snapshot.sourceRevision);
+  });
 
   testWidgets(
     'shows the previous exact revision after Registry revision changes',

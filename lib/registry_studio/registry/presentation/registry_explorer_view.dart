@@ -26,7 +26,7 @@ final class RegistryExplorerView extends StatelessWidget {
         snapshotLoader: snapshotLoader,
         snapshotRevisionLoader: snapshotRevisionLoader,
         revisionStateStore: revisionStateStore,
-      )..load(),
+      )..restore(),
       child: const _RegistryExplorerView(),
     );
   }
@@ -128,7 +128,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                     const SizedBox(height: 16),
                     IconButton(
                       tooltip: 'Повторить загрузку Registry',
-                      onPressed: context.read<RegistryExplorerCubit>().load,
+                      onPressed: context.read<RegistryExplorerCubit>().retry,
                       icon: const Icon(Icons.refresh),
                     ),
                   ],
@@ -180,7 +180,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               tooltip: 'Перезагрузить Registry',
                               onPressed: context
                                   .read<RegistryExplorerCubit>()
-                                  .load,
+                                  .refresh,
                               icon: const Icon(Icons.refresh),
                             ),
                           ],

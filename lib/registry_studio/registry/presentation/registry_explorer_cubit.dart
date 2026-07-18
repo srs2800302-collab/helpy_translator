@@ -44,88 +44,79 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   final RegistryRevisionStateStore revisionStateStore;
 
   bool _isLoading = false;
-  bool _restorationCompleted = false;
+  bool _retryRefresh = false;
   RegistrySnapshot? _currentSnapshot;
   RegistrySnapshot? _previousSnapshot;
 
-  Future<void> load() async {
+  Future<void> restore() async {
     if (_isLoading) {
       return;
     }
 
+    _retryRefresh = false;
     _isLoading = true;
     emit(const RegistryExplorerLoading());
 
     try {
-      final RegistrySnapshot snapshot = await snapshotLoader.loadSnapshot();
+      final RegistryRevisionState? persistedState = await revisionStateStore
+          .loadRevisionState();
 
-      RegistrySnapshot? previousSnapshot = _previousSnapshot;
+      late final RegistrySnapshot snapshot;
+      RegistrySnapshot? previousSnapshot;
 
-      if (!_restorationCompleted) {
-        final RegistryRevisionState? persistedState = await revisionStateStore
-            .loadRevisionState();
-
-        final bool belongsToLoadedRegistry =
-            persistedState != null &&
-            persistedState.projectId == snapshot.projectId &&
-            persistedState.projectAdapterId == snapshot.projectAdapterId &&
-            persistedState.sourceDocumentPath == snapshot.sourceDocumentPath;
-
-        if (belongsToLoadedRegistry) {
-          final String? revisionToRestore =
-              persistedState.currentRevision == snapshot.sourceRevision
-              ? persistedState.previousRevision
-              : persistedState.currentRevision;
-
-          if (revisionToRestore != null) {
-            final RegistrySnapshot restoredSnapshot =
-                await snapshotRevisionLoader.loadSnapshotAtRevision(
-                  revisionToRestore,
-                );
-
-            if (restoredSnapshot.projectId != snapshot.projectId ||
-                restoredSnapshot.projectAdapterId !=
-                    snapshot.projectAdapterId ||
-                restoredSnapshot.sourceDocumentPath !=
-                    snapshot.sourceDocumentPath ||
-                restoredSnapshot.sourceRevision != revisionToRestore) {
-              throw StateError(
-                'Restored Registry snapshot does not match '
-                'the persisted revision coordinates.',
-              );
-            }
-
-            previousSnapshot = restoredSnapshot;
-          } else {
-            previousSnapshot = null;
-          }
-        } else {
-          previousSnapshot = null;
-        }
+      if (persistedState == null) {
+        snapshot = await snapshotLoader.loadSnapshot();
       } else {
-        final RegistrySnapshot? currentSnapshot = _currentSnapshot;
+        snapshot = await snapshotRevisionLoader.loadSnapshotAtRevision(
+          persistedState.currentRevision,
+        );
 
-        if (currentSnapshot != null &&
-            currentSnapshot.sourceRevision != snapshot.sourceRevision) {
-          previousSnapshot = currentSnapshot;
+        if (snapshot.projectId != persistedState.projectId ||
+            snapshot.projectAdapterId != persistedState.projectAdapterId ||
+            snapshot.sourceDocumentPath != persistedState.sourceDocumentPath ||
+            snapshot.sourceRevision != persistedState.currentRevision) {
+          throw StateError(
+            'Restored current Registry snapshot does not match '
+            'the persisted revision coordinates.',
+          );
+        }
+
+        final String? previousRevision = persistedState.previousRevision;
+
+        if (previousRevision != null) {
+          previousSnapshot = await snapshotRevisionLoader
+              .loadSnapshotAtRevision(previousRevision);
+
+          if (previousSnapshot.projectId != persistedState.projectId ||
+              previousSnapshot.projectAdapterId !=
+                  persistedState.projectAdapterId ||
+              previousSnapshot.sourceDocumentPath !=
+                  persistedState.sourceDocumentPath ||
+              previousSnapshot.sourceRevision != previousRevision) {
+            throw StateError(
+              'Restored previous Registry snapshot does not match '
+              'the persisted revision coordinates.',
+            );
+          }
         }
       }
 
       final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
 
-      await revisionStateStore.saveRevisionState(
-        RegistryRevisionState(
-          projectId: snapshot.projectId,
-          projectAdapterId: snapshot.projectAdapterId,
-          sourceDocumentPath: snapshot.sourceDocumentPath,
-          currentRevision: snapshot.sourceRevision,
-          previousRevision: previousSnapshot?.sourceRevision,
-        ),
-      );
+      if (persistedState == null) {
+        await revisionStateStore.saveRevisionState(
+          RegistryRevisionState(
+            projectId: snapshot.projectId,
+            projectAdapterId: snapshot.projectAdapterId,
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            currentRevision: snapshot.sourceRevision,
+            previousRevision: null,
+          ),
+        );
+      }
 
       _currentSnapshot = snapshot;
       _previousSnapshot = previousSnapshot;
-      _restorationCompleted = true;
 
       if (!isClosed) {
         emit(
@@ -149,5 +140,83 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     } finally {
       _isLoading = false;
     }
+  }
+
+  Future<void> refresh() async {
+    if (_isLoading) {
+      return;
+    }
+
+    _retryRefresh = true;
+    _isLoading = true;
+    emit(const RegistryExplorerLoading());
+
+    try {
+      final RegistrySnapshot snapshot = await snapshotLoader.loadSnapshot();
+
+      final RegistrySnapshot? currentSnapshot = _currentSnapshot;
+      RegistrySnapshot? previousSnapshot = _previousSnapshot;
+
+      if (currentSnapshot != null) {
+        if (snapshot.projectId != currentSnapshot.projectId ||
+            snapshot.projectAdapterId != currentSnapshot.projectAdapterId ||
+            snapshot.sourceDocumentPath != currentSnapshot.sourceDocumentPath) {
+          throw StateError(
+            'Refreshed Registry snapshot does not match '
+            'the current Registry coordinates.',
+          );
+        }
+
+        if (snapshot.sourceRevision != currentSnapshot.sourceRevision) {
+          previousSnapshot = currentSnapshot;
+        }
+      }
+
+      final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
+
+      await revisionStateStore.saveRevisionState(
+        RegistryRevisionState(
+          projectId: snapshot.projectId,
+          projectAdapterId: snapshot.projectAdapterId,
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          currentRevision: snapshot.sourceRevision,
+          previousRevision: previousSnapshot?.sourceRevision,
+        ),
+      );
+
+      _currentSnapshot = snapshot;
+      _previousSnapshot = previousSnapshot;
+      _retryRefresh = false;
+
+      if (!isClosed) {
+        emit(
+          RegistryExplorerLoaded(
+            snapshot: snapshot,
+            index: index,
+            previousSnapshot: previousSnapshot,
+          ),
+        );
+      }
+    } catch (error) {
+      if (!isClosed) {
+        final String message = error.toString().trim();
+
+        emit(
+          RegistryExplorerFailure(
+            message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
+          ),
+        );
+      }
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<void> retry() {
+    if (_retryRefresh) {
+      return refresh();
+    }
+
+    return restore();
   }
 }
