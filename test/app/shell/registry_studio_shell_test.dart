@@ -142,6 +142,50 @@ void main() {
   );
 
   testWidgets(
+    'shows the previous exact revision after Registry revision changes',
+    (WidgetTester tester) async {
+      final RegistrySnapshot updatedSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: '2222222222222222222222222222222222222222',
+        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+        sourceContent: snapshot.sourceContent,
+        roots: snapshot.roots,
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => snapshot,
+            () async => updatedSnapshot,
+          ]);
+
+      await tester.pumpWidget(
+        RegistryStudioApplication(registrySnapshotLoader: loader),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Предыдущая revision: ${snapshot.sourceRevision}'),
+        findsNothing,
+      );
+
+      await tester.tap(find.byTooltip('Перезагрузить Registry'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Revision: ${updatedSnapshot.sourceRevision}'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Предыдущая revision: ${snapshot.sourceRevision}'),
+        findsOneWidget,
+      );
+      expect(loader.loadCount, 2);
+    },
+  );
+
+  testWidgets(
     'loads the complete Registry, reloads it and preserves workspace navigation',
     (WidgetTester tester) async {
       final Completer<RegistrySnapshot> firstLoad =

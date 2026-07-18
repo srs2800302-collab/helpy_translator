@@ -124,7 +124,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
               ),
             ),
           ),
-          RegistryExplorerLoaded(:final snapshot, :final index) => SafeArea(
+          RegistryExplorerLoaded loaded => SafeArea(
             child: Stack(
               fit: StackFit.expand,
               children: <Widget>[
@@ -141,19 +141,26 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
                                   Text(
-                                    'Проект: ${snapshot.projectId}',
+                                    'Проект: ${loaded.snapshot.projectId}',
                                     style: Theme.of(
                                       context,
                                     ).textTheme.titleMedium,
                                   ),
                                   const SizedBox(height: 4),
-                                  Text('Узлов: ${index.nodes.length}'),
+                                  Text('Узлов: ${loaded.index.nodes.length}'),
                                   Text(
                                     'Revision: '
-                                    '${snapshot.sourceRevision}',
+                                    '${loaded.snapshot.sourceRevision}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
+                                  if (loaded.previousSnapshot != null)
+                                    Text(
+                                      'Предыдущая revision: '
+                                      '${loaded.previousSnapshot!.sourceRevision}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                 ],
                               ),
                             ),
@@ -171,10 +178,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                     Expanded(
                       child: ListView.separated(
                         controller: _scrollController,
-                        itemCount: index.nodes.length,
+                        itemCount: loaded.index.nodes.length,
                         separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (BuildContext context, int nodeIndex) {
-                          final RegistryNode node = index.nodes[nodeIndex];
+                          final RegistryNode node =
+                              loaded.index.nodes[nodeIndex];
 
                           final evidence = node.sourceEvidence.first;
 
