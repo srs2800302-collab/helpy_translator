@@ -1,0 +1,4983 @@
+{
+  "version": "v1",
+  "projectId": "helpy",
+  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
+  "initialSourceRevision": "8e26a1eed581f96aa57f4b400dd4b6d59c30168f",
+  "initialSourceSnapshotFingerprint": "git-blob:c69a0f5812e00f99ecc3eb3235d5a2c8fc3271a9",
+  "entries": [
+    {
+      "nodeId": "helpy.registry.node.000001",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation"
+      ],
+      "parentNodeId": null
+    },
+    {
+      "nodeId": "helpy.registry.node.000002",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000003",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups",
+        "Group A — Foundation / Product Identity"
+      ],
+      "parentNodeId": "helpy.registry.node.000002"
+    },
+    {
+      "nodeId": "helpy.registry.node.000004",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups",
+        "Group B — Service Registry / Categories"
+      ],
+      "parentNodeId": "helpy.registry.node.000002"
+    },
+    {
+      "nodeId": "helpy.registry.node.000005",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups",
+        "Group C — Admin / Dynamic Forms / Knowledge / Guidance"
+      ],
+      "parentNodeId": "helpy.registry.node.000002"
+    },
+    {
+      "nodeId": "helpy.registry.node.000006",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups",
+        "Group D — Order Lifecycle / Timeline / Chat / Evidence"
+      ],
+      "parentNodeId": "helpy.registry.node.000002"
+    },
+    {
+      "nodeId": "helpy.registry.node.000007",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups",
+        "Group E — Offers / Pricing / Payments / Financial Snapshot"
+      ],
+      "parentNodeId": "helpy.registry.node.000002"
+    },
+    {
+      "nodeId": "helpy.registry.node.000008",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups",
+        "Group F — Reviews / Reputation / Ranking / Language Matching"
+      ],
+      "parentNodeId": "helpy.registry.node.000002"
+    },
+    {
+      "nodeId": "helpy.registry.node.000009",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups",
+        "Group G — Recovery / Global Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000002"
+    },
+    {
+      "nodeId": "helpy.registry.node.000010",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contract Map / Architecture Groups",
+        "Critical Closure Path"
+      ],
+      "parentNodeId": "helpy.registry.node.000002"
+    },
+    {
+      "nodeId": "helpy.registry.node.000011",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Architecture Freeze Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000012",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "1. Project Identity"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000013",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "2. Long-Term Architecture Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000014",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "3. Core Product Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000015",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "4. Core Business Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000016",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "5. Chat Governance"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000017",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "6. Approved Root Categories"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000018",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "7. Category Governance"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000019",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "8. Reference Category Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000020",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "9. Specialized Reference Categories"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000021",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Roadmap Decision → Appliance Installation & Connection Architecture"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000022",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Appliance Mini-TZ Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000023",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Appliance Mini-TZ Standard",
+        "Appliance → Стиральная машина"
+      ],
+      "parentNodeId": "helpy.registry.node.000022"
+    },
+    {
+      "nodeId": "helpy.registry.node.000024",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Appliance Mini-TZ Standard",
+        "Appliance → Посудомоечная машина"
+      ],
+      "parentNodeId": "helpy.registry.node.000022"
+    },
+    {
+      "nodeId": "helpy.registry.node.000025",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Appliance Mini-TZ Standard",
+        "Appliance → Измельчитель пищевых отходов"
+      ],
+      "parentNodeId": "helpy.registry.node.000022"
+    },
+    {
+      "nodeId": "helpy.registry.node.000026",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000027",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Кухонная мойка"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000028",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Кухонный кран"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000029",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Проточный водонагреватель"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000030",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Измельчитель пищевых отходов"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000031",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Варочная панель"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000032",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Духовой шкаф"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000033",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Встроенная микроволновая печь"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000034",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Кухонная вытяжка"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000035",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Встроенный холодильник"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000036",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Встроенная посудомоечная машина"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000037",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Built-in Appliance Architecture Standard",
+        "Kitchen Built-in Appliances → Встроенная стиральная машина"
+      ],
+      "parentNodeId": "helpy.registry.node.000026"
+    },
+    {
+      "nodeId": "helpy.registry.node.000038",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Pre-Build Decision Gate → Client Expected Price Architecture"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000039",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Surface Protection Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000040",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Materials Separation Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000041",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Electrical Readiness Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000042",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Completion Evidence Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000043",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Service Quality Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000044",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000045",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Workflow Development Process"
+      ],
+      "parentNodeId": "helpy.registry.node.000044"
+    },
+    {
+      "nodeId": "helpy.registry.node.000046",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Entity Naming"
+      ],
+      "parentNodeId": "helpy.registry.node.000044"
+    },
+    {
+      "nodeId": "helpy.registry.node.000047",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Photo Labels"
+      ],
+      "parentNodeId": "helpy.registry.node.000044"
+    },
+    {
+      "nodeId": "helpy.registry.node.000048",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Client Labels"
+      ],
+      "parentNodeId": "helpy.registry.node.000044"
+    },
+    {
+      "nodeId": "helpy.registry.node.000049",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Master Workflow Blocks"
+      ],
+      "parentNodeId": "helpy.registry.node.000044"
+    },
+    {
+      "nodeId": "helpy.registry.node.000050",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Master Workflow Blocks",
+        "Compatibility Check Before Work"
+      ],
+      "parentNodeId": "helpy.registry.node.000049"
+    },
+    {
+      "nodeId": "helpy.registry.node.000051",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Master Workflow Blocks",
+        "Equipment Inspection Before Installation and Connection"
+      ],
+      "parentNodeId": "helpy.registry.node.000049"
+    },
+    {
+      "nodeId": "helpy.registry.node.000052",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Master Workflow Blocks",
+        "Equipment Removal"
+      ],
+      "parentNodeId": "helpy.registry.node.000049"
+    },
+    {
+      "nodeId": "helpy.registry.node.000053",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Master Workflow Blocks",
+        "Installation and Connection"
+      ],
+      "parentNodeId": "helpy.registry.node.000049"
+    },
+    {
+      "nodeId": "helpy.registry.node.000054",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Rule Language & Translation Standard",
+        "Canonical Master Workflow Blocks",
+        "Functional Verification"
+      ],
+      "parentNodeId": "helpy.registry.node.000049"
+    },
+    {
+      "nodeId": "helpy.registry.node.000055",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Registry Language Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000056",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Diagnostics Pattern"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000057",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "10. Electrical Shower Policy"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000058",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "11. Deferred Categories"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000059",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "12. Knowledge Base Engine"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000060",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "13. Dynamic Form Engine"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000061",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "10. Premium Services"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000062",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "15. Furniture Skill Levels"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000063",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "16. Global Platform Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000064",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "16. Global Platform Rules",
+        "Rule #1 — Client-Safe Scope Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000063"
+    },
+    {
+      "nodeId": "helpy.registry.node.000065",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "16. Global Platform Rules",
+        "Rule #2 — Equipment Packaging Protection Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000063"
+    },
+    {
+      "nodeId": "helpy.registry.node.000066",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "16. Global Platform Rules",
+        "Rule #3 — Equipment Compatibility Before Demolition Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000063"
+    },
+    {
+      "nodeId": "helpy.registry.node.000067",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "16. Global Platform Rules",
+        "Rule #4 — Structured Scope Before Chat Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000063"
+    },
+    {
+      "nodeId": "helpy.registry.node.000068",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "16. Global Platform Rules",
+        "Rule #5 — No Extra Photo Requests In Chat Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000063"
+    },
+    {
+      "nodeId": "helpy.registry.node.000069",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "16. Global Platform Rules",
+        "Rule #6 — One-Time Final Price Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000063"
+    },
+    {
+      "nodeId": "helpy.registry.node.000070",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "16. Global Platform Rules",
+        "Rule #7 — Platform Boundary / Ownership Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000063"
+    },
+    {
+      "nodeId": "helpy.registry.node.000071",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000072",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Related Orders Admin Visibility"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000073",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Category Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000074",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Subcategory Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000075",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Question Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000076",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Photo Requirement Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000077",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Pricing Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000078",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Guidance Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000079",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Draft / Published"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000080",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Clone Category"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000081",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Archive Instead Of Delete"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000082",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Preview"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000083",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Test Order Preview"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000084",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Category Health Check"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000085",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Audit Log"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000086",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Rollback"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000087",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Dependency Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000088",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Notes"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000089",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Master Eligibility Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000090",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Translation Review Workflow"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000091",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Multi-Language Admin Interface"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000092",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Feature Flags"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000093",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Notification Center"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000094",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Platform Settings Center"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000095",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000096",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations"
+      ],
+      "parentNodeId": "helpy.registry.node.000095"
+    },
+    {
+      "nodeId": "helpy.registry.node.000097",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Transaction Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000098",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Storage Independence"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000099",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Clean Architecture Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000100",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "AI Engineering Principles"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000101",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Workflow"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000102",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Evidence"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000103",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Runtime Verification Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000104",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Engineering Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000105",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Domain Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000106",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "RegistryEntityKind and RegistryEntityPayload Boundary"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000107",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "RegistryRelation Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000108",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "RegistryDependency Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000109",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "RegistryPath Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000110",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "RegistrySnapshot Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000111",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "RegistryGraph Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000112",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Repository Boundary Contracts"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000113",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Change Analysis"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000114",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Impact Analysis Result Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000115",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Validation Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000116",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Publishing Gate Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000117",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Publication Attempt"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000118",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Governed Recovery"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000119",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Draft Workspace Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000120",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Audit Log Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000121",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Bulk Operations Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000122",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Global Rename Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000123",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Platform Scope"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000124",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Platform Scope",
+        "Interface Boundary"
+      ],
+      "parentNodeId": "helpy.registry.node.000123"
+    },
+    {
+      "nodeId": "helpy.registry.node.000125",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Platform Scope",
+        "Current Development Boundary"
+      ],
+      "parentNodeId": "helpy.registry.node.000123"
+    },
+    {
+      "nodeId": "helpy.registry.node.000126",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000127",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "1. Target Platform Boundary"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000128",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "2. Core Registry Domain Decisions"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000129",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "3. RegistryEntityKind and RegistryEntityPayload Boundary"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000130",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "4. Governance Core Decisions"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000131",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "5. Draft Revision Invalidation Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000132",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "6. RegistrySnapshot and Revision Ownership"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000133",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "7. Analysis, Validation and Publication Decisions"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000134",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "8. PublicationAttempt and Recovery"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000135",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "9. Audit Log Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000136",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "10. Relation and Dependency Semantics"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000137",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "11. Application Service Decisions"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000138",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "12. Runtime Decisions"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000139",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "13. Helpy Adapter Decisions"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000140",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "14. Deferred Future Expansion"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000141",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Architecture Audit Decision Register",
+        "15. Controlled Rewrite Scope"
+      ],
+      "parentNodeId": "helpy.registry.node.000126"
+    },
+    {
+      "nodeId": "helpy.registry.node.000142",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Dependency Explorer Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000143",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Rules Simulator Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000144",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Helpy Registry Coverage Extension"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000145",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Context Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000146",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineer Intent Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000147",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Workflow Resolver Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000148",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Orchestrator Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000149",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Workflow Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000150",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Workflow Instance Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000151",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Service Contract Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000152",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Service Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000153",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Service Capability Catalog Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000154",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Engineering Runtime Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000155",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Panel Roadmap Extensions",
+        "Registry Studio / Registry Operations",
+        "Registry Studio Development Phases"
+      ],
+      "parentNodeId": "helpy.registry.node.000096"
+    },
+    {
+      "nodeId": "helpy.registry.node.000156",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Реализованные возможности"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000157",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Реализованные возможности",
+        "Навигация по Registry"
+      ],
+      "parentNodeId": "helpy.registry.node.000156"
+    },
+    {
+      "nodeId": "helpy.registry.node.000158",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Реализованные возможности",
+        "Сохранение рабочего состояния"
+      ],
+      "parentNodeId": "helpy.registry.node.000156"
+    },
+    {
+      "nodeId": "helpy.registry.node.000159",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Реализованные возможности",
+        "Поиск и навигация"
+      ],
+      "parentNodeId": "helpy.registry.node.000156"
+    },
+    {
+      "nodeId": "helpy.registry.node.000160",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Реализованные возможности",
+        "Контроль проверки"
+      ],
+      "parentNodeId": "helpy.registry.node.000156"
+    },
+    {
+      "nodeId": "helpy.registry.node.000161",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Практическое применение"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000162",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Развитие Registry Studio"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000163",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Future Admin Roles Reserve"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000164",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Chat Lifecycle / Attachment Rules Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000165",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Completion Flow Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000166",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Admin Order Timeline / Evidence Screen"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000167",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Evidence / Quality Control Center"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000168",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Review / Reputation Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000169",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "17. Admin Panel Architecture",
+        "Global Rules Builder"
+      ],
+      "parentNodeId": "helpy.registry.node.000071"
+    },
+    {
+      "nodeId": "helpy.registry.node.000170",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "18. Future Business Direction"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000171",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "19. Registry Expansion Plan"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000172",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "20. Service Architecture Registry — Furniture Assembly"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000173",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "20. Service Architecture Registry — Furniture Assembly",
+        "Root Category"
+      ],
+      "parentNodeId": "helpy.registry.node.000172"
+    },
+    {
+      "nodeId": "helpy.registry.node.000174",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "20. Service Architecture Registry — Furniture Assembly",
+        "Subcategories"
+      ],
+      "parentNodeId": "helpy.registry.node.000172"
+    },
+    {
+      "nodeId": "helpy.registry.node.000175",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000176",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.1 Kitchen Assembly"
+      ],
+      "parentNodeId": "helpy.registry.node.000175"
+    },
+    {
+      "nodeId": "helpy.registry.node.000177",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.1 Kitchen Assembly",
+        "Required Photos"
+      ],
+      "parentNodeId": "helpy.registry.node.000176"
+    },
+    {
+      "nodeId": "helpy.registry.node.000178",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.1 Kitchen Assembly",
+        "Лимит фотографий"
+      ],
+      "parentNodeId": "helpy.registry.node.000176"
+    },
+    {
+      "nodeId": "helpy.registry.node.000179",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.1 Kitchen Assembly",
+        "Правила для клиента"
+      ],
+      "parentNodeId": "helpy.registry.node.000176"
+    },
+    {
+      "nodeId": "helpy.registry.node.000180",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.1 Kitchen Assembly",
+        "Правила выполнения работ мастером"
+      ],
+      "parentNodeId": "helpy.registry.node.000176"
+    },
+    {
+      "nodeId": "helpy.registry.node.000181",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.1 Kitchen Assembly",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000176"
+    },
+    {
+      "nodeId": "helpy.registry.node.000182",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.2 Cabinet Furniture"
+      ],
+      "parentNodeId": "helpy.registry.node.000175"
+    },
+    {
+      "nodeId": "helpy.registry.node.000183",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.2 Cabinet Furniture",
+        "Состав категории"
+      ],
+      "parentNodeId": "helpy.registry.node.000182"
+    },
+    {
+      "nodeId": "helpy.registry.node.000184",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.2 Cabinet Furniture",
+        "Перечень мебели для сборки"
+      ],
+      "parentNodeId": "helpy.registry.node.000182"
+    },
+    {
+      "nodeId": "helpy.registry.node.000185",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.2 Cabinet Furniture",
+        "Required Photos"
+      ],
+      "parentNodeId": "helpy.registry.node.000182"
+    },
+    {
+      "nodeId": "helpy.registry.node.000186",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.2 Cabinet Furniture",
+        "Лимит фотографий"
+      ],
+      "parentNodeId": "helpy.registry.node.000182"
+    },
+    {
+      "nodeId": "helpy.registry.node.000187",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.2 Cabinet Furniture",
+        "Правила для клиента"
+      ],
+      "parentNodeId": "helpy.registry.node.000182"
+    },
+    {
+      "nodeId": "helpy.registry.node.000188",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.2 Cabinet Furniture",
+        "Правила выполнения работ мастером"
+      ],
+      "parentNodeId": "helpy.registry.node.000182"
+    },
+    {
+      "nodeId": "helpy.registry.node.000189",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.2 Cabinet Furniture",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000182"
+    },
+    {
+      "nodeId": "helpy.registry.node.000190",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture"
+      ],
+      "parentNodeId": "helpy.registry.node.000175"
+    },
+    {
+      "nodeId": "helpy.registry.node.000191",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Архитектура"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000192",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Вопросы клиенту"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000193",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Required Photos"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000194",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Лимит фотографий"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000195",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Таблица замеров ниши"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000196",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Правила для клиента"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000197",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Правила выполнения работ мастером"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000198",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Правила встроенной мебели"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000199",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.3 Built-in Furniture",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000190"
+    },
+    {
+      "nodeId": "helpy.registry.node.000200",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly"
+      ],
+      "parentNodeId": "helpy.registry.node.000175"
+    },
+    {
+      "nodeId": "helpy.registry.node.000201",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Состав категории"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000202",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Архитектура"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000203",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Вопросы клиенту"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000204",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Перечень демонтажа"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000205",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Required Photos"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000206",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Лимит фотографий"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000207",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Правила для клиента"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000208",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Правила выполнения работ мастером"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000209",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.4 Furniture Disassembly",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000200"
+    },
+    {
+      "nodeId": "helpy.registry.node.000210",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.5 Furniture Skill Levels"
+      ],
+      "parentNodeId": "helpy.registry.node.000175"
+    },
+    {
+      "nodeId": "helpy.registry.node.000211",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Furniture Assembly Mini-TZ Standard",
+        "16.6 Furniture Admin Settings"
+      ],
+      "parentNodeId": "helpy.registry.node.000175"
+    },
+    {
+      "nodeId": "helpy.registry.node.000212",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "21. Service Architecture Registry — Cleaning"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000213",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "21. Service Architecture Registry — Cleaning",
+        "Root Category"
+      ],
+      "parentNodeId": "helpy.registry.node.000212"
+    },
+    {
+      "nodeId": "helpy.registry.node.000214",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "21. Service Architecture Registry — Cleaning",
+        "Subcategories"
+      ],
+      "parentNodeId": "helpy.registry.node.000212"
+    },
+    {
+      "nodeId": "helpy.registry.node.000215",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cleaning Mini-TZ Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000216",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cleaning Mini-TZ Standard",
+        "17.1 Regular Cleaning"
+      ],
+      "parentNodeId": "helpy.registry.node.000215"
+    },
+    {
+      "nodeId": "helpy.registry.node.000217",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cleaning Mini-TZ Standard",
+        "17.2 Deep Cleaning"
+      ],
+      "parentNodeId": "helpy.registry.node.000215"
+    },
+    {
+      "nodeId": "helpy.registry.node.000218",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cleaning Mini-TZ Standard",
+        "17.3 Post-Repair Cleaning"
+      ],
+      "parentNodeId": "helpy.registry.node.000215"
+    },
+    {
+      "nodeId": "helpy.registry.node.000219",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "22. Service Architecture Registry — Air Conditioning"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000220",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "22. Service Architecture Registry — Air Conditioning",
+        "Root Category"
+      ],
+      "parentNodeId": "helpy.registry.node.000219"
+    },
+    {
+      "nodeId": "helpy.registry.node.000221",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "22. Service Architecture Registry — Air Conditioning",
+        "Subcategories"
+      ],
+      "parentNodeId": "helpy.registry.node.000219"
+    },
+    {
+      "nodeId": "helpy.registry.node.000222",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000223",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.1 Service"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000224",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.1 Service",
+        "Вопросы клиенту"
+      ],
+      "parentNodeId": "helpy.registry.node.000223"
+    },
+    {
+      "nodeId": "helpy.registry.node.000225",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.1 Service",
+        "Правила вопросов"
+      ],
+      "parentNodeId": "helpy.registry.node.000223"
+    },
+    {
+      "nodeId": "helpy.registry.node.000226",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.1 Service",
+        "Обязательные фотографии"
+      ],
+      "parentNodeId": "helpy.registry.node.000223"
+    },
+    {
+      "nodeId": "helpy.registry.node.000227",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.1 Service",
+        "Лимит фотографий"
+      ],
+      "parentNodeId": "helpy.registry.node.000223"
+    },
+    {
+      "nodeId": "helpy.registry.node.000228",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.1 Service",
+        "Правила для клиента — Service"
+      ],
+      "parentNodeId": "helpy.registry.node.000223"
+    },
+    {
+      "nodeId": "helpy.registry.node.000229",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.1 Service",
+        "Правила выполнения работ мастером — Обслуживание"
+      ],
+      "parentNodeId": "helpy.registry.node.000223"
+    },
+    {
+      "nodeId": "helpy.registry.node.000230",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.1 Service",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000223"
+    },
+    {
+      "nodeId": "helpy.registry.node.000231",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.2 Not Cooling"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000232",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.2 Not Cooling",
+        "Historical Client Questions"
+      ],
+      "parentNodeId": "helpy.registry.node.000231"
+    },
+    {
+      "nodeId": "helpy.registry.node.000233",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.2 Not Cooling",
+        "Historical Required Photos"
+      ],
+      "parentNodeId": "helpy.registry.node.000231"
+    },
+    {
+      "nodeId": "helpy.registry.node.000234",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.2 Not Cooling",
+        "Historical Client Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000231"
+    },
+    {
+      "nodeId": "helpy.registry.node.000235",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.2 Not Cooling",
+        "Historical Master Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000231"
+    },
+    {
+      "nodeId": "helpy.registry.node.000236",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.2 Not Cooling",
+        "Historical Pricing Notes"
+      ],
+      "parentNodeId": "helpy.registry.node.000231"
+    },
+    {
+      "nodeId": "helpy.registry.node.000237",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.2 Not Cooling",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000231"
+    },
+    {
+      "nodeId": "helpy.registry.node.000238",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.3 Leaking"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000239",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.3 Leaking",
+        "Вопросы клиенту"
+      ],
+      "parentNodeId": "helpy.registry.node.000238"
+    },
+    {
+      "nodeId": "helpy.registry.node.000240",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.3 Leaking",
+        "Правила вопросов"
+      ],
+      "parentNodeId": "helpy.registry.node.000238"
+    },
+    {
+      "nodeId": "helpy.registry.node.000241",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.3 Leaking",
+        "Required Photos"
+      ],
+      "parentNodeId": "helpy.registry.node.000238"
+    },
+    {
+      "nodeId": "helpy.registry.node.000242",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.3 Leaking",
+        "Лимит фотографий"
+      ],
+      "parentNodeId": "helpy.registry.node.000238"
+    },
+    {
+      "nodeId": "helpy.registry.node.000243",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.3 Leaking",
+        "Правила для клиента"
+      ],
+      "parentNodeId": "helpy.registry.node.000238"
+    },
+    {
+      "nodeId": "helpy.registry.node.000244",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.3 Leaking",
+        "Правила выполнения работ мастером"
+      ],
+      "parentNodeId": "helpy.registry.node.000238"
+    },
+    {
+      "nodeId": "helpy.registry.node.000245",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.3 Leaking",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000238"
+    },
+    {
+      "nodeId": "helpy.registry.node.000246",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000247",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect",
+        "Вопросы клиенту — Установить и подключить"
+      ],
+      "parentNodeId": "helpy.registry.node.000246"
+    },
+    {
+      "nodeId": "helpy.registry.node.000248",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect",
+        "Правила вопросов"
+      ],
+      "parentNodeId": "helpy.registry.node.000246"
+    },
+    {
+      "nodeId": "helpy.registry.node.000249",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect",
+        "Обязательные фотографии — Установить и подключить"
+      ],
+      "parentNodeId": "helpy.registry.node.000246"
+    },
+    {
+      "nodeId": "helpy.registry.node.000250",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect",
+        "Лимит фотографий — Установить и подключить"
+      ],
+      "parentNodeId": "helpy.registry.node.000246"
+    },
+    {
+      "nodeId": "helpy.registry.node.000251",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect",
+        "Правила для клиента — Install & Connect"
+      ],
+      "parentNodeId": "helpy.registry.node.000246"
+    },
+    {
+      "nodeId": "helpy.registry.node.000252",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect",
+        "Правила выполнения работ мастером — Установить и подключить"
+      ],
+      "parentNodeId": "helpy.registry.node.000246"
+    },
+    {
+      "nodeId": "helpy.registry.node.000253",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect",
+        "Наследуемые правила"
+      ],
+      "parentNodeId": "helpy.registry.node.000246"
+    },
+    {
+      "nodeId": "helpy.registry.node.000254",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.4 Install & Connect",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000246"
+    },
+    {
+      "nodeId": "helpy.registry.node.000255",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000256",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement",
+        "Вопросы клиенту — Заменить"
+      ],
+      "parentNodeId": "helpy.registry.node.000255"
+    },
+    {
+      "nodeId": "helpy.registry.node.000257",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement",
+        "Правила вопросов"
+      ],
+      "parentNodeId": "helpy.registry.node.000255"
+    },
+    {
+      "nodeId": "helpy.registry.node.000258",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement",
+        "Обязательные фотографии — Заменить"
+      ],
+      "parentNodeId": "helpy.registry.node.000255"
+    },
+    {
+      "nodeId": "helpy.registry.node.000259",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement",
+        "Лимит фотографий — Заменить"
+      ],
+      "parentNodeId": "helpy.registry.node.000255"
+    },
+    {
+      "nodeId": "helpy.registry.node.000260",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement",
+        "Правила для клиента — Replacement"
+      ],
+      "parentNodeId": "helpy.registry.node.000255"
+    },
+    {
+      "nodeId": "helpy.registry.node.000261",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement",
+        "Правила выполнения работ мастером — Заменить"
+      ],
+      "parentNodeId": "helpy.registry.node.000255"
+    },
+    {
+      "nodeId": "helpy.registry.node.000262",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement",
+        "Наследуемые правила"
+      ],
+      "parentNodeId": "helpy.registry.node.000255"
+    },
+    {
+      "nodeId": "helpy.registry.node.000263",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.5 Replacement",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000255"
+    },
+    {
+      "nodeId": "helpy.registry.node.000264",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.6 Removal"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000265",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.6 Removal",
+        "Вопросы клиенту"
+      ],
+      "parentNodeId": "helpy.registry.node.000264"
+    },
+    {
+      "nodeId": "helpy.registry.node.000266",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.6 Removal",
+        "Правила вопросов"
+      ],
+      "parentNodeId": "helpy.registry.node.000264"
+    },
+    {
+      "nodeId": "helpy.registry.node.000267",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.6 Removal",
+        "Обязательные фотографии"
+      ],
+      "parentNodeId": "helpy.registry.node.000264"
+    },
+    {
+      "nodeId": "helpy.registry.node.000268",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.6 Removal",
+        "Лимит фотографий"
+      ],
+      "parentNodeId": "helpy.registry.node.000264"
+    },
+    {
+      "nodeId": "helpy.registry.node.000269",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.6 Removal",
+        "Правила для клиента"
+      ],
+      "parentNodeId": "helpy.registry.node.000264"
+    },
+    {
+      "nodeId": "helpy.registry.node.000270",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.6 Removal",
+        "Правила выполнения работ мастером"
+      ],
+      "parentNodeId": "helpy.registry.node.000264"
+    },
+    {
+      "nodeId": "helpy.registry.node.000271",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.6 Removal",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000264"
+    },
+    {
+      "nodeId": "helpy.registry.node.000272",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.7 Remote Control Issues"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000273",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.7 Remote Control Issues",
+        "Вопросы клиенту"
+      ],
+      "parentNodeId": "helpy.registry.node.000272"
+    },
+    {
+      "nodeId": "helpy.registry.node.000274",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.7 Remote Control Issues",
+        "Правила вопросов"
+      ],
+      "parentNodeId": "helpy.registry.node.000272"
+    },
+    {
+      "nodeId": "helpy.registry.node.000275",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.7 Remote Control Issues",
+        "Required Photos"
+      ],
+      "parentNodeId": "helpy.registry.node.000272"
+    },
+    {
+      "nodeId": "helpy.registry.node.000276",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.7 Remote Control Issues",
+        "Лимит фотографий"
+      ],
+      "parentNodeId": "helpy.registry.node.000272"
+    },
+    {
+      "nodeId": "helpy.registry.node.000277",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.7 Remote Control Issues",
+        "Правила для клиента"
+      ],
+      "parentNodeId": "helpy.registry.node.000272"
+    },
+    {
+      "nodeId": "helpy.registry.node.000278",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.7 Remote Control Issues",
+        "Правила выполнения работ мастером"
+      ],
+      "parentNodeId": "helpy.registry.node.000272"
+    },
+    {
+      "nodeId": "helpy.registry.node.000279",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.7 Remote Control Issues",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000272"
+    },
+    {
+      "nodeId": "helpy.registry.node.000280",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.8 Relocation"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000281",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.8 Relocation",
+        "Scope"
+      ],
+      "parentNodeId": "helpy.registry.node.000280"
+    },
+    {
+      "nodeId": "helpy.registry.node.000282",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.8 Relocation",
+        "Launch Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000280"
+    },
+    {
+      "nodeId": "helpy.registry.node.000283",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "22.8 Relocation",
+        "Reason"
+      ],
+      "parentNodeId": "helpy.registry.node.000280"
+    },
+    {
+      "nodeId": "helpy.registry.node.000284",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "Business Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000285",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "Service Playbook"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000286",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000287",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Air Conditioning Mini-TZ Standard",
+        "FAQ"
+      ],
+      "parentNodeId": "helpy.registry.node.000222"
+    },
+    {
+      "nodeId": "helpy.registry.node.000288",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000289",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical Mini-Scope Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000288"
+    },
+    {
+      "nodeId": "helpy.registry.node.000290",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical Entry Flow"
+      ],
+      "parentNodeId": "helpy.registry.node.000288"
+    },
+    {
+      "nodeId": "helpy.registry.node.000291",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical Point Mini-TZ Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000288"
+    },
+    {
+      "nodeId": "helpy.registry.node.000292",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Socket"
+      ],
+      "parentNodeId": "helpy.registry.node.000288"
+    },
+    {
+      "nodeId": "helpy.registry.node.000293",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Socket",
+        "Socket → Установить и подключить"
+      ],
+      "parentNodeId": "helpy.registry.node.000292"
+    },
+    {
+      "nodeId": "helpy.registry.node.000294",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Socket",
+        "Socket → Заменить"
+      ],
+      "parentNodeId": "helpy.registry.node.000292"
+    },
+    {
+      "nodeId": "helpy.registry.node.000295",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Socket",
+        "Socket → Перенести"
+      ],
+      "parentNodeId": "helpy.registry.node.000292"
+    },
+    {
+      "nodeId": "helpy.registry.node.000296",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Switch"
+      ],
+      "parentNodeId": "helpy.registry.node.000288"
+    },
+    {
+      "nodeId": "helpy.registry.node.000297",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Switch",
+        "Switch → Установить и подключить"
+      ],
+      "parentNodeId": "helpy.registry.node.000296"
+    },
+    {
+      "nodeId": "helpy.registry.node.000298",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Switch",
+        "Switch → Заменить"
+      ],
+      "parentNodeId": "helpy.registry.node.000296"
+    },
+    {
+      "nodeId": "helpy.registry.node.000299",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Switch",
+        "Switch → Перенести"
+      ],
+      "parentNodeId": "helpy.registry.node.000296"
+    },
+    {
+      "nodeId": "helpy.registry.node.000300",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Client Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000288"
+    },
+    {
+      "nodeId": "helpy.registry.node.000301",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Master Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000288"
+    },
+    {
+      "nodeId": "helpy.registry.node.000302",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "23. Service Architecture Registry — Electrical",
+        "Electrical → Admin Dependencies"
+      ],
+      "parentNodeId": "helpy.registry.node.000288"
+    },
+    {
+      "nodeId": "helpy.registry.node.000303",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "24. Service Architecture Registry — Plumbing"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000304",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "24. Service Architecture Registry — Plumbing",
+        "Plumbing Registry Content"
+      ],
+      "parentNodeId": "helpy.registry.node.000303"
+    },
+    {
+      "nodeId": "helpy.registry.node.000305",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Plumbing Mini-TZ Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000306",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Plumbing Mini-TZ Standard",
+        "Plumbing → Кран"
+      ],
+      "parentNodeId": "helpy.registry.node.000305"
+    },
+    {
+      "nodeId": "helpy.registry.node.000307",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Plumbing Mini-TZ Standard",
+        "Plumbing → Электрический душ"
+      ],
+      "parentNodeId": "helpy.registry.node.000305"
+    },
+    {
+      "nodeId": "helpy.registry.node.000308",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Plumbing Mini-TZ Standard",
+        "Plumbing → Унитаз"
+      ],
+      "parentNodeId": "helpy.registry.node.000305"
+    },
+    {
+      "nodeId": "helpy.registry.node.000309",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Plumbing Mini-TZ Standard",
+        "Plumbing → Засор"
+      ],
+      "parentNodeId": "helpy.registry.node.000305"
+    },
+    {
+      "nodeId": "helpy.registry.node.000310",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "25. Service Architecture Registry — Locks"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000311",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Locks Mini-TZ Standard"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000312",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Locks Mini-TZ Standard",
+        "Locks → Установка замка межкомнатной двери"
+      ],
+      "parentNodeId": "helpy.registry.node.000311"
+    },
+    {
+      "nodeId": "helpy.registry.node.000313",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Locks Mini-TZ Standard",
+        "Locks → Замена замка межкомнатной двери"
+      ],
+      "parentNodeId": "helpy.registry.node.000311"
+    },
+    {
+      "nodeId": "helpy.registry.node.000314",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Locks Mini-TZ Standard",
+        "Locks → Установка врезного мебельного замка"
+      ],
+      "parentNodeId": "helpy.registry.node.000311"
+    },
+    {
+      "nodeId": "helpy.registry.node.000315",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Locks Mini-TZ Standard",
+        "Locks → Замена мебельного замка"
+      ],
+      "parentNodeId": "helpy.registry.node.000311"
+    },
+    {
+      "nodeId": "helpy.registry.node.000316",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Rule → Chat Lifecycle Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000317",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Rule → Chat Lifecycle Rules",
+        "Stage 1. Initial Scope Collection"
+      ],
+      "parentNodeId": "helpy.registry.node.000316"
+    },
+    {
+      "nodeId": "helpy.registry.node.000318",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Rule → Chat Lifecycle Rules",
+        "Stage 2. Chat Before Work Starts"
+      ],
+      "parentNodeId": "helpy.registry.node.000316"
+    },
+    {
+      "nodeId": "helpy.registry.node.000319",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Rule → Chat Lifecycle Rules",
+        "Stage 3. Start Work"
+      ],
+      "parentNodeId": "helpy.registry.node.000316"
+    },
+    {
+      "nodeId": "helpy.registry.node.000320",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Rule → Chat Lifecycle Rules",
+        "Stage 4. Work Completion"
+      ],
+      "parentNodeId": "helpy.registry.node.000316"
+    },
+    {
+      "nodeId": "helpy.registry.node.000321",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Rule → Chat Lifecycle Rules",
+        "Stage 5. Client Confirmation"
+      ],
+      "parentNodeId": "helpy.registry.node.000316"
+    },
+    {
+      "nodeId": "helpy.registry.node.000322",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Rule → Chat Lifecycle Rules",
+        "Stage 6. Complete Order"
+      ],
+      "parentNodeId": "helpy.registry.node.000316"
+    },
+    {
+      "nodeId": "helpy.registry.node.000323",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000324",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Purpose"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000325",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Data Separation"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000326",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Core Fields"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000327",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Immutability Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000328",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Actor Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000329",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Canonical Event Types"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000330",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Canonical Event Types",
+        "Order / Scope"
+      ],
+      "parentNodeId": "helpy.registry.node.000329"
+    },
+    {
+      "nodeId": "helpy.registry.node.000331",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Canonical Event Types",
+        "Offer / Price"
+      ],
+      "parentNodeId": "helpy.registry.node.000329"
+    },
+    {
+      "nodeId": "helpy.registry.node.000332",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Canonical Event Types",
+        "Financial"
+      ],
+      "parentNodeId": "helpy.registry.node.000329"
+    },
+    {
+      "nodeId": "helpy.registry.node.000333",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Canonical Event Types",
+        "Work / Evidence / Completion"
+      ],
+      "parentNodeId": "helpy.registry.node.000329"
+    },
+    {
+      "nodeId": "helpy.registry.node.000334",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Canonical Event Types",
+        "Review / Dispute / Admin"
+      ],
+      "parentNodeId": "helpy.registry.node.000329"
+    },
+    {
+      "nodeId": "helpy.registry.node.000335",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Event Visibility Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000336",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Current Runtime Coverage"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000337",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Current DB Domain Coverage"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000338",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Known Domain Gap"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000339",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Implementation Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000340",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Job Events / Order Timeline Contract",
+        "Timeline Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000323"
+    },
+    {
+      "nodeId": "helpy.registry.node.000341",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000342",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Purpose"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000343",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Source Of Truth"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000344",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Endpoints"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000345",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Access Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000346",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Visibility Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000347",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Timeline Visibility Matrix"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000348",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Visibility Rules By Role"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000349",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Mobile Timeline Filter Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000350",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Guidance Trigger Matrix"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000351",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Guidance Trigger Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000352",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "CTA Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000353",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Default Sorting"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000354",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Response Shape"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000355",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Event Payload Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000356",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Mobile Timeline Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000357",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Admin Timeline Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000358",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Localization Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000359",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Timeline API Contract",
+        "Relationship With Guided Job Flow"
+      ],
+      "parentNodeId": "helpy.registry.node.000341"
+    },
+    {
+      "nodeId": "helpy.registry.node.000360",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cognitive Load Audit Backlog"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000361",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cognitive Load Audit Backlog",
+        "1. Atomic Orders vs Composite Orders"
+      ],
+      "parentNodeId": "helpy.registry.node.000360"
+    },
+    {
+      "nodeId": "helpy.registry.node.000362",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cognitive Load Audit Backlog",
+        "2. Унификация формулировок типов работ"
+      ],
+      "parentNodeId": "helpy.registry.node.000360"
+    },
+    {
+      "nodeId": "helpy.registry.node.000363",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cognitive Load Audit Backlog",
+        "3. Electrical Cognitive Load Audit"
+      ],
+      "parentNodeId": "helpy.registry.node.000360"
+    },
+    {
+      "nodeId": "helpy.registry.node.000364",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cognitive Load Audit Backlog",
+        "4. Global Low Cognitive Load Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000360"
+    },
+    {
+      "nodeId": "helpy.registry.node.000365",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Cognitive Load Audit Backlog",
+        "5. Registry Language Cleanup"
+      ],
+      "parentNodeId": "helpy.registry.node.000360"
+    },
+    {
+      "nodeId": "helpy.registry.node.000366",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global GAP → Reviews & Reputation System"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000367",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Global Decision → Chat Evidence Photos & Job Details Photo Ownership"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000368",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Expected Price / Final Price Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000369",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Expected Price / Final Price Contract",
+        "Client Expected Price"
+      ],
+      "parentNodeId": "helpy.registry.node.000368"
+    },
+    {
+      "nodeId": "helpy.registry.node.000370",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Expected Price / Final Price Contract",
+        "Minimum Threshold"
+      ],
+      "parentNodeId": "helpy.registry.node.000368"
+    },
+    {
+      "nodeId": "helpy.registry.node.000371",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Expected Price / Final Price Contract",
+        "Master One-Time Price Change"
+      ],
+      "parentNodeId": "helpy.registry.node.000368"
+    },
+    {
+      "nodeId": "helpy.registry.node.000372",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Expected Price / Final Price Contract",
+        "Final Master Application"
+      ],
+      "parentNodeId": "helpy.registry.node.000368"
+    },
+    {
+      "nodeId": "helpy.registry.node.000373",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Expected Price / Final Price Contract",
+        "Commission Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000368"
+    },
+    {
+      "nodeId": "helpy.registry.node.000374",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Expected Price / Final Price Contract",
+        "Post-Selection Work Lifecycle"
+      ],
+      "parentNodeId": "helpy.registry.node.000368"
+    },
+    {
+      "nodeId": "helpy.registry.node.000375",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Expected Price / Final Price Contract",
+        "Admin Visibility"
+      ],
+      "parentNodeId": "helpy.registry.node.000368"
+    },
+    {
+      "nodeId": "helpy.registry.node.000376",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000377",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract",
+        "Core Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000376"
+    },
+    {
+      "nodeId": "helpy.registry.node.000378",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract",
+        "Human Chat Layer"
+      ],
+      "parentNodeId": "helpy.registry.node.000376"
+    },
+    {
+      "nodeId": "helpy.registry.node.000379",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract",
+        "Business Timeline Layer"
+      ],
+      "parentNodeId": "helpy.registry.node.000376"
+    },
+    {
+      "nodeId": "helpy.registry.node.000380",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract",
+        "Price Negotiation Evidence Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000376"
+    },
+    {
+      "nodeId": "helpy.registry.node.000381",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract",
+        "Admin Chat Access Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000376"
+    },
+    {
+      "nodeId": "helpy.registry.node.000382",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract",
+        "Timeline Immutability Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000376"
+    },
+    {
+      "nodeId": "helpy.registry.node.000383",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract",
+        "Chat Evidence Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000376"
+    },
+    {
+      "nodeId": "helpy.registry.node.000384",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Communication Layer / Business Timeline Contract",
+        "Admin Order Timeline Requirement"
+      ],
+      "parentNodeId": "helpy.registry.node.000376"
+    },
+    {
+      "nodeId": "helpy.registry.node.000385",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Chat Threads Architecture Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000386",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Chat Threads Architecture Decision",
+        "Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000385"
+    },
+    {
+      "nodeId": "helpy.registry.node.000387",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Chat Threads Architecture Decision",
+        "Why"
+      ],
+      "parentNodeId": "helpy.registry.node.000385"
+    },
+    {
+      "nodeId": "helpy.registry.node.000388",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Chat Threads Architecture Decision",
+        "Canonical Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000385"
+    },
+    {
+      "nodeId": "helpy.registry.node.000389",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Chat Threads Architecture Decision",
+        "Initial Thread Types"
+      ],
+      "parentNodeId": "helpy.registry.node.000385"
+    },
+    {
+      "nodeId": "helpy.registry.node.000390",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Chat Threads Architecture Decision",
+        "Business Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000385"
+    },
+    {
+      "nodeId": "helpy.registry.node.000391",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Chat Threads Architecture Decision",
+        "Timeline Separation"
+      ],
+      "parentNodeId": "helpy.registry.node.000385"
+    },
+    {
+      "nodeId": "helpy.registry.node.000392",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Offer Lifecycle Architecture Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000393",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Offer Lifecycle Architecture Decision",
+        "Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000392"
+    },
+    {
+      "nodeId": "helpy.registry.node.000394",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Offer Lifecycle Architecture Decision",
+        "Responsibility Split"
+      ],
+      "parentNodeId": "helpy.registry.node.000392"
+    },
+    {
+      "nodeId": "helpy.registry.node.000395",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Offer Lifecycle Architecture Decision",
+        "Why"
+      ],
+      "parentNodeId": "helpy.registry.node.000392"
+    },
+    {
+      "nodeId": "helpy.registry.node.000396",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Offer Lifecycle Architecture Decision",
+        "Business Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000392"
+    },
+    {
+      "nodeId": "helpy.registry.node.000397",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000398",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision",
+        "Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000397"
+    },
+    {
+      "nodeId": "helpy.registry.node.000399",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision",
+        "PromptPay QR"
+      ],
+      "parentNodeId": "helpy.registry.node.000397"
+    },
+    {
+      "nodeId": "helpy.registry.node.000400",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision",
+        "Cash"
+      ],
+      "parentNodeId": "helpy.registry.node.000397"
+    },
+    {
+      "nodeId": "helpy.registry.node.000401",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision",
+        "Bank Transfer"
+      ],
+      "parentNodeId": "helpy.registry.node.000397"
+    },
+    {
+      "nodeId": "helpy.registry.node.000402",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision",
+        "Wallet / TrueMoney"
+      ],
+      "parentNodeId": "helpy.registry.node.000397"
+    },
+    {
+      "nodeId": "helpy.registry.node.000403",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision",
+        "Cards"
+      ],
+      "parentNodeId": "helpy.registry.node.000397"
+    },
+    {
+      "nodeId": "helpy.registry.node.000404",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision",
+        "Canonical Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000397"
+    },
+    {
+      "nodeId": "helpy.registry.node.000405",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Thailand Payment Runtime Architecture Decision",
+        "Financial Event Creation Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000397"
+    },
+    {
+      "nodeId": "helpy.registry.node.000406",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Final Price Architecture Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000407",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Final Price Architecture Decision",
+        "Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000406"
+    },
+    {
+      "nodeId": "helpy.registry.node.000408",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Final Price Architecture Decision",
+        "Responsibility Split"
+      ],
+      "parentNodeId": "helpy.registry.node.000406"
+    },
+    {
+      "nodeId": "helpy.registry.node.000409",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Final Price Architecture Decision",
+        "Why"
+      ],
+      "parentNodeId": "helpy.registry.node.000406"
+    },
+    {
+      "nodeId": "helpy.registry.node.000410",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Final Price Architecture Decision",
+        "Final Price Ownership Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000406"
+    },
+    {
+      "nodeId": "helpy.registry.node.000411",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Final Price Architecture Decision",
+        "Canonical Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000406"
+    },
+    {
+      "nodeId": "helpy.registry.node.000412",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Structured Job Scope / Price Justification Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000413",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Structured Job Scope / Price Justification Contract",
+        "Structured Job Scope"
+      ],
+      "parentNodeId": "helpy.registry.node.000412"
+    },
+    {
+      "nodeId": "helpy.registry.node.000414",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Structured Job Scope / Price Justification Contract",
+        "Scope Formation Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000412"
+    },
+    {
+      "nodeId": "helpy.registry.node.000415",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Structured Job Scope / Price Justification Contract",
+        "Client Expected Price Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000412"
+    },
+    {
+      "nodeId": "helpy.registry.node.000416",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Structured Job Scope / Price Justification Contract",
+        "Price Justification Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000412"
+    },
+    {
+      "nodeId": "helpy.registry.node.000417",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Structured Job Scope / Price Justification Contract",
+        "Admin Visibility"
+      ],
+      "parentNodeId": "helpy.registry.node.000412"
+    },
+    {
+      "nodeId": "helpy.registry.node.000418",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Helpy Canonical Order Lifecycle Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000419",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Helpy Canonical Order Lifecycle Contract",
+        "Назначение"
+      ],
+      "parentNodeId": "helpy.registry.node.000418"
+    },
+    {
+      "nodeId": "helpy.registry.node.000420",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Helpy Canonical Order Lifecycle Contract",
+        "Текущее состояние"
+      ],
+      "parentNodeId": "helpy.registry.node.000418"
+    },
+    {
+      "nodeId": "helpy.registry.node.000421",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Helpy Canonical Order Lifecycle Contract",
+        "Related Orders"
+      ],
+      "parentNodeId": "helpy.registry.node.000418"
+    },
+    {
+      "nodeId": "helpy.registry.node.000422",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Helpy Canonical Order Lifecycle Contract",
+        "Канонический жизненный цикл заказа"
+      ],
+      "parentNodeId": "helpy.registry.node.000418"
+    },
+    {
+      "nodeId": "helpy.registry.node.000423",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Helpy Canonical Order Lifecycle Contract",
+        "Канонические правила"
+      ],
+      "parentNodeId": "helpy.registry.node.000418"
+    },
+    {
+      "nodeId": "helpy.registry.node.000424",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000425",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation",
+        "Определение"
+      ],
+      "parentNodeId": "helpy.registry.node.000424"
+    },
+    {
+      "nodeId": "helpy.registry.node.000426",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation",
+        "Центральный объект"
+      ],
+      "parentNodeId": "helpy.registry.node.000424"
+    },
+    {
+      "nodeId": "helpy.registry.node.000427",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation",
+        "Назначение"
+      ],
+      "parentNodeId": "helpy.registry.node.000424"
+    },
+    {
+      "nodeId": "helpy.registry.node.000428",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation",
+        "Принцип structured scope"
+      ],
+      "parentNodeId": "helpy.registry.node.000424"
+    },
+    {
+      "nodeId": "helpy.registry.node.000429",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation",
+        "Канонический жизненный цикл"
+      ],
+      "parentNodeId": "helpy.registry.node.000424"
+    },
+    {
+      "nodeId": "helpy.registry.node.000430",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation",
+        "Канонические правила"
+      ],
+      "parentNodeId": "helpy.registry.node.000424"
+    },
+    {
+      "nodeId": "helpy.registry.node.000431",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation",
+        "Product Positioning"
+      ],
+      "parentNodeId": "helpy.registry.node.000424"
+    },
+    {
+      "nodeId": "helpy.registry.node.000432",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guided Job Flow Foundation",
+        "Governance Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000424"
+    },
+    {
+      "nodeId": "helpy.registry.node.000433",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000434",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Определение"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000435",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Основной принцип"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000436",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Уровни Guidance"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000437",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Knowledge Flow"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000438",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Runtime Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000439",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Guidance Context Dimensions"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000440",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Governance"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000441",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Business Outcome"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000442",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Contextual Guidance Knowledge System",
+        "Relationship With Guided Job Flow"
+      ],
+      "parentNodeId": "helpy.registry.node.000433"
+    },
+    {
+      "nodeId": "helpy.registry.node.000443",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000444",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract",
+        "Назначение"
+      ],
+      "parentNodeId": "helpy.registry.node.000443"
+    },
+    {
+      "nodeId": "helpy.registry.node.000445",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract",
+        "Основное правило"
+      ],
+      "parentNodeId": "helpy.registry.node.000443"
+    },
+    {
+      "nodeId": "helpy.registry.node.000446",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract",
+        "Причина"
+      ],
+      "parentNodeId": "helpy.registry.node.000443"
+    },
+    {
+      "nodeId": "helpy.registry.node.000447",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract",
+        "Required Guidance Slots"
+      ],
+      "parentNodeId": "helpy.registry.node.000443"
+    },
+    {
+      "nodeId": "helpy.registry.node.000448",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract",
+        "Slot Context"
+      ],
+      "parentNodeId": "helpy.registry.node.000443"
+    },
+    {
+      "nodeId": "helpy.registry.node.000449",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract",
+        "Runtime Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000443"
+    },
+    {
+      "nodeId": "helpy.registry.node.000450",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract",
+        "Implementation Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000443"
+    },
+    {
+      "nodeId": "helpy.registry.node.000451",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Slots Contract",
+        "Admin Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000443"
+    },
+    {
+      "nodeId": "helpy.registry.node.000452",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000453",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Principle",
+        "Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000452"
+    },
+    {
+      "nodeId": "helpy.registry.node.000454",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Principle",
+        "UI Language"
+      ],
+      "parentNodeId": "helpy.registry.node.000452"
+    },
+    {
+      "nodeId": "helpy.registry.node.000455",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Principle",
+        "Original Content Language"
+      ],
+      "parentNodeId": "helpy.registry.node.000452"
+    },
+    {
+      "nodeId": "helpy.registry.node.000456",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Principle",
+        "Spoken Languages"
+      ],
+      "parentNodeId": "helpy.registry.node.000452"
+    },
+    {
+      "nodeId": "helpy.registry.node.000457",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Principle",
+        "Matching Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000452"
+    },
+    {
+      "nodeId": "helpy.registry.node.000458",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Principle",
+        "Business Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000452"
+    },
+    {
+      "nodeId": "helpy.registry.node.000459",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Principle",
+        "Future Product Usage"
+      ],
+      "parentNodeId": "helpy.registry.node.000452"
+    },
+    {
+      "nodeId": "helpy.registry.node.000460",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Ranking Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000461",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Ranking Rule",
+        "Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000460"
+    },
+    {
+      "nodeId": "helpy.registry.node.000462",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Ranking Rule",
+        "Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000460"
+    },
+    {
+      "nodeId": "helpy.registry.node.000463",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Ranking Rule",
+        "Business Reason"
+      ],
+      "parentNodeId": "helpy.registry.node.000460"
+    },
+    {
+      "nodeId": "helpy.registry.node.000464",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Language Matching Ranking Rule",
+        "Implementation Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000460"
+    },
+    {
+      "nodeId": "helpy.registry.node.000465",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Signal Hierarchy"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000466",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Signal Hierarchy",
+        "Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000465"
+    },
+    {
+      "nodeId": "helpy.registry.node.000467",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Signal Hierarchy",
+        "Signal Meaning"
+      ],
+      "parentNodeId": "helpy.registry.node.000465"
+    },
+    {
+      "nodeId": "helpy.registry.node.000468",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Signal Hierarchy",
+        "Business Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000465"
+    },
+    {
+      "nodeId": "helpy.registry.node.000469",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000470",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Decision"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000471",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Eligibility"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000472",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Ranking"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000473",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Hybrid Model"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000474",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Signal Application Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000475",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "No Hidden Penalty Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000476",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Review Count Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000477",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Client Choice Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000478",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Admin Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000479",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Ranking Hybrid Model Contract",
+        "Business Principle"
+      ],
+      "parentNodeId": "helpy.registry.node.000469"
+    },
+    {
+      "nodeId": "helpy.registry.node.000480",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000481",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Purpose"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000482",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Source Of Truth"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000483",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Endpoints"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000484",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Mobile Request Context"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000485",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Response Shape"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000486",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Empty Response Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000487",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Publication Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000488",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Localization Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000489",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "CTA Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000490",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Priority Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000491",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Audit / Governance"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000492",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Implementation Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000493",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Guidance API Contract Completion Addendum"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000494",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Required Guidance Record Identity"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000495",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Guidance Key Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000496",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Version Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000497",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Published At Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000498",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Severity Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000499",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Dismissible Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000500",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Dismiss Scope Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000501",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Slot Return Limit Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000502",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Response Shape Addendum"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000503",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Analytics Event Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000504",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "API Responsibility Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000505",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Guidance API Contract",
+        "Contract Closure Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000480"
+    },
+    {
+      "nodeId": "helpy.registry.node.000506",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000507",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Purpose"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000508",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Source Of Truth"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000509",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Component Name"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000510",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Input Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000511",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Slot Rendering Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000512",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Card Layout Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000513",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Severity UI Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000514",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "CTA Rendering Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000515",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Dismiss UX Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000516",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Loading Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000517",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Error Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000518",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Analytics Dispatch Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000519",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Accessibility / Localization Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000520",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Reuse Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000521",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "No Overlay Rule"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000522",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Mobile Responsibility Boundary"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000523",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Mobile Guidance Component Contract",
+        "Done Criteria"
+      ],
+      "parentNodeId": "helpy.registry.node.000506"
+    },
+    {
+      "nodeId": "helpy.registry.node.000524",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Identity & Usage Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000525",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Identity & Usage Contract",
+        "Client Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000524"
+    },
+    {
+      "nodeId": "helpy.registry.node.000526",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Identity & Usage Contract",
+        "Registration Confirmation"
+      ],
+      "parentNodeId": "helpy.registry.node.000524"
+    },
+    {
+      "nodeId": "helpy.registry.node.000527",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Identity & Usage Contract",
+        "Registration Flow"
+      ],
+      "parentNodeId": "helpy.registry.node.000524"
+    },
+    {
+      "nodeId": "helpy.registry.node.000528",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Identity & Usage Contract",
+        "Client Registration Screen Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000524"
+    },
+    {
+      "nodeId": "helpy.registry.node.000529",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Client Identity & Usage Contract",
+        "Not Used"
+      ],
+      "parentNodeId": "helpy.registry.node.000524"
+    },
+    {
+      "nodeId": "helpy.registry.node.000530",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Identity & Access Contract"
+      ],
+      "parentNodeId": "helpy.registry.node.000001"
+    },
+    {
+      "nodeId": "helpy.registry.node.000531",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Identity & Access Contract",
+        "Master Rules"
+      ],
+      "parentNodeId": "helpy.registry.node.000530"
+    },
+    {
+      "nodeId": "helpy.registry.node.000532",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Identity & Access Contract",
+        "Registration Flow"
+      ],
+      "parentNodeId": "helpy.registry.node.000530"
+    },
+    {
+      "nodeId": "helpy.registry.node.000533",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Identity & Access Contract",
+        "Safety Gate"
+      ],
+      "parentNodeId": "helpy.registry.node.000530"
+    },
+    {
+      "nodeId": "helpy.registry.node.000534",
+      "headingPath": [
+        "Helpy Architecture Registry v1 Foundation",
+        "Master Identity & Access Contract",
+        "Not Used"
+      ],
+      "parentNodeId": "helpy.registry.node.000530"
+    }
+  ]
+}
