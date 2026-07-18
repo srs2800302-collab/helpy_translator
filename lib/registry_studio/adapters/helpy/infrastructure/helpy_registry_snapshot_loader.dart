@@ -8,6 +8,32 @@ import 'github_registry_document_source.dart';
 import 'helpy_registry_document_interpreter.dart';
 import 'helpy_registry_node_identity_ledger_source.dart';
 
+final class HelpyRegistryMissingNodeIdentityException implements Exception {
+  HelpyRegistryMissingNodeIdentityException({
+    required this.sourceDocumentPath,
+    required this.sourceRevision,
+    required this.sourceSnapshotFingerprint,
+    required List<RegistryPath> missingPaths,
+    required this.maximumAssignedSequence,
+  }) : missingPaths = List<RegistryPath>.unmodifiable(missingPaths);
+
+  final String sourceDocumentPath;
+  final String sourceRevision;
+  final String sourceSnapshotFingerprint;
+  final List<RegistryPath> missingPaths;
+  final int maximumAssignedSequence;
+
+  @override
+  String toString() {
+    final String paths = missingPaths
+        .map((RegistryPath path) => path.segments.join(' → '))
+        .join('; ');
+
+    return 'Helpy Registry identity evidence is incomplete for '
+        'revision $sourceRevision. Missing paths: $paths.';
+  }
+}
+
 final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
   const HelpyRegistrySnapshotLoader({
     required this.documentSource,
@@ -75,19 +101,28 @@ final class HelpyRegistrySnapshotLoader implements RegistrySnapshotLoader {
       }
     }
 
+    final List<RegistryPath> missingIdentityPaths = <RegistryPath>[
+      for (final HelpyRegistryDocumentNode interpretedNode in interpretedNodes)
+        if (!identitiesByPath.containsKey(interpretedNode.path))
+          interpretedNode.path,
+    ];
+
+    if (missingIdentityPaths.isNotEmpty) {
+      throw HelpyRegistryMissingNodeIdentityException(
+        sourceDocumentPath: sourceDocument.documentPath,
+        sourceRevision: sourceDocument.sourceRevision,
+        sourceSnapshotFingerprint: sourceDocument.sourceSnapshotFingerprint,
+        missingPaths: missingIdentityPaths,
+        maximumAssignedSequence: identityLedger.maximumAssignedSequence,
+      );
+    }
+
     final Map<RegistryPath, RegistryNode> nodesByPath =
         <RegistryPath, RegistryNode>{};
 
     for (final HelpyRegistryDocumentNode interpretedNode
         in interpretedNodes.reversed) {
-      final RegistryNodeId? nodeId = identitiesByPath[interpretedNode.path];
-
-      if (nodeId == null) {
-        throw FormatException(
-          'Helpy Registry node identity ledger does not contain '
-          '${interpretedNode.path.segments.join(' → ')}.',
-        );
-      }
+      final RegistryNodeId nodeId = identitiesByPath[interpretedNode.path]!;
 
       final List<RegistryNode> children = <RegistryNode>[];
 

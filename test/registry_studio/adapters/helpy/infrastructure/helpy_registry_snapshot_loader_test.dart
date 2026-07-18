@@ -54,7 +54,8 @@ void main() {
 
         const String missingContent =
             '# Registry\n'
-            '## Domain\n';
+            '## Domain\n'
+            '## Other\n';
 
         const String extraContent =
             '# Registry\n'
@@ -333,7 +334,42 @@ void main() {
 
         await expectLater(
           missingIdentityLoader.loadSnapshot(),
-          throwsA(isA<FormatException>()),
+          throwsA(
+            isA<HelpyRegistryMissingNodeIdentityException>()
+                .having(
+                  (HelpyRegistryMissingNodeIdentityException error) =>
+                      error.sourceDocumentPath,
+                  'sourceDocumentPath',
+                  _registryDocumentPath,
+                )
+                .having(
+                  (HelpyRegistryMissingNodeIdentityException error) =>
+                      error.sourceRevision,
+                  'sourceRevision',
+                  missingCommitSha,
+                )
+                .having(
+                  (HelpyRegistryMissingNodeIdentityException error) =>
+                      error.sourceSnapshotFingerprint,
+                  'sourceSnapshotFingerprint',
+                  'git-blob:$missingBlobSha',
+                )
+                .having(
+                  (HelpyRegistryMissingNodeIdentityException error) =>
+                      error.missingPaths,
+                  'missingPaths',
+                  <RegistryPath>[
+                    RegistryPath(const <String>['Registry', 'Domain']),
+                    RegistryPath(const <String>['Registry', 'Other']),
+                  ],
+                )
+                .having(
+                  (HelpyRegistryMissingNodeIdentityException error) =>
+                      error.maximumAssignedSequence,
+                  'maximumAssignedSequence',
+                  1,
+                ),
+          ),
         );
 
         final HelpyRegistrySnapshotLoader retiredIdentityLoader =
