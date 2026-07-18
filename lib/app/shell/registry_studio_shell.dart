@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
+import '../../registry_studio/registry/presentation/registry_explorer_view.dart';
+
 enum RegistryStudioWorkspace { registryStudio, translator }
 
 final class RegistryStudioWorkspaceCubit
@@ -18,19 +21,25 @@ final class RegistryStudioWorkspaceCubit
 }
 
 final class RegistryStudioShell extends StatelessWidget {
-  const RegistryStudioShell({super.key});
+  const RegistryStudioShell({required this.registrySnapshotLoader, super.key});
+
+  final RegistrySnapshotLoader registrySnapshotLoader;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<RegistryStudioWorkspaceCubit>(
       create: (_) => RegistryStudioWorkspaceCubit(),
-      child: const _RegistryStudioShellView(),
+      child: _RegistryStudioShellView(
+        registrySnapshotLoader: registrySnapshotLoader,
+      ),
     );
   }
 }
 
 final class _RegistryStudioShellView extends StatelessWidget {
-  const _RegistryStudioShellView();
+  const _RegistryStudioShellView({required this.registrySnapshotLoader});
+
+  final RegistrySnapshotLoader registrySnapshotLoader;
 
   @override
   Widget build(BuildContext context) {
@@ -44,9 +53,9 @@ final class _RegistryStudioShellView extends StatelessWidget {
           appBar: AppBar(title: Text(_titleFor(workspace))),
           body: IndexedStack(
             index: selectedIndex,
-            children: const <Widget>[
-              _RegistryStudioWorkspaceView(),
-              _TranslatorWorkspaceView(),
+            children: <Widget>[
+              RegistryExplorerView(snapshotLoader: registrySnapshotLoader),
+              const _TranslatorWorkspaceView(),
             ],
           ),
           bottomNavigationBar: NavigationBar(
@@ -79,37 +88,6 @@ final class _RegistryStudioShellView extends StatelessWidget {
       RegistryStudioWorkspace.registryStudio => 'Registry Studio',
       RegistryStudioWorkspace.translator => 'Translator',
     };
-  }
-}
-
-final class _RegistryStudioWorkspaceView extends StatelessWidget {
-  const _RegistryStudioWorkspaceView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SafeArea(
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(Icons.account_tree_outlined, size: 48),
-              SizedBox(height: 16),
-              Text(
-                'Registry Studio',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Просмотр и сопровождение структурного Registry',
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
