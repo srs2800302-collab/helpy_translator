@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
+import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../registry_studio/registry/presentation/registry_explorer_view.dart';
 
 enum RegistryStudioWorkspace { registryStudio, translator }
@@ -21,9 +23,16 @@ final class RegistryStudioWorkspaceCubit
 }
 
 final class RegistryStudioShell extends StatelessWidget {
-  const RegistryStudioShell({required this.registrySnapshotLoader, super.key});
+  const RegistryStudioShell({
+    required this.registrySnapshotLoader,
+    required this.registrySnapshotRevisionLoader,
+    required this.registryRevisionStateStore,
+    super.key,
+  });
 
   final RegistrySnapshotLoader registrySnapshotLoader;
+  final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
+  final RegistryRevisionStateStore registryRevisionStateStore;
 
   @override
   Widget build(BuildContext context) {
@@ -31,15 +40,23 @@ final class RegistryStudioShell extends StatelessWidget {
       create: (_) => RegistryStudioWorkspaceCubit(),
       child: _RegistryStudioShellView(
         registrySnapshotLoader: registrySnapshotLoader,
+        registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
+        registryRevisionStateStore: registryRevisionStateStore,
       ),
     );
   }
 }
 
 final class _RegistryStudioShellView extends StatelessWidget {
-  const _RegistryStudioShellView({required this.registrySnapshotLoader});
+  const _RegistryStudioShellView({
+    required this.registrySnapshotLoader,
+    required this.registrySnapshotRevisionLoader,
+    required this.registryRevisionStateStore,
+  });
 
   final RegistrySnapshotLoader registrySnapshotLoader;
+  final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
+  final RegistryRevisionStateStore registryRevisionStateStore;
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +71,11 @@ final class _RegistryStudioShellView extends StatelessWidget {
           body: IndexedStack(
             index: selectedIndex,
             children: <Widget>[
-              RegistryExplorerView(snapshotLoader: registrySnapshotLoader),
+              RegistryExplorerView(
+                snapshotLoader: registrySnapshotLoader,
+                snapshotRevisionLoader: registrySnapshotRevisionLoader,
+                revisionStateStore: registryRevisionStateStore,
+              ),
               const _TranslatorWorkspaceView(),
             ],
           ),

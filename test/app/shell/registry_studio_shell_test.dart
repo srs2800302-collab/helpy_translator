@@ -6,7 +6,9 @@ import 'package:helpy_translator/app/bootstrap/registry_studio_application.dart'
 import 'package:helpy_translator/app/shell/registry_studio_shell.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
+import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
+import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
@@ -111,8 +113,13 @@ void main() {
             () async => updatedSnapshot,
           ]);
 
+      final _MemoryRegistryRevisionStateStore revisionStateStore =
+          _MemoryRegistryRevisionStateStore();
+
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
+        snapshotRevisionLoader: loader,
+        revisionStateStore: revisionStateStore,
       );
 
       addTearDown(cubit.close);
@@ -141,6 +148,118 @@ void main() {
     },
   );
 
+  test(
+    'restores the previous full snapshot when persisted current equals latest',
+    () async {
+      final RegistrySnapshot previousSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: '0000000000000000000000000000000000000000',
+        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+        sourceContent: snapshot.sourceContent,
+        roots: snapshot.roots,
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(
+            <Future<RegistrySnapshot> Function()>[() async => snapshot],
+            exactSnapshots: <String, RegistrySnapshot>{
+              previousSnapshot.sourceRevision: previousSnapshot,
+            },
+          );
+
+      final _MemoryRegistryRevisionStateStore store =
+          _MemoryRegistryRevisionStateStore(
+            state: RegistryRevisionState(
+              projectId: snapshot.projectId,
+              projectAdapterId: snapshot.projectAdapterId,
+              sourceDocumentPath: snapshot.sourceDocumentPath,
+              currentRevision: snapshot.sourceRevision,
+              previousRevision: previousSnapshot.sourceRevision,
+            ),
+          );
+
+      final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+        snapshotLoader: loader,
+        snapshotRevisionLoader: loader,
+        revisionStateStore: store,
+      );
+
+      addTearDown(cubit.close);
+
+      await cubit.load();
+
+      final RegistryExplorerLoaded loaded =
+          cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.snapshot, same(snapshot));
+      expect(loaded.previousSnapshot, same(previousSnapshot));
+      expect(loader.requestedRevisions, <String>[
+        previousSnapshot.sourceRevision,
+      ]);
+      expect(store.state?.currentRevision, snapshot.sourceRevision);
+      expect(store.state?.previousRevision, previousSnapshot.sourceRevision);
+      expect(store.loadCount, 1);
+      expect(store.saveCount, 1);
+    },
+  );
+
+  test(
+    'moves persisted current to previous when latest revision changes',
+    () async {
+      final RegistrySnapshot latestSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: '3333333333333333333333333333333333333333',
+        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+        sourceContent: snapshot.sourceContent,
+        roots: snapshot.roots,
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(
+            <Future<RegistrySnapshot> Function()>[() async => latestSnapshot],
+            exactSnapshots: <String, RegistrySnapshot>{
+              snapshot.sourceRevision: snapshot,
+            },
+          );
+
+      final _MemoryRegistryRevisionStateStore store =
+          _MemoryRegistryRevisionStateStore(
+            state: RegistryRevisionState(
+              projectId: snapshot.projectId,
+              projectAdapterId: snapshot.projectAdapterId,
+              sourceDocumentPath: snapshot.sourceDocumentPath,
+              currentRevision: snapshot.sourceRevision,
+              previousRevision: '0000000000000000000000000000000000000000',
+            ),
+          );
+
+      final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+        snapshotLoader: loader,
+        snapshotRevisionLoader: loader,
+        revisionStateStore: store,
+      );
+
+      addTearDown(cubit.close);
+
+      await cubit.load();
+
+      final RegistryExplorerLoaded loaded =
+          cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.snapshot, same(latestSnapshot));
+      expect(loaded.previousSnapshot, same(snapshot));
+      expect(loader.requestedRevisions, <String>[snapshot.sourceRevision]);
+      expect(store.state?.currentRevision, latestSnapshot.sourceRevision);
+      expect(store.state?.previousRevision, snapshot.sourceRevision);
+      expect(store.loadCount, 1);
+      expect(store.saveCount, 1);
+    },
+  );
+
   testWidgets(
     'shows the previous exact revision after Registry revision changes',
     (WidgetTester tester) async {
@@ -161,7 +280,11 @@ void main() {
           ]);
 
       await tester.pumpWidget(
-        RegistryStudioApplication(registrySnapshotLoader: loader),
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -198,7 +321,11 @@ void main() {
           ]);
 
       await tester.pumpWidget(
-        RegistryStudioApplication(registrySnapshotLoader: loader),
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        ),
       );
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -329,7 +456,11 @@ void main() {
           ]);
 
       await tester.pumpWidget(
-        RegistryStudioApplication(registrySnapshotLoader: loader),
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -376,7 +507,11 @@ void main() {
         ]);
 
     await tester.pumpWidget(
-      RegistryStudioApplication(registrySnapshotLoader: loader),
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+      ),
     );
 
     await tester.pumpAndSettle();
@@ -394,10 +529,19 @@ void main() {
   });
 }
 
-final class _QueuedRegistrySnapshotLoader implements RegistrySnapshotLoader {
-  _QueuedRegistrySnapshotLoader(this.loads);
+final class _QueuedRegistrySnapshotLoader
+    implements RegistrySnapshotLoader, RegistrySnapshotRevisionLoader {
+  _QueuedRegistrySnapshotLoader(
+    this.loads, {
+    Map<String, RegistrySnapshot> exactSnapshots =
+        const <String, RegistrySnapshot>{},
+  }) : exactSnapshots = Map<String, RegistrySnapshot>.unmodifiable(
+         exactSnapshots,
+       );
 
   final List<Future<RegistrySnapshot> Function()> loads;
+  final Map<String, RegistrySnapshot> exactSnapshots;
+  final List<String> requestedRevisions = <String>[];
 
   int loadCount = 0;
 
@@ -414,5 +558,46 @@ final class _QueuedRegistrySnapshotLoader implements RegistrySnapshotLoader {
     loadCount += 1;
 
     return load();
+  }
+
+  @override
+  Future<RegistrySnapshot> loadSnapshotAtRevision(String sourceRevision) {
+    requestedRevisions.add(sourceRevision);
+
+    final RegistrySnapshot? snapshot = exactSnapshots[sourceRevision];
+
+    if (snapshot == null) {
+      return Future<RegistrySnapshot>.error(
+        StateError(
+          'No exact Registry snapshot is configured for '
+          '$sourceRevision.',
+        ),
+      );
+    }
+
+    return Future<RegistrySnapshot>.value(snapshot);
+  }
+}
+
+final class _MemoryRegistryRevisionStateStore
+    implements RegistryRevisionStateStore {
+  _MemoryRegistryRevisionStateStore({this.state});
+
+  RegistryRevisionState? state;
+
+  int loadCount = 0;
+  int saveCount = 0;
+
+  @override
+  Future<RegistryRevisionState?> loadRevisionState() async {
+    loadCount += 1;
+
+    return state;
+  }
+
+  @override
+  Future<void> saveRevisionState(RegistryRevisionState state) async {
+    saveCount += 1;
+    this.state = state;
   }
 }

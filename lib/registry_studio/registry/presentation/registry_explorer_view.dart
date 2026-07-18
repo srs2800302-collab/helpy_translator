@@ -1,20 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
+import '../application/contracts/registry_snapshot_revision_loader.dart';
 import '../domain/entities/registry_node.dart';
 import 'registry_explorer_cubit.dart';
 
 final class RegistryExplorerView extends StatelessWidget {
-  const RegistryExplorerView({required this.snapshotLoader, super.key});
+  const RegistryExplorerView({
+    required this.snapshotLoader,
+    required this.snapshotRevisionLoader,
+    required this.revisionStateStore,
+    super.key,
+  });
 
   final RegistrySnapshotLoader snapshotLoader;
+  final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
+  final RegistryRevisionStateStore revisionStateStore;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<RegistryExplorerCubit>(
-      create: (_) =>
-          RegistryExplorerCubit(snapshotLoader: snapshotLoader)..load(),
+      create: (_) => RegistryExplorerCubit(
+        snapshotLoader: snapshotLoader,
+        snapshotRevisionLoader: snapshotRevisionLoader,
+        revisionStateStore: revisionStateStore,
+      )..load(),
       child: const _RegistryExplorerView(),
     );
   }

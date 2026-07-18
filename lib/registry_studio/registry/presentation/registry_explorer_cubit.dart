@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
+import '../application/contracts/registry_snapshot_revision_loader.dart';
 import '../domain/entities/registry_snapshot.dart';
 import '../domain/entities/registry_structural_index.dart';
 
@@ -31,12 +33,18 @@ final class RegistryExplorerFailure extends RegistryExplorerState {
 }
 
 final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
-  RegistryExplorerCubit({required this.snapshotLoader})
-    : super(const RegistryExplorerLoading());
+  RegistryExplorerCubit({
+    required this.snapshotLoader,
+    required this.snapshotRevisionLoader,
+    required this.revisionStateStore,
+  }) : super(const RegistryExplorerLoading());
 
   final RegistrySnapshotLoader snapshotLoader;
+  final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
+  final RegistryRevisionStateStore revisionStateStore;
 
   bool _isLoading = false;
+  bool _restorationCompleted = false;
   RegistrySnapshot? _currentSnapshot;
   RegistrySnapshot? _previousSnapshot;
 
@@ -51,23 +59,80 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     try {
       final RegistrySnapshot snapshot = await snapshotLoader.loadSnapshot();
 
-      final RegistrySnapshot? currentSnapshot = _currentSnapshot;
+      RegistrySnapshot? previousSnapshot = _previousSnapshot;
 
-      if (currentSnapshot != null &&
-          currentSnapshot.sourceRevision != snapshot.sourceRevision) {
-        _previousSnapshot = currentSnapshot;
+      if (!_restorationCompleted) {
+        final RegistryRevisionState? persistedState = await revisionStateStore
+            .loadRevisionState();
+
+        final bool belongsToLoadedRegistry =
+            persistedState != null &&
+            persistedState.projectId == snapshot.projectId &&
+            persistedState.projectAdapterId == snapshot.projectAdapterId &&
+            persistedState.sourceDocumentPath == snapshot.sourceDocumentPath;
+
+        if (belongsToLoadedRegistry) {
+          final String? revisionToRestore =
+              persistedState.currentRevision == snapshot.sourceRevision
+              ? persistedState.previousRevision
+              : persistedState.currentRevision;
+
+          if (revisionToRestore != null) {
+            final RegistrySnapshot restoredSnapshot =
+                await snapshotRevisionLoader.loadSnapshotAtRevision(
+                  revisionToRestore,
+                );
+
+            if (restoredSnapshot.projectId != snapshot.projectId ||
+                restoredSnapshot.projectAdapterId !=
+                    snapshot.projectAdapterId ||
+                restoredSnapshot.sourceDocumentPath !=
+                    snapshot.sourceDocumentPath ||
+                restoredSnapshot.sourceRevision != revisionToRestore) {
+              throw StateError(
+                'Restored Registry snapshot does not match '
+                'the persisted revision coordinates.',
+              );
+            }
+
+            previousSnapshot = restoredSnapshot;
+          } else {
+            previousSnapshot = null;
+          }
+        } else {
+          previousSnapshot = null;
+        }
+      } else {
+        final RegistrySnapshot? currentSnapshot = _currentSnapshot;
+
+        if (currentSnapshot != null &&
+            currentSnapshot.sourceRevision != snapshot.sourceRevision) {
+          previousSnapshot = currentSnapshot;
+        }
       }
 
-      _currentSnapshot = snapshot;
-
       final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
+
+      await revisionStateStore.saveRevisionState(
+        RegistryRevisionState(
+          projectId: snapshot.projectId,
+          projectAdapterId: snapshot.projectAdapterId,
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          currentRevision: snapshot.sourceRevision,
+          previousRevision: previousSnapshot?.sourceRevision,
+        ),
+      );
+
+      _currentSnapshot = snapshot;
+      _previousSnapshot = previousSnapshot;
+      _restorationCompleted = true;
 
       if (!isClosed) {
         emit(
           RegistryExplorerLoaded(
             snapshot: snapshot,
             index: index,
-            previousSnapshot: _previousSnapshot,
+            previousSnapshot: previousSnapshot,
           ),
         );
       }
