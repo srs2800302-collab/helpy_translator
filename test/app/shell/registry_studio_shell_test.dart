@@ -167,6 +167,192 @@ void main() {
     },
   );
 
+  test('preserves, moves and clears open Registry '
+      'context across refresh', () async {
+    final RegistryNode currentRoot = snapshot.roots.single;
+
+    final RegistryNode currentChild = currentRoot.children.single;
+
+    const String movedFingerprint =
+        'git-blob:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+
+    final RegistryPath movedPath = RegistryPath(const <String>[
+      'Registry',
+      'Moved Domain',
+    ]);
+
+    final RegistryNode movedChild = RegistryNode(
+      id: currentChild.id,
+      kindId: currentChild.kindId,
+      path: movedPath,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: movedFingerprint,
+          headingPath: movedPath.segments,
+          startLine: 3,
+          endLine: 4,
+        ),
+      ],
+      content: currentChild.content,
+      businessScopeOwnerId: currentChild.businessScopeOwnerId,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode movedRoot = RegistryNode(
+      id: currentRoot.id,
+      kindId: currentRoot.kindId,
+      path: currentRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: movedFingerprint,
+          headingPath: currentRoot.path.segments,
+          startLine: 1,
+          endLine: 4,
+        ),
+      ],
+      content: currentRoot.content,
+      businessScopeOwnerId: currentRoot.businessScopeOwnerId,
+      children: <RegistryNode>[movedChild],
+    );
+
+    final RegistrySnapshot movedSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '3333333333333333333333333333333333333333',
+      sourceSnapshotFingerprint: movedFingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n'
+          '## Moved Domain\n'
+          'Domain content.\n',
+      roots: <RegistryNode>[movedRoot],
+    );
+
+    const String deletedFingerprint =
+        'git-blob:ffffffffffffffffffffffffffffffffffffffff';
+
+    final RegistryNode deletedRoot = RegistryNode(
+      id: currentRoot.id,
+      kindId: currentRoot.kindId,
+      path: currentRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: deletedFingerprint,
+          headingPath: currentRoot.path.segments,
+          startLine: 1,
+          endLine: 2,
+        ),
+      ],
+      content: currentRoot.content,
+      businessScopeOwnerId: currentRoot.businessScopeOwnerId,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistrySnapshot deletedSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '4444444444444444444444444444444444444444',
+      sourceSnapshotFingerprint: deletedFingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n',
+      roots: <RegistryNode>[deletedRoot],
+    );
+
+    final _QueuedRegistrySnapshotLoader loader =
+        _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+          () async => snapshot,
+          () async => snapshot,
+          () async => movedSnapshot,
+          () async => deletedSnapshot,
+        ]);
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+      snapshotLoader: loader,
+      snapshotRevisionLoader: loader,
+      revisionStateStore: store,
+      snapshotComparator: const RegistrySnapshotComparator(),
+    );
+
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+
+    await cubit.selectRegistryNode(currentChild.id);
+
+    RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.openRegistryNode, same(currentChild));
+
+    expect(store.state?.openRegistryPath, currentChild.path);
+
+    await cubit.refresh();
+
+    loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.snapshot, same(snapshot));
+
+    expect(loaded.openRegistryNode, same(currentChild));
+
+    expect(loaded.openRegistryNodeId, currentChild.id);
+
+    expect(loaded.openRegistryPath, currentChild.path);
+
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+
+    expect(store.state?.openRegistryPath, currentChild.path);
+
+    expect(loaded.selectedProblemIndex, isNull);
+
+    await cubit.refresh();
+
+    loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.snapshot, same(movedSnapshot));
+
+    expect(loaded.openRegistryNode, same(movedChild));
+
+    expect(loaded.openRegistryNodeId, currentChild.id);
+
+    expect(loaded.openRegistryPath, movedPath);
+
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+
+    expect(store.state?.openRegistryPath, movedPath);
+
+    expect(loaded.selectedProblemIndex, isNull);
+
+    await cubit.refresh();
+
+    loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.snapshot, same(deletedSnapshot));
+
+    expect(loaded.openRegistryNode, isNull);
+
+    expect(loaded.openRegistryNodeId, isNull);
+
+    expect(loaded.openRegistryPath, isNull);
+
+    expect(loaded.selectedProblemIndex, isNull);
+
+    expect(store.state?.openRegistryNodeId, isNull);
+
+    expect(store.state?.openRegistryPath, isNull);
+
+    expect(loader.loadCount, 4);
+    expect(loader.requestedRevisions, isEmpty);
+    expect(store.saveCount, 5);
+  });
+
   test(
     'changes clean baseline only after explicit engineer confirmation',
     () async {

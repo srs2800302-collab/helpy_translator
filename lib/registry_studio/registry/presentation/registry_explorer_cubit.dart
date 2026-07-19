@@ -302,6 +302,13 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       return;
     }
 
+    final RegistryExplorerState stateBeforeRefresh = state;
+
+    final RegistryNodeId? openRegistryNodeId =
+        stateBeforeRefresh is RegistryExplorerLoaded
+        ? stateBeforeRefresh.openRegistryNodeId
+        : null;
+
     _retryRefresh = true;
     _isLoading = true;
     emit(const RegistryExplorerLoading());
@@ -310,6 +317,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       final RegistrySnapshot snapshot = await snapshotLoader.loadSnapshot();
 
       final RegistrySnapshot? currentSnapshot = _currentSnapshot;
+
       RegistrySnapshot? previousSnapshot = _previousSnapshot;
 
       if (currentSnapshot != null) {
@@ -347,6 +355,10 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
               currentIndex: index,
             );
 
+      final RegistryNode? refreshedOpenRegistryNode = openRegistryNodeId == null
+          ? null
+          : index.nodesById[openRegistryNodeId];
+
       await revisionStateStore.saveRevisionState(
         RegistryRevisionState(
           projectId: snapshot.projectId,
@@ -355,6 +367,9 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           currentRevision: snapshot.sourceRevision,
           previousRevision: previousSnapshot?.sourceRevision,
           cleanBaselineRevision: cleanBaselineSnapshot?.sourceRevision,
+          openRegistryNodeId: refreshedOpenRegistryNode?.id,
+          openRegistryPath: refreshedOpenRegistryNode?.path,
+          selectedProblemIndex: null,
         ),
       );
 
@@ -371,8 +386,8 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: cleanBaselineSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
-            openRegistryNodeId: null,
-            openRegistryPath: null,
+            openRegistryNodeId: refreshedOpenRegistryNode?.id,
+            openRegistryPath: refreshedOpenRegistryNode?.path,
             selectedProblemIndex: null,
           ),
         );
