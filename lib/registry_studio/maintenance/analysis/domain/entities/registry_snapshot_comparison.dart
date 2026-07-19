@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'registry_node_change.dart';
+import 'registry_structural_problem.dart';
 
 final class RegistrySnapshotComparison extends Equatable {
   factory RegistrySnapshotComparison({
@@ -10,6 +11,7 @@ final class RegistrySnapshotComparison extends Equatable {
   }) {
     final String normalizedPreviousRevision = previousRevision.trim();
     final String normalizedCurrentRevision = currentRevision.trim();
+
     final List<RegistryNodeChange> normalizedChanges = changes.toList(
       growable: false,
     );
@@ -30,10 +32,21 @@ final class RegistrySnapshotComparison extends Equatable {
       );
     }
 
+    final List<RegistryStructuralProblem> problems = normalizedChanges
+        .map(
+          (RegistryNodeChange change) => RegistryStructuralProblem.fromChange(
+            change: change,
+            baselineRevision: normalizedPreviousRevision,
+            currentRevision: normalizedCurrentRevision,
+          ),
+        )
+        .toList(growable: false);
+
     return RegistrySnapshotComparison._(
       previousRevision: normalizedPreviousRevision,
       currentRevision: normalizedCurrentRevision,
       changes: List<RegistryNodeChange>.unmodifiable(normalizedChanges),
+      problems: List<RegistryStructuralProblem>.unmodifiable(problems),
     );
   }
 
@@ -41,11 +54,13 @@ final class RegistrySnapshotComparison extends Equatable {
     required this.previousRevision,
     required this.currentRevision,
     required this.changes,
+    required this.problems,
   });
 
   final String previousRevision;
   final String currentRevision;
   final List<RegistryNodeChange> changes;
+  final List<RegistryStructuralProblem> problems;
 
   int get addedCount => changes
       .where(
@@ -73,5 +88,6 @@ final class RegistrySnapshotComparison extends Equatable {
     previousRevision,
     currentRevision,
     changes,
+    problems,
   ];
 }

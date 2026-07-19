@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../maintenance/analysis/application/registry_snapshot_comparator.dart';
-import '../../maintenance/analysis/domain/entities/registry_node_change.dart';
+import '../../maintenance/analysis/domain/entities/registry_structural_problem.dart';
 import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
@@ -46,8 +46,10 @@ final class _RegistryExplorerView extends StatefulWidget {
 
 final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _selectedProblemKey = GlobalKey();
 
   bool _showScrollToTop = false;
+  bool _showProblemQueue = false;
 
   @override
   void initState() {
@@ -83,6 +85,39 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
     );
+  }
+
+  void _selectProblem(int? index) {
+    if (index != null && _showProblemQueue) {
+      setState(() {
+        _showProblemQueue = false;
+      });
+    }
+
+    context.read<RegistryExplorerCubit>().selectProblem(index);
+
+    if (index == null) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      final BuildContext? selectedContext = _selectedProblemKey.currentContext;
+
+      if (selectedContext == null) {
+        return;
+      }
+
+      Scrollable.ensureVisible(
+        selectedContext,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        alignment: 0.08,
+      );
+    });
   }
 
   Future<void> _confirmCurrentAsCleanBaseline() async {
@@ -264,26 +299,30 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       child: ListView.separated(
                         controller: _scrollController,
                         itemCount:
-                            (loaded.previousComparison?.changes.length ?? 0) +
-                            (loaded.cleanBaselineComparison?.changes.length ??
-                                0) +
                             loaded.index.nodes.length +
-                            3,
+                            4 +
+                            (_showProblemQueue ? loaded.problems.length : 0) +
+                            (loaded.selectedProblem == null ? 0 : 1),
                         separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (BuildContext context, int itemIndex) {
-                          final List<RegistryNodeChange> previousChanges =
-                              loaded.previousComparison?.changes ??
-                              const <RegistryNodeChange>[];
+                          final List<RegistryStructuralProblem> problems =
+                              loaded.problems;
 
-                          final List<RegistryNodeChange> cleanChanges =
-                              loaded.cleanBaselineComparison?.changes ??
-                              const <RegistryNodeChange>[];
+                          final RegistryStructuralProblem? selectedProblem =
+                              loaded.selectedProblem;
 
-                          final int cleanSummaryIndex =
-                              previousChanges.length + 1;
+                          const int problemRowsStartIndex = 3;
 
-                          final int registryHeaderIndex =
-                              cleanSummaryIndex + cleanChanges.length + 1;
+                          final int problemRowsEndIndex =
+                              problemRowsStartIndex +
+                              (_showProblemQueue ? problems.length : 0);
+
+                          final int selectedProblemItemIndex =
+                              problemRowsEndIndex;
+
+                          final int fullRegistryHeaderIndex =
+                              selectedProblemItemIndex +
+                              (selectedProblem == null ? 0 : 1);
 
                           if (itemIndex == 0) {
                             return ListTile(
@@ -295,7 +334,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                     ? 'Изменения с предыдущей revision: '
                                           'нет baseline'
                                     : 'Изменения с предыдущей revision: '
-                                          '${previousChanges.length}',
+                                          '${loaded.previousComparison!.changes.length}',
                               ),
                               subtitle: loaded.previousComparison == null
                                   ? const Text(
@@ -313,7 +352,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             );
                           }
 
-                          if (itemIndex == cleanSummaryIndex) {
+                          if (itemIndex == 1) {
                             final bool isCurrentCleanBaseline =
                                 loaded.cleanBaselineSnapshot?.sourceRevision ==
                                 loaded.snapshot.sourceRevision;
@@ -326,7 +365,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 loaded.cleanBaselineComparison == null
                                     ? 'Clean baseline: не подтверждён'
                                     : 'Расхождения с clean baseline: '
-                                          '${cleanChanges.length}',
+                                          '${loaded.cleanBaselineComparison!.changes.length}',
                               ),
                               subtitle: loaded.cleanBaselineComparison == null
                                   ? const Text(
@@ -361,107 +400,307 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             );
                           }
 
-                          RegistryNodeChange? change;
-                          String? comparisonKey;
-
-                          if (itemIndex > 0 && itemIndex < cleanSummaryIndex) {
-                            change = previousChanges[itemIndex - 1];
-                            comparisonKey = 'previous';
-                          } else if (itemIndex > cleanSummaryIndex &&
-                              itemIndex < registryHeaderIndex) {
-                            change =
-                                cleanChanges[itemIndex - cleanSummaryIndex - 1];
-                            comparisonKey = 'clean';
-                          }
-
-                          if (change != null) {
-                            final RegistryNode node =
-                                change.currentNode ?? change.previousNode!;
-
-                            final evidence = node.sourceEvidence.first;
-
-                            final List<String> details = <String>[
-                              node.path.segments.join(' → '),
-                            ];
-
-                            switch (change.kind) {
-                              case RegistryNodeChangeKind.added:
-                                details.add('Причина: добавлен новый узел.');
-                                break;
-                              case RegistryNodeChangeKind.removed:
-                                details.add('Причина: узел удалён.');
-                                break;
-                              case RegistryNodeChangeKind.changed:
-                                details.add(
-                                  'Изменено: '
-                                  '${change.aspects.map((RegistryNodeChangeAspect aspect) {
-                                    return switch (aspect) {
-                                      RegistryNodeChangeAspect.kind => 'тип',
-                                      RegistryNodeChangeAspect.path => 'путь',
-                                      RegistryNodeChangeAspect.content => 'содержимое',
-                                      RegistryNodeChangeAspect.businessScopeOwner => 'владелец бизнес-области',
-                                    };
-                                  }).join(', ')}',
-                                );
-
-                                if (change.aspects.contains(
-                                  RegistryNodeChangeAspect.path,
-                                )) {
-                                  details
-                                    ..add(
-                                      'Было: '
-                                      '${change.previousNode!.path.segments.join(' → ')}',
-                                    )
-                                    ..add(
-                                      'Стало: '
-                                      '${change.currentNode!.path.segments.join(' → ')}',
-                                    );
-                                }
-                                break;
-                            }
-
-                            details.add(
-                              'Строки ${evidence.startLine}–'
-                              '${evidence.endLine}',
-                            );
-
-                            final String title = switch (change.kind) {
-                              RegistryNodeChangeKind.added =>
-                                'Добавлено: '
-                                    '${node.path.segments.last}',
-                              RegistryNodeChangeKind.removed =>
-                                'Удалено: '
-                                    '${node.path.segments.last}',
-                              RegistryNodeChangeKind.changed =>
-                                'Изменено: '
-                                    '${node.path.segments.last}',
-                            };
-
-                            final IconData icon = switch (change.kind) {
-                              RegistryNodeChangeKind.added =>
-                                Icons.add_circle_outline,
-                              RegistryNodeChangeKind.removed =>
-                                Icons.remove_circle_outline,
-                              RegistryNodeChangeKind.changed =>
-                                Icons.edit_outlined,
-                            };
+                          if (itemIndex == 2) {
+                            final String baselineLabel =
+                                loaded.cleanBaselineComparison != null
+                                ? 'clean baseline'
+                                : 'предыдущая revision';
 
                             return ListTile(
-                              key: ValueKey<String>(
-                                'registry-change-'
-                                '$comparisonKey-'
-                                '${change.kind.name}-'
-                                '${node.id.value}',
+                              key: const ValueKey<String>(
+                                'registry-problem-queue',
                               ),
-                              leading: Icon(icon),
-                              title: Text(title),
-                              subtitle: Text(details.join('\n')),
-                              isThreeLine: true,
-                              dense: true,
+                              leading: Icon(
+                                problems.isEmpty
+                                    ? Icons.inbox_outlined
+                                    : Icons.adjust,
+                                color: problems.isEmpty
+                                    ? null
+                                    : Theme.of(context).colorScheme.primary,
+                              ),
+                              title: Text(
+                                'Очередь проблем: '
+                                '${problems.length}',
+                              ),
+                              subtitle: loaded.problemComparison == null
+                                  ? const Text(
+                                      'Baseline сравнения '
+                                      'отсутствует.',
+                                    )
+                                  : problems.isEmpty
+                                  ? Text(
+                                      'Затронутых мест относительно '
+                                      '$baselineLabel не обнаружено.',
+                                    )
+                                  : Text(
+                                      'Источник: $baselineLabel. '
+                                      'Статус: затронуто.',
+                                    ),
+                              trailing: problems.isEmpty
+                                  ? null
+                                  : Icon(
+                                      _showProblemQueue
+                                          ? Icons.expand_less
+                                          : Icons.expand_more,
+                                    ),
+                              onTap: problems.isEmpty
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _showProblemQueue = !_showProblemQueue;
+                                      });
+                                    },
                             );
                           }
 
-                          if (itemIndex == registryHeaderIndex) {
+                          if (itemIndex >= problemRowsStartIndex &&
+                              itemIndex < problemRowsEndIndex) {
+                            final int problemIndex =
+                                itemIndex - problemRowsStartIndex;
+
+                            final RegistryStructuralProblem problem =
+                                problems[problemIndex];
+
+                            final evidence =
+                                problem.exactNode.sourceEvidence.first;
+
+                            return InkWell(
+                              key: ValueKey<String>(
+                                'registry-problem-'
+                                '$problemIndex-'
+                                '${problem.exactNode.id.value}',
+                              ),
+                              onTap: () {
+                                _selectProblem(problemIndex);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Icon(
+                                      Icons.adjust,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            'Затронуто · '
+                                            '${problem.path.segments.last}',
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.titleMedium,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'RegistryPath: '
+                                            '${problem.path.segments.join(' → ')}',
+                                          ),
+                                          Text(
+                                            'Причина: '
+                                            '${problem.reason}',
+                                          ),
+                                          Text(
+                                            'Baseline revision: '
+                                            '${problem.baselineRevision}',
+                                          ),
+                                          Text(
+                                            'Current revision: '
+                                            '${problem.currentRevision}',
+                                          ),
+                                          Text(
+                                            'Evidence: '
+                                            '${evidence.sourceDocumentPath}, '
+                                            'строки ${evidence.startLine}–'
+                                            '${evidence.endLine}',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          if (selectedProblem != null &&
+                              itemIndex == selectedProblemItemIndex) {
+                            final int selectedIndex =
+                                loaded.selectedProblemIndex!;
+
+                            final String statusLabel =
+                                switch (selectedProblem.status) {
+                                  RegistryStructuralProblemStatus.affected =>
+                                    'Статус: затронуто',
+                                };
+
+                            return KeyedSubtree(
+                              key: const ValueKey<String>(
+                                'registry-selected-problem',
+                              ),
+                              child: Card(
+                                key: _selectedProblemKey,
+                                margin: const EdgeInsets.all(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Row(
+                                        children: <Widget>[
+                                          Icon(
+                                            Icons.adjust,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              statusLabel,
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.titleMedium,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'Проблемное место '
+                                        '${selectedIndex + 1} из '
+                                        '${problems.length}',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleLarge,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'RegistryPath: '
+                                        '${selectedProblem.path.segments.join(' → ')}',
+                                      ),
+                                      Text(
+                                        'Причина: '
+                                        '${selectedProblem.reason}',
+                                      ),
+                                      Text(
+                                        'Baseline revision: '
+                                        '${selectedProblem.baselineRevision}',
+                                      ),
+                                      Text(
+                                        'Current revision: '
+                                        '${selectedProblem.currentRevision}',
+                                      ),
+                                      if (selectedProblem.change.previousNode !=
+                                          null) ...<Widget>[
+                                        const Divider(height: 24),
+                                        const Text('Baseline Registry block'),
+                                        Text(
+                                          'RegistryPath: '
+                                          '${selectedProblem.change.previousNode!.path.segments.join(' → ')}',
+                                        ),
+                                        for (final evidence
+                                            in selectedProblem.baselineEvidence)
+                                          Text(
+                                            'Evidence: '
+                                            '${evidence.sourceDocumentPath}, '
+                                            'строки ${evidence.startLine}–'
+                                            '${evidence.endLine}',
+                                          ),
+                                        const SizedBox(height: 8),
+                                        SelectableText(
+                                          selectedProblem
+                                              .change
+                                              .previousNode!
+                                              .content,
+                                        ),
+                                      ],
+                                      if (selectedProblem.change.currentNode !=
+                                          null) ...<Widget>[
+                                        const Divider(height: 24),
+                                        const Text('Current Registry block'),
+                                        Text(
+                                          'RegistryPath: '
+                                          '${selectedProblem.change.currentNode!.path.segments.join(' → ')}',
+                                        ),
+                                        for (final evidence
+                                            in selectedProblem.currentEvidence)
+                                          Text(
+                                            'Evidence: '
+                                            '${evidence.sourceDocumentPath}, '
+                                            'строки ${evidence.startLine}–'
+                                            '${evidence.endLine}',
+                                          ),
+                                        const SizedBox(height: 8),
+                                        SelectableText(
+                                          selectedProblem
+                                              .change
+                                              .currentNode!
+                                              .content,
+                                        ),
+                                      ],
+                                      const Divider(height: 24),
+                                      Row(
+                                        children: <Widget>[
+                                          IconButton(
+                                            tooltip: 'Предыдущая проблема',
+                                            onPressed: selectedIndex == 0
+                                                ? null
+                                                : () {
+                                                    _selectProblem(
+                                                      selectedIndex - 1,
+                                                    );
+                                                  },
+                                            icon: const Icon(
+                                              Icons.navigate_before,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${selectedIndex + 1}/'
+                                            '${problems.length}',
+                                          ),
+                                          IconButton(
+                                            tooltip: 'Следующая проблема',
+                                            onPressed:
+                                                selectedIndex ==
+                                                    problems.length - 1
+                                                ? null
+                                                : () {
+                                                    _selectProblem(
+                                                      selectedIndex + 1,
+                                                    );
+                                                  },
+                                            icon: const Icon(
+                                              Icons.navigate_next,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          TextButton(
+                                            onPressed: () {
+                                              _selectProblem(null);
+                                            },
+                                            child: const Text('Закрыть'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          if (itemIndex == fullRegistryHeaderIndex) {
                             return const ListTile(
                               key: ValueKey<String>('full-registry-header'),
                               title: Text('Полный Registry'),
@@ -470,7 +709,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           }
 
                           final int nodeIndex =
-                              itemIndex - registryHeaderIndex - 1;
+                              itemIndex - fullRegistryHeaderIndex - 1;
 
                           final RegistryNode node =
                               loaded.index.nodes[nodeIndex];

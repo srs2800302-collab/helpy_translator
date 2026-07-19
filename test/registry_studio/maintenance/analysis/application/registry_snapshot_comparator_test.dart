@@ -3,6 +3,7 @@ import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evi
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
 import 'package:helpy_translator/registry_studio/maintenance/analysis/domain/entities/registry_node_change.dart';
+import 'package:helpy_translator/registry_studio/maintenance/analysis/domain/entities/registry_structural_problem.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_structural_index.dart';
@@ -172,6 +173,28 @@ void main() {
 
     expect(comparison.changes[2].kind, RegistryNodeChangeKind.removed);
     expect(comparison.changes[2].previousNode, same(previousRemovedNode));
+
+    expect(comparison.problems, hasLength(3));
+
+    final RegistryStructuralProblem changedProblem = comparison.problems[0];
+
+    expect(changedProblem.status, RegistryStructuralProblemStatus.affected);
+    expect(changedProblem.reason, 'Изменены: тип, путь, содержимое.');
+    expect(changedProblem.change, same(changed));
+    expect(changedProblem.path, currentChangedNode.path);
+    expect(changedProblem.baselineRevision, previousSnapshot.sourceRevision);
+    expect(changedProblem.currentRevision, currentSnapshot.sourceRevision);
+    expect(changedProblem.baselineEvidence, previousChangedNode.sourceEvidence);
+    expect(changedProblem.currentEvidence, currentChangedNode.sourceEvidence);
+
+    expect(comparison.problems[1].reason, 'Добавлен новый Registry-узел.');
+    expect(comparison.problems[1].exactNode, same(currentAddedNode));
+
+    expect(
+      comparison.problems[2].reason,
+      'Registry-узел удалён из текущей revision.',
+    );
+    expect(comparison.problems[2].exactNode, same(previousRemovedNode));
 
     expect(
       comparison.changes.any(

@@ -764,45 +764,177 @@ void main() {
         findsOneWidget,
       );
 
-      final Finder previousChangedRow = find.byKey(
+      final Finder problemQueue = find.byKey(
+        const ValueKey<String>('registry-problem-queue'),
+      );
+
+      expect(problemQueue, findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: problemQueue,
+          matching: find.text('Очередь проблем: 2'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: problemQueue,
+          matching: find.textContaining('Источник: clean baseline'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(problemQueue);
+      await tester.pumpAndSettle();
+
+      final Finder changedProblem = find.byKey(
         ValueKey<String>(
-          'registry-change-previous-changed-'
+          'registry-problem-0-'
           '${previousChild.id.value}',
         ),
       );
 
-      final Finder previousAddedRow = find.byKey(
+      final Finder addedProblem = find.byKey(
         ValueKey<String>(
-          'registry-change-previous-added-'
+          'registry-problem-1-'
           '${addedChild.id.value}',
         ),
       );
 
-      expect(previousChangedRow, findsOneWidget);
-      expect(previousAddedRow, findsOneWidget);
-
-      final Finder cleanChangedRow = find.byKey(
-        ValueKey<String>(
-          'registry-change-clean-changed-'
-          '${previousChild.id.value}',
-        ),
-      );
-
-      final Finder cleanAddedRow = find.byKey(
-        ValueKey<String>(
-          'registry-change-clean-added-'
-          '${addedChild.id.value}',
-        ),
-      );
+      expect(changedProblem, findsOneWidget);
+      expect(find.text('Затронуто · Domain'), findsOneWidget);
 
       await tester.scrollUntilVisible(
-        cleanAddedRow,
-        220,
+        addedProblem,
+        180,
         scrollable: find.byType(Scrollable).first,
       );
 
-      expect(cleanChangedRow, findsOneWidget);
-      expect(cleanAddedRow, findsOneWidget);
+      expect(addedProblem, findsOneWidget);
+      expect(find.text('Затронуто · Added Domain'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        changedProblem,
+        -180,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(changedProblem, findsOneWidget);
+      expect(find.text('Затронуто · Domain'), findsOneWidget);
+
+      await tester.tap(changedProblem);
+      await tester.pumpAndSettle();
+
+      expect(changedProblem, findsNothing);
+      expect(addedProblem, findsNothing);
+
+      final Finder selectedProblem = find.byKey(
+        const ValueKey<String>('registry-selected-problem'),
+      );
+
+      expect(selectedProblem, findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.text('Проблемное место 1 из 2'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.text('Статус: затронуто'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.text('Причина: Изменены: содержимое.'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.textContaining('Updated domain content.'),
+        ),
+        findsOneWidget,
+      );
+
+      final Finder nextProblemButton = find.byTooltip('Следующая проблема');
+
+      await tester.ensureVisible(nextProblemButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(nextProblemButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.text('Проблемное место 2 из 2'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.text('Причина: Добавлен новый Registry-узел.'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.textContaining('Added domain content.'),
+        ),
+        findsOneWidget,
+      );
+
+      final Finder previousProblemButton = find.byTooltip(
+        'Предыдущая проблема',
+      );
+
+      await tester.ensureVisible(previousProblemButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(previousProblemButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.text('Проблемное место 1 из 2'),
+        ),
+        findsOneWidget,
+      );
+
+      final Finder closeProblemButton = find.descendant(
+        of: selectedProblem,
+        matching: find.widgetWithText(TextButton, 'Закрыть'),
+      );
+
+      await tester.ensureVisible(closeProblemButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(closeProblemButton);
+      await tester.pumpAndSettle();
+
+      expect(selectedProblem, findsNothing);
+
+      expect(
+        find.byKey(const ValueKey<String>('full-registry-header')),
+        findsOneWidget,
+      );
 
       expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
 

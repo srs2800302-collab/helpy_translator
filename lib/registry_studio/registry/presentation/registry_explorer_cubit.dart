@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../maintenance/analysis/application/registry_snapshot_comparator.dart';
 import '../../maintenance/analysis/domain/entities/registry_snapshot_comparison.dart';
+import '../../maintenance/analysis/domain/entities/registry_structural_problem.dart';
 import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
@@ -24,6 +25,7 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
     required this.previousComparison,
     required this.cleanBaselineSnapshot,
     required this.cleanBaselineComparison,
+    required this.selectedProblemIndex,
   });
 
   final RegistrySnapshot snapshot;
@@ -32,6 +34,23 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
   final RegistrySnapshotComparison? previousComparison;
   final RegistrySnapshot? cleanBaselineSnapshot;
   final RegistrySnapshotComparison? cleanBaselineComparison;
+  final int? selectedProblemIndex;
+
+  RegistrySnapshotComparison? get problemComparison =>
+      cleanBaselineComparison ?? previousComparison;
+
+  List<RegistryStructuralProblem> get problems =>
+      problemComparison?.problems ?? const <RegistryStructuralProblem>[];
+
+  RegistryStructuralProblem? get selectedProblem {
+    final int? index = selectedProblemIndex;
+
+    if (index == null || index < 0 || index >= problems.length) {
+      return null;
+    }
+
+    return problems[index];
+  }
 }
 
 final class RegistryExplorerFailure extends RegistryExplorerState {
@@ -184,6 +203,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: cleanBaselineSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
+            selectedProblemIndex: null,
           ),
         );
       }
@@ -276,6 +296,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: cleanBaselineSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
+            selectedProblemIndex: null,
           ),
         );
       }
@@ -352,12 +373,37 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: currentSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
+            selectedProblemIndex: null,
           ),
         );
       }
     } finally {
       _isLoading = false;
     }
+  }
+
+  void selectProblem(int? index) {
+    final RegistryExplorerState currentState = state;
+
+    if (currentState is! RegistryExplorerLoaded) {
+      throw StateError('Registry problems are unavailable.');
+    }
+
+    if (index != null && (index < 0 || index >= currentState.problems.length)) {
+      throw RangeError.index(index, currentState.problems, 'index');
+    }
+
+    emit(
+      RegistryExplorerLoaded(
+        snapshot: currentState.snapshot,
+        index: currentState.index,
+        previousSnapshot: currentState.previousSnapshot,
+        previousComparison: currentState.previousComparison,
+        cleanBaselineSnapshot: currentState.cleanBaselineSnapshot,
+        cleanBaselineComparison: currentState.cleanBaselineComparison,
+        selectedProblemIndex: index,
+      ),
+    );
   }
 
   Future<void> retry() {
