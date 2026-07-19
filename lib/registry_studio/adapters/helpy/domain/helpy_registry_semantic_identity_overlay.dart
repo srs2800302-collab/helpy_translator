@@ -1,4 +1,5 @@
 import '../../../core/domain/entities/registry_entity.dart';
+import '../../../core/domain/evidence/source_evidence.dart';
 import '../../../core/domain/value_objects/registry_entity_id.dart';
 import '../../../core/domain/value_objects/registry_entity_kind.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
@@ -14,6 +15,11 @@ final class HelpyRegistrySemanticIdentity {
     required RegistryPath evidencePath,
     required bool ownsBusinessScope,
     Iterable<int> businessScopeRootSequences = const <int>[],
+    RegistryEntityId? entityId,
+    String? semanticTitle,
+    int? evidenceStartLine,
+    int? evidenceEndLine,
+    bool contributesStructuralKind = true,
   }) {
     if (sequence <= 0) {
       throw ArgumentError.value(
@@ -33,6 +39,47 @@ final class HelpyRegistrySemanticIdentity {
     }
 
     final String formattedSequence = sequence.toString().padLeft(6, '0');
+    final RegistryEntityId normalizedEntityId =
+        entityId ??
+        RegistryEntityId('helpy.registry.entity.$formattedSequence');
+    final String? normalizedSemanticTitle = semanticTitle?.trim();
+
+    if (semanticTitle != null && normalizedSemanticTitle!.isEmpty) {
+      throw ArgumentError.value(
+        semanticTitle,
+        'semanticTitle',
+        'Helpy Registry semantic title must not be empty.',
+      );
+    }
+
+    if ((evidenceStartLine == null) != (evidenceEndLine == null)) {
+      throw ArgumentError(
+        'Helpy Registry semantic evidence must define both '
+        'start and end lines.',
+      );
+    }
+
+    if (evidenceStartLine != null &&
+        (evidenceStartLine <= 0 || evidenceEndLine! < evidenceStartLine)) {
+      throw ArgumentError(
+        'Helpy Registry semantic evidence line range is invalid.',
+      );
+    }
+
+    if (!contributesStructuralKind && entityId == null) {
+      throw ArgumentError(
+        'A supplementary Helpy semantic entity must define '
+        'its own stable entity identity.',
+      );
+    }
+
+    if (!contributesStructuralKind && evidenceStartLine == null) {
+      throw ArgumentError(
+        'A supplementary Helpy semantic entity must define '
+        'an exact source span.',
+      );
+    }
+
     final List<int> normalizedBusinessScopeRootSequences =
         businessScopeRootSequences.toList(growable: true);
 
@@ -71,9 +118,13 @@ final class HelpyRegistrySemanticIdentity {
 
     return HelpyRegistrySemanticIdentity._(
       nodeId: RegistryNodeId('helpy.registry.node.$formattedSequence'),
-      entityId: RegistryEntityId('helpy.registry.entity.$formattedSequence'),
+      entityId: normalizedEntityId,
       kind: kind,
       evidencePath: evidencePath,
+      semanticTitle: normalizedSemanticTitle,
+      evidenceStartLine: evidenceStartLine,
+      evidenceEndLine: evidenceEndLine,
+      contributesStructuralKind: contributesStructuralKind,
       businessScopeRootNodeIds: List<RegistryNodeId>.unmodifiable(
         normalizedBusinessScopeRootSequences.map(
           (int rootSequence) => RegistryNodeId(
@@ -90,6 +141,10 @@ final class HelpyRegistrySemanticIdentity {
     required this.entityId,
     required this.kind,
     required this.evidencePath,
+    required this.semanticTitle,
+    required this.evidenceStartLine,
+    required this.evidenceEndLine,
+    required this.contributesStructuralKind,
     required this.businessScopeRootNodeIds,
   });
 
@@ -97,6 +152,10 @@ final class HelpyRegistrySemanticIdentity {
   final RegistryEntityId entityId;
   final RegistryEntityKind kind;
   final RegistryPath evidencePath;
+  final String? semanticTitle;
+  final int? evidenceStartLine;
+  final int? evidenceEndLine;
+  final bool contributesStructuralKind;
   final List<RegistryNodeId> businessScopeRootNodeIds;
 
   bool get ownsBusinessScope => businessScopeRootNodeIds.isNotEmpty;
@@ -116,6 +175,40 @@ final class HelpyRegistrySemanticIdentity {
       );
     }
 
+    final List<SourceEvidence> entitySourceEvidence;
+
+    if (evidenceStartLine == null) {
+      entitySourceEvidence = node.sourceEvidence;
+    } else {
+      SourceEvidence? containingEvidence;
+
+      for (final SourceEvidence evidence in node.sourceEvidence) {
+        if (evidenceStartLine! >= evidence.startLine &&
+            evidenceEndLine! <= evidence.endLine) {
+          containingEvidence = evidence;
+          break;
+        }
+      }
+
+      if (containingEvidence == null) {
+        throw StateError(
+          'Helpy Registry semantic source span does not belong '
+          'to structural node ${node.id.value}.',
+        );
+      }
+
+      entitySourceEvidence = List<SourceEvidence>.unmodifiable(<SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: containingEvidence.sourceDocumentPath,
+          sourceSnapshotFingerprint:
+              containingEvidence.sourceSnapshotFingerprint,
+          headingPath: containingEvidence.headingPath,
+          startLine: evidenceStartLine!,
+          endLine: evidenceEndLine!,
+        ),
+      ]);
+    }
+
     return RegistryEntity(
       id: entityId,
       path: node.path,
@@ -123,11 +216,11 @@ final class HelpyRegistrySemanticIdentity {
       payload: HelpyRegistryEntityPayload(
         kind: kind,
         sourceNodeId: node.id,
-        title: node.path.segments.last,
+        title: semanticTitle ?? node.path.segments.last,
         content: node.content,
         ownsBusinessScope: ownsBusinessScope,
       ),
-      sourceEvidence: node.sourceEvidence,
+      sourceEvidence: entitySourceEvidence,
     );
   }
 }
@@ -192,37 +285,45 @@ final class HelpyRegistrySemanticIdentityOverlay {
     final Map<RegistryNodeId, HelpyRegistrySemanticIdentity>
     identitiesByNodeId = <RegistryNodeId, HelpyRegistrySemanticIdentity>{};
     final Set<RegistryEntityId> entityIds = <RegistryEntityId>{};
-    final Set<RegistryPath> evidencePaths = <RegistryPath>{};
+    final Set<String> evidenceAnchors = <String>{};
 
     for (final HelpyRegistrySemanticIdentity identity in normalizedIdentities) {
-      if (identitiesByNodeId.containsKey(identity.nodeId)) {
-        throw ArgumentError.value(
-          identity.nodeId,
-          'identities',
-          'Helpy Registry semantic identity overlay contains a duplicate '
-              'node identity.',
-        );
-      }
-
       if (!entityIds.add(identity.entityId)) {
         throw ArgumentError.value(
           identity.entityId,
           'identities',
-          'Helpy Registry semantic identity overlay contains a duplicate '
-              'entity identity.',
+          'Helpy Registry semantic identity overlay contains '
+              'a duplicate entity identity.',
         );
       }
 
-      if (!evidencePaths.add(identity.evidencePath)) {
+      final String evidenceAnchor = <Object?>[
+        ...identity.evidencePath.segments,
+        identity.evidenceStartLine,
+        identity.evidenceEndLine,
+      ].join('\u0000');
+
+      if (!evidenceAnchors.add(evidenceAnchor)) {
         throw ArgumentError.value(
           identity.evidencePath,
           'identities',
-          'Helpy Registry semantic identity overlay contains a duplicate '
-              'evidence path.',
+          'Helpy Registry semantic identity overlay contains '
+              'a duplicate source evidence anchor.',
         );
       }
 
-      identitiesByNodeId[identity.nodeId] = identity;
+      if (identity.contributesStructuralKind) {
+        if (identitiesByNodeId.containsKey(identity.nodeId)) {
+          throw ArgumentError.value(
+            identity.nodeId,
+            'identities',
+            'Helpy Registry semantic identity overlay contains '
+                'multiple structural kind identities for one node.',
+          );
+        }
+
+        identitiesByNodeId[identity.nodeId] = identity;
+      }
     }
 
     return HelpyRegistrySemanticIdentityOverlay._(
@@ -420,6 +521,24 @@ final class HelpyRegistrySemanticIdentityOverlay {
             businessScopeRootSequences: <int>[21, 22, 26],
           ),
           HelpyRegistrySemanticIdentity(
+            sequence: 21,
+            entityId: RegistryEntityId(
+              'helpy.registry.entity.root-category.'
+              'appliance-installation-connection',
+            ),
+            kind: HelpyRegistrySemanticContract.rootCategory,
+            evidencePath: RegistryPath(<String>[
+              'Helpy Architecture Registry v1 Foundation',
+              'Roadmap Decision → '
+                  'Appliance Installation & Connection Architecture',
+            ]),
+            ownsBusinessScope: false,
+            semanticTitle: 'Appliance Installation & Connection',
+            evidenceStartLine: 526,
+            evidenceEndLine: 536,
+            contributesStructuralKind: false,
+          ),
+          HelpyRegistrySemanticIdentity(
             sequence: 172,
             kind: HelpyRegistrySemanticContract.contract,
             evidencePath: RegistryPath(<String>[
@@ -486,6 +605,22 @@ final class HelpyRegistrySemanticIdentityOverlay {
             ownsBusinessScope: true,
           ),
           HelpyRegistrySemanticIdentity(
+            sequence: 288,
+            entityId: RegistryEntityId(
+              'helpy.registry.entity.root-category.electrical',
+            ),
+            kind: HelpyRegistrySemanticContract.rootCategory,
+            evidencePath: RegistryPath(<String>[
+              'Helpy Architecture Registry v1 Foundation',
+              '23. Service Architecture Registry — Electrical',
+            ]),
+            ownsBusinessScope: false,
+            semanticTitle: 'Electrical',
+            evidenceStartLine: 9240,
+            evidenceEndLine: 9249,
+            contributesStructuralKind: false,
+          ),
+          HelpyRegistrySemanticIdentity(
             sequence: 303,
             kind: HelpyRegistrySemanticContract.contract,
             evidencePath: RegistryPath(<String>[
@@ -495,6 +630,23 @@ final class HelpyRegistrySemanticIdentityOverlay {
             ownsBusinessScope: true,
           ),
           HelpyRegistrySemanticIdentity(
+            sequence: 304,
+            entityId: RegistryEntityId(
+              'helpy.registry.entity.root-category.plumbing',
+            ),
+            kind: HelpyRegistrySemanticContract.rootCategory,
+            evidencePath: RegistryPath(<String>[
+              'Helpy Architecture Registry v1 Foundation',
+              '24. Service Architecture Registry — Plumbing',
+              'Plumbing Registry Content',
+            ]),
+            ownsBusinessScope: false,
+            semanticTitle: 'Plumbing',
+            evidenceStartLine: 9934,
+            evidenceEndLine: 9934,
+            contributesStructuralKind: false,
+          ),
+          HelpyRegistrySemanticIdentity(
             sequence: 310,
             kind: HelpyRegistrySemanticContract.contract,
             evidencePath: RegistryPath(<String>[
@@ -502,6 +654,22 @@ final class HelpyRegistrySemanticIdentityOverlay {
               '25. Service Architecture Registry — Locks',
             ]),
             ownsBusinessScope: true,
+          ),
+          HelpyRegistrySemanticIdentity(
+            sequence: 310,
+            entityId: RegistryEntityId(
+              'helpy.registry.entity.root-category.locks',
+            ),
+            kind: HelpyRegistrySemanticContract.rootCategory,
+            evidencePath: RegistryPath(<String>[
+              'Helpy Architecture Registry v1 Foundation',
+              '25. Service Architecture Registry — Locks',
+            ]),
+            ownsBusinessScope: false,
+            semanticTitle: 'Locks',
+            evidenceStartLine: 10929,
+            evidenceEndLine: 10930,
+            contributesStructuralKind: false,
           ),
         ],
       );

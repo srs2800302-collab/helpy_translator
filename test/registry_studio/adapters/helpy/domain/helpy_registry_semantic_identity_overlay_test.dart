@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/domain/helpy_registry_entity_payload.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/domain/helpy_registry_semantic_contract.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/domain/helpy_registry_semantic_identity_overlay.dart';
+import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_entity_id.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 
 void main() {
@@ -87,7 +90,7 @@ void main() {
             (sequence: 310, kindId: 'contract', ownsBusinessScope: true),
           ];
 
-      expect(overlay.identities.length, expectedMappings.length);
+      expect(overlay.identities.length, expectedMappings.length + 4);
       expect(overlay.identitiesByNodeId.length, expectedMappings.length);
 
       for (final expected in expectedMappings) {
@@ -118,6 +121,105 @@ void main() {
         )],
         isNull,
       );
+    });
+
+    test('materializes heterogeneous root-category evidence '
+        'without requiring one Markdown form', () {
+      final HelpyRegistrySemanticIdentityOverlay overlay =
+          HelpyRegistrySemanticIdentityOverlay.v1;
+
+      final Map<
+        String,
+        ({String nodeId, String title, int startLine, int endLine})
+      >
+      expected =
+          <String, ({String nodeId, String title, int startLine, int endLine})>{
+            'helpy.registry.entity.root-category.'
+                'appliance-installation-connection': (
+              nodeId: 'helpy.registry.node.000021',
+              title: 'Appliance Installation & Connection',
+              startLine: 526,
+              endLine: 536,
+            ),
+            'helpy.registry.entity.root-category.electrical': (
+              nodeId: 'helpy.registry.node.000288',
+              title: 'Electrical',
+              startLine: 9240,
+              endLine: 9249,
+            ),
+            'helpy.registry.entity.root-category.plumbing': (
+              nodeId:
+                  'helpy.registry.node.'
+                  '000304',
+              title: 'Plumbing',
+              startLine: 9934,
+              endLine: 9934,
+            ),
+            'helpy.registry.entity.root-category.locks': (
+              nodeId: 'helpy.registry.node.000310',
+              title: 'Locks',
+              startLine: 10929,
+              endLine: 10930,
+            ),
+          };
+
+      final List<HelpyRegistrySemanticIdentity> supplementaryIdentities =
+          overlay.identities
+              .where(
+                (HelpyRegistrySemanticIdentity identity) =>
+                    !identity.contributesStructuralKind,
+              )
+              .toList(growable: false);
+
+      expect(supplementaryIdentities, hasLength(4));
+
+      for (final HelpyRegistrySemanticIdentity identity
+          in supplementaryIdentities) {
+        final expectedIdentity = expected[identity.entityId.value];
+
+        expect(expectedIdentity, isNotNull);
+        expect(identity.nodeId.value, expectedIdentity!.nodeId);
+        expect(identity.semanticTitle, expectedIdentity.title);
+        expect(identity.evidenceStartLine, expectedIdentity.startLine);
+        expect(identity.evidenceEndLine, expectedIdentity.endLine);
+        expect(identity.kind, HelpyRegistrySemanticContract.rootCategory);
+        expect(identity.ownsBusinessScope, isFalse);
+
+        final RegistryNode sourceNode = RegistryNode(
+          id: identity.nodeId,
+          kindId: 'helpy.registry.markdown.heading.2',
+          path: identity.evidencePath,
+          sourceEvidence: <SourceEvidence>[
+            SourceEvidence(
+              sourceDocumentPath:
+                  HelpyRegistrySemanticIdentityOverlay.sourceDocumentPath,
+              sourceSnapshotFingerprint:
+                  'git-blob:'
+                  'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+              headingPath: identity.evidencePath.segments,
+              startLine: identity.evidenceStartLine! - 1,
+              endLine: identity.evidenceEndLine! + 1,
+            ),
+          ],
+          content: 'Exact heterogeneous source content.',
+          businessScopeOwnerId: null,
+          children: const <RegistryNode>[],
+        );
+
+        final entity = identity.materializeEntity(sourceNode);
+        final HelpyRegistryEntityPayload payload =
+            entity.payload as HelpyRegistryEntityPayload;
+
+        expect(entity.id, identity.entityId);
+        expect(entity.path, identity.evidencePath);
+        expect(payload.sourceNodeId, identity.nodeId);
+        expect(payload.title, expectedIdentity.title);
+        expect(
+          entity.sourceEvidence.single.startLine,
+          expectedIdentity.startLine,
+        );
+        expect(entity.sourceEvidence.single.endLine, expectedIdentity.endLine);
+      }
     });
 
     test('resolves recursive business-scope ownership by stable identity', () {
