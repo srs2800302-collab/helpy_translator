@@ -3,17 +3,21 @@ import 'dart:io';
 
 import 'package:path_provider_android/path_provider_android.dart';
 
+import '../../core/domain/value_objects/registry_path.dart';
 import '../../registry/application/contracts/registry_revision_state_store.dart';
+import '../../registry/domain/value_objects/registry_node_id.dart';
 
 final class JsonFileRegistryRevisionStateStore
     implements RegistryRevisionStateStore {
   const JsonFileRegistryRevisionStateStore({this.applicationSupportDirectory});
 
   static const String directoryName = 'registry_studio';
-  static const String fileName = 'registry_revision_state_v2.json';
+  static const String fileName = 'registry_revision_state_v3.json';
+  static const String previousFileName = 'registry_revision_state_v2.json';
   static const String legacyFileName = 'registry_revision_state_v1.json';
 
-  static const String _formatVersion = 'v2';
+  static const String _formatVersion = 'v3';
+  static const String _previousFormatVersion = 'v2';
   static const String _legacyFormatVersion = 'v1';
 
   final Directory? applicationSupportDirectory;
@@ -50,6 +54,12 @@ final class JsonFileRegistryRevisionStateStore
       '$fileName',
     );
 
+    final File previousStateFile = File(
+      '${stateDirectory.path}'
+      '${Platform.pathSeparator}'
+      '$previousFileName',
+    );
+
     final File legacyStateFile = File(
       '${stateDirectory.path}'
       '${Platform.pathSeparator}'
@@ -60,6 +70,8 @@ final class JsonFileRegistryRevisionStateStore
 
     if (await currentStateFile.exists()) {
       stateFile = currentStateFile;
+    } else if (await previousStateFile.exists()) {
+      stateFile = previousStateFile;
     } else if (await legacyStateFile.exists()) {
       stateFile = legacyStateFile;
     } else {
@@ -94,6 +106,16 @@ final class JsonFileRegistryRevisionStateStore
         'currentRevision',
         'previousRevision',
       };
+    } else if (version == _previousFormatVersion) {
+      expectedKeys = const <String>{
+        'version',
+        'projectId',
+        'projectAdapterId',
+        'sourceDocumentPath',
+        'currentRevision',
+        'previousRevision',
+        'cleanBaselineRevision',
+      };
     } else if (version == _formatVersion) {
       expectedKeys = const <String>{
         'version',
@@ -103,6 +125,9 @@ final class JsonFileRegistryRevisionStateStore
         'currentRevision',
         'previousRevision',
         'cleanBaselineRevision',
+        'selectedProblemNodeId',
+        'selectedProblemPath',
+        'selectedProblemIndex',
       };
     } else {
       throw const FormatException(
@@ -122,16 +147,40 @@ final class JsonFileRegistryRevisionStateStore
     final Object? sourceDocumentPath = state['sourceDocumentPath'];
     final Object? currentRevision = state['currentRevision'];
     final Object? previousRevision = state['previousRevision'];
-    final Object? cleanBaselineRevision = version == _formatVersion
+
+    final bool includesCleanBaseline =
+        version == _previousFormatVersion || version == _formatVersion;
+
+    final Object? cleanBaselineRevision = includesCleanBaseline
         ? state['cleanBaselineRevision']
         : null;
+
+    final Object? selectedProblemNodeId = version == _formatVersion
+        ? state['selectedProblemNodeId']
+        : null;
+
+    final Object? selectedProblemPath = version == _formatVersion
+        ? state['selectedProblemPath']
+        : null;
+
+    final Object? selectedProblemIndex = version == _formatVersion
+        ? state['selectedProblemIndex']
+        : null;
+
+    final bool selectedProblemPathInvalid =
+        selectedProblemPath != null &&
+        (selectedProblemPath is! List<Object?> ||
+            selectedProblemPath.any((Object? segment) => segment is! String));
 
     if (projectId is! String ||
         projectAdapterId is! String ||
         sourceDocumentPath is! String ||
         currentRevision is! String ||
-        previousRevision != null && previousRevision is! String ||
-        cleanBaselineRevision != null && cleanBaselineRevision is! String) {
+        (previousRevision != null && previousRevision is! String) ||
+        (cleanBaselineRevision != null && cleanBaselineRevision is! String) ||
+        (selectedProblemNodeId != null && selectedProblemNodeId is! String) ||
+        selectedProblemPathInvalid ||
+        (selectedProblemIndex != null && selectedProblemIndex is! int)) {
       throw const FormatException(
         'Registry revision state field types are invalid.',
       );
@@ -145,6 +194,15 @@ final class JsonFileRegistryRevisionStateStore
         currentRevision: currentRevision,
         previousRevision: previousRevision as String?,
         cleanBaselineRevision: cleanBaselineRevision as String?,
+        selectedProblemNodeId: selectedProblemNodeId == null
+            ? null
+            : RegistryNodeId(selectedProblemNodeId as String),
+        selectedProblemPath: selectedProblemPath == null
+            ? null
+            : RegistryPath(
+                (selectedProblemPath as List<Object?>).cast<String>(),
+              ),
+        selectedProblemIndex: selectedProblemIndex as int?,
       );
     } on ArgumentError catch (error) {
       throw FormatException(
@@ -196,7 +254,7 @@ final class JsonFileRegistryRevisionStateStore
 
     try {
       await temporaryFile.writeAsString(
-        '${jsonEncode(<String, Object?>{'version': _formatVersion, 'projectId': state.projectId, 'projectAdapterId': state.projectAdapterId, 'sourceDocumentPath': state.sourceDocumentPath, 'currentRevision': state.currentRevision, 'previousRevision': state.previousRevision, 'cleanBaselineRevision': state.cleanBaselineRevision})}\n',
+        '${jsonEncode(<String, Object?>{'version': _formatVersion, 'projectId': state.projectId, 'projectAdapterId': state.projectAdapterId, 'sourceDocumentPath': state.sourceDocumentPath, 'currentRevision': state.currentRevision, 'previousRevision': state.previousRevision, 'cleanBaselineRevision': state.cleanBaselineRevision, 'selectedProblemNodeId': state.selectedProblemNodeId?.value, 'selectedProblemPath': state.selectedProblemPath?.segments, 'selectedProblemIndex': state.selectedProblemIndex})}\n',
         flush: true,
       );
 

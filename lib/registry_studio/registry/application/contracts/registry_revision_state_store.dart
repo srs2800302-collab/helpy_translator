@@ -1,3 +1,6 @@
+import '../../../core/domain/value_objects/registry_path.dart';
+import '../../domain/value_objects/registry_node_id.dart';
+
 final class RegistryRevisionState {
   factory RegistryRevisionState({
     required String projectId,
@@ -6,6 +9,9 @@ final class RegistryRevisionState {
     required String currentRevision,
     String? previousRevision,
     String? cleanBaselineRevision,
+    RegistryNodeId? selectedProblemNodeId,
+    RegistryPath? selectedProblemPath,
+    int? selectedProblemIndex,
   }) {
     final String normalizedProjectId = projectId.trim();
     final String normalizedProjectAdapterId = projectAdapterId.trim();
@@ -75,6 +81,30 @@ final class RegistryRevisionState {
       );
     }
 
+    final bool hasSelectedProblemContext =
+        selectedProblemNodeId != null ||
+        selectedProblemPath != null ||
+        selectedProblemIndex != null;
+
+    if (hasSelectedProblemContext &&
+        (selectedProblemNodeId == null ||
+            selectedProblemPath == null ||
+            selectedProblemIndex == null)) {
+      throw ArgumentError(
+        'Registry revision state selected problem context '
+        'must be complete or absent.',
+      );
+    }
+
+    if (selectedProblemIndex != null && selectedProblemIndex < 0) {
+      throw RangeError.value(
+        selectedProblemIndex,
+        'selectedProblemIndex',
+        'Registry revision state selected problem position '
+            'must not be negative.',
+      );
+    }
+
     return RegistryRevisionState._(
       projectId: normalizedProjectId,
       projectAdapterId: normalizedProjectAdapterId,
@@ -82,6 +112,9 @@ final class RegistryRevisionState {
       currentRevision: normalizedCurrentRevision,
       previousRevision: normalizedPreviousRevision,
       cleanBaselineRevision: normalizedCleanBaselineRevision,
+      selectedProblemNodeId: selectedProblemNodeId,
+      selectedProblemPath: selectedProblemPath,
+      selectedProblemIndex: selectedProblemIndex,
     );
   }
 
@@ -92,6 +125,9 @@ final class RegistryRevisionState {
     required this.currentRevision,
     required this.previousRevision,
     required this.cleanBaselineRevision,
+    required this.selectedProblemNodeId,
+    required this.selectedProblemPath,
+    required this.selectedProblemIndex,
   });
 
   final String projectId;
@@ -100,6 +136,9 @@ final class RegistryRevisionState {
   final String currentRevision;
   final String? previousRevision;
   final String? cleanBaselineRevision;
+  final RegistryNodeId? selectedProblemNodeId;
+  final RegistryPath? selectedProblemPath;
+  final int? selectedProblemIndex;
 }
 
 abstract interface class RegistryRevisionStateStore {

@@ -88,15 +88,41 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     );
   }
 
-  void _selectProblem(int? index) {
+  Future<void> _selectProblem(int? index) async {
+    final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
+
+    try {
+      await cubit.selectProblem(index);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final String message = error.toString().trim();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.isEmpty
+                ? 'Не удалось сохранить контекст Registry.'
+                : message,
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
     if (index != null && (_showProblemQueue || _showProblemQueueFullScreen)) {
       setState(() {
         _showProblemQueue = false;
         _showProblemQueueFullScreen = false;
       });
     }
-
-    context.read<RegistryExplorerCubit>().selectProblem(index);
 
     if (index == null) {
       return;
@@ -583,8 +609,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 '$problemIndex-'
                                 '${problem.exactNode.id.value}',
                               ),
-                              onTap: () {
-                                _selectProblem(problemIndex);
+                              onTap: () async {
+                                await _selectProblem(problemIndex);
                               },
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -770,8 +796,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                             tooltip: 'Предыдущая проблема',
                                             onPressed: selectedIndex == 0
                                                 ? null
-                                                : () {
-                                                    _selectProblem(
+                                                : () async {
+                                                    await _selectProblem(
                                                       selectedIndex - 1,
                                                     );
                                                   },
@@ -789,8 +815,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                                 selectedIndex ==
                                                     problems.length - 1
                                                 ? null
-                                                : () {
-                                                    _selectProblem(
+                                                : () async {
+                                                    await _selectProblem(
                                                       selectedIndex + 1,
                                                     );
                                                   },
@@ -800,8 +826,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           ),
                                           const Spacer(),
                                           TextButton(
-                                            onPressed: () {
-                                              _selectProblem(null);
+                                            onPressed: () async {
+                                              await _selectProblem(null);
                                             },
                                             child: const Text('Закрыть'),
                                           ),

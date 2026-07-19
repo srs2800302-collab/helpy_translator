@@ -177,6 +177,39 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
               currentIndex: index,
             );
 
+      final List<RegistryStructuralProblem> problems =
+          (cleanBaselineComparison ?? previousComparison)?.problems ??
+          const <RegistryStructuralProblem>[];
+
+      int? selectedProblemIndex;
+
+      if (persistedState != null &&
+          persistedState.selectedProblemNodeId != null) {
+        final int persistedProblemIndex = persistedState.selectedProblemIndex!;
+
+        if (persistedProblemIndex < problems.length) {
+          final RegistryStructuralProblem candidate =
+              problems[persistedProblemIndex];
+
+          if (candidate.exactNode.id == persistedState.selectedProblemNodeId &&
+              candidate.path == persistedState.selectedProblemPath) {
+            selectedProblemIndex = persistedProblemIndex;
+          }
+        }
+
+        if (selectedProblemIndex == null) {
+          final int resolvedProblemIndex = problems.indexWhere(
+            (RegistryStructuralProblem problem) =>
+                problem.exactNode.id == persistedState.selectedProblemNodeId &&
+                problem.path == persistedState.selectedProblemPath,
+          );
+
+          if (resolvedProblemIndex >= 0) {
+            selectedProblemIndex = resolvedProblemIndex;
+          }
+        }
+      }
+
       if (persistedState == null) {
         await revisionStateStore.saveRevisionState(
           RegistryRevisionState(
@@ -203,7 +236,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: cleanBaselineSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
-            selectedProblemIndex: null,
+            selectedProblemIndex: selectedProblemIndex,
           ),
         );
       }
@@ -382,7 +415,11 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     }
   }
 
-  void selectProblem(int? index) {
+  Future<void> selectProblem(int? index) async {
+    if (_isLoading) {
+      throw StateError('Контекст Registry уже обновляется.');
+    }
+
     final RegistryExplorerState currentState = state;
 
     if (currentState is! RegistryExplorerLoaded) {
@@ -393,17 +430,44 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       throw RangeError.index(index, currentState.problems, 'index');
     }
 
-    emit(
-      RegistryExplorerLoaded(
-        snapshot: currentState.snapshot,
-        index: currentState.index,
-        previousSnapshot: currentState.previousSnapshot,
-        previousComparison: currentState.previousComparison,
-        cleanBaselineSnapshot: currentState.cleanBaselineSnapshot,
-        cleanBaselineComparison: currentState.cleanBaselineComparison,
-        selectedProblemIndex: index,
-      ),
-    );
+    final RegistryStructuralProblem? selectedProblem = index == null
+        ? null
+        : currentState.problems[index];
+
+    _isLoading = true;
+
+    try {
+      await revisionStateStore.saveRevisionState(
+        RegistryRevisionState(
+          projectId: currentState.snapshot.projectId,
+          projectAdapterId: currentState.snapshot.projectAdapterId,
+          sourceDocumentPath: currentState.snapshot.sourceDocumentPath,
+          currentRevision: currentState.snapshot.sourceRevision,
+          previousRevision: currentState.previousSnapshot?.sourceRevision,
+          cleanBaselineRevision:
+              currentState.cleanBaselineSnapshot?.sourceRevision,
+          selectedProblemNodeId: selectedProblem?.exactNode.id,
+          selectedProblemPath: selectedProblem?.path,
+          selectedProblemIndex: index,
+        ),
+      );
+
+      if (!isClosed) {
+        emit(
+          RegistryExplorerLoaded(
+            snapshot: currentState.snapshot,
+            index: currentState.index,
+            previousSnapshot: currentState.previousSnapshot,
+            previousComparison: currentState.previousComparison,
+            cleanBaselineSnapshot: currentState.cleanBaselineSnapshot,
+            cleanBaselineComparison: currentState.cleanBaselineComparison,
+            selectedProblemIndex: index,
+          ),
+        );
+      }
+    } finally {
+      _isLoading = false;
+    }
   }
 
   Future<void> retry() {

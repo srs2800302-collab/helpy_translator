@@ -300,6 +300,9 @@ void main() {
               currentRevision: snapshot.sourceRevision,
               previousRevision: previousSnapshot.sourceRevision,
               cleanBaselineRevision: cleanBaselineSnapshot.sourceRevision,
+              selectedProblemNodeId: currentChild.id,
+              selectedProblemPath: currentChild.path,
+              selectedProblemIndex: 7,
             ),
           );
 
@@ -337,6 +340,11 @@ void main() {
       expect(loaded.cleanBaselineComparison!.removedCount, 0);
       expect(loaded.cleanBaselineComparison!.changedCount, 1);
 
+      expect(loaded.selectedProblemIndex, 0);
+      expect(loaded.selectedProblem, isNotNull);
+      expect(loaded.selectedProblem!.exactNode.id, currentChild.id);
+      expect(loaded.selectedProblem!.path, currentChild.path);
+
       expect(loader.loadCount, 0);
       expect(loader.requestedRevisions, <String>[
         snapshot.sourceRevision,
@@ -350,6 +358,24 @@ void main() {
         store.state?.cleanBaselineRevision,
         cleanBaselineSnapshot.sourceRevision,
       );
+
+      final Future<void> persistedSelection = cubit.selectProblem(0);
+
+      await expectLater(
+        cubit.selectProblem(null),
+        throwsA(
+          isA<StateError>().having(
+            (StateError error) => error.message,
+            'message',
+            'Контекст Registry уже обновляется.',
+          ),
+        ),
+      );
+
+      await persistedSelection;
+
+      expect(store.saveCount, 1);
+      expect((cubit.state as RegistryExplorerLoaded).selectedProblemIndex, 0);
     },
   );
 
@@ -910,6 +936,10 @@ void main() {
 
       await tester.tap(changedProblem);
       await tester.pumpAndSettle();
+
+      expect(store.state?.selectedProblemNodeId, changedChild.id);
+      expect(store.state?.selectedProblemPath, changedChild.path);
+      expect(store.state?.selectedProblemIndex, 0);
 
       expect(fullScreenQueue, findsNothing);
       expect(changedProblem, findsNothing);
