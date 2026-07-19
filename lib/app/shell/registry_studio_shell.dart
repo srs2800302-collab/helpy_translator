@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
+import '../../registry_studio/maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
@@ -28,6 +29,7 @@ final class RegistryStudioShell extends StatelessWidget {
     required this.registrySnapshotLoader,
     required this.registrySnapshotRevisionLoader,
     required this.registryRevisionStateStore,
+    required this.registryAnalysisHistoryStore,
     required this.registrySnapshotComparator,
     super.key,
   });
@@ -35,6 +37,7 @@ final class RegistryStudioShell extends StatelessWidget {
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
   final RegistryRevisionStateStore registryRevisionStateStore;
+  final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
   final RegistrySnapshotComparator registrySnapshotComparator;
 
   @override
@@ -45,6 +48,7 @@ final class RegistryStudioShell extends StatelessWidget {
         registrySnapshotLoader: registrySnapshotLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
         registryRevisionStateStore: registryRevisionStateStore,
+        registryAnalysisHistoryStore: registryAnalysisHistoryStore,
         registrySnapshotComparator: registrySnapshotComparator,
       ),
     );
@@ -56,12 +60,14 @@ final class _RegistryStudioShellView extends StatelessWidget {
     required this.registrySnapshotLoader,
     required this.registrySnapshotRevisionLoader,
     required this.registryRevisionStateStore,
+    required this.registryAnalysisHistoryStore,
     required this.registrySnapshotComparator,
   });
 
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
   final RegistryRevisionStateStore registryRevisionStateStore;
+  final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
   final RegistrySnapshotComparator registrySnapshotComparator;
 
   @override
@@ -81,6 +87,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
                 snapshotLoader: registrySnapshotLoader,
                 snapshotRevisionLoader: registrySnapshotRevisionLoader,
                 revisionStateStore: registryRevisionStateStore,
+                analysisHistoryStore: registryAnalysisHistoryStore,
                 snapshotComparator: registrySnapshotComparator,
               ),
               const _TranslatorWorkspaceView(),

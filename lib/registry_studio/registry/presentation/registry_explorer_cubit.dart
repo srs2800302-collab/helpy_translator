@@ -5,6 +5,8 @@ import '../../core/domain/value_objects/registry_path.dart';
 import '../../maintenance/analysis/application/registry_snapshot_comparator.dart';
 import '../../maintenance/analysis/domain/entities/registry_snapshot_comparison.dart';
 import '../../maintenance/analysis/domain/entities/registry_structural_problem.dart';
+import '../../maintenance/history/application/contracts/registry_analysis_history_store.dart';
+import '../../maintenance/history/domain/entities/registry_analysis_history_entry.dart';
 import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
@@ -32,6 +34,7 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
     required this.openRegistryNodeId,
     required this.openRegistryPath,
     required this.selectedProblemIndex,
+    this.analysisHistory = const <RegistryAnalysisHistoryEntry>[],
     this.searchQuery = '',
   });
 
@@ -44,6 +47,7 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
   final RegistryNodeId? openRegistryNodeId;
   final RegistryPath? openRegistryPath;
   final int? selectedProblemIndex;
+  final List<RegistryAnalysisHistoryEntry> analysisHistory;
   final String searchQuery;
 
   RegistrySnapshotComparison? get problemComparison =>
@@ -163,11 +167,13 @@ final class RegistryExplorerFailure extends RegistryExplorerState {
     this.message, {
     required this.openRegistryNodeBeforeRefresh,
     this.searchQueryBeforeRefresh = '',
+    this.analysisHistoryBeforeRefresh = const <RegistryAnalysisHistoryEntry>[],
   });
 
   final String message;
   final RegistryNode? openRegistryNodeBeforeRefresh;
   final String searchQueryBeforeRefresh;
+  final List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh;
 }
 
 final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
@@ -175,12 +181,14 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     required this.snapshotLoader,
     required this.snapshotRevisionLoader,
     required this.revisionStateStore,
+    required this.analysisHistoryStore,
     required this.snapshotComparator,
   }) : super(const RegistryExplorerLoading());
 
   final RegistrySnapshotLoader snapshotLoader;
   final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
   final RegistryRevisionStateStore revisionStateStore;
+  final RegistryAnalysisHistoryStore analysisHistoryStore;
   final RegistrySnapshotComparator snapshotComparator;
 
   bool _isLoading = false;
@@ -202,10 +210,14 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     emit(const RegistryExplorerLoading());
 
     String searchQuery = '';
+    List<RegistryAnalysisHistoryEntry> analysisHistory =
+        const <RegistryAnalysisHistoryEntry>[];
 
     try {
       final RegistryRevisionState? persistedState = await revisionStateStore
           .loadRevisionState();
+      final List<RegistryAnalysisHistoryEntry> storedAnalysisHistory =
+          await analysisHistoryStore.loadHistory();
 
       searchQuery = persistedState?.searchQuery ?? '';
 
@@ -349,6 +361,40 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         );
       }
 
+      analysisHistory = List<RegistryAnalysisHistoryEntry>.unmodifiable(
+        storedAnalysisHistory.where(
+          (RegistryAnalysisHistoryEntry entry) =>
+              entry.projectId == snapshot.projectId &&
+              entry.projectAdapterId == snapshot.projectAdapterId &&
+              entry.sourceDocumentPath == snapshot.sourceDocumentPath,
+        ),
+      );
+
+      final RegistryAnalysisHistoryEntry
+      historyEntry = RegistryAnalysisHistoryEntry(
+        loadedAt: DateTime.now().toUtc(),
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: snapshot.sourceRevision,
+        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+        previousRevision: previousSnapshot?.sourceRevision,
+        cleanBaselineRevision: cleanBaselineSnapshot?.sourceRevision,
+        previousAddedCount: previousComparison?.addedCount ?? 0,
+        previousRemovedCount: previousComparison?.removedCount ?? 0,
+        previousChangedCount: previousComparison?.changedCount ?? 0,
+        cleanBaselineAddedCount: cleanBaselineComparison?.addedCount ?? 0,
+        cleanBaselineRemovedCount: cleanBaselineComparison?.removedCount ?? 0,
+        cleanBaselineChangedCount: cleanBaselineComparison?.changedCount ?? 0,
+        problemCount: problems.length,
+      );
+
+      await analysisHistoryStore.appendHistoryEntry(historyEntry);
+
+      analysisHistory = List<RegistryAnalysisHistoryEntry>.unmodifiable(
+        <RegistryAnalysisHistoryEntry>[...analysisHistory, historyEntry],
+      );
+
       _currentSnapshot = snapshot;
       _previousSnapshot = previousSnapshot;
       _cleanBaselineSnapshot = cleanBaselineSnapshot;
@@ -365,6 +411,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: openRegistryNodeId,
             openRegistryPath: openRegistryPath,
             selectedProblemIndex: selectedProblemIndex,
+            analysisHistory: analysisHistory,
             searchQuery: searchQuery,
           ),
         );
@@ -378,6 +425,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
             openRegistryNodeBeforeRefresh: null,
             searchQueryBeforeRefresh: searchQuery,
+            analysisHistoryBeforeRefresh: analysisHistory,
           ),
         );
       }
@@ -395,6 +443,12 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
     final RegistryNode? openRegistryNodeBeforeRefresh;
     final String searchQueryBeforeRefresh;
+    final List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh =
+        stateBeforeRefresh is RegistryExplorerLoaded
+        ? stateBeforeRefresh.analysisHistory
+        : stateBeforeRefresh is RegistryExplorerFailure
+        ? stateBeforeRefresh.analysisHistoryBeforeRefresh
+        : const <RegistryAnalysisHistoryEntry>[];
 
     if (stateBeforeRefresh is RegistryExplorerLoaded) {
       openRegistryNodeBeforeRefresh = stateBeforeRefresh.openRegistryNode;
@@ -478,6 +532,37 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         ),
       );
 
+      final RegistryAnalysisHistoryEntry
+      historyEntry = RegistryAnalysisHistoryEntry(
+        loadedAt: DateTime.now().toUtc(),
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: snapshot.sourceRevision,
+        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+        previousRevision: previousSnapshot?.sourceRevision,
+        cleanBaselineRevision: cleanBaselineSnapshot?.sourceRevision,
+        previousAddedCount: previousComparison?.addedCount ?? 0,
+        previousRemovedCount: previousComparison?.removedCount ?? 0,
+        previousChangedCount: previousComparison?.changedCount ?? 0,
+        cleanBaselineAddedCount: cleanBaselineComparison?.addedCount ?? 0,
+        cleanBaselineRemovedCount: cleanBaselineComparison?.removedCount ?? 0,
+        cleanBaselineChangedCount: cleanBaselineComparison?.changedCount ?? 0,
+        problemCount:
+            (cleanBaselineComparison ?? previousComparison)?.problems.length ??
+            0,
+      );
+
+      await analysisHistoryStore.appendHistoryEntry(historyEntry);
+
+      final List<RegistryAnalysisHistoryEntry> analysisHistory =
+          List<RegistryAnalysisHistoryEntry>.unmodifiable(
+            <RegistryAnalysisHistoryEntry>[
+              ...analysisHistoryBeforeRefresh,
+              historyEntry,
+            ],
+          );
+
       _currentSnapshot = snapshot;
       _previousSnapshot = previousSnapshot;
       _retryRefresh = false;
@@ -494,6 +579,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: refreshedOpenRegistryNode?.id,
             openRegistryPath: refreshedOpenRegistryNode?.path,
             selectedProblemIndex: null,
+            analysisHistory: analysisHistory,
             searchQuery: searchQueryBeforeRefresh,
           ),
         );
@@ -507,6 +593,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
             openRegistryNodeBeforeRefresh: openRegistryNodeBeforeRefresh,
             searchQueryBeforeRefresh: searchQueryBeforeRefresh,
+            analysisHistoryBeforeRefresh: analysisHistoryBeforeRefresh,
           ),
         );
       }
@@ -537,6 +624,12 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         : currentState is RegistryExplorerFailure
         ? currentState.searchQueryBeforeRefresh
         : '';
+    final List<RegistryAnalysisHistoryEntry> analysisHistory =
+        currentState is RegistryExplorerLoaded
+        ? currentState.analysisHistory
+        : currentState is RegistryExplorerFailure
+        ? currentState.analysisHistoryBeforeRefresh
+        : const <RegistryAnalysisHistoryEntry>[];
 
     _isLoading = true;
 
@@ -586,6 +679,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: null,
             openRegistryPath: null,
             selectedProblemIndex: null,
+            analysisHistory: analysisHistory,
             searchQuery: searchQuery,
           ),
         );
@@ -647,6 +741,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: selectedProblem?.exactNode.id,
             openRegistryPath: selectedProblem?.path,
             selectedProblemIndex: index,
+            analysisHistory: currentState.analysisHistory,
             searchQuery: currentState.searchQuery,
           ),
         );
@@ -708,6 +803,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: openRegistryNode?.id,
             openRegistryPath: openRegistryNode?.path,
             selectedProblemIndex: null,
+            analysisHistory: currentState.analysisHistory,
             searchQuery: currentState.searchQuery,
           ),
         );
@@ -758,6 +854,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         openRegistryNodeId: currentState.openRegistryNodeId,
         openRegistryPath: currentState.openRegistryPath,
         selectedProblemIndex: currentState.selectedProblemIndex,
+        analysisHistory: currentState.analysisHistory,
         searchQuery: searchQuery,
       ),
     );

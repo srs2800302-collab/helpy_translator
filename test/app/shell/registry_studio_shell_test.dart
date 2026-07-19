@@ -7,6 +7,8 @@ import 'package:helpy_translator/app/shell/registry_studio_shell.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
+import 'package:helpy_translator/registry_studio/maintenance/history/application/contracts/registry_analysis_history_store.dart';
+import 'package:helpy_translator/registry_studio/maintenance/history/domain/entities/registry_analysis_history_entry.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
@@ -117,10 +119,14 @@ void main() {
       final _MemoryRegistryRevisionStateStore store =
           _MemoryRegistryRevisionStateStore();
 
+      final _MemoryRegistryAnalysisHistoryStore historyStore =
+          _MemoryRegistryAnalysisHistoryStore();
+
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        analysisHistoryStore: historyStore,
         snapshotComparator: const RegistrySnapshotComparator(),
       );
 
@@ -139,6 +145,27 @@ void main() {
       expect(store.state?.currentRevision, snapshot.sourceRevision);
       expect(store.state?.previousRevision, isNull);
 
+      expect(historyStore.entries, hasLength(1));
+      final RegistryAnalysisHistoryEntry initialHistoryEntry =
+          historyStore.entries.single;
+      expect(initialHistoryEntry.projectId, snapshot.projectId);
+      expect(initialHistoryEntry.projectAdapterId, snapshot.projectAdapterId);
+      expect(
+        initialHistoryEntry.sourceDocumentPath,
+        snapshot.sourceDocumentPath,
+      );
+      expect(initialHistoryEntry.sourceRevision, snapshot.sourceRevision);
+      expect(
+        initialHistoryEntry.sourceSnapshotFingerprint,
+        snapshot.sourceSnapshotFingerprint,
+      );
+      expect(initialHistoryEntry.previousRevision, isNull);
+      expect(initialHistoryEntry.cleanBaselineRevision, isNull);
+      expect(initialHistoryEntry.previousChangeCount, 0);
+      expect(initialHistoryEntry.cleanBaselineChangeCount, 0);
+      expect(initialHistoryEntry.problemCount, 0);
+      expect(loaded.analysisHistory, historyStore.entries);
+
       await cubit.refresh();
 
       loaded = cubit.state as RegistryExplorerLoaded;
@@ -152,6 +179,31 @@ void main() {
       expect(store.state?.currentRevision, updatedSnapshot.sourceRevision);
       expect(store.state?.previousRevision, snapshot.sourceRevision);
 
+      expect(historyStore.entries, hasLength(2));
+      final RegistryAnalysisHistoryEntry firstRefreshHistoryEntry =
+          historyStore.entries[1];
+      expect(
+        firstRefreshHistoryEntry.sourceRevision,
+        updatedSnapshot.sourceRevision,
+      );
+      expect(
+        firstRefreshHistoryEntry.previousRevision,
+        snapshot.sourceRevision,
+      );
+      expect(
+        firstRefreshHistoryEntry.previousAddedCount,
+        loaded.previousComparison?.addedCount ?? 0,
+      );
+      expect(
+        firstRefreshHistoryEntry.previousRemovedCount,
+        loaded.previousComparison?.removedCount ?? 0,
+      );
+      expect(
+        firstRefreshHistoryEntry.previousChangedCount,
+        loaded.previousComparison?.changedCount ?? 0,
+      );
+      expect(loaded.analysisHistory, historyStore.entries);
+
       await cubit.refresh();
 
       loaded = cubit.state as RegistryExplorerLoaded;
@@ -164,6 +216,19 @@ void main() {
       expect(store.saveCount, 3);
       expect(store.state?.currentRevision, updatedSnapshot.sourceRevision);
       expect(store.state?.previousRevision, snapshot.sourceRevision);
+
+      expect(historyStore.entries, hasLength(3));
+      final RegistryAnalysisHistoryEntry sameRevisionHistoryEntry =
+          historyStore.entries[2];
+      expect(
+        sameRevisionHistoryEntry.sourceRevision,
+        updatedSnapshot.sourceRevision,
+      );
+      expect(
+        sameRevisionHistoryEntry.previousRevision,
+        snapshot.sourceRevision,
+      );
+      expect(loaded.analysisHistory, historyStore.entries);
     },
   );
 
@@ -279,6 +344,7 @@ void main() {
       snapshotLoader: loader,
       snapshotRevisionLoader: loader,
       revisionStateStore: store,
+      analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
       snapshotComparator: const RegistrySnapshotComparator(),
     );
 
@@ -368,6 +434,7 @@ void main() {
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         snapshotComparator: const RegistrySnapshotComparator(),
       );
 
@@ -425,6 +492,7 @@ void main() {
       snapshotLoader: loader,
       snapshotRevisionLoader: loader,
       revisionStateStore: store,
+      analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
       snapshotComparator: const RegistrySnapshotComparator(),
     );
 
@@ -554,10 +622,14 @@ void main() {
             ),
           );
 
+      final _MemoryRegistryAnalysisHistoryStore historyStore =
+          _MemoryRegistryAnalysisHistoryStore();
+
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        analysisHistoryStore: historyStore,
         snapshotComparator: const RegistrySnapshotComparator(),
       );
 
@@ -587,6 +659,48 @@ void main() {
       expect(loaded.cleanBaselineComparison!.addedCount, 0);
       expect(loaded.cleanBaselineComparison!.removedCount, 0);
       expect(loaded.cleanBaselineComparison!.changedCount, 1);
+
+      expect(historyStore.entries, hasLength(1));
+      final RegistryAnalysisHistoryEntry restoredHistoryEntry =
+          historyStore.entries.single;
+      expect(restoredHistoryEntry.sourceRevision, snapshot.sourceRevision);
+      expect(
+        restoredHistoryEntry.previousRevision,
+        previousSnapshot.sourceRevision,
+      );
+      expect(
+        restoredHistoryEntry.cleanBaselineRevision,
+        cleanBaselineSnapshot.sourceRevision,
+      );
+      expect(
+        restoredHistoryEntry.previousAddedCount,
+        loaded.previousComparison!.addedCount,
+      );
+      expect(
+        restoredHistoryEntry.previousRemovedCount,
+        loaded.previousComparison!.removedCount,
+      );
+      expect(
+        restoredHistoryEntry.previousChangedCount,
+        loaded.previousComparison!.changedCount,
+      );
+      expect(
+        restoredHistoryEntry.cleanBaselineAddedCount,
+        loaded.cleanBaselineComparison!.addedCount,
+      );
+      expect(
+        restoredHistoryEntry.cleanBaselineRemovedCount,
+        loaded.cleanBaselineComparison!.removedCount,
+      );
+      expect(
+        restoredHistoryEntry.cleanBaselineChangedCount,
+        loaded.cleanBaselineComparison!.changedCount,
+      );
+      expect(
+        restoredHistoryEntry.problemCount,
+        loaded.cleanBaselineComparison!.problems.length,
+      );
+      expect(loaded.analysisHistory, historyStore.entries);
 
       expect(loaded.selectedProblemIndex, 0);
       expect(loaded.selectedProblem, isNotNull);
@@ -664,6 +778,7 @@ void main() {
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         snapshotComparator: const RegistrySnapshotComparator(),
       );
 
@@ -735,6 +850,7 @@ void main() {
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         snapshotComparator: const RegistrySnapshotComparator(),
       );
 
@@ -795,10 +911,14 @@ void main() {
     final _MemoryRegistryRevisionStateStore store =
         _MemoryRegistryRevisionStateStore();
 
+    final _MemoryRegistryAnalysisHistoryStore historyStore =
+        _MemoryRegistryAnalysisHistoryStore();
+
     final RegistryExplorerCubit cubit = RegistryExplorerCubit(
       snapshotLoader: loader,
       snapshotRevisionLoader: loader,
       revisionStateStore: store,
+      analysisHistoryStore: historyStore,
       snapshotComparator: const RegistrySnapshotComparator(),
     );
 
@@ -816,6 +936,9 @@ void main() {
     expect(store.state?.openRegistryNodeId, currentChild.id);
     expect(store.state?.openRegistryPath, currentChild.path);
 
+    expect(historyStore.entries, hasLength(1));
+    expect(loaded.analysisHistory, historyStore.entries);
+
     await cubit.refresh();
 
     final RegistryExplorerFailure failure =
@@ -827,6 +950,9 @@ void main() {
     expect(store.saveCount, 2);
     expect(store.state?.openRegistryNodeId, currentChild.id);
     expect(store.state?.openRegistryPath, currentChild.path);
+
+    expect(historyStore.entries, hasLength(1));
+    expect(failure.analysisHistoryBeforeRefresh, historyStore.entries);
 
     await cubit.retry();
 
@@ -845,6 +971,13 @@ void main() {
     expect(store.state?.previousRevision, snapshot.sourceRevision);
     expect(store.state?.openRegistryNodeId, currentChild.id);
     expect(store.state?.openRegistryPath, currentChild.path);
+
+    expect(historyStore.entries, hasLength(2));
+    final RegistryAnalysisHistoryEntry retryHistoryEntry =
+        historyStore.entries.last;
+    expect(retryHistoryEntry.sourceRevision, latestSnapshot.sourceRevision);
+    expect(retryHistoryEntry.previousRevision, snapshot.sourceRevision);
+    expect(loaded.analysisHistory, historyStore.entries);
   });
   testWidgets(
     'shows the previous exact revision after Registry revision changes',
@@ -870,6 +1003,7 @@ void main() {
           registrySnapshotLoader: loader,
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+          registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         ),
       );
       await tester.pumpAndSettle();
@@ -983,11 +1117,15 @@ void main() {
       final _MemoryRegistryRevisionStateStore store =
           _MemoryRegistryRevisionStateStore();
 
+      final _MemoryRegistryAnalysisHistoryStore historyStore =
+          _MemoryRegistryAnalysisHistoryStore();
+
       await tester.pumpWidget(
         RegistryStudioApplication(
           registrySnapshotLoader: loader,
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: store,
+          registryAnalysisHistoryStore: historyStore,
         ),
       );
 
@@ -999,6 +1137,90 @@ void main() {
       );
 
       expect(find.text('Clean baseline: не подтверждён'), findsOneWidget);
+
+      final Finder historyButton = find.byKey(
+        const ValueKey<String>('registry-analysis-history-button'),
+      );
+
+      expect(historyStore.entries, hasLength(1));
+      expect(historyButton, findsOneWidget);
+      expect(find.byTooltip('История анализа: 1'), findsOneWidget);
+
+      await tester.tap(historyButton);
+      await tester.pumpAndSettle();
+
+      Finder historySheet = find.byKey(
+        const ValueKey<String>('registry-analysis-history-sheet'),
+      );
+
+      expect(historySheet, findsOneWidget);
+      expect(
+        find.descendant(
+          of: historySheet,
+          matching: find.text('История анализа Registry: 1'),
+        ),
+        findsOneWidget,
+      );
+
+      final Finder initialHistoryEntry = find.byKey(
+        const ValueKey<String>('registry-analysis-history-entry-0'),
+      );
+
+      expect(initialHistoryEntry, findsOneWidget);
+      expect(
+        find.descendant(
+          of: initialHistoryEntry,
+          matching: find.text('Revision: ${snapshot.sourceRevision}'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: initialHistoryEntry,
+          matching: find.text('Предыдущая revision: нет baseline'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: initialHistoryEntry,
+          matching: find.text('Clean baseline: не подтверждён'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: initialHistoryEntry,
+          matching: find.text('С предыдущей revision: +0 · -0 · ~0'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: initialHistoryEntry,
+          matching: find.text('С clean baseline: +0 · -0 · ~0'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: initialHistoryEntry,
+          matching: find.text('Проблем: 0'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: initialHistoryEntry,
+          matching: find.textContaining('Время: '),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byTooltip('Закрыть историю анализа'));
+      await tester.pumpAndSettle();
+
+      expect(historySheet, findsNothing);
 
       await tester.tap(
         find.byTooltip('Подтвердить текущую revision как clean baseline'),
@@ -1027,6 +1249,81 @@ void main() {
       expect(find.text('Изменения с предыдущей revision: 2'), findsOneWidget);
 
       expect(find.text('Расхождения с clean baseline: 2'), findsOneWidget);
+
+      expect(historyStore.entries, hasLength(2));
+      expect(find.byTooltip('История анализа: 2'), findsOneWidget);
+
+      await tester.tap(historyButton);
+      await tester.pumpAndSettle();
+
+      historySheet = find.byKey(
+        const ValueKey<String>('registry-analysis-history-sheet'),
+      );
+
+      expect(historySheet, findsOneWidget);
+      expect(
+        find.descendant(
+          of: historySheet,
+          matching: find.text('История анализа Registry: 2'),
+        ),
+        findsOneWidget,
+      );
+
+      final Finder latestHistoryEntry = find.byKey(
+        const ValueKey<String>('registry-analysis-history-entry-1'),
+      );
+
+      expect(latestHistoryEntry, findsOneWidget);
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('Revision: ${updatedSnapshot.sourceRevision}'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text(
+            'Предыдущая revision: '
+            '${snapshot.sourceRevision}',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('Clean baseline: ${snapshot.sourceRevision}'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('С предыдущей revision: +1 · -0 · ~1'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('С clean baseline: +1 · -0 · ~1'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('Проблем: 2'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byTooltip('Закрыть историю анализа'));
+      await tester.pumpAndSettle();
+
+      expect(historySheet, findsNothing);
 
       final Finder previousSummary = find.byKey(
         const ValueKey<String>('registry-previous-comparison-summary'),
@@ -1513,6 +1810,7 @@ void main() {
         registrySnapshotLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
       ),
     );
 
@@ -1696,6 +1994,7 @@ void main() {
         registrySnapshotLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
       ),
     );
 
@@ -1786,6 +2085,7 @@ void main() {
         registrySnapshotLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
       ),
     );
 
@@ -1888,6 +2188,7 @@ void main() {
           registrySnapshotLoader: loader,
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+          registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         ),
       );
 
@@ -2049,6 +2350,7 @@ void main() {
           registrySnapshotLoader: loader,
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+          registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         ),
       );
       await tester.pumpAndSettle();
@@ -2112,6 +2414,7 @@ void main() {
         registrySnapshotLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
       ),
     );
 
@@ -2216,6 +2519,7 @@ void main() {
         snapshotLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
+        analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         snapshotComparator: const RegistrySnapshotComparator(),
       );
 
@@ -2317,6 +2621,7 @@ void main() {
         snapshotLoader: restartLoader,
         snapshotRevisionLoader: restartLoader,
         revisionStateStore: store,
+        analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         snapshotComparator: const RegistrySnapshotComparator(),
       );
 
@@ -2350,6 +2655,7 @@ void main() {
         registrySnapshotLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
       ),
     );
 
@@ -2419,6 +2725,22 @@ final class _QueuedRegistrySnapshotLoader
     }
 
     return Future<RegistrySnapshot>.value(snapshot);
+  }
+}
+
+final class _MemoryRegistryAnalysisHistoryStore
+    implements RegistryAnalysisHistoryStore {
+  final List<RegistryAnalysisHistoryEntry> entries =
+      <RegistryAnalysisHistoryEntry>[];
+
+  @override
+  Future<List<RegistryAnalysisHistoryEntry>> loadHistory() async {
+    return List<RegistryAnalysisHistoryEntry>.unmodifiable(entries);
+  }
+
+  @override
+  Future<void> appendHistoryEntry(RegistryAnalysisHistoryEntry entry) async {
+    entries.add(entry);
   }
 }
 
