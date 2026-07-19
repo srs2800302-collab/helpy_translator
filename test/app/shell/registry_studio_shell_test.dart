@@ -1079,6 +1079,13 @@ void main() {
       await tester.tap(problemQueue);
       await tester.pumpAndSettle();
 
+      final Finder registryScrollable = find.descendant(
+        of: find.byKey(const ValueKey<String>('registry-node-list')),
+        matching: find.byType(Scrollable),
+      );
+
+      expect(registryScrollable, findsOneWidget);
+
       final Finder changedProblem = find.byKey(
         ValueKey<String>(
           'registry-problem-0-'
@@ -1099,7 +1106,7 @@ void main() {
       await tester.scrollUntilVisible(
         addedProblem,
         180,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: registryScrollable,
       );
 
       expect(addedProblem, findsOneWidget);
@@ -1108,12 +1115,16 @@ void main() {
       await tester.scrollUntilVisible(
         changedProblem,
         -180,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: registryScrollable,
       );
 
       expect(changedProblem, findsOneWidget);
 
-      await tester.ensureVisible(problemQueue);
+      await tester.scrollUntilVisible(
+        problemQueue,
+        -180,
+        scrollable: registryScrollable,
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(problemQueue);
@@ -1126,7 +1137,11 @@ void main() {
         'Открыть очередь проблем на весь экран',
       );
 
-      await tester.ensureVisible(fullScreenButton);
+      await tester.scrollUntilVisible(
+        fullScreenButton,
+        -180,
+        scrollable: registryScrollable,
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(fullScreenButton);
@@ -1173,7 +1188,11 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.ensureVisible(fullScreenButton);
+      await tester.scrollUntilVisible(
+        fullScreenButton,
+        -180,
+        scrollable: registryScrollable,
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(fullScreenButton);
@@ -1185,7 +1204,7 @@ void main() {
       await tester.scrollUntilVisible(
         addedProblem,
         180,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: registryScrollable,
       );
 
       expect(addedProblem, findsOneWidget);
@@ -1193,7 +1212,7 @@ void main() {
       await tester.scrollUntilVisible(
         changedProblem,
         -180,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: registryScrollable,
       );
 
       expect(changedProblem, findsOneWidget);
@@ -1310,10 +1329,17 @@ void main() {
 
       expect(selectedProblem, findsNothing);
 
-      expect(
-        find.byKey(const ValueKey<String>('full-registry-header')),
-        findsOneWidget,
+      final Finder restoredFullRegistryHeader = find.byKey(
+        const ValueKey<String>('full-registry-header'),
       );
+
+      await tester.scrollUntilVisible(
+        restoredFullRegistryHeader,
+        -180,
+        scrollable: registryScrollable,
+      );
+
+      expect(restoredFullRegistryHeader, findsOneWidget);
 
       expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
 
@@ -1492,13 +1518,24 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    final Finder registryScrollable = find.descendant(
+      of: find.byKey(const ValueKey<String>('registry-node-list')),
+      matching: find.byType(Scrollable),
+    );
+
+    expect(registryScrollable, findsOneWidget);
+
     final Finder childRow = find.byKey(ValueKey<String>(currentChild.id.value));
 
-    expect(childRow, findsOneWidget);
-
-    await Scrollable.ensureVisible(tester.element(childRow), alignment: 0.5);
+    await tester.scrollUntilVisible(
+      childRow,
+      180,
+      scrollable: registryScrollable,
+    );
 
     await tester.pumpAndSettle();
+
+    expect(childRow, findsOneWidget);
 
     await tester.tap(childRow);
     await tester.pumpAndSettle();
@@ -1664,11 +1701,24 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    final Finder registryScrollable = find.descendant(
+      of: find.byKey(const ValueKey<String>('registry-node-list')),
+      matching: find.byType(Scrollable),
+    );
+
+    expect(registryScrollable, findsOneWidget);
+
     final Finder childRow = find.byKey(ValueKey<String>(currentChild.id.value));
 
-    await Scrollable.ensureVisible(tester.element(childRow), alignment: 0.5);
+    await tester.scrollUntilVisible(
+      childRow,
+      180,
+      scrollable: registryScrollable,
+    );
 
     await tester.pumpAndSettle();
+
+    expect(childRow, findsOneWidget);
 
     await tester.tap(childRow);
     await tester.pumpAndSettle();
@@ -1743,12 +1793,24 @@ void main() {
 
     final RegistryNode child = snapshot.roots.single.children.single;
 
+    final Finder registryScrollable = find.descendant(
+      of: find.byKey(const ValueKey<String>('registry-node-list')),
+      matching: find.byType(Scrollable),
+    );
+
+    expect(registryScrollable, findsOneWidget);
+
     final Finder childRow = find.byKey(ValueKey<String>(child.id.value));
 
-    expect(childRow, findsOneWidget);
+    await tester.scrollUntilVisible(
+      childRow,
+      180,
+      scrollable: registryScrollable,
+    );
 
-    await Scrollable.ensureVisible(tester.element(childRow), alignment: 0.5);
     await tester.pumpAndSettle();
+
+    expect(childRow, findsOneWidget);
 
     await tester.tap(childRow);
     await tester.pumpAndSettle();
@@ -1838,6 +1900,32 @@ void main() {
       expect(find.text('Проект: project'), findsOneWidget);
       expect(find.text('Узлов: 2'), findsOneWidget);
       expect(find.text('Registry'), findsOneWidget);
+
+      final Finder registryList = find.byKey(
+        const ValueKey<String>('registry-node-list'),
+      );
+
+      final Finder registryScrollable = find.descendant(
+        of: registryList,
+        matching: find.byType(Scrollable),
+      );
+
+      expect(registryList, findsOneWidget);
+      expect(registryScrollable, findsOneWidget);
+
+      final Finder domainRow = find.byKey(
+        ValueKey<String>(snapshot.roots.single.children.single.id.value),
+      );
+
+      await tester.scrollUntilVisible(
+        domainRow,
+        180,
+        scrollable: registryScrollable,
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(domainRow, findsOneWidget);
       expect(find.text('Domain'), findsOneWidget);
       expect(find.byTooltip('Перезагрузить Registry'), findsOneWidget);
 
@@ -1967,11 +2055,23 @@ void main() {
 
       expect(find.byTooltip('Наверх'), findsNothing);
 
-      await tester.drag(find.byType(ListView), const Offset(0, -1600));
+      final Finder registryList = find.byKey(
+        const ValueKey<String>('registry-node-list'),
+      );
+
+      final Finder registryScrollable = find.descendant(
+        of: registryList,
+        matching: find.byType(Scrollable),
+      );
+
+      expect(registryList, findsOneWidget);
+      expect(registryScrollable, findsOneWidget);
+
+      await tester.drag(registryList, const Offset(0, -1600));
       await tester.pumpAndSettle();
 
       final ScrollableState scrolledState = tester.state<ScrollableState>(
-        find.byType(Scrollable).first,
+        registryScrollable,
       );
 
       expect(
@@ -1986,7 +2086,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final ScrollableState restoredState = tester.state<ScrollableState>(
-        find.byType(Scrollable).first,
+        registryScrollable,
       );
 
       expect(restoredState.position.pixels, closeTo(0, 0.1));
@@ -2027,6 +2127,248 @@ void main() {
     expect(loader.loadCount, 2);
     expect(find.text('Узлов: 2'), findsOneWidget);
     expect(find.text('Не удалось загрузить Registry'), findsNothing);
+  });
+
+  test(
+    'searches the complete recursive Registry and preserves exact search query',
+    () async {
+      const String previousFingerprint =
+          'git-blob:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+
+      final RegistryNode currentRoot = snapshot.roots.single;
+      final RegistryNode currentChild = currentRoot.children.single;
+
+      final RegistryNode previousChild = RegistryNode(
+        id: currentChild.id,
+        kindId: currentChild.kindId,
+        path: currentChild.path,
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            sourceSnapshotFingerprint: previousFingerprint,
+            headingPath: currentChild.path.segments,
+            startLine: 3,
+            endLine: 4,
+          ),
+        ],
+        content: 'Previous domain content.',
+        businessScopeOwnerId: currentChild.businessScopeOwnerId,
+        children: const <RegistryNode>[],
+      );
+
+      final RegistryNode previousRoot = RegistryNode(
+        id: currentRoot.id,
+        kindId: currentRoot.kindId,
+        path: currentRoot.path,
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            sourceSnapshotFingerprint: previousFingerprint,
+            headingPath: currentRoot.path.segments,
+            startLine: 1,
+            endLine: 4,
+          ),
+        ],
+        content: currentRoot.content,
+        businessScopeOwnerId: currentRoot.businessScopeOwnerId,
+        children: <RegistryNode>[previousChild],
+      );
+
+      final RegistrySnapshot previousSnapshot = RegistrySnapshot(
+        projectId: snapshot.projectId,
+        projectAdapterId: snapshot.projectAdapterId,
+        sourceDocumentPath: snapshot.sourceDocumentPath,
+        sourceRevision: '0000000000000000000000000000000000000000',
+        sourceSnapshotFingerprint: previousFingerprint,
+        sourceContent:
+            '# Registry\n'
+            'Root content.\n'
+            '## Domain\n'
+            'Previous domain content.\n',
+        roots: <RegistryNode>[previousRoot],
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(
+            <Future<RegistrySnapshot> Function()>[
+              () =>
+                  Future<RegistrySnapshot>.error(StateError('refresh offline')),
+              () async => snapshot,
+            ],
+            exactSnapshots: <String, RegistrySnapshot>{
+              snapshot.sourceRevision: snapshot,
+              previousSnapshot.sourceRevision: previousSnapshot,
+            },
+          );
+
+      final _MemoryRegistryRevisionStateStore store =
+          _MemoryRegistryRevisionStateStore(
+            state: RegistryRevisionState(
+              projectId: snapshot.projectId,
+              projectAdapterId: snapshot.projectAdapterId,
+              sourceDocumentPath: snapshot.sourceDocumentPath,
+              currentRevision: snapshot.sourceRevision,
+              previousRevision: previousSnapshot.sourceRevision,
+            ),
+          );
+
+      final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+        snapshotLoader: loader,
+        snapshotRevisionLoader: loader,
+        revisionStateStore: store,
+        snapshotComparator: const RegistrySnapshotComparator(),
+      );
+
+      addTearDown(() async {
+        if (!cubit.isClosed) {
+          await cubit.close();
+        }
+      });
+
+      await cubit.restore();
+
+      final List<String> queries = <String>[
+        currentChild.id.value,
+        'Registry → Domain',
+        currentChild.kindId,
+        currentChild.content,
+        snapshot.sourceDocumentPath,
+        snapshot.sourceSnapshotFingerprint,
+        'Registry / Domain',
+        '3-4',
+      ];
+
+      for (final String query in queries) {
+        await cubit.updateSearchQuery(query);
+
+        final RegistryExplorerLoaded loaded =
+            cubit.state as RegistryExplorerLoaded;
+
+        expect(loaded.searchQuery, query);
+        expect(
+          loaded.searchResults.map((RegistryNode node) => node.id),
+          contains(currentChild.id),
+          reason: 'Search query: $query',
+        );
+      }
+
+      const String exactSearchQuery = '  Domain content.  ';
+
+      await cubit.updateSearchQuery(exactSearchQuery);
+
+      RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.searchQuery, exactSearchQuery);
+      expect(store.state?.searchQuery, exactSearchQuery);
+      expect(
+        loaded.searchResults.map((RegistryNode node) => node.id),
+        contains(currentChild.id),
+      );
+
+      await cubit.selectProblem(0);
+
+      loaded = cubit.state as RegistryExplorerLoaded;
+      expect(loaded.searchQuery, exactSearchQuery);
+      expect(store.state?.searchQuery, exactSearchQuery);
+
+      await cubit.selectRegistryNode(currentChild.id);
+
+      loaded = cubit.state as RegistryExplorerLoaded;
+      expect(loaded.searchQuery, exactSearchQuery);
+      expect(store.state?.searchQuery, exactSearchQuery);
+
+      await cubit.confirmCurrentAsCleanBaseline();
+
+      loaded = cubit.state as RegistryExplorerLoaded;
+      expect(loaded.searchQuery, exactSearchQuery);
+      expect(store.state?.searchQuery, exactSearchQuery);
+
+      await cubit.refresh();
+
+      final RegistryExplorerFailure failure =
+          cubit.state as RegistryExplorerFailure;
+
+      expect(failure.searchQueryBeforeRefresh, exactSearchQuery);
+      expect(store.state?.searchQuery, exactSearchQuery);
+
+      await cubit.retry();
+
+      loaded = cubit.state as RegistryExplorerLoaded;
+
+      expect(loaded.searchQuery, exactSearchQuery);
+      expect(store.state?.searchQuery, exactSearchQuery);
+      expect(
+        loaded.searchResults.map((RegistryNode node) => node.id),
+        contains(currentChild.id),
+      );
+
+      await cubit.close();
+
+      final _QueuedRegistrySnapshotLoader restartLoader =
+          _QueuedRegistrySnapshotLoader(
+            <Future<RegistrySnapshot> Function()>[],
+            exactSnapshots: <String, RegistrySnapshot>{
+              snapshot.sourceRevision: snapshot,
+              previousSnapshot.sourceRevision: previousSnapshot,
+            },
+          );
+
+      final RegistryExplorerCubit restartedCubit = RegistryExplorerCubit(
+        snapshotLoader: restartLoader,
+        snapshotRevisionLoader: restartLoader,
+        revisionStateStore: store,
+        snapshotComparator: const RegistrySnapshotComparator(),
+      );
+
+      addTearDown(restartedCubit.close);
+
+      await restartedCubit.restore();
+
+      final RegistryExplorerLoaded restarted =
+          restartedCubit.state as RegistryExplorerLoaded;
+
+      expect(restarted.searchQuery, exactSearchQuery);
+      expect(
+        restarted.searchResults.map((RegistryNode node) => node.id),
+        contains(currentChild.id),
+      );
+    },
+  );
+
+  testWidgets('persists exact Registry search query from Explorer field', (
+    WidgetTester tester,
+  ) async {
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => snapshot],
+    );
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: store,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder searchField = find.byKey(
+      const ValueKey<String>('registry-search-field'),
+    );
+
+    expect(searchField, findsOneWidget);
+
+    const String exactSearchQuery = '  project.registry.node.000002  ';
+
+    await tester.enterText(searchField, exactSearchQuery);
+
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, exactSearchQuery);
+    expect(find.text('1/2'), findsOneWidget);
   });
 }
 

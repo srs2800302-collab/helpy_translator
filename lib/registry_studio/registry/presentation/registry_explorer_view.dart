@@ -90,6 +90,30 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     );
   }
 
+  Future<void> _updateSearchQuery(String searchQuery) async {
+    final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
+
+    try {
+      await cubit.updateSearchQuery(searchQuery);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final String message = error.toString().trim();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.isEmpty
+                ? 'Не удалось сохранить поисковый запрос Registry.'
+                : message,
+          ),
+        ),
+      );
+    }
+  }
+
   Future<void> _selectProblem(int? index) async {
     final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
 
@@ -554,12 +578,32 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         ),
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: TextFormField(
+                        key: const ValueKey<String>('registry-search-field'),
+                        initialValue: loaded.searchQuery,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          labelText: 'Поиск по Registry',
+                          hintText:
+                              'Identity, path, kind, content или source evidence',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixText:
+                              '${loaded.searchResults.length}/'
+                              '${loaded.index.nodes.length}',
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: _updateSearchQuery,
+                      ),
+                    ),
                     Expanded(
                       child: ListView.separated(
+                        key: const ValueKey<String>('registry-node-list'),
                         controller: _scrollController,
                         itemCount: _showProblemQueueFullScreen
                             ? loaded.problems.length + 1
-                            : loaded.index.nodes.length +
+                            : loaded.searchResults.length +
                                   4 +
                                   (_showProblemQueue
                                       ? loaded.problems.length
@@ -1164,7 +1208,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               itemIndex - fullRegistryHeaderIndex - 1;
 
                           final RegistryNode node =
-                              loaded.index.nodes[nodeIndex];
+                              loaded.searchResults[nodeIndex];
 
                           final evidence = node.sourceEvidence.first;
 

@@ -12,15 +12,17 @@ final class JsonFileRegistryRevisionStateStore
   const JsonFileRegistryRevisionStateStore({this.applicationSupportDirectory});
 
   static const String directoryName = 'registry_studio';
-  static const String fileName = 'registry_revision_state_v4.json';
-  static const String previousFileName = 'registry_revision_state_v3.json';
-  static const String olderFileName = 'registry_revision_state_v2.json';
-  static const String legacyFileName = 'registry_revision_state_v1.json';
+  static const String fileName = 'registry_revision_state_v5.json';
+  static const String previousFileName = 'registry_revision_state_v4.json';
+  static const String olderFileName = 'registry_revision_state_v3.json';
+  static const String legacyFileName = 'registry_revision_state_v2.json';
+  static const String oldestFileName = 'registry_revision_state_v1.json';
 
-  static const String _formatVersion = 'v4';
-  static const String _previousFormatVersion = 'v3';
-  static const String _olderFormatVersion = 'v2';
-  static const String _legacyFormatVersion = 'v1';
+  static const String _formatVersion = 'v5';
+  static const String _previousFormatVersion = 'v4';
+  static const String _olderFormatVersion = 'v3';
+  static const String _legacyFormatVersion = 'v2';
+  static const String _oldestFormatVersion = 'v1';
 
   final Directory? applicationSupportDirectory;
 
@@ -75,6 +77,12 @@ final class JsonFileRegistryRevisionStateStore
       '$legacyFileName',
     );
 
+    final File oldestStateFile = File(
+      '${stateDirectory.path}'
+      '${Platform.pathSeparator}'
+      '$oldestFileName',
+    );
+
     final File stateFile;
 
     if (await currentStateFile.exists()) {
@@ -85,6 +93,8 @@ final class JsonFileRegistryRevisionStateStore
       stateFile = olderStateFile;
     } else if (await legacyStateFile.exists()) {
       stateFile = legacyStateFile;
+    } else if (await oldestStateFile.exists()) {
+      stateFile = oldestStateFile;
     } else {
       return null;
     }
@@ -110,7 +120,7 @@ final class JsonFileRegistryRevisionStateStore
     final Object? version = state['version'];
     final Set<String> expectedKeys;
 
-    if (version == _legacyFormatVersion) {
+    if (version == _oldestFormatVersion) {
       expectedKeys = const <String>{
         'version',
         'projectId',
@@ -118,6 +128,16 @@ final class JsonFileRegistryRevisionStateStore
         'sourceDocumentPath',
         'currentRevision',
         'previousRevision',
+      };
+    } else if (version == _legacyFormatVersion) {
+      expectedKeys = const <String>{
+        'version',
+        'projectId',
+        'projectAdapterId',
+        'sourceDocumentPath',
+        'currentRevision',
+        'previousRevision',
+        'cleanBaselineRevision',
       };
     } else if (version == _olderFormatVersion) {
       expectedKeys = const <String>{
@@ -128,6 +148,9 @@ final class JsonFileRegistryRevisionStateStore
         'currentRevision',
         'previousRevision',
         'cleanBaselineRevision',
+        'selectedProblemNodeId',
+        'selectedProblemPath',
+        'selectedProblemIndex',
       };
     } else if (version == _previousFormatVersion) {
       expectedKeys = const <String>{
@@ -138,8 +161,8 @@ final class JsonFileRegistryRevisionStateStore
         'currentRevision',
         'previousRevision',
         'cleanBaselineRevision',
-        'selectedProblemNodeId',
-        'selectedProblemPath',
+        'openRegistryNodeId',
+        'openRegistryPath',
         'selectedProblemIndex',
       };
     } else if (version == _formatVersion) {
@@ -154,6 +177,7 @@ final class JsonFileRegistryRevisionStateStore
         'openRegistryNodeId',
         'openRegistryPath',
         'selectedProblemIndex',
+        'searchQuery',
       };
     } else {
       throw const FormatException(
@@ -179,6 +203,7 @@ final class JsonFileRegistryRevisionStateStore
     final Object? previousRevision = state['previousRevision'];
 
     final bool includesCleanBaseline =
+        version == _legacyFormatVersion ||
         version == _olderFormatVersion ||
         version == _previousFormatVersion ||
         version == _formatVersion;
@@ -187,22 +212,36 @@ final class JsonFileRegistryRevisionStateStore
         ? state['cleanBaselineRevision']
         : null;
 
-    final Object? openRegistryNodeId = switch (version) {
-      _formatVersion => state['openRegistryNodeId'],
-      _previousFormatVersion => state['selectedProblemNodeId'],
-      _ => null,
-    };
+    final Object? openRegistryNodeId;
 
-    final Object? openRegistryPath = switch (version) {
-      _formatVersion => state['openRegistryPath'],
-      _previousFormatVersion => state['selectedProblemPath'],
-      _ => null,
-    };
+    if (version == _formatVersion || version == _previousFormatVersion) {
+      openRegistryNodeId = state['openRegistryNodeId'];
+    } else if (version == _olderFormatVersion) {
+      openRegistryNodeId = state['selectedProblemNodeId'];
+    } else {
+      openRegistryNodeId = null;
+    }
+
+    final Object? openRegistryPath;
+
+    if (version == _formatVersion || version == _previousFormatVersion) {
+      openRegistryPath = state['openRegistryPath'];
+    } else if (version == _olderFormatVersion) {
+      openRegistryPath = state['selectedProblemPath'];
+    } else {
+      openRegistryPath = null;
+    }
 
     final Object? selectedProblemIndex =
-        version == _formatVersion || version == _previousFormatVersion
+        version == _formatVersion ||
+            version == _previousFormatVersion ||
+            version == _olderFormatVersion
         ? state['selectedProblemIndex']
         : null;
+
+    final Object? searchQuery = version == _formatVersion
+        ? state['searchQuery']
+        : '';
 
     final bool openRegistryPathInvalid =
         openRegistryPath != null &&
@@ -217,12 +256,17 @@ final class JsonFileRegistryRevisionStateStore
         (cleanBaselineRevision != null && cleanBaselineRevision is! String) ||
         (openRegistryNodeId != null && openRegistryNodeId is! String) ||
         openRegistryPathInvalid ||
-        (selectedProblemIndex != null && selectedProblemIndex is! int)) {
+        (selectedProblemIndex != null && selectedProblemIndex is! int) ||
+        searchQuery is! String) {
       throw const FormatException(
         'Registry revision state field types '
         'are invalid.',
       );
     }
+
+    final RegistryPath? restoredOpenRegistryPath = openRegistryPath == null
+        ? null
+        : RegistryPath((openRegistryPath as List<Object?>).cast<String>());
 
     try {
       return RegistryRevisionState(
@@ -235,10 +279,9 @@ final class JsonFileRegistryRevisionStateStore
         openRegistryNodeId: openRegistryNodeId == null
             ? null
             : RegistryNodeId(openRegistryNodeId as String),
-        openRegistryPath: openRegistryPath == null
-            ? null
-            : RegistryPath((openRegistryPath as List<Object?>).cast<String>()),
+        openRegistryPath: restoredOpenRegistryPath,
         selectedProblemIndex: selectedProblemIndex as int?,
+        searchQuery: searchQuery,
       );
     } on ArgumentError catch (error) {
       throw FormatException(
@@ -292,7 +335,7 @@ final class JsonFileRegistryRevisionStateStore
 
     try {
       await temporaryFile.writeAsString(
-        '${jsonEncode(<String, Object?>{'version': _formatVersion, 'projectId': state.projectId, 'projectAdapterId': state.projectAdapterId, 'sourceDocumentPath': state.sourceDocumentPath, 'currentRevision': state.currentRevision, 'previousRevision': state.previousRevision, 'cleanBaselineRevision': state.cleanBaselineRevision, 'openRegistryNodeId': state.openRegistryNodeId?.value, 'openRegistryPath': state.openRegistryPath?.segments, 'selectedProblemIndex': state.selectedProblemIndex})}\n',
+        '${jsonEncode(<String, Object?>{'version': _formatVersion, 'projectId': state.projectId, 'projectAdapterId': state.projectAdapterId, 'sourceDocumentPath': state.sourceDocumentPath, 'currentRevision': state.currentRevision, 'previousRevision': state.previousRevision, 'cleanBaselineRevision': state.cleanBaselineRevision, 'openRegistryNodeId': state.openRegistryNodeId?.value, 'openRegistryPath': state.openRegistryPath?.segments, 'selectedProblemIndex': state.selectedProblemIndex, 'searchQuery': state.searchQuery})}\n',
         flush: true,
       );
 

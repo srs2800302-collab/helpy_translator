@@ -47,6 +47,7 @@ void main() {
           'Added Domain',
         ]),
         selectedProblemIndex: 4,
+        searchQuery: '  exact Registry query  ',
       );
 
       await store.saveRevisionState(firstState);
@@ -69,6 +70,7 @@ void main() {
         RegistryPath(const <String>['Registry', 'Added Domain']),
       );
       expect(restored.selectedProblemIndex, 4);
+      expect(restored.searchQuery, '  exact Registry query  ');
 
       final File stateFile = File(
         '${directory.path}'
@@ -96,9 +98,11 @@ void main() {
         'openRegistryNodeId',
         'openRegistryPath',
         'selectedProblemIndex',
+        'searchQuery',
       });
 
-      expect(encodedState['version'], 'v4');
+      expect(encodedState['version'], 'v5');
+      expect(encodedState['searchQuery'], '  exact Registry query  ');
       expect(
         encodedState['openRegistryNodeId'],
         'project.registry.node.000003',
@@ -119,6 +123,7 @@ void main() {
         currentRevision: 'revision-c',
         previousRevision: 'revision-a',
         cleanBaselineRevision: 'revision-a',
+        searchQuery: 'kind:rule',
       );
 
       await store.saveRevisionState(replacementState);
@@ -131,6 +136,53 @@ void main() {
       expect(restored.openRegistryNodeId, isNull);
       expect(restored.openRegistryPath, isNull);
       expect(restored.selectedProblemIndex, isNull);
+      expect(restored.searchQuery, 'kind:rule');
+    });
+
+    test('migrates previous v4 state with an empty search query', () async {
+      final Directory stateDirectory = Directory(
+        '${directory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonFileRegistryRevisionStateStore.directoryName}',
+      );
+
+      await stateDirectory.create(recursive: true);
+
+      final File previousStateFile = File(
+        '${stateDirectory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonFileRegistryRevisionStateStore.previousFileName}',
+      );
+
+      await previousStateFile.writeAsString(
+        jsonEncode(<String, Object?>{
+          'version': 'v4',
+          'projectId': 'project',
+          'projectAdapterId': 'project.adapter',
+          'sourceDocumentPath': 'registry.md',
+          'currentRevision': 'revision-a',
+          'previousRevision': 'revision-b',
+          'cleanBaselineRevision': 'revision-clean',
+          'openRegistryNodeId': 'project.registry.node.000003',
+          'openRegistryPath': <String>['Registry', 'Added Domain'],
+          'selectedProblemIndex': 4,
+        }),
+        flush: true,
+      );
+
+      final RegistryRevisionState? restored = await store.loadRevisionState();
+
+      expect(restored, isNotNull);
+      expect(
+        restored!.openRegistryNodeId,
+        RegistryNodeId('project.registry.node.000003'),
+      );
+      expect(
+        restored.openRegistryPath,
+        RegistryPath(const <String>['Registry', 'Added Domain']),
+      );
+      expect(restored.selectedProblemIndex, 4);
+      expect(restored.searchQuery, isEmpty);
     });
 
     test('migrates previous v3 problem navigation '
@@ -146,7 +198,7 @@ void main() {
       final File previousStateFile = File(
         '${stateDirectory.path}'
         '${Platform.pathSeparator}'
-        '${JsonFileRegistryRevisionStateStore.previousFileName}',
+        '${JsonFileRegistryRevisionStateStore.olderFileName}',
       );
 
       await previousStateFile.writeAsString(
@@ -177,6 +229,7 @@ void main() {
         RegistryPath(const <String>['Registry', 'Added Domain']),
       );
       expect(restored.selectedProblemIndex, 4);
+      expect(restored.searchQuery, isEmpty);
     });
 
     test('restores older v2 state without open Registry context', () async {
@@ -191,7 +244,7 @@ void main() {
       final File previousStateFile = File(
         '${stateDirectory.path}'
         '${Platform.pathSeparator}'
-        '${JsonFileRegistryRevisionStateStore.olderFileName}',
+        '${JsonFileRegistryRevisionStateStore.legacyFileName}',
       );
 
       await previousStateFile.writeAsString(
@@ -216,6 +269,7 @@ void main() {
       expect(restored.openRegistryNodeId, isNull);
       expect(restored.openRegistryPath, isNull);
       expect(restored.selectedProblemIndex, isNull);
+      expect(restored.searchQuery, isEmpty);
     });
 
     test('restores legacy v1 state without a clean baseline', () async {
@@ -230,7 +284,7 @@ void main() {
       final File legacyStateFile = File(
         '${stateDirectory.path}'
         '${Platform.pathSeparator}'
-        '${JsonFileRegistryRevisionStateStore.legacyFileName}',
+        '${JsonFileRegistryRevisionStateStore.oldestFileName}',
       );
 
       await legacyStateFile.writeAsString(
@@ -254,6 +308,7 @@ void main() {
       expect(restored.openRegistryNodeId, isNull);
       expect(restored.openRegistryPath, isNull);
       expect(restored.selectedProblemIndex, isNull);
+      expect(restored.searchQuery, isEmpty);
     });
 
     test('rejects malformed persisted state values', () async {
@@ -273,7 +328,7 @@ void main() {
 
       await stateFile.writeAsString(
         jsonEncode(<String, Object?>{
-          'version': 'v4',
+          'version': 'v5',
           'projectId': 'project',
           'projectAdapterId': 'project.adapter',
           'sourceDocumentPath': 'registry.md',
@@ -283,6 +338,7 @@ void main() {
           'openRegistryNodeId': null,
           'openRegistryPath': null,
           'selectedProblemIndex': null,
+          'searchQuery': '',
         }),
         flush: true,
       );
@@ -310,7 +366,7 @@ void main() {
 
       await stateFile.writeAsString(
         jsonEncode(<String, Object?>{
-          'version': 'v4',
+          'version': 'v5',
           'projectId': 'project',
           'projectAdapterId': 'project.adapter',
           'sourceDocumentPath': 'registry.md',
@@ -320,6 +376,7 @@ void main() {
           'openRegistryNodeId': 'project.registry.node.000003',
           'openRegistryPath': null,
           'selectedProblemIndex': null,
+          'searchQuery': '',
         }),
         flush: true,
       );
@@ -347,7 +404,7 @@ void main() {
 
       await stateFile.writeAsString(
         jsonEncode(<String, Object?>{
-          'version': 'v4',
+          'version': 'v5',
           'projectId': 'project',
           'projectAdapterId': 'project.adapter',
           'sourceDocumentPath': 'registry.md',
@@ -357,6 +414,7 @@ void main() {
           'openRegistryNodeId': null,
           'openRegistryPath': null,
           'selectedProblemIndex': 0,
+          'searchQuery': '',
         }),
         flush: true,
       );

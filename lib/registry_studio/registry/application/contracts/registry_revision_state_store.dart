@@ -12,6 +12,7 @@ final class RegistryRevisionState {
     RegistryNodeId? openRegistryNodeId,
     RegistryPath? openRegistryPath,
     int? selectedProblemIndex,
+    String searchQuery = '',
   }) {
     final String normalizedProjectId = projectId.trim();
     final String normalizedProjectAdapterId = projectAdapterId.trim();
@@ -118,6 +119,7 @@ final class RegistryRevisionState {
       openRegistryNodeId: openRegistryNodeId,
       openRegistryPath: openRegistryPath,
       selectedProblemIndex: selectedProblemIndex,
+      searchQuery: searchQuery,
     );
   }
 
@@ -131,6 +133,7 @@ final class RegistryRevisionState {
     required this.openRegistryNodeId,
     required this.openRegistryPath,
     required this.selectedProblemIndex,
+    required this.searchQuery,
   });
 
   final String projectId;
@@ -142,6 +145,7 @@ final class RegistryRevisionState {
   final RegistryNodeId? openRegistryNodeId;
   final RegistryPath? openRegistryPath;
   final int? selectedProblemIndex;
+  final String searchQuery;
 }
 
 abstract interface class RegistryRevisionStateStore {
