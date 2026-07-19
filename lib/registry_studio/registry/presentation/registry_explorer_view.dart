@@ -287,36 +287,122 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
               ),
             ),
           ),
-          RegistryExplorerFailure(:final String message) => SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(Icons.error_outline, size: 48),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Не удалось загрузить Registry',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
+          RegistryExplorerFailure(
+            :final String message,
+            :final RegistryNode? openRegistryNodeBeforeRefresh,
+          ) =>
+            SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const Icon(Icons.error_outline, size: 48),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Не удалось загрузить Registry',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    SelectableText(message, textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    IconButton(
-                      tooltip: 'Повторить загрузку Registry',
-                      onPressed: context.read<RegistryExplorerCubit>().retry,
-                      icon: const Icon(Icons.refresh),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      SelectableText(message, textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      IconButton(
+                        tooltip: 'Повторить загрузку Registry',
+                        onPressed: () async {
+                          final RegistryExplorerCubit cubit = context
+                              .read<RegistryExplorerCubit>();
+
+                          final ScaffoldMessengerState scaffoldMessenger =
+                              ScaffoldMessenger.of(context);
+
+                          await cubit.retry();
+
+                          if (!mounted ||
+                              openRegistryNodeBeforeRefresh == null) {
+                            return;
+                          }
+
+                          final RegistryExplorerState stateAfterRetry =
+                              cubit.state;
+
+                          if (stateAfterRetry is! RegistryExplorerLoaded) {
+                            return;
+                          }
+
+                          final RegistryNode? openRegistryNodeAfterRetry =
+                              stateAfterRetry.openRegistryNode;
+
+                          final bool moved =
+                              openRegistryNodeAfterRetry != null &&
+                              openRegistryNodeAfterRetry.id ==
+                                  openRegistryNodeBeforeRefresh.id &&
+                              openRegistryNodeAfterRetry.path !=
+                                  openRegistryNodeBeforeRefresh.path;
+
+                          final bool changed =
+                              openRegistryNodeAfterRetry != null &&
+                              openRegistryNodeAfterRetry.id ==
+                                  openRegistryNodeBeforeRefresh.id &&
+                              (openRegistryNodeAfterRetry.kindId !=
+                                      openRegistryNodeBeforeRefresh.kindId ||
+                                  openRegistryNodeAfterRetry.content !=
+                                      openRegistryNodeBeforeRefresh.content ||
+                                  openRegistryNodeAfterRetry
+                                          .businessScopeOwnerId !=
+                                      openRegistryNodeBeforeRefresh
+                                          .businessScopeOwnerId);
+
+                          final String? outcomeMessage;
+
+                          if (openRegistryNodeAfterRetry == null) {
+                            outcomeMessage =
+                                'Открытый Registry block удалён '
+                                'в новой revision.';
+                          } else if (moved && changed) {
+                            outcomeMessage =
+                                'Открытый Registry block перемещён '
+                                'и изменён.\n'
+                                'Было: '
+                                '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
+                                'Стало: '
+                                '${openRegistryNodeAfterRetry.path.segments.join(' → ')}';
+                          } else if (moved) {
+                            outcomeMessage =
+                                'Открытый Registry block перемещён.\n'
+                                'Было: '
+                                '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
+                                'Стало: '
+                                '${openRegistryNodeAfterRetry.path.segments.join(' → ')}';
+                          } else if (changed) {
+                            outcomeMessage =
+                                'Открытый Registry block изменён '
+                                'в новой revision.';
+                          } else {
+                            outcomeMessage = null;
+                          }
+
+                          if (outcomeMessage == null) {
+                            return;
+                          }
+
+                          scaffoldMessenger
+                            ..hideCurrentSnackBar()
+                            ..showSnackBar(
+                              SnackBar(content: Text(outcomeMessage)),
+                            );
+                        },
+                        icon: const Icon(Icons.refresh),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
           RegistryExplorerLoaded loaded => SafeArea(
             child: Stack(
               fit: StackFit.expand,
@@ -401,22 +487,53 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 openRegistryNodeAfterRefresh =
                                     stateAfterRefresh.openRegistryNode;
 
+                                final bool moved =
+                                    openRegistryNodeAfterRefresh != null &&
+                                    openRegistryNodeAfterRefresh.id ==
+                                        openRegistryNodeBeforeRefresh.id &&
+                                    openRegistryNodeAfterRefresh.path !=
+                                        openRegistryNodeBeforeRefresh.path;
+
+                                final bool changed =
+                                    openRegistryNodeAfterRefresh != null &&
+                                    openRegistryNodeAfterRefresh.id ==
+                                        openRegistryNodeBeforeRefresh.id &&
+                                    (openRegistryNodeAfterRefresh.kindId !=
+                                            openRegistryNodeBeforeRefresh
+                                                .kindId ||
+                                        openRegistryNodeAfterRefresh.content !=
+                                            openRegistryNodeBeforeRefresh
+                                                .content ||
+                                        openRegistryNodeAfterRefresh
+                                                .businessScopeOwnerId !=
+                                            openRegistryNodeBeforeRefresh
+                                                .businessScopeOwnerId);
+
                                 final String? message;
 
                                 if (openRegistryNodeAfterRefresh == null) {
                                   message =
                                       'Открытый Registry block удалён '
                                       'в новой revision.';
-                                } else if (openRegistryNodeAfterRefresh.id ==
-                                        openRegistryNodeBeforeRefresh.id &&
-                                    openRegistryNodeAfterRefresh.path !=
-                                        openRegistryNodeBeforeRefresh.path) {
+                                } else if (moved && changed) {
+                                  message =
+                                      'Открытый Registry block перемещён '
+                                      'и изменён.\n'
+                                      'Было: '
+                                      '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
+                                      'Стало: '
+                                      '${openRegistryNodeAfterRefresh.path.segments.join(' → ')}';
+                                } else if (moved) {
                                   message =
                                       'Открытый Registry block перемещён.\n'
                                       'Было: '
                                       '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
                                       'Стало: '
                                       '${openRegistryNodeAfterRefresh.path.segments.join(' → ')}';
+                                } else if (changed) {
+                                  message =
+                                      'Открытый Registry block изменён '
+                                      'в новой revision.';
                                 } else {
                                   message = null;
                                 }

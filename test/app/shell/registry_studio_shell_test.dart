@@ -773,6 +773,8 @@ void main() {
   );
 
   test('retries a failed manual refresh as refresh', () async {
+    final RegistryNode currentChild = snapshot.roots.single.children.single;
+
     final RegistrySnapshot latestSnapshot = RegistrySnapshot(
       projectId: snapshot.projectId,
       projectAdapterId: snapshot.projectAdapterId,
@@ -803,33 +805,47 @@ void main() {
     addTearDown(cubit.close);
 
     await cubit.restore();
+    await cubit.selectRegistryNode(currentChild.id);
 
-    expect(cubit.state, isA<RegistryExplorerLoaded>());
+    RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.openRegistryNode, same(currentChild));
     expect(loader.loadCount, 1);
     expect(store.loadCount, 1);
-    expect(store.saveCount, 1);
+    expect(store.saveCount, 2);
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+    expect(store.state?.openRegistryPath, currentChild.path);
 
     await cubit.refresh();
 
-    expect(cubit.state, isA<RegistryExplorerFailure>());
+    final RegistryExplorerFailure failure =
+        cubit.state as RegistryExplorerFailure;
+
+    expect(failure.openRegistryNodeBeforeRefresh, same(currentChild));
     expect(loader.loadCount, 2);
     expect(store.loadCount, 1);
-    expect(store.saveCount, 1);
+    expect(store.saveCount, 2);
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+    expect(store.state?.openRegistryPath, currentChild.path);
 
     await cubit.retry();
 
-    final RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+    loaded = cubit.state as RegistryExplorerLoaded;
 
     expect(loaded.snapshot, same(latestSnapshot));
     expect(loaded.previousSnapshot, same(snapshot));
+    expect(loaded.openRegistryNode, same(currentChild));
+    expect(loaded.openRegistryNodeId, currentChild.id);
+    expect(loaded.openRegistryPath, currentChild.path);
     expect(loader.loadCount, 3);
     expect(loader.requestedRevisions, isEmpty);
     expect(store.loadCount, 1);
-    expect(store.saveCount, 2);
+    expect(store.saveCount, 3);
     expect(store.state?.currentRevision, latestSnapshot.sourceRevision);
     expect(store.state?.previousRevision, snapshot.sourceRevision);
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+    expect(store.state?.openRegistryPath, currentChild.path);
   });
-
   testWidgets(
     'shows the previous exact revision after Registry revision changes',
     (WidgetTester tester) async {
@@ -1305,7 +1321,7 @@ void main() {
     },
   );
 
-  testWidgets('reports moved and deleted open Registry '
+  testWidgets('reports moved changed and deleted open Registry '
       'blocks after refresh', (WidgetTester tester) async {
     final RegistryNode currentRoot = snapshot.roots.single;
 
@@ -1369,6 +1385,59 @@ void main() {
       roots: <RegistryNode>[movedRoot],
     );
 
+    const String changedFingerprint =
+        'git-blob:bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc';
+
+    final RegistryNode changedChild = RegistryNode(
+      id: currentChild.id,
+      kindId: currentChild.kindId,
+      path: movedPath,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: changedFingerprint,
+          headingPath: movedPath.segments,
+          startLine: 3,
+          endLine: 4,
+        ),
+      ],
+      content: 'Updated Domain content.',
+      businessScopeOwnerId: currentChild.businessScopeOwnerId,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode changedRoot = RegistryNode(
+      id: currentRoot.id,
+      kindId: currentRoot.kindId,
+      path: currentRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: changedFingerprint,
+          headingPath: currentRoot.path.segments,
+          startLine: 1,
+          endLine: 4,
+        ),
+      ],
+      content: currentRoot.content,
+      businessScopeOwnerId: currentRoot.businessScopeOwnerId,
+      children: <RegistryNode>[changedChild],
+    );
+
+    final RegistrySnapshot changedSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '6666666666666666666666666666666666666666',
+      sourceSnapshotFingerprint: changedFingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n'
+          '## Moved Domain\n'
+          'Updated Domain content.\n',
+      roots: <RegistryNode>[changedRoot],
+    );
+
     const String deletedFingerprint =
         'git-blob:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd';
 
@@ -1394,7 +1463,7 @@ void main() {
       projectId: snapshot.projectId,
       projectAdapterId: snapshot.projectAdapterId,
       sourceDocumentPath: snapshot.sourceDocumentPath,
-      sourceRevision: '6666666666666666666666666666666666666666',
+      sourceRevision: '7777777777777777777777777777777777777777',
       sourceSnapshotFingerprint: deletedFingerprint,
       sourceContent:
           '# Registry\n'
@@ -1402,13 +1471,13 @@ void main() {
       roots: <RegistryNode>[deletedRoot],
     );
 
-    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
-      <Future<RegistrySnapshot> Function()>[
-        () async => snapshot,
-        () async => movedSnapshot,
-        () async => deletedSnapshot,
-      ],
-    );
+    final _QueuedRegistrySnapshotLoader loader =
+        _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+          () async => snapshot,
+          () async => movedSnapshot,
+          () async => changedSnapshot,
+          () async => deletedSnapshot,
+        ]);
 
     final _MemoryRegistryRevisionStateStore store =
         _MemoryRegistryRevisionStateStore();
@@ -1476,6 +1545,31 @@ void main() {
 
     expect(
       find.text(
+        'Открытый Registry block изменён '
+        'в новой revision.',
+      ),
+      findsOneWidget,
+    );
+
+    expect(selectedRegistryBlock, findsOneWidget);
+
+    expect(
+      find.descendant(
+        of: selectedRegistryBlock,
+        matching: find.textContaining('Updated Domain content.'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+
+    expect(store.state?.openRegistryPath, movedPath);
+
+    await tester.tap(refreshButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
         'Открытый Registry block удалён '
         'в новой revision.',
       ),
@@ -1488,9 +1582,146 @@ void main() {
 
     expect(store.state?.openRegistryPath, isNull);
 
-    expect(loader.loadCount, 3);
+    expect(loader.loadCount, 4);
   });
 
+  testWidgets('preserves and reports open Registry block '
+      'after failed refresh retry', (WidgetTester tester) async {
+    final RegistryNode currentRoot = snapshot.roots.single;
+
+    final RegistryNode currentChild = currentRoot.children.single;
+
+    const String changedFingerprint =
+        'git-blob:dededededededededededededededededededede';
+
+    final RegistryNode changedChild = RegistryNode(
+      id: currentChild.id,
+      kindId: currentChild.kindId,
+      path: currentChild.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: changedFingerprint,
+          headingPath: currentChild.path.segments,
+          startLine: 3,
+          endLine: 4,
+        ),
+      ],
+      content: 'Retried Domain content.',
+      businessScopeOwnerId: currentChild.businessScopeOwnerId,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode changedRoot = RegistryNode(
+      id: currentRoot.id,
+      kindId: currentRoot.kindId,
+      path: currentRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: changedFingerprint,
+          headingPath: currentRoot.path.segments,
+          startLine: 1,
+          endLine: 4,
+        ),
+      ],
+      content: currentRoot.content,
+      businessScopeOwnerId: currentRoot.businessScopeOwnerId,
+      children: <RegistryNode>[changedChild],
+    );
+
+    final RegistrySnapshot changedSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '8888888888888888888888888888888888888888',
+      sourceSnapshotFingerprint: changedFingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n'
+          '## Domain\n'
+          'Retried Domain content.\n',
+      roots: <RegistryNode>[changedRoot],
+    );
+
+    final _QueuedRegistrySnapshotLoader loader =
+        _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+          () async => snapshot,
+          () => Future<RegistrySnapshot>.error(StateError('refresh offline')),
+          () async => changedSnapshot,
+        ]);
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: store,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder childRow = find.byKey(ValueKey<String>(currentChild.id.value));
+
+    await Scrollable.ensureVisible(tester.element(childRow), alignment: 0.5);
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(childRow);
+    await tester.pumpAndSettle();
+
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+
+    expect(store.state?.openRegistryPath, currentChild.path);
+
+    await tester.tap(find.byTooltip('Перезагрузить Registry'));
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Не удалось загрузить Registry'), findsOneWidget);
+
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+
+    expect(store.state?.openRegistryPath, currentChild.path);
+
+    final Finder retryButton = find.byTooltip('Повторить загрузку Registry');
+
+    expect(retryButton, findsOneWidget);
+
+    await tester.tap(retryButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Открытый Registry block изменён '
+        'в новой revision.',
+      ),
+      findsOneWidget,
+    );
+
+    final Finder selectedRegistryBlock = find.byKey(
+      const ValueKey<String>('registry-selected-block'),
+    );
+
+    expect(selectedRegistryBlock, findsOneWidget);
+
+    expect(
+      find.descendant(
+        of: selectedRegistryBlock,
+        matching: find.textContaining('Retried Domain content.'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+
+    expect(store.state?.openRegistryPath, currentChild.path);
+
+    expect(loader.loadCount, 3);
+  });
   testWidgets('opens and closes a Registry block '
       'and persists its exact context', (WidgetTester tester) async {
     final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(

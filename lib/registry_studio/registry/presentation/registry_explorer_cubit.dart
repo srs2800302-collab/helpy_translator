@@ -87,9 +87,13 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
 }
 
 final class RegistryExplorerFailure extends RegistryExplorerState {
-  const RegistryExplorerFailure(this.message);
+  const RegistryExplorerFailure(
+    this.message, {
+    required this.openRegistryNodeBeforeRefresh,
+  });
 
   final String message;
+  final RegistryNode? openRegistryNodeBeforeRefresh;
 }
 
 final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
@@ -289,6 +293,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         emit(
           RegistryExplorerFailure(
             message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
+            openRegistryNodeBeforeRefresh: null,
           ),
         );
       }
@@ -304,10 +309,19 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
     final RegistryExplorerState stateBeforeRefresh = state;
 
+    final RegistryNode? openRegistryNodeBeforeRefresh;
+
+    if (stateBeforeRefresh is RegistryExplorerLoaded) {
+      openRegistryNodeBeforeRefresh = stateBeforeRefresh.openRegistryNode;
+    } else if (stateBeforeRefresh is RegistryExplorerFailure) {
+      openRegistryNodeBeforeRefresh =
+          stateBeforeRefresh.openRegistryNodeBeforeRefresh;
+    } else {
+      openRegistryNodeBeforeRefresh = null;
+    }
+
     final RegistryNodeId? openRegistryNodeId =
-        stateBeforeRefresh is RegistryExplorerLoaded
-        ? stateBeforeRefresh.openRegistryNodeId
-        : null;
+        openRegistryNodeBeforeRefresh?.id;
 
     _retryRefresh = true;
     _isLoading = true;
@@ -399,6 +413,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         emit(
           RegistryExplorerFailure(
             message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
+            openRegistryNodeBeforeRefresh: openRegistryNodeBeforeRefresh,
           ),
         );
       }
