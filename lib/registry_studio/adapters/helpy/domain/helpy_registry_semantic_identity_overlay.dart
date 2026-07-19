@@ -13,6 +13,7 @@ final class HelpyRegistrySemanticIdentity {
     required RegistryEntityKind kind,
     required RegistryPath evidencePath,
     required bool ownsBusinessScope,
+    Iterable<int> businessScopeRootSequences = const <int>[],
   }) {
     if (sequence <= 0) {
       throw ArgumentError.value(
@@ -32,13 +33,55 @@ final class HelpyRegistrySemanticIdentity {
     }
 
     final String formattedSequence = sequence.toString().padLeft(6, '0');
+    final List<int> normalizedBusinessScopeRootSequences =
+        businessScopeRootSequences.toList(growable: true);
+
+    if (!ownsBusinessScope && normalizedBusinessScopeRootSequences.isNotEmpty) {
+      throw ArgumentError.value(
+        businessScopeRootSequences,
+        'businessScopeRootSequences',
+        'A Helpy Registry identity without business-scope ownership '
+            'must not declare scope roots.',
+      );
+    }
+
+    if (ownsBusinessScope && normalizedBusinessScopeRootSequences.isEmpty) {
+      normalizedBusinessScopeRootSequences.add(sequence);
+    }
+
+    final Set<int> uniqueBusinessScopeRootSequences = <int>{};
+
+    for (final int rootSequence in normalizedBusinessScopeRootSequences) {
+      if (rootSequence <= 0) {
+        throw ArgumentError.value(
+          rootSequence,
+          'businessScopeRootSequences',
+          'Helpy Registry business-scope root sequence must be positive.',
+        );
+      }
+
+      if (!uniqueBusinessScopeRootSequences.add(rootSequence)) {
+        throw ArgumentError.value(
+          rootSequence,
+          'businessScopeRootSequences',
+          'Helpy Registry business-scope roots must be unique.',
+        );
+      }
+    }
 
     return HelpyRegistrySemanticIdentity._(
       nodeId: RegistryNodeId('helpy.registry.node.$formattedSequence'),
       entityId: RegistryEntityId('helpy.registry.entity.$formattedSequence'),
       kind: kind,
       evidencePath: evidencePath,
-      ownsBusinessScope: ownsBusinessScope,
+      businessScopeRootNodeIds: List<RegistryNodeId>.unmodifiable(
+        normalizedBusinessScopeRootSequences.map(
+          (int rootSequence) => RegistryNodeId(
+            'helpy.registry.node.'
+            '${rootSequence.toString().padLeft(6, '0')}',
+          ),
+        ),
+      ),
     );
   }
 
@@ -47,14 +90,16 @@ final class HelpyRegistrySemanticIdentity {
     required this.entityId,
     required this.kind,
     required this.evidencePath,
-    required this.ownsBusinessScope,
+    required this.businessScopeRootNodeIds,
   });
 
   final RegistryNodeId nodeId;
   final RegistryEntityId entityId;
   final RegistryEntityKind kind;
   final RegistryPath evidencePath;
-  final bool ownsBusinessScope;
+  final List<RegistryNodeId> businessScopeRootNodeIds;
+
+  bool get ownsBusinessScope => businessScopeRootNodeIds.isNotEmpty;
 
   RegistryEntity materializeEntity(RegistryNode node) {
     if (node.id != nodeId) {
@@ -364,6 +409,17 @@ final class HelpyRegistrySemanticIdentityOverlay {
             ownsBusinessScope: false,
           ),
           HelpyRegistrySemanticIdentity(
+            sequence: 21,
+            kind: HelpyRegistrySemanticContract.contract,
+            evidencePath: RegistryPath(<String>[
+              'Helpy Architecture Registry v1 Foundation',
+              'Roadmap Decision → '
+                  'Appliance Installation & Connection Architecture',
+            ]),
+            ownsBusinessScope: true,
+            businessScopeRootSequences: <int>[21, 22, 26],
+          ),
+          HelpyRegistrySemanticIdentity(
             sequence: 172,
             kind: HelpyRegistrySemanticContract.contract,
             evidencePath: RegistryPath(<String>[
@@ -522,6 +578,31 @@ final class HelpyRegistrySemanticIdentityOverlay {
           .add(nodeId);
     }
 
+    final Map<RegistryNodeId, RegistryEntityId>
+    ownerIdByBusinessScopeRootNodeId = <RegistryNodeId, RegistryEntityId>{};
+
+    for (final HelpyRegistrySemanticIdentity identity in identities) {
+      for (final RegistryNodeId businessScopeRootNodeId
+          in identity.businessScopeRootNodeIds) {
+        if (!activeIds.contains(businessScopeRootNodeId)) {
+          continue;
+        }
+
+        final RegistryEntityId? existingOwnerId =
+            ownerIdByBusinessScopeRootNodeId[businessScopeRootNodeId];
+
+        if (existingOwnerId != null && existingOwnerId != identity.entityId) {
+          throw StateError(
+            'Helpy Registry business-scope root '
+            '${businessScopeRootNodeId.value} has conflicting owners.',
+          );
+        }
+
+        ownerIdByBusinessScopeRootNodeId[businessScopeRootNodeId] =
+            identity.entityId;
+      }
+    }
+
     final Map<RegistryNodeId, RegistryEntityId?> ownerIdsByNodeId =
         <RegistryNodeId, RegistryEntityId?>{};
     final Set<RegistryNodeId> visitedNodeIds = <RegistryNodeId>{};
@@ -542,12 +623,20 @@ final class HelpyRegistrySemanticIdentityOverlay {
         );
       }
 
-      final HelpyRegistrySemanticIdentity? identity =
-          identitiesByNodeId[current.nodeId];
+      final RegistryEntityId? explicitOwnerId =
+          ownerIdByBusinessScopeRootNodeId[current.nodeId];
 
-      final RegistryEntityId? ownerId = identity?.ownsBusinessScope == true
-          ? identity!.entityId
-          : current.inheritedOwnerId;
+      if (explicitOwnerId != null &&
+          current.inheritedOwnerId != null &&
+          explicitOwnerId != current.inheritedOwnerId) {
+        throw StateError(
+          'Helpy Registry business-scope evidence overlaps with '
+          'different owners at ${current.nodeId.value}.',
+        );
+      }
+
+      final RegistryEntityId? ownerId =
+          explicitOwnerId ?? current.inheritedOwnerId;
 
       ownerIdsByNodeId[current.nodeId] = ownerId;
 
@@ -561,8 +650,8 @@ final class HelpyRegistrySemanticIdentityOverlay {
 
     if (visitedNodeIds.length != activeIds.length) {
       throw StateError(
-        'Helpy Registry business-scope ownership did not cover every active '
-        'structural node.',
+        'Helpy Registry business-scope ownership did not traverse every '
+        'active structural node.',
       );
     }
 

@@ -75,6 +75,7 @@ void main() {
             (sequence: 68, kindId: 'platformRule', ownsBusinessScope: false),
             (sequence: 69, kindId: 'platformRule', ownsBusinessScope: false),
             (sequence: 70, kindId: 'platformRule', ownsBusinessScope: false),
+            (sequence: 21, kindId: 'contract', ownsBusinessScope: true),
             (sequence: 172, kindId: 'contract', ownsBusinessScope: true),
             (sequence: 173, kindId: 'rootCategory', ownsBusinessScope: false),
             (sequence: 212, kindId: 'contract', ownsBusinessScope: true),
@@ -184,6 +185,77 @@ void main() {
         RegistryEntityId('helpy.registry.entity.000212'),
       );
     });
+
+    test(
+      'assigns one category owner across heterogeneous structural roots',
+      () {
+        final HelpyRegistrySemanticIdentityOverlay overlay =
+            HelpyRegistrySemanticIdentityOverlay.v1;
+
+        final RegistryNodeId registryRootId = RegistryNodeId(
+          'helpy.registry.node.000001',
+        );
+        final RegistryNodeId applianceArchitectureId = RegistryNodeId(
+          'helpy.registry.node.000021',
+        );
+        final RegistryNodeId applianceMiniTzId = RegistryNodeId(
+          'helpy.registry.node.000022',
+        );
+        final RegistryNodeId applianceScenarioId = RegistryNodeId(
+          'helpy.registry.node.000023',
+        );
+        final RegistryNodeId builtInStandardId = RegistryNodeId(
+          'helpy.registry.node.000026',
+        );
+        final RegistryNodeId builtInEntityId = RegistryNodeId(
+          'helpy.registry.node.000027',
+        );
+        final RegistryNodeId futureUnclassifiedCategoryId = RegistryNodeId(
+          'helpy.registry.node.999998',
+        );
+        final RegistryNodeId futureUnclassifiedChildId = RegistryNodeId(
+          'helpy.registry.node.999999',
+        );
+
+        final Map<RegistryNodeId, RegistryEntityId?> ownerIds = overlay
+            .resolveBusinessScopeOwnerIds(
+              activeNodeIds: <RegistryNodeId>[
+                registryRootId,
+                applianceArchitectureId,
+                applianceMiniTzId,
+                applianceScenarioId,
+                builtInStandardId,
+                builtInEntityId,
+                futureUnclassifiedCategoryId,
+                futureUnclassifiedChildId,
+              ],
+              parentIdByNodeId: <RegistryNodeId, RegistryNodeId?>{
+                registryRootId: null,
+                applianceArchitectureId: registryRootId,
+                applianceMiniTzId: registryRootId,
+                applianceScenarioId: applianceMiniTzId,
+                builtInStandardId: registryRootId,
+                builtInEntityId: builtInStandardId,
+                futureUnclassifiedCategoryId: registryRootId,
+                futureUnclassifiedChildId: futureUnclassifiedCategoryId,
+              },
+            );
+
+        final RegistryEntityId applianceOwnerId = RegistryEntityId(
+          'helpy.registry.entity.000021',
+        );
+
+        expect(ownerIds[registryRootId], isNull);
+        expect(ownerIds[applianceArchitectureId], applianceOwnerId);
+        expect(ownerIds[applianceMiniTzId], applianceOwnerId);
+        expect(ownerIds[applianceScenarioId], applianceOwnerId);
+        expect(ownerIds[builtInStandardId], applianceOwnerId);
+        expect(ownerIds[builtInEntityId], applianceOwnerId);
+
+        expect(ownerIds[futureUnclassifiedCategoryId], isNull);
+        expect(ownerIds[futureUnclassifiedChildId], isNull);
+      },
+    );
 
     test('applies only to exact versioned evidence and validates paths', () {
       final HelpyRegistrySemanticIdentityOverlay overlay =
