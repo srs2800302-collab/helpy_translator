@@ -50,6 +50,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
   bool _showScrollToTop = false;
   bool _showProblemQueue = false;
+  bool _showProblemQueueFullScreen = false;
 
   @override
   void initState() {
@@ -88,9 +89,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   }
 
   void _selectProblem(int? index) {
-    if (index != null && _showProblemQueue) {
+    if (index != null && (_showProblemQueue || _showProblemQueueFullScreen)) {
       setState(() {
         _showProblemQueue = false;
+        _showProblemQueueFullScreen = false;
       });
     }
 
@@ -298,11 +300,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                     Expanded(
                       child: ListView.separated(
                         controller: _scrollController,
-                        itemCount:
-                            loaded.index.nodes.length +
-                            4 +
-                            (_showProblemQueue ? loaded.problems.length : 0) +
-                            (loaded.selectedProblem == null ? 0 : 1),
+                        itemCount: _showProblemQueueFullScreen
+                            ? loaded.problems.length + 1
+                            : loaded.index.nodes.length +
+                                  4 +
+                                  (_showProblemQueue
+                                      ? loaded.problems.length
+                                      : 0) +
+                                  (loaded.selectedProblem == null ? 0 : 1),
                         separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (BuildContext context, int itemIndex) {
                           final List<RegistryStructuralProblem> problems =
@@ -311,11 +316,20 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           final RegistryStructuralProblem? selectedProblem =
                               loaded.selectedProblem;
 
-                          const int problemRowsStartIndex = 3;
+                          final String baselineLabel =
+                              loaded.cleanBaselineComparison != null
+                              ? 'clean baseline'
+                              : 'предыдущая revision';
+
+                          final bool showProblemRows =
+                              _showProblemQueue || _showProblemQueueFullScreen;
+
+                          final int problemRowsStartIndex =
+                              _showProblemQueueFullScreen ? 1 : 3;
 
                           final int problemRowsEndIndex =
                               problemRowsStartIndex +
-                              (_showProblemQueue ? problems.length : 0);
+                              (showProblemRows ? problems.length : 0);
 
                           final int selectedProblemItemIndex =
                               problemRowsEndIndex;
@@ -324,7 +338,79 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               selectedProblemItemIndex +
                               (selectedProblem == null ? 0 : 1);
 
-                          if (itemIndex == 0) {
+                          if (_showProblemQueueFullScreen && itemIndex == 0) {
+                            return Material(
+                              key: const ValueKey<String>(
+                                'registry-problem-queue-fullscreen',
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Icon(
+                                      Icons.adjust,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            'Очередь проблем: '
+                                            '${problems.length}',
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.titleLarge,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Источник: '
+                                            '$baselineLabel. '
+                                            'Статус: затронуто.',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      key: const ValueKey<String>(
+                                        'registry-problem-queue-fullscreen-close',
+                                      ),
+                                      tooltip:
+                                          'Закрыть полноэкранную '
+                                          'очередь проблем',
+                                      onPressed: () {
+                                        setState(() {
+                                          _showProblemQueueFullScreen = false;
+                                        });
+
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
+                                              if (!mounted ||
+                                                  !_scrollController
+                                                      .hasClients) {
+                                                return;
+                                              }
+
+                                              _scrollController.jumpTo(0);
+                                            });
+                                      },
+                                      icon: const Icon(Icons.close_fullscreen),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          if (!_showProblemQueueFullScreen && itemIndex == 0) {
                             return ListTile(
                               key: const ValueKey<String>(
                                 'registry-previous-comparison-summary',
@@ -352,7 +438,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             );
                           }
 
-                          if (itemIndex == 1) {
+                          if (!_showProblemQueueFullScreen && itemIndex == 1) {
                             final bool isCurrentCleanBaseline =
                                 loaded.cleanBaselineSnapshot?.sourceRevision ==
                                 loaded.snapshot.sourceRevision;
@@ -400,12 +486,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             );
                           }
 
-                          if (itemIndex == 2) {
-                            final String baselineLabel =
-                                loaded.cleanBaselineComparison != null
-                                ? 'clean baseline'
-                                : 'предыдущая revision';
-
+                          if (!_showProblemQueueFullScreen && itemIndex == 2) {
                             return ListTile(
                               key: const ValueKey<String>(
                                 'registry-problem-queue',
@@ -438,10 +519,42 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                     ),
                               trailing: problems.isEmpty
                                   ? null
-                                  : Icon(
-                                      _showProblemQueue
-                                          ? Icons.expand_less
-                                          : Icons.expand_more,
+                                  : Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        IconButton(
+                                          key: const ValueKey<String>(
+                                            'registry-problem-queue-fullscreen-button',
+                                          ),
+                                          tooltip:
+                                              'Открыть очередь '
+                                              'проблем на весь экран',
+                                          onPressed: () {
+                                            setState(() {
+                                              _showProblemQueue = false;
+                                              _showProblemQueueFullScreen =
+                                                  true;
+                                            });
+
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
+                                                  if (!mounted ||
+                                                      !_scrollController
+                                                          .hasClients) {
+                                                    return;
+                                                  }
+
+                                                  _scrollController.jumpTo(0);
+                                                });
+                                          },
+                                          icon: const Icon(Icons.open_in_full),
+                                        ),
+                                        Icon(
+                                          _showProblemQueue
+                                              ? Icons.expand_less
+                                              : Icons.expand_more,
+                                        ),
+                                      ],
                                     ),
                               onTap: problems.isEmpty
                                   ? null
@@ -532,7 +645,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             );
                           }
 
-                          if (selectedProblem != null &&
+                          if (!_showProblemQueueFullScreen &&
+                              selectedProblem != null &&
                               itemIndex == selectedProblemItemIndex) {
                             final int selectedIndex =
                                 loaded.selectedProblemIndex!;

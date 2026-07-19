@@ -822,11 +822,96 @@ void main() {
       );
 
       expect(changedProblem, findsOneWidget);
-      expect(find.text('Затронуто · Domain'), findsOneWidget);
+
+      await tester.ensureVisible(problemQueue);
+      await tester.pumpAndSettle();
+
+      await tester.tap(problemQueue);
+      await tester.pumpAndSettle();
+
+      expect(changedProblem, findsNothing);
+      expect(addedProblem, findsNothing);
+
+      final Finder fullScreenButton = find.byTooltip(
+        'Открыть очередь проблем на весь экран',
+      );
+
+      await tester.ensureVisible(fullScreenButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(fullScreenButton);
+      await tester.pumpAndSettle();
+
+      final Finder fullScreenQueue = find.byKey(
+        const ValueKey<String>('registry-problem-queue-fullscreen'),
+      );
+
+      expect(fullScreenQueue, findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: fullScreenQueue,
+          matching: find.text('Очередь проблем: 2'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: fullScreenQueue,
+          matching: find.textContaining('Источник: clean baseline'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.byKey(const ValueKey<String>('full-registry-header')),
+        findsNothing,
+      );
+
+      final Finder fullScreenCloseButton = find.byTooltip(
+        'Закрыть полноэкранную очередь проблем',
+      );
+
+      await tester.tap(fullScreenCloseButton);
+      await tester.pumpAndSettle();
+
+      expect(fullScreenQueue, findsNothing);
+
+      expect(
+        find.byKey(const ValueKey<String>('full-registry-header')),
+        findsOneWidget,
+      );
+
+      await tester.ensureVisible(fullScreenButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(fullScreenButton);
+      await tester.pumpAndSettle();
+
+      expect(fullScreenQueue, findsOneWidget);
+      expect(changedProblem, findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        addedProblem,
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(addedProblem, findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        changedProblem,
+        -180,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(changedProblem, findsOneWidget);
 
       await tester.tap(changedProblem);
       await tester.pumpAndSettle();
 
+      expect(fullScreenQueue, findsNothing);
       expect(changedProblem, findsNothing);
       expect(addedProblem, findsNothing);
 
