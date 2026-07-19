@@ -33,7 +33,7 @@ void main() {
     });
 
     test('persists and replaces Registry revision coordinates '
-        'including clean baseline and problem navigation', () async {
+        'including generic open context and problem position', () async {
       final RegistryRevisionState firstState = RegistryRevisionState(
         projectId: 'project',
         projectAdapterId: 'project.adapter',
@@ -41,8 +41,8 @@ void main() {
         currentRevision: 'revision-a',
         previousRevision: 'revision-b',
         cleanBaselineRevision: 'revision-clean',
-        selectedProblemNodeId: RegistryNodeId('project.registry.node.000003'),
-        selectedProblemPath: RegistryPath(const <String>[
+        openRegistryNodeId: RegistryNodeId('project.registry.node.000003'),
+        openRegistryPath: RegistryPath(const <String>[
           'Registry',
           'Added Domain',
         ]),
@@ -61,11 +61,11 @@ void main() {
       expect(restored.previousRevision, 'revision-b');
       expect(restored.cleanBaselineRevision, 'revision-clean');
       expect(
-        restored.selectedProblemNodeId,
+        restored.openRegistryNodeId,
         RegistryNodeId('project.registry.node.000003'),
       );
       expect(
-        restored.selectedProblemPath,
+        restored.openRegistryPath,
         RegistryPath(const <String>['Registry', 'Added Domain']),
       );
       expect(restored.selectedProblemIndex, 4);
@@ -93,17 +93,17 @@ void main() {
         'currentRevision',
         'previousRevision',
         'cleanBaselineRevision',
-        'selectedProblemNodeId',
-        'selectedProblemPath',
+        'openRegistryNodeId',
+        'openRegistryPath',
         'selectedProblemIndex',
       });
 
-      expect(encodedState['version'], 'v3');
+      expect(encodedState['version'], 'v4');
       expect(
-        encodedState['selectedProblemNodeId'],
+        encodedState['openRegistryNodeId'],
         'project.registry.node.000003',
       );
-      expect(encodedState['selectedProblemPath'], <String>[
+      expect(encodedState['openRegistryPath'], <String>[
         'Registry',
         'Added Domain',
       ]);
@@ -128,12 +128,13 @@ void main() {
       expect(restored!.currentRevision, 'revision-c');
       expect(restored.previousRevision, 'revision-a');
       expect(restored.cleanBaselineRevision, 'revision-a');
-      expect(restored.selectedProblemNodeId, isNull);
-      expect(restored.selectedProblemPath, isNull);
+      expect(restored.openRegistryNodeId, isNull);
+      expect(restored.openRegistryPath, isNull);
       expect(restored.selectedProblemIndex, isNull);
     });
 
-    test('restores previous v2 state without problem navigation', () async {
+    test('migrates previous v3 problem navigation '
+        'to generic open Registry context', () async {
       final Directory stateDirectory = Directory(
         '${directory.path}'
         '${Platform.pathSeparator}'
@@ -146,6 +147,51 @@ void main() {
         '${stateDirectory.path}'
         '${Platform.pathSeparator}'
         '${JsonFileRegistryRevisionStateStore.previousFileName}',
+      );
+
+      await previousStateFile.writeAsString(
+        jsonEncode(<String, Object?>{
+          'version': 'v3',
+          'projectId': 'project',
+          'projectAdapterId': 'project.adapter',
+          'sourceDocumentPath': 'registry.md',
+          'currentRevision': 'revision-a',
+          'previousRevision': 'revision-b',
+          'cleanBaselineRevision': 'revision-clean',
+          'selectedProblemNodeId': 'project.registry.node.000003',
+          'selectedProblemPath': <String>['Registry', 'Added Domain'],
+          'selectedProblemIndex': 4,
+        }),
+        flush: true,
+      );
+
+      final RegistryRevisionState? restored = await store.loadRevisionState();
+
+      expect(restored, isNotNull);
+      expect(
+        restored!.openRegistryNodeId,
+        RegistryNodeId('project.registry.node.000003'),
+      );
+      expect(
+        restored.openRegistryPath,
+        RegistryPath(const <String>['Registry', 'Added Domain']),
+      );
+      expect(restored.selectedProblemIndex, 4);
+    });
+
+    test('restores older v2 state without open Registry context', () async {
+      final Directory stateDirectory = Directory(
+        '${directory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonFileRegistryRevisionStateStore.directoryName}',
+      );
+
+      await stateDirectory.create(recursive: true);
+
+      final File previousStateFile = File(
+        '${stateDirectory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonFileRegistryRevisionStateStore.olderFileName}',
       );
 
       await previousStateFile.writeAsString(
@@ -167,8 +213,8 @@ void main() {
       expect(restored!.currentRevision, 'revision-a');
       expect(restored.previousRevision, 'revision-b');
       expect(restored.cleanBaselineRevision, 'revision-clean');
-      expect(restored.selectedProblemNodeId, isNull);
-      expect(restored.selectedProblemPath, isNull);
+      expect(restored.openRegistryNodeId, isNull);
+      expect(restored.openRegistryPath, isNull);
       expect(restored.selectedProblemIndex, isNull);
     });
 
@@ -205,8 +251,8 @@ void main() {
       expect(restored!.currentRevision, 'revision-a');
       expect(restored.previousRevision, 'revision-b');
       expect(restored.cleanBaselineRevision, isNull);
-      expect(restored.selectedProblemNodeId, isNull);
-      expect(restored.selectedProblemPath, isNull);
+      expect(restored.openRegistryNodeId, isNull);
+      expect(restored.openRegistryPath, isNull);
       expect(restored.selectedProblemIndex, isNull);
     });
 
@@ -227,15 +273,15 @@ void main() {
 
       await stateFile.writeAsString(
         jsonEncode(<String, Object?>{
-          'version': 'v3',
+          'version': 'v4',
           'projectId': 'project',
           'projectAdapterId': 'project.adapter',
           'sourceDocumentPath': 'registry.md',
           'currentRevision': 'revision-a',
           'previousRevision': 'revision-a',
           'cleanBaselineRevision': null,
-          'selectedProblemNodeId': null,
-          'selectedProblemPath': null,
+          'openRegistryNodeId': null,
+          'openRegistryPath': null,
           'selectedProblemIndex': null,
         }),
         flush: true,
@@ -247,7 +293,7 @@ void main() {
       );
     });
 
-    test('rejects incomplete persisted problem navigation', () async {
+    test('rejects incomplete persisted open Registry context', () async {
       final Directory stateDirectory = Directory(
         '${directory.path}'
         '${Platform.pathSeparator}'
@@ -264,16 +310,53 @@ void main() {
 
       await stateFile.writeAsString(
         jsonEncode(<String, Object?>{
-          'version': 'v3',
+          'version': 'v4',
           'projectId': 'project',
           'projectAdapterId': 'project.adapter',
           'sourceDocumentPath': 'registry.md',
           'currentRevision': 'revision-a',
           'previousRevision': 'revision-b',
           'cleanBaselineRevision': null,
-          'selectedProblemNodeId': 'project.registry.node.000003',
-          'selectedProblemPath': null,
+          'openRegistryNodeId': 'project.registry.node.000003',
+          'openRegistryPath': null,
           'selectedProblemIndex': null,
+        }),
+        flush: true,
+      );
+
+      await expectLater(
+        store.loadRevisionState(),
+        throwsA(isA<FormatException>()),
+      );
+    });
+    test('rejects problem position without '
+        'open Registry context', () async {
+      final Directory stateDirectory = Directory(
+        '${directory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonFileRegistryRevisionStateStore.directoryName}',
+      );
+
+      await stateDirectory.create(recursive: true);
+
+      final File stateFile = File(
+        '${stateDirectory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonFileRegistryRevisionStateStore.fileName}',
+      );
+
+      await stateFile.writeAsString(
+        jsonEncode(<String, Object?>{
+          'version': 'v4',
+          'projectId': 'project',
+          'projectAdapterId': 'project.adapter',
+          'sourceDocumentPath': 'registry.md',
+          'currentRevision': 'revision-a',
+          'previousRevision': 'revision-b',
+          'cleanBaselineRevision': null,
+          'openRegistryNodeId': null,
+          'openRegistryPath': null,
+          'selectedProblemIndex': 0,
         }),
         flush: true,
       );

@@ -7,6 +7,7 @@ import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
 import '../domain/entities/registry_node.dart';
+import '../domain/value_objects/registry_node_id.dart';
 import 'registry_explorer_cubit.dart';
 
 final class RegistryExplorerView extends StatelessWidget {
@@ -47,6 +48,7 @@ final class _RegistryExplorerView extends StatefulWidget {
 final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _selectedProblemKey = GlobalKey();
+  final GlobalKey _selectedRegistryBlockKey = GlobalKey();
 
   bool _showScrollToTop = false;
   bool _showProblemQueue = false;
@@ -134,6 +136,56 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       }
 
       final BuildContext? selectedContext = _selectedProblemKey.currentContext;
+
+      if (selectedContext == null) {
+        return;
+      }
+
+      Scrollable.ensureVisible(
+        selectedContext,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        alignment: 0.08,
+      );
+    });
+  }
+
+  Future<void> _selectRegistryNode(RegistryNodeId? nodeId) async {
+    final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
+
+    try {
+      await cubit.selectRegistryNode(nodeId);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final String message = error.toString().trim();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.isEmpty
+                ? 'Не удалось сохранить открытый Registry block.'
+                : message,
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    if (!mounted || nodeId == null) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      final BuildContext? selectedContext =
+          _selectedRegistryBlockKey.currentContext;
 
       if (selectedContext == null) {
         return;
@@ -333,7 +385,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                   (_showProblemQueue
                                       ? loaded.problems.length
                                       : 0) +
-                                  (loaded.selectedProblem == null ? 0 : 1),
+                                  (loaded.selectedProblem == null &&
+                                          loaded.openRegistryNode == null
+                                      ? 0
+                                      : 1),
                         separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (BuildContext context, int itemIndex) {
                           final List<RegistryStructuralProblem> problems =
@@ -341,6 +396,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                           final RegistryStructuralProblem? selectedProblem =
                               loaded.selectedProblem;
+
+                          final RegistryNode? openRegistryNode =
+                              loaded.openRegistryNode;
 
                           final String baselineLabel =
                               loaded.cleanBaselineComparison != null
@@ -362,7 +420,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                           final int fullRegistryHeaderIndex =
                               selectedProblemItemIndex +
-                              (selectedProblem == null ? 0 : 1);
+                              (selectedProblem == null &&
+                                      openRegistryNode == null
+                                  ? 0
+                                  : 1);
 
                           if (_showProblemQueueFullScreen && itemIndex == 0) {
                             return Material(
@@ -840,6 +901,78 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             );
                           }
 
+                          if (!_showProblemQueueFullScreen &&
+                              selectedProblem == null &&
+                              openRegistryNode != null &&
+                              itemIndex == selectedProblemItemIndex) {
+                            return KeyedSubtree(
+                              key: const ValueKey<String>(
+                                'registry-selected-block',
+                              ),
+                              child: Card(
+                                key: _selectedRegistryBlockKey,
+                                margin: const EdgeInsets.all(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Row(
+                                        children: <Widget>[
+                                          Icon(
+                                            Icons.description_outlined,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Открытый Registry block',
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.titleLarge,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'RegistryPath: '
+                                        '${openRegistryNode.path.segments.join(' → ')}',
+                                      ),
+                                      Text(
+                                        'Тип: '
+                                        '${openRegistryNode.kindId}',
+                                      ),
+                                      for (final evidence
+                                          in openRegistryNode.sourceEvidence)
+                                        Text(
+                                          'Evidence: '
+                                          '${evidence.sourceDocumentPath}, '
+                                          'строки ${evidence.startLine}–'
+                                          '${evidence.endLine}',
+                                        ),
+                                      const Divider(height: 24),
+                                      SelectableText(openRegistryNode.content),
+                                      const Divider(height: 24),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: () async {
+                                            await _selectRegistryNode(null);
+                                          },
+                                          child: const Text('Закрыть'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
                           if (itemIndex == fullRegistryHeaderIndex) {
                             return const ListTile(
                               key: ValueKey<String>('full-registry-header'),
@@ -870,6 +1003,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               '${evidence.endLine}',
                             ),
                             isThreeLine: true,
+                            selected: loaded.openRegistryNodeId == node.id,
+                            onTap: () async {
+                              await _selectRegistryNode(node.id);
+                            },
                           );
                         },
                       ),

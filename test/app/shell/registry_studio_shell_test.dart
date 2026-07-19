@@ -212,6 +212,68 @@ void main() {
     },
   );
 
+  test('restores a persisted Registry block independently '
+      'from problem navigation', () async {
+    final RegistryNode child = snapshot.roots.single.children.single;
+
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[],
+      exactSnapshots: <String, RegistrySnapshot>{
+        snapshot.sourceRevision: snapshot,
+      },
+    );
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore(
+          state: RegistryRevisionState(
+            projectId: snapshot.projectId,
+            projectAdapterId: snapshot.projectAdapterId,
+            sourceDocumentPath: snapshot.sourceDocumentPath,
+            currentRevision: snapshot.sourceRevision,
+            openRegistryNodeId: child.id,
+            openRegistryPath: child.path,
+          ),
+        );
+
+    final RegistryExplorerCubit cubit = RegistryExplorerCubit(
+      snapshotLoader: loader,
+      snapshotRevisionLoader: loader,
+      revisionStateStore: store,
+      snapshotComparator: const RegistrySnapshotComparator(),
+    );
+
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+
+    RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.openRegistryNodeId, child.id);
+    expect(loaded.openRegistryPath, child.path);
+    expect(loaded.openRegistryNode, same(child));
+    expect(loaded.selectedProblemIndex, isNull);
+    expect(loaded.selectedProblem, isNull);
+    expect(store.saveCount, 0);
+
+    await cubit.selectRegistryNode(null);
+
+    loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.openRegistryNodeId, isNull);
+    expect(loaded.openRegistryPath, isNull);
+    expect(store.saveCount, 1);
+
+    await cubit.selectRegistryNode(child.id);
+
+    loaded = cubit.state as RegistryExplorerLoaded;
+
+    expect(loaded.openRegistryNode, same(child));
+    expect(loaded.selectedProblemIndex, isNull);
+    expect(store.state?.openRegistryNodeId, child.id);
+    expect(store.state?.openRegistryPath, child.path);
+    expect(store.saveCount, 2);
+  });
+
   test(
     'restores a distinct persisted clean baseline and both comparisons',
     () async {
@@ -300,8 +362,8 @@ void main() {
               currentRevision: snapshot.sourceRevision,
               previousRevision: previousSnapshot.sourceRevision,
               cleanBaselineRevision: cleanBaselineSnapshot.sourceRevision,
-              selectedProblemNodeId: currentChild.id,
-              selectedProblemPath: currentChild.path,
+              openRegistryNodeId: currentChild.id,
+              openRegistryPath: currentChild.path,
               selectedProblemIndex: 7,
             ),
           );
@@ -937,8 +999,8 @@ void main() {
       await tester.tap(changedProblem);
       await tester.pumpAndSettle();
 
-      expect(store.state?.selectedProblemNodeId, changedChild.id);
-      expect(store.state?.selectedProblemPath, changedChild.path);
+      expect(store.state?.openRegistryNodeId, changedChild.id);
+      expect(store.state?.openRegistryPath, changedChild.path);
       expect(store.state?.selectedProblemIndex, 0);
 
       expect(fullScreenQueue, findsNothing);
@@ -1056,6 +1118,93 @@ void main() {
       expect(loader.loadCount, 2);
     },
   );
+
+  testWidgets('opens and closes a Registry block '
+      'and persists its exact context', (WidgetTester tester) async {
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => snapshot],
+    );
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: store,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final RegistryNode child = snapshot.roots.single.children.single;
+
+    final Finder childRow = find.byKey(ValueKey<String>(child.id.value));
+
+    expect(childRow, findsOneWidget);
+
+    await Scrollable.ensureVisible(tester.element(childRow), alignment: 0.5);
+    await tester.pumpAndSettle();
+
+    await tester.tap(childRow);
+    await tester.pumpAndSettle();
+
+    final Finder selectedRegistryBlock = find.byKey(
+      const ValueKey<String>('registry-selected-block'),
+    );
+
+    expect(selectedRegistryBlock, findsOneWidget);
+
+    expect(
+      find.descendant(
+        of: selectedRegistryBlock,
+        matching: find.text('Открытый Registry block'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: selectedRegistryBlock,
+        matching: find.text('RegistryPath: Registry → Domain'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: selectedRegistryBlock,
+        matching: find.textContaining('Domain content.'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(store.state?.openRegistryNodeId, child.id);
+
+    expect(store.state?.openRegistryPath, child.path);
+
+    expect(store.state?.selectedProblemIndex, isNull);
+
+    final Finder closeButton = find.descendant(
+      of: selectedRegistryBlock,
+      matching: find.widgetWithText(TextButton, 'Закрыть'),
+    );
+
+    await tester.ensureVisible(closeButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(closeButton);
+    await tester.pumpAndSettle();
+
+    expect(selectedRegistryBlock, findsNothing);
+
+    expect(store.state?.openRegistryNodeId, isNull);
+
+    expect(store.state?.openRegistryPath, isNull);
+
+    expect(store.state?.selectedProblemIndex, isNull);
+  });
 
   testWidgets(
     'loads the complete Registry, reloads it and preserves workspace navigation',

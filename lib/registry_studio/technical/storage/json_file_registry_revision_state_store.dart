@@ -12,12 +12,14 @@ final class JsonFileRegistryRevisionStateStore
   const JsonFileRegistryRevisionStateStore({this.applicationSupportDirectory});
 
   static const String directoryName = 'registry_studio';
-  static const String fileName = 'registry_revision_state_v3.json';
-  static const String previousFileName = 'registry_revision_state_v2.json';
+  static const String fileName = 'registry_revision_state_v4.json';
+  static const String previousFileName = 'registry_revision_state_v3.json';
+  static const String olderFileName = 'registry_revision_state_v2.json';
   static const String legacyFileName = 'registry_revision_state_v1.json';
 
-  static const String _formatVersion = 'v3';
-  static const String _previousFormatVersion = 'v2';
+  static const String _formatVersion = 'v4';
+  static const String _previousFormatVersion = 'v3';
+  static const String _olderFormatVersion = 'v2';
   static const String _legacyFormatVersion = 'v1';
 
   final Directory? applicationSupportDirectory;
@@ -35,7 +37,8 @@ final class JsonFileRegistryRevisionStateStore
       if (applicationSupportPath == null ||
           applicationSupportPath.trim().isEmpty) {
         throw StateError(
-          'Android application support directory is unavailable.',
+          'Android application support directory '
+          'is unavailable.',
         );
       }
 
@@ -60,6 +63,12 @@ final class JsonFileRegistryRevisionStateStore
       '$previousFileName',
     );
 
+    final File olderStateFile = File(
+      '${stateDirectory.path}'
+      '${Platform.pathSeparator}'
+      '$olderFileName',
+    );
+
     final File legacyStateFile = File(
       '${stateDirectory.path}'
       '${Platform.pathSeparator}'
@@ -72,6 +81,8 @@ final class JsonFileRegistryRevisionStateStore
       stateFile = currentStateFile;
     } else if (await previousStateFile.exists()) {
       stateFile = previousStateFile;
+    } else if (await olderStateFile.exists()) {
+      stateFile = olderStateFile;
     } else if (await legacyStateFile.exists()) {
       stateFile = legacyStateFile;
     } else {
@@ -82,13 +93,15 @@ final class JsonFileRegistryRevisionStateStore
 
     if (decodedState is! Map<Object?, Object?>) {
       throw const FormatException(
-        'Registry revision state must be a JSON object.',
+        'Registry revision state must be '
+        'a JSON object.',
       );
     }
 
     if (decodedState.keys.any((Object? key) => key is! String)) {
       throw const FormatException(
-        'Registry revision state keys must be strings.',
+        'Registry revision state keys '
+        'must be strings.',
       );
     }
 
@@ -106,7 +119,7 @@ final class JsonFileRegistryRevisionStateStore
         'currentRevision',
         'previousRevision',
       };
-    } else if (version == _previousFormatVersion) {
+    } else if (version == _olderFormatVersion) {
       expectedKeys = const <String>{
         'version',
         'projectId',
@@ -116,7 +129,7 @@ final class JsonFileRegistryRevisionStateStore
         'previousRevision',
         'cleanBaselineRevision',
       };
-    } else if (version == _formatVersion) {
+    } else if (version == _previousFormatVersion) {
       expectedKeys = const <String>{
         'version',
         'projectId',
@@ -129,9 +142,23 @@ final class JsonFileRegistryRevisionStateStore
         'selectedProblemPath',
         'selectedProblemIndex',
       };
+    } else if (version == _formatVersion) {
+      expectedKeys = const <String>{
+        'version',
+        'projectId',
+        'projectAdapterId',
+        'sourceDocumentPath',
+        'currentRevision',
+        'previousRevision',
+        'cleanBaselineRevision',
+        'openRegistryNodeId',
+        'openRegistryPath',
+        'selectedProblemIndex',
+      };
     } else {
       throw const FormatException(
-        'Registry revision state version is unsupported.',
+        'Registry revision state version '
+        'is unsupported.',
       );
     }
 
@@ -139,7 +166,10 @@ final class JsonFileRegistryRevisionStateStore
 
     if (actualKeys.length != expectedKeys.length ||
         !actualKeys.containsAll(expectedKeys)) {
-      throw const FormatException('Registry revision state schema is invalid.');
+      throw const FormatException(
+        'Registry revision state schema '
+        'is invalid.',
+      );
     }
 
     final Object? projectId = state['projectId'];
@@ -149,28 +179,35 @@ final class JsonFileRegistryRevisionStateStore
     final Object? previousRevision = state['previousRevision'];
 
     final bool includesCleanBaseline =
-        version == _previousFormatVersion || version == _formatVersion;
+        version == _olderFormatVersion ||
+        version == _previousFormatVersion ||
+        version == _formatVersion;
 
     final Object? cleanBaselineRevision = includesCleanBaseline
         ? state['cleanBaselineRevision']
         : null;
 
-    final Object? selectedProblemNodeId = version == _formatVersion
-        ? state['selectedProblemNodeId']
-        : null;
+    final Object? openRegistryNodeId = switch (version) {
+      _formatVersion => state['openRegistryNodeId'],
+      _previousFormatVersion => state['selectedProblemNodeId'],
+      _ => null,
+    };
 
-    final Object? selectedProblemPath = version == _formatVersion
-        ? state['selectedProblemPath']
-        : null;
+    final Object? openRegistryPath = switch (version) {
+      _formatVersion => state['openRegistryPath'],
+      _previousFormatVersion => state['selectedProblemPath'],
+      _ => null,
+    };
 
-    final Object? selectedProblemIndex = version == _formatVersion
+    final Object? selectedProblemIndex =
+        version == _formatVersion || version == _previousFormatVersion
         ? state['selectedProblemIndex']
         : null;
 
-    final bool selectedProblemPathInvalid =
-        selectedProblemPath != null &&
-        (selectedProblemPath is! List<Object?> ||
-            selectedProblemPath.any((Object? segment) => segment is! String));
+    final bool openRegistryPathInvalid =
+        openRegistryPath != null &&
+        (openRegistryPath is! List<Object?> ||
+            openRegistryPath.any((Object? segment) => segment is! String));
 
     if (projectId is! String ||
         projectAdapterId is! String ||
@@ -178,11 +215,12 @@ final class JsonFileRegistryRevisionStateStore
         currentRevision is! String ||
         (previousRevision != null && previousRevision is! String) ||
         (cleanBaselineRevision != null && cleanBaselineRevision is! String) ||
-        (selectedProblemNodeId != null && selectedProblemNodeId is! String) ||
-        selectedProblemPathInvalid ||
+        (openRegistryNodeId != null && openRegistryNodeId is! String) ||
+        openRegistryPathInvalid ||
         (selectedProblemIndex != null && selectedProblemIndex is! int)) {
       throw const FormatException(
-        'Registry revision state field types are invalid.',
+        'Registry revision state field types '
+        'are invalid.',
       );
     }
 
@@ -194,19 +232,18 @@ final class JsonFileRegistryRevisionStateStore
         currentRevision: currentRevision,
         previousRevision: previousRevision as String?,
         cleanBaselineRevision: cleanBaselineRevision as String?,
-        selectedProblemNodeId: selectedProblemNodeId == null
+        openRegistryNodeId: openRegistryNodeId == null
             ? null
-            : RegistryNodeId(selectedProblemNodeId as String),
-        selectedProblemPath: selectedProblemPath == null
+            : RegistryNodeId(openRegistryNodeId as String),
+        openRegistryPath: openRegistryPath == null
             ? null
-            : RegistryPath(
-                (selectedProblemPath as List<Object?>).cast<String>(),
-              ),
+            : RegistryPath((openRegistryPath as List<Object?>).cast<String>()),
         selectedProblemIndex: selectedProblemIndex as int?,
       );
     } on ArgumentError catch (error) {
       throw FormatException(
-        'Registry revision state values are invalid.',
+        'Registry revision state values '
+        'are invalid.',
         error,
       );
     }
@@ -225,7 +262,8 @@ final class JsonFileRegistryRevisionStateStore
       if (applicationSupportPath == null ||
           applicationSupportPath.trim().isEmpty) {
         throw StateError(
-          'Android application support directory is unavailable.',
+          'Android application support directory '
+          'is unavailable.',
         );
       }
 
@@ -254,7 +292,7 @@ final class JsonFileRegistryRevisionStateStore
 
     try {
       await temporaryFile.writeAsString(
-        '${jsonEncode(<String, Object?>{'version': _formatVersion, 'projectId': state.projectId, 'projectAdapterId': state.projectAdapterId, 'sourceDocumentPath': state.sourceDocumentPath, 'currentRevision': state.currentRevision, 'previousRevision': state.previousRevision, 'cleanBaselineRevision': state.cleanBaselineRevision, 'selectedProblemNodeId': state.selectedProblemNodeId?.value, 'selectedProblemPath': state.selectedProblemPath?.segments, 'selectedProblemIndex': state.selectedProblemIndex})}\n',
+        '${jsonEncode(<String, Object?>{'version': _formatVersion, 'projectId': state.projectId, 'projectAdapterId': state.projectAdapterId, 'sourceDocumentPath': state.sourceDocumentPath, 'currentRevision': state.currentRevision, 'previousRevision': state.previousRevision, 'cleanBaselineRevision': state.cleanBaselineRevision, 'openRegistryNodeId': state.openRegistryNodeId?.value, 'openRegistryPath': state.openRegistryPath?.segments, 'selectedProblemIndex': state.selectedProblemIndex})}\n',
         flush: true,
       );
 

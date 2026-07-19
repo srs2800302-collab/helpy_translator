@@ -9,8 +9,8 @@ final class RegistryRevisionState {
     required String currentRevision,
     String? previousRevision,
     String? cleanBaselineRevision,
-    RegistryNodeId? selectedProblemNodeId,
-    RegistryPath? selectedProblemPath,
+    RegistryNodeId? openRegistryNodeId,
+    RegistryPath? openRegistryPath,
     int? selectedProblemIndex,
   }) {
     final String normalizedProjectId = projectId.trim();
@@ -81,18 +81,21 @@ final class RegistryRevisionState {
       );
     }
 
-    final bool hasSelectedProblemContext =
-        selectedProblemNodeId != null ||
-        selectedProblemPath != null ||
-        selectedProblemIndex != null;
+    final bool hasOpenRegistryContext =
+        openRegistryNodeId != null || openRegistryPath != null;
 
-    if (hasSelectedProblemContext &&
-        (selectedProblemNodeId == null ||
-            selectedProblemPath == null ||
-            selectedProblemIndex == null)) {
+    if (hasOpenRegistryContext &&
+        (openRegistryNodeId == null || openRegistryPath == null)) {
       throw ArgumentError(
-        'Registry revision state selected problem context '
+        'Registry revision state open Registry context '
         'must be complete or absent.',
+      );
+    }
+
+    if (selectedProblemIndex != null && !hasOpenRegistryContext) {
+      throw ArgumentError(
+        'Registry revision state problem position requires '
+        'an open Registry context.',
       );
     }
 
@@ -112,8 +115,8 @@ final class RegistryRevisionState {
       currentRevision: normalizedCurrentRevision,
       previousRevision: normalizedPreviousRevision,
       cleanBaselineRevision: normalizedCleanBaselineRevision,
-      selectedProblemNodeId: selectedProblemNodeId,
-      selectedProblemPath: selectedProblemPath,
+      openRegistryNodeId: openRegistryNodeId,
+      openRegistryPath: openRegistryPath,
       selectedProblemIndex: selectedProblemIndex,
     );
   }
@@ -125,8 +128,8 @@ final class RegistryRevisionState {
     required this.currentRevision,
     required this.previousRevision,
     required this.cleanBaselineRevision,
-    required this.selectedProblemNodeId,
-    required this.selectedProblemPath,
+    required this.openRegistryNodeId,
+    required this.openRegistryPath,
     required this.selectedProblemIndex,
   });
 
@@ -136,8 +139,8 @@ final class RegistryRevisionState {
   final String currentRevision;
   final String? previousRevision;
   final String? cleanBaselineRevision;
-  final RegistryNodeId? selectedProblemNodeId;
-  final RegistryPath? selectedProblemPath;
+  final RegistryNodeId? openRegistryNodeId;
+  final RegistryPath? openRegistryPath;
   final int? selectedProblemIndex;
 }
 

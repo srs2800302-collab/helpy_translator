@@ -1,13 +1,16 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/domain/value_objects/registry_path.dart';
 import '../../maintenance/analysis/application/registry_snapshot_comparator.dart';
 import '../../maintenance/analysis/domain/entities/registry_snapshot_comparison.dart';
 import '../../maintenance/analysis/domain/entities/registry_structural_problem.dart';
 import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
+import '../domain/entities/registry_node.dart';
 import '../domain/entities/registry_snapshot.dart';
 import '../domain/entities/registry_structural_index.dart';
+import '../domain/value_objects/registry_node_id.dart';
 
 sealed class RegistryExplorerState {
   const RegistryExplorerState();
@@ -25,6 +28,8 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
     required this.previousComparison,
     required this.cleanBaselineSnapshot,
     required this.cleanBaselineComparison,
+    required this.openRegistryNodeId,
+    required this.openRegistryPath,
     required this.selectedProblemIndex,
   });
 
@@ -34,6 +39,8 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
   final RegistrySnapshotComparison? previousComparison;
   final RegistrySnapshot? cleanBaselineSnapshot;
   final RegistrySnapshotComparison? cleanBaselineComparison;
+  final RegistryNodeId? openRegistryNodeId;
+  final RegistryPath? openRegistryPath;
   final int? selectedProblemIndex;
 
   RegistrySnapshotComparison? get problemComparison =>
@@ -42,14 +49,40 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
   List<RegistryStructuralProblem> get problems =>
       problemComparison?.problems ?? const <RegistryStructuralProblem>[];
 
-  RegistryStructuralProblem? get selectedProblem {
-    final int? index = selectedProblemIndex;
+  RegistryNode? get openRegistryNode {
+    final RegistryNodeId? nodeId = openRegistryNodeId;
+    final RegistryPath? path = openRegistryPath;
 
-    if (index == null || index < 0 || index >= problems.length) {
+    if (nodeId == null || path == null) {
       return null;
     }
 
-    return problems[index];
+    final RegistryNode? node = index.nodesById[nodeId];
+
+    if (node == null || node.path != path) {
+      return null;
+    }
+
+    return node;
+  }
+
+  RegistryStructuralProblem? get selectedProblem {
+    final int? problemIndex = selectedProblemIndex;
+
+    if (problemIndex == null ||
+        problemIndex < 0 ||
+        problemIndex >= problems.length) {
+      return null;
+    }
+
+    final RegistryStructuralProblem problem = problems[problemIndex];
+
+    if (problem.exactNode.id != openRegistryNodeId ||
+        problem.path != openRegistryPath) {
+      return null;
+    }
+
+    return problem;
   }
 }
 
@@ -181,18 +214,25 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           (cleanBaselineComparison ?? previousComparison)?.problems ??
           const <RegistryStructuralProblem>[];
 
+      final RegistryNodeId? openRegistryNodeId =
+          persistedState?.openRegistryNodeId;
+
+      final RegistryPath? openRegistryPath = persistedState?.openRegistryPath;
+
       int? selectedProblemIndex;
 
       if (persistedState != null &&
-          persistedState.selectedProblemNodeId != null) {
+          openRegistryNodeId != null &&
+          openRegistryPath != null &&
+          persistedState.selectedProblemIndex != null) {
         final int persistedProblemIndex = persistedState.selectedProblemIndex!;
 
         if (persistedProblemIndex < problems.length) {
           final RegistryStructuralProblem candidate =
               problems[persistedProblemIndex];
 
-          if (candidate.exactNode.id == persistedState.selectedProblemNodeId &&
-              candidate.path == persistedState.selectedProblemPath) {
+          if (candidate.exactNode.id == openRegistryNodeId &&
+              candidate.path == openRegistryPath) {
             selectedProblemIndex = persistedProblemIndex;
           }
         }
@@ -200,8 +240,8 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         if (selectedProblemIndex == null) {
           final int resolvedProblemIndex = problems.indexWhere(
             (RegistryStructuralProblem problem) =>
-                problem.exactNode.id == persistedState.selectedProblemNodeId &&
-                problem.path == persistedState.selectedProblemPath,
+                problem.exactNode.id == openRegistryNodeId &&
+                problem.path == openRegistryPath,
           );
 
           if (resolvedProblemIndex >= 0) {
@@ -236,6 +276,8 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: cleanBaselineSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
+            openRegistryNodeId: openRegistryNodeId,
+            openRegistryPath: openRegistryPath,
             selectedProblemIndex: selectedProblemIndex,
           ),
         );
@@ -329,6 +371,8 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: cleanBaselineSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
+            openRegistryNodeId: null,
+            openRegistryPath: null,
             selectedProblemIndex: null,
           ),
         );
@@ -406,6 +450,8 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: currentSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
+            openRegistryNodeId: null,
+            openRegistryPath: null,
             selectedProblemIndex: null,
           ),
         );
@@ -446,8 +492,8 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           previousRevision: currentState.previousSnapshot?.sourceRevision,
           cleanBaselineRevision:
               currentState.cleanBaselineSnapshot?.sourceRevision,
-          selectedProblemNodeId: selectedProblem?.exactNode.id,
-          selectedProblemPath: selectedProblem?.path,
+          openRegistryNodeId: selectedProblem?.exactNode.id,
+          openRegistryPath: selectedProblem?.path,
           selectedProblemIndex: index,
         ),
       );
@@ -461,7 +507,66 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: currentState.previousComparison,
             cleanBaselineSnapshot: currentState.cleanBaselineSnapshot,
             cleanBaselineComparison: currentState.cleanBaselineComparison,
+            openRegistryNodeId: selectedProblem?.exactNode.id,
+            openRegistryPath: selectedProblem?.path,
             selectedProblemIndex: index,
+          ),
+        );
+      }
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<void> selectRegistryNode(RegistryNodeId? nodeId) async {
+    if (_isLoading) {
+      throw StateError('Контекст Registry уже обновляется.');
+    }
+
+    final RegistryExplorerState currentState = state;
+
+    if (currentState is! RegistryExplorerLoaded) {
+      throw StateError('Registry недоступен.');
+    }
+
+    final RegistryNode? openRegistryNode = nodeId == null
+        ? null
+        : currentState.index.nodesById[nodeId];
+
+    if (nodeId != null && openRegistryNode == null) {
+      throw StateError('Registry block недоступен.');
+    }
+
+    _isLoading = true;
+
+    try {
+      await revisionStateStore.saveRevisionState(
+        RegistryRevisionState(
+          projectId: currentState.snapshot.projectId,
+          projectAdapterId: currentState.snapshot.projectAdapterId,
+          sourceDocumentPath: currentState.snapshot.sourceDocumentPath,
+          currentRevision: currentState.snapshot.sourceRevision,
+          previousRevision: currentState.previousSnapshot?.sourceRevision,
+          cleanBaselineRevision:
+              currentState.cleanBaselineSnapshot?.sourceRevision,
+          openRegistryNodeId: openRegistryNode?.id,
+          openRegistryPath: openRegistryNode?.path,
+          selectedProblemIndex: null,
+        ),
+      );
+
+      if (!isClosed) {
+        emit(
+          RegistryExplorerLoaded(
+            snapshot: currentState.snapshot,
+            index: currentState.index,
+            previousSnapshot: currentState.previousSnapshot,
+            previousComparison: currentState.previousComparison,
+            cleanBaselineSnapshot: currentState.cleanBaselineSnapshot,
+            cleanBaselineComparison: currentState.cleanBaselineComparison,
+            openRegistryNodeId: openRegistryNode?.id,
+            openRegistryPath: openRegistryNode?.path,
+            selectedProblemIndex: null,
           ),
         );
       }
