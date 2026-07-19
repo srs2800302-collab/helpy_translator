@@ -366,9 +366,71 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             ),
                             IconButton(
                               tooltip: 'Перезагрузить Registry',
-                              onPressed: context
-                                  .read<RegistryExplorerCubit>()
-                                  .refresh,
+                              onPressed: () async {
+                                final RegistryExplorerCubit cubit = context
+                                    .read<RegistryExplorerCubit>();
+
+                                final ScaffoldMessengerState scaffoldMessenger =
+                                    ScaffoldMessenger.of(context);
+
+                                final RegistryExplorerState stateBeforeRefresh =
+                                    cubit.state;
+
+                                final RegistryNode?
+                                openRegistryNodeBeforeRefresh =
+                                    stateBeforeRefresh is RegistryExplorerLoaded
+                                    ? stateBeforeRefresh.openRegistryNode
+                                    : null;
+
+                                await cubit.refresh();
+
+                                if (!mounted ||
+                                    openRegistryNodeBeforeRefresh == null) {
+                                  return;
+                                }
+
+                                final RegistryExplorerState stateAfterRefresh =
+                                    cubit.state;
+
+                                if (stateAfterRefresh
+                                    is! RegistryExplorerLoaded) {
+                                  return;
+                                }
+
+                                final RegistryNode?
+                                openRegistryNodeAfterRefresh =
+                                    stateAfterRefresh.openRegistryNode;
+
+                                final String? message;
+
+                                if (openRegistryNodeAfterRefresh == null) {
+                                  message =
+                                      'Открытый Registry block удалён '
+                                      'в новой revision.';
+                                } else if (openRegistryNodeAfterRefresh.id ==
+                                        openRegistryNodeBeforeRefresh.id &&
+                                    openRegistryNodeAfterRefresh.path !=
+                                        openRegistryNodeBeforeRefresh.path) {
+                                  message =
+                                      'Открытый Registry block перемещён.\n'
+                                      'Было: '
+                                      '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
+                                      'Стало: '
+                                      '${openRegistryNodeAfterRefresh.path.segments.join(' → ')}';
+                                } else {
+                                  message = null;
+                                }
+
+                                if (message == null) {
+                                  return;
+                                }
+
+                                scaffoldMessenger
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(
+                                    SnackBar(content: Text(message)),
+                                  );
+                              },
                               icon: const Icon(Icons.refresh),
                             ),
                           ],

@@ -1305,6 +1305,192 @@ void main() {
     },
   );
 
+  testWidgets('reports moved and deleted open Registry '
+      'blocks after refresh', (WidgetTester tester) async {
+    final RegistryNode currentRoot = snapshot.roots.single;
+
+    final RegistryNode currentChild = currentRoot.children.single;
+
+    const String movedFingerprint =
+        'git-blob:abababababababababababababababababababab';
+
+    final RegistryPath movedPath = RegistryPath(const <String>[
+      'Registry',
+      'Moved Domain',
+    ]);
+
+    final RegistryNode movedChild = RegistryNode(
+      id: currentChild.id,
+      kindId: currentChild.kindId,
+      path: movedPath,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: movedFingerprint,
+          headingPath: movedPath.segments,
+          startLine: 3,
+          endLine: 4,
+        ),
+      ],
+      content: currentChild.content,
+      businessScopeOwnerId: currentChild.businessScopeOwnerId,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode movedRoot = RegistryNode(
+      id: currentRoot.id,
+      kindId: currentRoot.kindId,
+      path: currentRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: movedFingerprint,
+          headingPath: currentRoot.path.segments,
+          startLine: 1,
+          endLine: 4,
+        ),
+      ],
+      content: currentRoot.content,
+      businessScopeOwnerId: currentRoot.businessScopeOwnerId,
+      children: <RegistryNode>[movedChild],
+    );
+
+    final RegistrySnapshot movedSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '5555555555555555555555555555555555555555',
+      sourceSnapshotFingerprint: movedFingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n'
+          '## Moved Domain\n'
+          'Domain content.\n',
+      roots: <RegistryNode>[movedRoot],
+    );
+
+    const String deletedFingerprint =
+        'git-blob:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd';
+
+    final RegistryNode deletedRoot = RegistryNode(
+      id: currentRoot.id,
+      kindId: currentRoot.kindId,
+      path: currentRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: deletedFingerprint,
+          headingPath: currentRoot.path.segments,
+          startLine: 1,
+          endLine: 2,
+        ),
+      ],
+      content: currentRoot.content,
+      businessScopeOwnerId: currentRoot.businessScopeOwnerId,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistrySnapshot deletedSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '6666666666666666666666666666666666666666',
+      sourceSnapshotFingerprint: deletedFingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n',
+      roots: <RegistryNode>[deletedRoot],
+    );
+
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[
+        () async => snapshot,
+        () async => movedSnapshot,
+        () async => deletedSnapshot,
+      ],
+    );
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: store,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder childRow = find.byKey(ValueKey<String>(currentChild.id.value));
+
+    expect(childRow, findsOneWidget);
+
+    await Scrollable.ensureVisible(tester.element(childRow), alignment: 0.5);
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(childRow);
+    await tester.pumpAndSettle();
+
+    final Finder selectedRegistryBlock = find.byKey(
+      const ValueKey<String>('registry-selected-block'),
+    );
+
+    expect(selectedRegistryBlock, findsOneWidget);
+
+    final Finder refreshButton = find.byTooltip('Перезагрузить Registry');
+
+    await tester.tap(refreshButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Открытый Registry block перемещён.\n'
+        'Было: Registry → Domain\n'
+        'Стало: Registry → Moved Domain',
+      ),
+      findsOneWidget,
+    );
+
+    expect(selectedRegistryBlock, findsOneWidget);
+
+    expect(
+      find.descendant(
+        of: selectedRegistryBlock,
+        matching: find.text(
+          'RegistryPath: '
+          'Registry → Moved Domain',
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    expect(store.state?.openRegistryNodeId, currentChild.id);
+
+    expect(store.state?.openRegistryPath, movedPath);
+
+    await tester.tap(refreshButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Открытый Registry block удалён '
+        'в новой revision.',
+      ),
+      findsOneWidget,
+    );
+
+    expect(selectedRegistryBlock, findsNothing);
+
+    expect(store.state?.openRegistryNodeId, isNull);
+
+    expect(store.state?.openRegistryPath, isNull);
+
+    expect(loader.loadCount, 3);
+  });
+
   testWidgets('opens and closes a Registry block '
       'and persists its exact context', (WidgetTester tester) async {
     final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
