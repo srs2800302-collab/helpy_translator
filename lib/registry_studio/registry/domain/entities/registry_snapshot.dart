@@ -1,5 +1,9 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../core/domain/entities/registry_entity.dart';
+import '../../../core/domain/value_objects/registry_entity_id.dart';
+import '../../../core/domain/value_objects/registry_path.dart';
+import '../../../core/domain/value_objects/registry_relation.dart';
 import 'registry_node.dart';
 
 final class RegistrySnapshot extends Equatable {
@@ -11,6 +15,8 @@ final class RegistrySnapshot extends Equatable {
     required String sourceSnapshotFingerprint,
     required String sourceContent,
     required Iterable<RegistryNode> roots,
+    Iterable<RegistryEntity> entities = const <RegistryEntity>[],
+    Iterable<RegistryRelation> relations = const <RegistryRelation>[],
   }) {
     final String normalizedProjectId = projectId.trim();
     final String normalizedProjectAdapterId = projectAdapterId.trim();
@@ -19,6 +25,12 @@ final class RegistrySnapshot extends Equatable {
     final String normalizedSourceSnapshotFingerprint = sourceSnapshotFingerprint
         .trim();
     final List<RegistryNode> normalizedRoots = roots.toList(growable: false);
+    final List<RegistryEntity> normalizedEntities = entities.toList(
+      growable: false,
+    );
+    final List<RegistryRelation> normalizedRelations = relations.toList(
+      growable: false,
+    );
 
     if (normalizedProjectId.isEmpty) {
       throw ArgumentError.value(
@@ -79,9 +91,12 @@ final class RegistrySnapshot extends Equatable {
     final List<RegistryNode> remainingNodes = <RegistryNode>[
       ...normalizedRoots,
     ];
+    final Set<RegistryPath> structuralPaths = <RegistryPath>{};
 
     while (remainingNodes.isNotEmpty) {
       final RegistryNode node = remainingNodes.removeLast();
+
+      structuralPaths.add(node.path);
 
       for (final evidence in node.sourceEvidence) {
         if (evidence.sourceDocumentPath != normalizedSourceDocumentPath) {
@@ -105,6 +120,69 @@ final class RegistrySnapshot extends Equatable {
       remainingNodes.addAll(node.children);
     }
 
+    final Set<RegistryEntityId> entityIds = <RegistryEntityId>{};
+
+    for (final RegistryEntity entity in normalizedEntities) {
+      if (!entityIds.add(entity.id)) {
+        throw ArgumentError.value(
+          entity.id,
+          'entities',
+          'Registry snapshot requires unique semantic entity identities.',
+        );
+      }
+
+      if (!structuralPaths.contains(entity.path)) {
+        throw ArgumentError.value(
+          entity.path,
+          'entities',
+          'Registry semantic entity path must exist in the structural '
+              'snapshot.',
+        );
+      }
+
+      for (final evidence in entity.sourceEvidence) {
+        if (evidence.sourceDocumentPath != normalizedSourceDocumentPath) {
+          throw ArgumentError.value(
+            evidence.sourceDocumentPath,
+            'entities',
+            'Registry semantic entity evidence must belong to the snapshot '
+                'source document.',
+          );
+        }
+
+        if (evidence.sourceSnapshotFingerprint !=
+            normalizedSourceSnapshotFingerprint) {
+          throw ArgumentError.value(
+            evidence.sourceSnapshotFingerprint,
+            'entities',
+            'Registry semantic entity evidence must belong to the exact '
+                'snapshot fingerprint.',
+          );
+        }
+      }
+    }
+
+    final Set<RegistryRelation> uniqueRelations = <RegistryRelation>{};
+
+    for (final RegistryRelation relation in normalizedRelations) {
+      if (!entityIds.contains(relation.sourceEntityId) ||
+          !entityIds.contains(relation.targetEntityId)) {
+        throw ArgumentError.value(
+          relation,
+          'relations',
+          'Registry relation endpoints must exist in the semantic snapshot.',
+        );
+      }
+
+      if (!uniqueRelations.add(relation)) {
+        throw ArgumentError.value(
+          relation,
+          'relations',
+          'Registry snapshot must not contain duplicate semantic relations.',
+        );
+      }
+    }
+
     return RegistrySnapshot._(
       projectId: normalizedProjectId,
       projectAdapterId: normalizedProjectAdapterId,
@@ -113,6 +191,8 @@ final class RegistrySnapshot extends Equatable {
       sourceSnapshotFingerprint: normalizedSourceSnapshotFingerprint,
       sourceContent: sourceContent,
       roots: List<RegistryNode>.unmodifiable(normalizedRoots),
+      entities: List<RegistryEntity>.unmodifiable(normalizedEntities),
+      relations: List<RegistryRelation>.unmodifiable(normalizedRelations),
     );
   }
 
@@ -124,6 +204,8 @@ final class RegistrySnapshot extends Equatable {
     required this.sourceSnapshotFingerprint,
     required this.sourceContent,
     required this.roots,
+    required this.entities,
+    required this.relations,
   });
 
   final String projectId;
@@ -133,6 +215,8 @@ final class RegistrySnapshot extends Equatable {
   final String sourceSnapshotFingerprint;
   final String sourceContent;
   final List<RegistryNode> roots;
+  final List<RegistryEntity> entities;
+  final List<RegistryRelation> relations;
 
   @override
   List<Object?> get props => <Object?>[
@@ -143,5 +227,7 @@ final class RegistrySnapshot extends Equatable {
     sourceSnapshotFingerprint,
     sourceContent,
     roots,
+    entities,
+    relations,
   ];
 }

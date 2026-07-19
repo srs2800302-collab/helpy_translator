@@ -1,7 +1,10 @@
+import '../../../core/domain/entities/registry_entity.dart';
 import '../../../core/domain/value_objects/registry_entity_id.dart';
 import '../../../core/domain/value_objects/registry_entity_kind.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
+import '../../../registry/domain/entities/registry_node.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
+import 'helpy_registry_entity_payload.dart';
 import 'helpy_registry_semantic_contract.dart';
 
 final class HelpyRegistrySemanticIdentity {
@@ -52,6 +55,36 @@ final class HelpyRegistrySemanticIdentity {
   final RegistryEntityKind kind;
   final RegistryPath evidencePath;
   final bool ownsBusinessScope;
+
+  RegistryEntity materializeEntity(RegistryNode node) {
+    if (node.id != nodeId) {
+      throw StateError(
+        'Helpy Registry semantic identity node does not match '
+        '${node.id.value}.',
+      );
+    }
+
+    if (node.path != evidencePath) {
+      throw StateError(
+        'Helpy Registry semantic identity path does not match '
+        '${node.id.value}.',
+      );
+    }
+
+    return RegistryEntity(
+      id: entityId,
+      path: node.path,
+      kind: kind,
+      payload: HelpyRegistryEntityPayload(
+        kind: kind,
+        sourceNodeId: node.id,
+        title: node.path.segments.last,
+        content: node.content,
+        ownsBusinessScope: ownsBusinessScope,
+      ),
+      sourceEvidence: node.sourceEvidence,
+    );
+  }
 }
 
 final class HelpyRegistrySemanticIdentityOverlay {

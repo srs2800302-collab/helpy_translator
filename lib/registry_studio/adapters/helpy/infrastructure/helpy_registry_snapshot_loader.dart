@@ -1,3 +1,4 @@
+import '../../../core/domain/entities/registry_entity.dart';
 import '../../../core/domain/evidence/source_evidence.dart';
 import '../../../core/domain/value_objects/registry_entity_id.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
@@ -234,6 +235,25 @@ final class HelpyRegistrySnapshotLoader
       roots.add(root);
     }
 
+    final Map<RegistryNodeId, RegistryNode> activeNodesById =
+        <RegistryNodeId, RegistryNode>{
+          for (final RegistryNode node in nodesByPath.values) node.id: node,
+        };
+
+    final List<RegistryEntity> entities = semanticIdentityOverlayApplies
+        ? <RegistryEntity>[
+            for (final HelpyRegistrySemanticIdentity identity
+                in semanticIdentityOverlay.identities)
+              identity.materializeEntity(
+                activeNodesById[identity.nodeId] ??
+                    (throw StateError(
+                      'Helpy Registry semantic node was not constructed for '
+                      '${identity.nodeId.value}.',
+                    )),
+              ),
+          ]
+        : const <RegistryEntity>[];
+
     return RegistrySnapshot(
       projectId: projectId,
       projectAdapterId: projectAdapterId,
@@ -242,6 +262,7 @@ final class HelpyRegistrySnapshotLoader
       sourceSnapshotFingerprint: sourceDocument.sourceSnapshotFingerprint,
       sourceContent: sourceDocument.content,
       roots: roots,
+      entities: entities,
     );
   }
 }
