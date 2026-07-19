@@ -5,6 +5,7 @@ import '../../../registry/application/contracts/registry_snapshot_revision_loade
 import '../../../registry/domain/entities/registry_node.dart';
 import '../../../registry/domain/entities/registry_snapshot.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
+import '../domain/helpy_registry_semantic_contract.dart';
 import 'github_registry_document_source.dart';
 import 'helpy_registry_document_interpreter.dart';
 import 'helpy_registry_node_identity_ledger_source.dart';
@@ -44,7 +45,8 @@ final class HelpyRegistrySnapshotLoader
   });
 
   static const String projectId = 'helpy';
-  static const String projectAdapterId = 'helpy.registry.adapter.v1';
+  static const String projectAdapterId =
+      HelpyRegistrySemanticContract.adapterId;
 
   final GitHubRegistryDocumentSource documentSource;
   final HelpyRegistryNodeIdentityLedgerSource identityLedgerSource;
