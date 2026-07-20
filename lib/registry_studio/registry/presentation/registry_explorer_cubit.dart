@@ -442,6 +442,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     final RegistryExplorerState stateBeforeRefresh = state;
 
     final RegistryNode? openRegistryNodeBeforeRefresh;
+    final RegistryStructuralProblem? selectedProblemBeforeRefresh;
     final String searchQueryBeforeRefresh;
     final List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh =
         stateBeforeRefresh is RegistryExplorerLoaded
@@ -452,13 +453,16 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
     if (stateBeforeRefresh is RegistryExplorerLoaded) {
       openRegistryNodeBeforeRefresh = stateBeforeRefresh.openRegistryNode;
+      selectedProblemBeforeRefresh = stateBeforeRefresh.selectedProblem;
       searchQueryBeforeRefresh = stateBeforeRefresh.searchQuery;
     } else if (stateBeforeRefresh is RegistryExplorerFailure) {
       openRegistryNodeBeforeRefresh =
           stateBeforeRefresh.openRegistryNodeBeforeRefresh;
+      selectedProblemBeforeRefresh = null;
       searchQueryBeforeRefresh = stateBeforeRefresh.searchQueryBeforeRefresh;
     } else {
       openRegistryNodeBeforeRefresh = null;
+      selectedProblemBeforeRefresh = null;
       searchQueryBeforeRefresh = '';
     }
 
@@ -513,9 +517,51 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
               currentIndex: index,
             );
 
-      final RegistryNode? refreshedOpenRegistryNode = openRegistryNodeId == null
+      final List<RegistryStructuralProblem> refreshedProblems =
+          (cleanBaselineComparison ?? previousComparison)?.problems ??
+          const <RegistryStructuralProblem>[];
+
+      int? refreshedSelectedProblemIndex;
+
+      if (selectedProblemBeforeRefresh != null) {
+        final RegistryStructuralProblem selectedProblem =
+            selectedProblemBeforeRefresh;
+
+        final int identityMatchIndex = refreshedProblems.indexWhere(
+          (RegistryStructuralProblem problem) =>
+              problem.exactNode.id == selectedProblem.exactNode.id,
+        );
+
+        if (identityMatchIndex >= 0) {
+          refreshedSelectedProblemIndex = identityMatchIndex;
+        } else {
+          final int pathMatchIndex = refreshedProblems.indexWhere(
+            (RegistryStructuralProblem problem) =>
+                problem.path == selectedProblem.path,
+          );
+
+          if (pathMatchIndex >= 0) {
+            refreshedSelectedProblemIndex = pathMatchIndex;
+          }
+        }
+      }
+
+      final RegistryStructuralProblem? refreshedSelectedProblem =
+          refreshedSelectedProblemIndex == null
           ? null
-          : index.nodesById[openRegistryNodeId];
+          : refreshedProblems[refreshedSelectedProblemIndex];
+
+      final RegistryNode? refreshedOpenRegistryNode =
+          refreshedSelectedProblem == null && openRegistryNodeId != null
+          ? index.nodesById[openRegistryNodeId]
+          : null;
+
+      final RegistryNodeId? refreshedOpenRegistryNodeId =
+          refreshedSelectedProblem?.exactNode.id ??
+          refreshedOpenRegistryNode?.id;
+
+      final RegistryPath? refreshedOpenRegistryPath =
+          refreshedSelectedProblem?.path ?? refreshedOpenRegistryNode?.path;
 
       await revisionStateStore.saveRevisionState(
         RegistryRevisionState(
@@ -525,9 +571,9 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           currentRevision: snapshot.sourceRevision,
           previousRevision: previousSnapshot?.sourceRevision,
           cleanBaselineRevision: cleanBaselineSnapshot?.sourceRevision,
-          openRegistryNodeId: refreshedOpenRegistryNode?.id,
-          openRegistryPath: refreshedOpenRegistryNode?.path,
-          selectedProblemIndex: null,
+          openRegistryNodeId: refreshedOpenRegistryNodeId,
+          openRegistryPath: refreshedOpenRegistryPath,
+          selectedProblemIndex: refreshedSelectedProblemIndex,
           searchQuery: searchQueryBeforeRefresh,
         ),
       );
@@ -576,9 +622,9 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousComparison: previousComparison,
             cleanBaselineSnapshot: cleanBaselineSnapshot,
             cleanBaselineComparison: cleanBaselineComparison,
-            openRegistryNodeId: refreshedOpenRegistryNode?.id,
-            openRegistryPath: refreshedOpenRegistryNode?.path,
-            selectedProblemIndex: null,
+            openRegistryNodeId: refreshedOpenRegistryNodeId,
+            openRegistryPath: refreshedOpenRegistryPath,
+            selectedProblemIndex: refreshedSelectedProblemIndex,
             analysisHistory: analysisHistory,
             searchQuery: searchQueryBeforeRefresh,
           ),

@@ -1112,6 +1112,7 @@ void main() {
           _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
             () async => snapshot,
             () async => updatedSnapshot,
+            () async => updatedSnapshot,
           ]);
 
       final _MemoryRegistryRevisionStateStore store =
@@ -1563,6 +1564,35 @@ void main() {
         findsOneWidget,
       );
 
+      final Finder refreshButton = find.byTooltip('Перезагрузить Registry');
+
+      expect(refreshButton, findsOneWidget);
+
+      await tester.tap(refreshButton);
+      await tester.pumpAndSettle();
+
+      expect(store.state?.openRegistryNodeId, changedChild.id);
+      expect(store.state?.openRegistryPath, changedChild.path);
+      expect(store.state?.selectedProblemIndex, 0);
+
+      expect(selectedProblem, findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.text('Проблемное место 1 из 2'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: selectedProblem,
+          matching: find.textContaining('Updated domain content.'),
+        ),
+        findsOneWidget,
+      );
+
       final Finder nextProblemButton = find.byTooltip('Следующая проблема');
 
       await tester.ensureVisible(nextProblemButton);
@@ -1640,7 +1670,7 @@ void main() {
 
       expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
 
-      expect(loader.loadCount, 2);
+      expect(loader.loadCount, 3);
     },
   );
 
