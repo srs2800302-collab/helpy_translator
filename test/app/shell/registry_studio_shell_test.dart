@@ -2921,6 +2921,146 @@ void main() {
     expect(restoredSearchField.controller?.text, isEmpty);
   });
 
+  testWidgets(
+    'scrolls to the first Registry content match and navigates matches',
+    (WidgetTester tester) async {
+      const String documentPath = 'search-navigation-registry.md';
+      const String fingerprint =
+          'git-blob:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd';
+
+      final String longContent =
+          '${List<String>.filled(35, 'Prefix line.').join('\n')}\n'
+          'target phrase first\n'
+          '${List<String>.filled(35, 'Middle line.').join('\n')}\n'
+          'target phrase second';
+
+      final RegistryNode searchNode = RegistryNode(
+        id: RegistryNodeId('project.registry.node.search.navigation'),
+        kindId: 'project.registry.heading.1',
+        path: RegistryPath(const <String>['Registry']),
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: documentPath,
+            sourceSnapshotFingerprint: fingerprint,
+            headingPath: const <String>['Registry'],
+            startLine: 1,
+            endLine: 73,
+          ),
+        ],
+        content: longContent,
+        businessScopeOwnerId: null,
+        children: const <RegistryNode>[],
+      );
+
+      final RegistrySnapshot searchSnapshot = RegistrySnapshot(
+        projectId: 'project',
+        projectAdapterId: 'project.registry.adapter.v1',
+        sourceDocumentPath: documentPath,
+        sourceRevision: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd',
+        sourceSnapshotFingerprint: fingerprint,
+        sourceContent: '# Registry\n$longContent\n',
+        roots: <RegistryNode>[searchNode],
+      );
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => searchSnapshot,
+          ]);
+
+      await tester.pumpWidget(
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+          registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final Finder searchField = find.byType(TextField);
+
+      expect(searchField, findsOneWidget);
+
+      await tester.enterText(searchField, 'target phrase');
+      await tester.pumpAndSettle();
+
+      final Finder searchResult = find.byKey(
+        ValueKey<String>(searchNode.id.value),
+      );
+
+      await tester.ensureVisible(searchResult);
+      await tester.pumpAndSettle();
+
+      await tester.tap(searchResult);
+      await tester.pumpAndSettle();
+
+      final Finder selectedBlockScreen = find.byKey(
+        const ValueKey<String>('registry-selected-block-screen'),
+      );
+
+      expect(selectedBlockScreen, findsOneWidget);
+
+      final Finder selectedBlockScrollable = find.descendant(
+        of: selectedBlockScreen,
+        matching: find.byType(Scrollable),
+      );
+
+      expect(selectedBlockScrollable, findsOneWidget);
+
+      final ScrollableState initialScrollableState = tester
+          .state<ScrollableState>(selectedBlockScrollable);
+
+      expect(initialScrollableState.position.pixels, greaterThan(0));
+
+      expect(find.text('1 из 2'), findsOneWidget);
+
+      final Finder previousButton = find.byKey(
+        const ValueKey<String>('registry-selected-block-match-previous'),
+      );
+
+      final Finder nextButton = find.byKey(
+        const ValueKey<String>('registry-selected-block-match-next'),
+      );
+
+      expect(tester.widget<IconButton>(previousButton).onPressed, isNull);
+
+      expect(tester.widget<IconButton>(nextButton).onPressed, isNotNull);
+
+      final double firstMatchScrollPosition =
+          initialScrollableState.position.pixels;
+
+      await tester.ensureVisible(nextButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(nextButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 из 2'), findsOneWidget);
+
+      final ScrollableState secondScrollableState = tester
+          .state<ScrollableState>(selectedBlockScrollable);
+
+      expect(
+        secondScrollableState.position.pixels,
+        greaterThan(firstMatchScrollPosition),
+      );
+
+      expect(tester.widget<IconButton>(previousButton).onPressed, isNotNull);
+
+      expect(tester.widget<IconButton>(nextButton).onPressed, isNull);
+
+      await tester.ensureVisible(previousButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(previousButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 из 2'), findsOneWidget);
+    },
+  );
+
   testWidgets('shows Registry failure and retries through the same loader', (
     WidgetTester tester,
   ) async {

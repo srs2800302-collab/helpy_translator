@@ -58,6 +58,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   final ScrollController _scrollController = ScrollController();
   final ScrollController _selectedRegistryBlockScrollController =
       ScrollController();
+  String? _selectedRegistrySearchContextId;
+  int _selectedRegistrySearchMatchIndex = 0;
+  bool _selectedRegistrySearchScrollPending = false;
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey _selectedProblemKey = GlobalKey();
   final GlobalKey _selectedRegistryBlockKey = GlobalKey();
@@ -583,6 +586,132 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
         ? null
         : _registrySearchMatch(node, searchQuery);
 
+    final String normalizedSearchQuery = searchQuery.toLowerCase();
+    final String normalizedContent = node.content.toLowerCase();
+
+    final List<int> contentMatchOffsets = <int>[];
+
+    if (normalizedSearchQuery.isNotEmpty) {
+      int searchOffset = 0;
+
+      while (searchOffset < normalizedContent.length) {
+        final int matchOffset = normalizedContent.indexOf(
+          normalizedSearchQuery,
+          searchOffset,
+        );
+
+        if (matchOffset < 0) {
+          break;
+        }
+
+        contentMatchOffsets.add(matchOffset);
+
+        searchOffset = matchOffset + normalizedSearchQuery.length;
+      }
+    }
+
+    final String selectedSearchContextId =
+        '${node.id.value}\n$normalizedSearchQuery';
+
+    if (_selectedRegistrySearchContextId != selectedSearchContextId) {
+      _selectedRegistrySearchContextId = selectedSearchContextId;
+      _selectedRegistrySearchMatchIndex = 0;
+      _selectedRegistrySearchScrollPending = contentMatchOffsets.isNotEmpty;
+    }
+
+    if (contentMatchOffsets.isEmpty) {
+      _selectedRegistrySearchMatchIndex = 0;
+      _selectedRegistrySearchScrollPending = false;
+    } else if (_selectedRegistrySearchMatchIndex >=
+        contentMatchOffsets.length) {
+      _selectedRegistrySearchMatchIndex = contentMatchOffsets.length - 1;
+    }
+
+    final List<GlobalKey> contentMatchKeys = List<GlobalKey>.generate(
+      contentMatchOffsets.length,
+      (int index) =>
+          GlobalKey(debugLabel: 'registry-selected-content-match-$index'),
+    );
+
+    if (_selectedRegistrySearchScrollPending && contentMatchKeys.isNotEmpty) {
+      _selectedRegistrySearchScrollPending = false;
+
+      final int targetMatchIndex = _selectedRegistrySearchMatchIndex;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || targetMatchIndex >= contentMatchKeys.length) {
+          return;
+        }
+
+        final BuildContext? matchContext =
+            contentMatchKeys[targetMatchIndex].currentContext;
+
+        if (matchContext == null) {
+          return;
+        }
+
+        Scrollable.ensureVisible(
+          matchContext,
+          alignment: 0.24,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      });
+    }
+
+    final List<InlineSpan> contentSpans = <InlineSpan>[];
+    int contentOffset = 0;
+
+    for (
+      int matchIndex = 0;
+      matchIndex < contentMatchOffsets.length;
+      matchIndex += 1
+    ) {
+      final int matchOffset = contentMatchOffsets[matchIndex];
+
+      if (matchOffset > contentOffset) {
+        contentSpans.add(
+          TextSpan(text: node.content.substring(contentOffset, matchOffset)),
+        );
+      }
+
+      final int matchEnd = matchOffset + normalizedSearchQuery.length;
+
+      contentSpans.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: Container(
+            key: contentMatchKeys[matchIndex],
+            decoration: BoxDecoration(
+              color: matchIndex == _selectedRegistrySearchMatchIndex
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            child: Text(
+              node.content.substring(matchOffset, matchEnd),
+              style: TextStyle(
+                color: matchIndex == _selectedRegistrySearchMatchIndex
+                    ? Theme.of(context).colorScheme.onPrimaryContainer
+                    : Theme.of(context).colorScheme.onSecondaryContainer,
+                fontWeight: matchIndex == _selectedRegistrySearchMatchIndex
+                    ? FontWeight.w700
+                    : FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      contentOffset = matchEnd;
+    }
+
+    if (contentOffset < node.content.length) {
+      contentSpans.add(TextSpan(text: node.content.substring(contentOffset)));
+    }
+
     return Material(
       key: const ValueKey<String>('registry-selected-block-screen'),
       child: SafeArea(
@@ -703,15 +832,84 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             '${evidence.startLine}–'
                             '${evidence.endLine}',
                           ),
+                        if (searchQuery.isNotEmpty) ...<Widget>[
+                          if (contentMatchOffsets.isNotEmpty)
+                            Card(
+                              key: const ValueKey<String>(
+                                'registry-selected-block-match-navigation',
+                              ),
+                              margin: const EdgeInsets.only(top: 12),
+                              child: Row(
+                                children: <Widget>[
+                                  IconButton(
+                                    key: const ValueKey<String>(
+                                      'registry-selected-block-match-previous',
+                                    ),
+                                    tooltip: 'Предыдущее совпадение',
+                                    onPressed:
+                                        _selectedRegistrySearchMatchIndex > 0
+                                        ? () {
+                                            setState(() {
+                                              _selectedRegistrySearchMatchIndex -=
+                                                  1;
+                                              _selectedRegistrySearchScrollPending =
+                                                  true;
+                                            });
+                                          }
+                                        : null,
+                                    icon: const Icon(Icons.arrow_upward),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      '${_selectedRegistrySearchMatchIndex + 1} '
+                                      'из ${contentMatchOffsets.length}',
+                                      key: const ValueKey<String>(
+                                        'registry-selected-block-match-position',
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    key: const ValueKey<String>(
+                                      'registry-selected-block-match-next',
+                                    ),
+                                    tooltip: 'Следующее совпадение',
+                                    onPressed:
+                                        _selectedRegistrySearchMatchIndex <
+                                            contentMatchOffsets.length - 1
+                                        ? () {
+                                            setState(() {
+                                              _selectedRegistrySearchMatchIndex +=
+                                                  1;
+                                              _selectedRegistrySearchScrollPending =
+                                                  true;
+                                            });
+                                          }
+                                        : null,
+                                    icon: const Icon(Icons.arrow_downward),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            const Padding(
+                              padding: EdgeInsets.only(top: 12),
+                              child: Text('В содержимом блока совпадений нет.'),
+                            ),
+                        ],
                         const Divider(height: 24),
                         if (searchQuery.isEmpty)
                           SelectableText(node.content)
                         else
                           SelectionArea(
-                            child: _highlightRegistrySearchText(
-                              context,
-                              node.content,
-                              searchQuery,
+                            child: Text.rich(
+                              TextSpan(
+                                style: Theme.of(context).textTheme.bodyMedium,
+                                children: contentSpans,
+                              ),
                               key: const ValueKey<String>(
                                 'registry-selected-block-content-highlight',
                               ),
