@@ -2952,6 +2952,108 @@ void main() {
     expect(restoredSearchField.controller?.text, isEmpty);
   });
 
+  testWidgets('resets Registry Studio context only after confirmation', (
+    WidgetTester tester,
+  ) async {
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => snapshot],
+    );
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final RegistryNode child = snapshot.roots.single.children.single;
+
+    final Finder searchField = find.byKey(
+      const ValueKey<String>('registry-search-field'),
+    );
+
+    await tester.enterText(searchField, 'Domain content');
+    await tester.pumpAndSettle();
+
+    final Finder searchResult = find.byKey(ValueKey<String>(child.id.value));
+
+    await tester.ensureVisible(searchResult);
+    await tester.pumpAndSettle();
+
+    await tester.tap(searchResult);
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, 'Domain content');
+    expect(store.state?.openRegistryNodeId, child.id);
+
+    final Finder selectedResetButton = find.byKey(
+      const ValueKey<String>('registry-selected-block-reset'),
+    );
+
+    expect(selectedResetButton, findsOneWidget);
+
+    await tester.tap(selectedResetButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-studio-reset-dialog')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-studio-reset-cancel')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, 'Domain content');
+    expect(store.state?.openRegistryNodeId, child.id);
+
+    await tester.tap(selectedResetButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-studio-reset-confirm')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, isEmpty);
+    expect(store.state?.openRegistryNodeId, isNull);
+    expect(store.state?.openRegistryPath, isNull);
+    expect(store.state?.selectedProblemIndex, isNull);
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-selected-block-screen')),
+      findsNothing,
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-search-field')),
+      findsOneWidget,
+    );
+
+    expect(find.text('Дерево Registry'), findsOneWidget);
+    expect(find.text('Найдено: 1'), findsNothing);
+
+    final TextFormField resetSearchField = tester.widget<TextFormField>(
+      find.byKey(const ValueKey<String>('registry-search-field')),
+    );
+
+    expect(resetSearchField.controller?.text, isEmpty);
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-node-list')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'scrolls to the first Registry content match and navigates matches',
     (WidgetTester tester) async {

@@ -126,6 +126,68 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     await _updateSearchQuery('');
   }
 
+  Future<void> _resetRegistryStudio() async {
+    final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
+
+    final bool confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              key: const ValueKey<String>('registry-studio-reset-dialog'),
+              title: const Text('Сбросить Registry Studio?'),
+              content: const Text(
+                'Будут закрыты открытый block и выбранная проблема, '
+                'очищены поиск и раскрытые ветки. '
+                'Registry, baseline и история анализа не изменятся.',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  key: const ValueKey<String>('registry-studio-reset-cancel'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(false);
+                  },
+                  child: const Text('Отмена'),
+                ),
+                FilledButton(
+                  key: const ValueKey<String>('registry-studio-reset-confirm'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(true);
+                  },
+                  child: const Text('Сбросить'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed || !mounted) {
+      return;
+    }
+
+    await cubit.resetWorkspaceContext();
+
+    if (!mounted) {
+      return;
+    }
+
+    _searchController.clear();
+
+    setState(() {
+      _expandedRegistryNodeIds.clear();
+      _showProblemQueue = false;
+      _showProblemQueueFullScreen = false;
+      _selectedRegistrySearchContextId = null;
+      _selectedRegistrySearchMatchIndex = 0;
+      _selectedRegistrySearchScrollPending = false;
+    });
+
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
   Future<void> _updateSearchQuery(String searchQuery) async {
     final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
 
@@ -747,6 +809,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    key: const ValueKey<String>(
+                      'registry-selected-block-reset',
+                    ),
+                    tooltip: 'Сбросить контекст Registry Studio',
+                    onPressed: _resetRegistryStudio,
+                    icon: const Icon(Icons.restart_alt),
                   ),
                   if (searchQuery.isNotEmpty)
                     IconButton(
@@ -1469,6 +1539,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 );
                               },
                               icon: const Icon(Icons.history),
+                            ),
+                            IconButton(
+                              key: const ValueKey<String>(
+                                'registry-studio-reset',
+                              ),
+                              tooltip: 'Сбросить контекст Registry Studio',
+                              onPressed: _resetRegistryStudio,
+                              icon: const Icon(Icons.restart_alt),
                             ),
                             IconButton(
                               tooltip:

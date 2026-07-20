@@ -952,6 +952,66 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     }
   }
 
+  Future<void> resetWorkspaceContext() async {
+    if (_isLoading) {
+      throw StateError('Контекст Registry уже обновляется.');
+    }
+
+    final RegistryExplorerState currentState = state;
+
+    if (currentState is! RegistryExplorerLoaded) {
+      throw StateError('Registry недоступен.');
+    }
+
+    if (currentState.openRegistryNodeId == null &&
+        currentState.selectedProblemIndex == null &&
+        currentState.searchQuery.isEmpty) {
+      return;
+    }
+
+    _isLoading = true;
+
+    try {
+      await _pendingSearchQueryWrite;
+
+      await revisionStateStore.saveRevisionState(
+        RegistryRevisionState(
+          projectId: currentState.snapshot.projectId,
+          projectAdapterId: currentState.snapshot.projectAdapterId,
+          sourceDocumentPath: currentState.snapshot.sourceDocumentPath,
+          currentRevision: currentState.snapshot.sourceRevision,
+          previousRevision: currentState.previousSnapshot?.sourceRevision,
+          cleanBaselineRevision:
+              currentState.cleanBaselineSnapshot?.sourceRevision,
+          openRegistryNodeId: null,
+          openRegistryPath: null,
+          selectedProblemIndex: null,
+          searchQuery: '',
+        ),
+      );
+
+      if (!isClosed) {
+        emit(
+          RegistryExplorerLoaded(
+            snapshot: currentState.snapshot,
+            index: currentState.index,
+            previousSnapshot: currentState.previousSnapshot,
+            previousComparison: currentState.previousComparison,
+            cleanBaselineSnapshot: currentState.cleanBaselineSnapshot,
+            cleanBaselineComparison: currentState.cleanBaselineComparison,
+            openRegistryNodeId: null,
+            openRegistryPath: null,
+            selectedProblemIndex: null,
+            analysisHistory: currentState.analysisHistory,
+            searchQuery: '',
+          ),
+        );
+      }
+    } finally {
+      _isLoading = false;
+    }
+  }
+
   Future<void> updateSearchQuery(String searchQuery) {
     if (_isLoading) {
       return Future<void>.error(
