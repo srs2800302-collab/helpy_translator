@@ -217,9 +217,9 @@ void main() {
       expect(store.state?.currentRevision, updatedSnapshot.sourceRevision);
       expect(store.state?.previousRevision, snapshot.sourceRevision);
 
-      expect(historyStore.entries, hasLength(3));
+      expect(historyStore.entries, hasLength(2));
       final RegistryAnalysisHistoryEntry sameRevisionHistoryEntry =
-          historyStore.entries[2];
+          historyStore.entries[1];
       expect(
         sameRevisionHistoryEntry.sourceRevision,
         updatedSnapshot.sourceRevision,
@@ -1145,6 +1145,12 @@ void main() {
 
       expect(historyStore.entries, hasLength(1));
       expect(historyButton, findsOneWidget);
+
+      expect(
+        find.ancestor(of: historyButton, matching: find.byType(Badge)),
+        findsNothing,
+      );
+
       expect(find.byTooltip('История анализа: 1'), findsOneWidget);
 
       await tester.tap(historyButton);

@@ -389,11 +389,36 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         problemCount: problems.length,
       );
 
-      await analysisHistoryStore.appendHistoryEntry(historyEntry);
+      final bool historyEntryAlreadyRecorded =
+          analysisHistory.isNotEmpty &&
+          analysisHistory.last.sourceRevision == historyEntry.sourceRevision &&
+          analysisHistory.last.sourceSnapshotFingerprint ==
+              historyEntry.sourceSnapshotFingerprint &&
+          analysisHistory.last.previousRevision ==
+              historyEntry.previousRevision &&
+          analysisHistory.last.cleanBaselineRevision ==
+              historyEntry.cleanBaselineRevision &&
+          analysisHistory.last.previousAddedCount ==
+              historyEntry.previousAddedCount &&
+          analysisHistory.last.previousRemovedCount ==
+              historyEntry.previousRemovedCount &&
+          analysisHistory.last.previousChangedCount ==
+              historyEntry.previousChangedCount &&
+          analysisHistory.last.cleanBaselineAddedCount ==
+              historyEntry.cleanBaselineAddedCount &&
+          analysisHistory.last.cleanBaselineRemovedCount ==
+              historyEntry.cleanBaselineRemovedCount &&
+          analysisHistory.last.cleanBaselineChangedCount ==
+              historyEntry.cleanBaselineChangedCount &&
+          analysisHistory.last.problemCount == historyEntry.problemCount;
 
-      analysisHistory = List<RegistryAnalysisHistoryEntry>.unmodifiable(
-        <RegistryAnalysisHistoryEntry>[...analysisHistory, historyEntry],
-      );
+      if (!historyEntryAlreadyRecorded) {
+        await analysisHistoryStore.appendHistoryEntry(historyEntry);
+
+        analysisHistory = List<RegistryAnalysisHistoryEntry>.unmodifiable(
+          <RegistryAnalysisHistoryEntry>[...analysisHistory, historyEntry],
+        );
+      }
 
       _currentSnapshot = snapshot;
       _previousSnapshot = previousSnapshot;
@@ -599,15 +624,44 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             0,
       );
 
-      await analysisHistoryStore.appendHistoryEntry(historyEntry);
+      final bool historyEntryAlreadyRecorded =
+          analysisHistoryBeforeRefresh.isNotEmpty &&
+          analysisHistoryBeforeRefresh.last.sourceRevision ==
+              historyEntry.sourceRevision &&
+          analysisHistoryBeforeRefresh.last.sourceSnapshotFingerprint ==
+              historyEntry.sourceSnapshotFingerprint &&
+          analysisHistoryBeforeRefresh.last.previousRevision ==
+              historyEntry.previousRevision &&
+          analysisHistoryBeforeRefresh.last.cleanBaselineRevision ==
+              historyEntry.cleanBaselineRevision &&
+          analysisHistoryBeforeRefresh.last.previousAddedCount ==
+              historyEntry.previousAddedCount &&
+          analysisHistoryBeforeRefresh.last.previousRemovedCount ==
+              historyEntry.previousRemovedCount &&
+          analysisHistoryBeforeRefresh.last.previousChangedCount ==
+              historyEntry.previousChangedCount &&
+          analysisHistoryBeforeRefresh.last.cleanBaselineAddedCount ==
+              historyEntry.cleanBaselineAddedCount &&
+          analysisHistoryBeforeRefresh.last.cleanBaselineRemovedCount ==
+              historyEntry.cleanBaselineRemovedCount &&
+          analysisHistoryBeforeRefresh.last.cleanBaselineChangedCount ==
+              historyEntry.cleanBaselineChangedCount &&
+          analysisHistoryBeforeRefresh.last.problemCount ==
+              historyEntry.problemCount;
+
+      if (!historyEntryAlreadyRecorded) {
+        await analysisHistoryStore.appendHistoryEntry(historyEntry);
+      }
 
       final List<RegistryAnalysisHistoryEntry> analysisHistory =
-          List<RegistryAnalysisHistoryEntry>.unmodifiable(
-            <RegistryAnalysisHistoryEntry>[
-              ...analysisHistoryBeforeRefresh,
-              historyEntry,
-            ],
-          );
+          historyEntryAlreadyRecorded
+          ? analysisHistoryBeforeRefresh
+          : List<RegistryAnalysisHistoryEntry>.unmodifiable(
+              <RegistryAnalysisHistoryEntry>[
+                ...analysisHistoryBeforeRefresh,
+                historyEntry,
+              ],
+            );
 
       _currentSnapshot = snapshot;
       _previousSnapshot = previousSnapshot;

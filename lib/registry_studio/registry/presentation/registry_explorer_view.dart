@@ -936,191 +936,184 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ),
                             ),
 
-                            Badge(
-                              label: Text('${loaded.analysisHistory.length}'),
-                              child: IconButton(
-                                key: const ValueKey<String>(
-                                  'registry-analysis-history-button',
-                                ),
-                                tooltip:
-                                    'История анализа: '
-                                    '${loaded.analysisHistory.length}',
-                                onPressed: () async {
-                                  await showModalBottomSheet<void>(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    builder: (BuildContext sheetContext) {
-                                      return SafeArea(
-                                        child: SizedBox(
-                                          key: const ValueKey<String>(
-                                            'registry-analysis-history-sheet',
-                                          ),
-                                          height:
-                                              MediaQuery.sizeOf(
-                                                sheetContext,
-                                              ).height *
-                                              0.85,
-                                          child: Column(
-                                            children: <Widget>[
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.fromLTRB(
-                                                      16,
-                                                      12,
-                                                      8,
-                                                      12,
-                                                    ),
-                                                child: Row(
-                                                  children: <Widget>[
-                                                    Expanded(
-                                                      child: Text(
-                                                        'История анализа Registry: '
-                                                        '${loaded.analysisHistory.length}',
-                                                        style: Theme.of(
-                                                          sheetContext,
-                                                        ).textTheme.titleLarge,
-                                                      ),
-                                                    ),
-                                                    IconButton(
-                                                      key: const ValueKey<String>(
-                                                        'registry-analysis-history-close',
-                                                      ),
-                                                      tooltip:
-                                                          'Закрыть историю анализа',
-                                                      onPressed: () {
-                                                        Navigator.of(
-                                                          sheetContext,
-                                                        ).pop();
-                                                      },
-                                                      icon: const Icon(
-                                                        Icons.close,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              const Divider(height: 1),
-                                              Expanded(
-                                                child:
-                                                    loaded
-                                                        .analysisHistory
-                                                        .isEmpty
-                                                    ? const Center(
-                                                        child: Padding(
-                                                          padding:
-                                                              EdgeInsets.all(
-                                                                24,
-                                                              ),
-                                                          child: Text(
-                                                            'Успешные загрузки Registry '
-                                                            'ещё не зафиксированы.',
-                                                            textAlign: TextAlign
-                                                                .center,
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : ListView.separated(
-                                                        key: const ValueKey<String>(
-                                                          'registry-analysis-history-list',
-                                                        ),
-                                                        itemCount: loaded
-                                                            .analysisHistory
-                                                            .length,
-                                                        separatorBuilder:
-                                                            (_, _) =>
-                                                                const Divider(
-                                                                  height: 1,
-                                                                ),
-                                                        itemBuilder:
-                                                            (
-                                                              BuildContext
-                                                              context,
-                                                              int itemIndex,
-                                                            ) {
-                                                              final int
-                                                              historyIndex =
-                                                                  loaded
-                                                                      .analysisHistory
-                                                                      .length -
-                                                                  itemIndex -
-                                                                  1;
-
-                                                              final RegistryAnalysisHistoryEntry
-                                                              entry = loaded
-                                                                  .analysisHistory[historyIndex];
-
-                                                              return Padding(
-                                                                key: ValueKey<String>(
-                                                                  'registry-analysis-history-entry-'
-                                                                  '$historyIndex',
-                                                                ),
-                                                                padding:
-                                                                    const EdgeInsets.all(
-                                                                      16,
-                                                                    ),
-                                                                child: Column(
-                                                                  crossAxisAlignment:
-                                                                      CrossAxisAlignment
-                                                                          .start,
-                                                                  children: <Widget>[
-                                                                    Text(
-                                                                      'Revision: '
-                                                                      '${entry.sourceRevision}',
-                                                                      maxLines:
-                                                                          1,
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                      style: Theme.of(
-                                                                        context,
-                                                                      ).textTheme.titleMedium,
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      height: 4,
-                                                                    ),
-                                                                    Text(
-                                                                      'Время: '
-                                                                      '${entry.loadedAt.toLocal().toIso8601String()}',
-                                                                    ),
-                                                                    Text(
-                                                                      'Предыдущая revision: '
-                                                                      '${entry.previousRevision ?? 'нет baseline'}',
-                                                                    ),
-                                                                    Text(
-                                                                      'Clean baseline: '
-                                                                      '${entry.cleanBaselineRevision ?? 'не подтверждён'}',
-                                                                    ),
-                                                                    Text(
-                                                                      'С предыдущей revision: '
-                                                                      '+${entry.previousAddedCount} · '
-                                                                      '-${entry.previousRemovedCount} · '
-                                                                      '~${entry.previousChangedCount}',
-                                                                    ),
-                                                                    Text(
-                                                                      'С clean baseline: '
-                                                                      '+${entry.cleanBaselineAddedCount} · '
-                                                                      '-${entry.cleanBaselineRemovedCount} · '
-                                                                      '~${entry.cleanBaselineChangedCount}',
-                                                                    ),
-                                                                    Text(
-                                                                      'Проблем: '
-                                                                      '${entry.problemCount}',
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              );
-                                                            },
-                                                      ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                                icon: const Icon(Icons.history),
+                            IconButton(
+                              key: const ValueKey<String>(
+                                'registry-analysis-history-button',
                               ),
+                              tooltip:
+                                  'История анализа: '
+                                  '${loaded.analysisHistory.length}',
+                              onPressed: () async {
+                                await showModalBottomSheet<void>(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  builder: (BuildContext sheetContext) {
+                                    return SafeArea(
+                                      child: SizedBox(
+                                        key: const ValueKey<String>(
+                                          'registry-analysis-history-sheet',
+                                        ),
+                                        height:
+                                            MediaQuery.sizeOf(
+                                              sheetContext,
+                                            ).height *
+                                            0.85,
+                                        child: Column(
+                                          children: <Widget>[
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    16,
+                                                    12,
+                                                    8,
+                                                    12,
+                                                  ),
+                                              child: Row(
+                                                children: <Widget>[
+                                                  Expanded(
+                                                    child: Text(
+                                                      'История анализа Registry: '
+                                                      '${loaded.analysisHistory.length}',
+                                                      style: Theme.of(
+                                                        sheetContext,
+                                                      ).textTheme.titleLarge,
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    key: const ValueKey<String>(
+                                                      'registry-analysis-history-close',
+                                                    ),
+                                                    tooltip:
+                                                        'Закрыть историю анализа',
+                                                    onPressed: () {
+                                                      Navigator.of(
+                                                        sheetContext,
+                                                      ).pop();
+                                                    },
+                                                    icon: const Icon(
+                                                      Icons.close,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const Divider(height: 1),
+                                            Expanded(
+                                              child:
+                                                  loaded.analysisHistory.isEmpty
+                                                  ? const Center(
+                                                      child: Padding(
+                                                        padding: EdgeInsets.all(
+                                                          24,
+                                                        ),
+                                                        child: Text(
+                                                          'Успешные загрузки Registry '
+                                                          'ещё не зафиксированы.',
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : ListView.separated(
+                                                      key: const ValueKey<String>(
+                                                        'registry-analysis-history-list',
+                                                      ),
+                                                      itemCount: loaded
+                                                          .analysisHistory
+                                                          .length,
+                                                      separatorBuilder:
+                                                          (_, _) =>
+                                                              const Divider(
+                                                                height: 1,
+                                                              ),
+                                                      itemBuilder:
+                                                          (
+                                                            BuildContext
+                                                            context,
+                                                            int itemIndex,
+                                                          ) {
+                                                            final int
+                                                            historyIndex =
+                                                                loaded
+                                                                    .analysisHistory
+                                                                    .length -
+                                                                itemIndex -
+                                                                1;
+
+                                                            final RegistryAnalysisHistoryEntry
+                                                            entry = loaded
+                                                                .analysisHistory[historyIndex];
+
+                                                            return Padding(
+                                                              key: ValueKey<String>(
+                                                                'registry-analysis-history-entry-'
+                                                                '$historyIndex',
+                                                              ),
+                                                              padding:
+                                                                  const EdgeInsets.all(
+                                                                    16,
+                                                                  ),
+                                                              child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: <Widget>[
+                                                                  Text(
+                                                                    'Revision: '
+                                                                    '${entry.sourceRevision}',
+                                                                    maxLines: 1,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                    style: Theme.of(
+                                                                      context,
+                                                                    ).textTheme.titleMedium,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 4,
+                                                                  ),
+                                                                  Text(
+                                                                    'Время: '
+                                                                    '${entry.loadedAt.toLocal().toIso8601String()}',
+                                                                  ),
+                                                                  Text(
+                                                                    'Предыдущая revision: '
+                                                                    '${entry.previousRevision ?? 'нет baseline'}',
+                                                                  ),
+                                                                  Text(
+                                                                    'Clean baseline: '
+                                                                    '${entry.cleanBaselineRevision ?? 'не подтверждён'}',
+                                                                  ),
+                                                                  Text(
+                                                                    'С предыдущей revision: '
+                                                                    '+${entry.previousAddedCount} · '
+                                                                    '-${entry.previousRemovedCount} · '
+                                                                    '~${entry.previousChangedCount}',
+                                                                  ),
+                                                                  Text(
+                                                                    'С clean baseline: '
+                                                                    '+${entry.cleanBaselineAddedCount} · '
+                                                                    '-${entry.cleanBaselineRemovedCount} · '
+                                                                    '~${entry.cleanBaselineChangedCount}',
+                                                                  ),
+                                                                  Text(
+                                                                    'Проблем: '
+                                                                    '${entry.problemCount}',
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          },
+                                                    ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              icon: const Icon(Icons.history),
                             ),
                             IconButton(
                               tooltip:
