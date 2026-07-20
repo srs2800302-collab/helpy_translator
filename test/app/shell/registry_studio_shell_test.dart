@@ -1039,6 +1039,126 @@ void main() {
   );
 
   testWidgets(
+    'opens the Registry status center without changing Registry state',
+    (WidgetTester tester) async {
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => snapshot,
+          ]);
+
+      final _MemoryRegistryRevisionStateStore store =
+          _MemoryRegistryRevisionStateStore();
+
+      final _MemoryRegistryAnalysisHistoryStore historyStore =
+          _MemoryRegistryAnalysisHistoryStore();
+
+      await tester.pumpWidget(
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: store,
+          registryAnalysisHistoryStore: historyStore,
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final Finder statusButton = find.byKey(
+        const ValueKey<String>('registry-status-center-button'),
+      );
+
+      expect(statusButton, findsOneWidget);
+
+      await tester.tap(statusButton);
+      await tester.pumpAndSettle();
+
+      Finder statusSheet = find.byKey(
+        const ValueKey<String>('registry-status-center-sheet'),
+      );
+
+      expect(statusSheet, findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: statusSheet,
+          matching: find.text('Проблемы Registry: 0'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: statusSheet,
+          matching: find.text('Clean baseline: не подтверждён'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: statusSheet,
+          matching: find.text('История анализа: 1'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.byKey(
+          const ValueKey<String>('registry-status-center-open-problems'),
+        ),
+        findsNothing,
+      );
+
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>('registry-status-center-open-history'),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(statusSheet, findsNothing);
+
+      expect(
+        find.byKey(const ValueKey<String>('registry-analysis-history-sheet')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byTooltip('Закрыть историю анализа'));
+
+      await tester.pumpAndSettle();
+
+      await tester.tap(statusButton);
+      await tester.pumpAndSettle();
+
+      statusSheet = find.byKey(
+        const ValueKey<String>('registry-status-center-sheet'),
+      );
+
+      expect(statusSheet, findsOneWidget);
+
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>('registry-status-center-confirm-baseline'),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Подтвердить clean baseline?'), findsOneWidget);
+
+      await tester.tap(find.text('Отмена'));
+      await tester.pumpAndSettle();
+
+      expect(store.state?.cleanBaselineRevision, isNull);
+      expect(store.state?.openRegistryNodeId, isNull);
+      expect(store.state?.selectedProblemIndex, isNull);
+      expect(store.state?.searchQuery, isEmpty);
+    },
+  );
+
+  testWidgets(
     'shows previous and clean baseline changes after manual refresh',
     (WidgetTester tester) async {
       const String currentFingerprint =

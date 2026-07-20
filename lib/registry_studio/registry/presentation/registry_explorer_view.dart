@@ -404,6 +404,399 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _showRegistryAnalysisHistory(
+    RegistryExplorerLoaded loaded,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: SizedBox(
+            key: const ValueKey<String>('registry-analysis-history-sheet'),
+            height: MediaQuery.sizeOf(sheetContext).height * 0.85,
+            child: Column(
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          'История анализа Registry: '
+                          '${loaded.analysisHistory.length}',
+                          style: Theme.of(sheetContext).textTheme.titleLarge,
+                        ),
+                      ),
+                      IconButton(
+                        key: const ValueKey<String>(
+                          'registry-analysis-history-close',
+                        ),
+                        tooltip: 'Закрыть историю анализа',
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: loaded.analysisHistory.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'Успешные загрузки Registry '
+                              'ещё не зафиксированы.',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          key: const ValueKey<String>(
+                            'registry-analysis-history-list',
+                          ),
+                          itemCount: loaded.analysisHistory.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (BuildContext context, int itemIndex) {
+                            final int historyIndex =
+                                loaded.analysisHistory.length - itemIndex - 1;
+
+                            final RegistryAnalysisHistoryEntry entry =
+                                loaded.analysisHistory[historyIndex];
+
+                            return Padding(
+                              key: ValueKey<String>(
+                                'registry-analysis-history-entry-'
+                                '$historyIndex',
+                              ),
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Revision: '
+                                    '${entry.sourceRevision}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Время: '
+                                    '${entry.loadedAt.toLocal().toIso8601String()}',
+                                  ),
+                                  Text(
+                                    'Предыдущая revision: '
+                                    '${entry.previousRevision ?? 'нет baseline'}',
+                                  ),
+                                  Text(
+                                    'Clean baseline: '
+                                    '${entry.cleanBaselineRevision ?? 'не подтверждён'}',
+                                  ),
+                                  Text(
+                                    'С предыдущей revision: '
+                                    '+${entry.previousAddedCount} · '
+                                    '-${entry.previousRemovedCount} · '
+                                    '~${entry.previousChangedCount}',
+                                  ),
+                                  Text(
+                                    'С clean baseline: '
+                                    '+${entry.cleanBaselineAddedCount} · '
+                                    '-${entry.cleanBaselineRemovedCount} · '
+                                    '~${entry.cleanBaselineChangedCount}',
+                                  ),
+                                  Text(
+                                    'Проблем: '
+                                    '${entry.problemCount}',
+                                  ),
+                                  if (entry.problems.isEmpty &&
+                                      entry.problemCount > 0)
+                                    const Text(
+                                      'Подробности проблем '
+                                      'отсутствуют в legacy history.',
+                                    ),
+                                  for (
+                                    int problemIndex = 0;
+                                    problemIndex < entry.problems.length;
+                                    problemIndex += 1
+                                  )
+                                    Padding(
+                                      key: ValueKey<String>(
+                                        'registry-analysis-history-problem-'
+                                        '$historyIndex-'
+                                        '$problemIndex-'
+                                        '${entry.problems[problemIndex].nodeId}',
+                                      ),
+                                      padding: const EdgeInsets.only(top: 12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            'Статус: '
+                                            '${entry.problems[problemIndex].status == 'affected' ? 'затронуто' : entry.problems[problemIndex].status} · '
+                                            '${entry.problems[problemIndex].pathSegments.last}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Identity: '
+                                            '${entry.problems[problemIndex].nodeId}',
+                                          ),
+                                          Text(
+                                            'Путь: '
+                                            '${entry.problems[problemIndex].pathSegments.join(' → ')}',
+                                          ),
+                                          Text(
+                                            'Причина: '
+                                            '${entry.problems[problemIndex].reason}',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showRegistryStatusCenter(RegistryExplorerLoaded loaded) async {
+    final bool hasProblems = loaded.problems.isNotEmpty;
+
+    final bool isCurrentCleanBaseline =
+        loaded.cleanBaselineSnapshot?.sourceRevision ==
+        loaded.snapshot.sourceRevision;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        final ColorScheme colorScheme = Theme.of(sheetContext).colorScheme;
+
+        return SafeArea(
+          child: SizedBox(
+            key: const ValueKey<String>('registry-status-center-sheet'),
+            height: MediaQuery.sizeOf(sheetContext).height * 0.82,
+            child: Column(
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          'Состояние Registry',
+                          style: Theme.of(sheetContext).textTheme.titleLarge,
+                        ),
+                      ),
+                      IconButton(
+                        key: const ValueKey<String>(
+                          'registry-status-center-close',
+                        ),
+                        tooltip: 'Закрыть состояние Registry',
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: <Widget>[
+                      Card(
+                        child: ListTile(
+                          leading: Icon(
+                            hasProblems
+                                ? Icons.warning_amber_rounded
+                                : Icons.check_circle_outline,
+                            color: hasProblems
+                                ? colorScheme.error
+                                : colorScheme.primary,
+                          ),
+                          title: Text(
+                            'Проблемы Registry: '
+                            '${loaded.problems.length}',
+                          ),
+                          subtitle: loaded.problemComparison == null
+                              ? const Text(
+                                  'Baseline сравнения отсутствует. '
+                                  'После появления baseline здесь будут '
+                                  'показаны структурные расхождения.',
+                                )
+                              : hasProblems
+                              ? const Text(
+                                  'Обнаружены места, требующие проверки. '
+                                  'Откройте список для перехода к каждому '
+                                  'затронутому Registry block.',
+                                )
+                              : const Text(
+                                  'Структурные проблемы относительно '
+                                  'текущего baseline не обнаружены.',
+                                ),
+                          trailing: hasProblems
+                              ? IconButton(
+                                  key: const ValueKey<String>(
+                                    'registry-status-center-open-problems',
+                                  ),
+                                  tooltip: 'Открыть проблемы Registry',
+                                  onPressed: () {
+                                    Navigator.of(sheetContext).pop();
+
+                                    if (!mounted) {
+                                      return;
+                                    }
+
+                                    setState(() {
+                                      _showProblemQueue = true;
+                                      _showProblemQueueFullScreen = true;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.arrow_forward),
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        child: ListTile(
+                          leading: Icon(
+                            isCurrentCleanBaseline
+                                ? Icons.verified_outlined
+                                : Icons.verified_user_outlined,
+                          ),
+                          title: Text(
+                            loaded.cleanBaselineSnapshot == null
+                                ? 'Clean baseline: не подтверждён'
+                                : 'Clean baseline: '
+                                      '${loaded.cleanBaselineSnapshot!.sourceRevision}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: isCurrentCleanBaseline
+                              ? const Text(
+                                  'Текущая revision подтверждена инженером '
+                                  'как чистое контрольное состояние.',
+                                )
+                              : const Text(
+                                  'Clean baseline используется как '
+                                  'подтверждённая контрольная точка и '
+                                  'не меняется автоматически при refresh.',
+                                ),
+                          trailing: isCurrentCleanBaseline
+                              ? null
+                              : TextButton(
+                                  key: const ValueKey<String>(
+                                    'registry-status-center-confirm-baseline',
+                                  ),
+                                  onPressed: () async {
+                                    Navigator.of(sheetContext).pop();
+
+                                    await Future<void>.delayed(Duration.zero);
+
+                                    if (!mounted) {
+                                      return;
+                                    }
+
+                                    await _confirmCurrentAsCleanBaseline();
+                                  },
+                                  child: const Text('Подтвердить'),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.history),
+                          title: Text(
+                            'История анализа: '
+                            '${loaded.analysisHistory.length}',
+                          ),
+                          subtitle: const Text(
+                            'Хранит revision context, результаты '
+                            'comparison и обнаруженные проблемы для '
+                            'предыдущих загрузок Registry.',
+                          ),
+                          trailing: IconButton(
+                            key: const ValueKey<String>(
+                              'registry-status-center-open-history',
+                            ),
+                            tooltip: 'Открыть историю анализа Registry',
+                            onPressed: () async {
+                              Navigator.of(sheetContext).pop();
+
+                              await Future<void>.delayed(Duration.zero);
+
+                              if (!mounted) {
+                                return;
+                              }
+
+                              await _showRegistryAnalysisHistory(loaded);
+                            },
+                            icon: const Icon(Icons.arrow_forward),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'Текущая revision',
+                                style: Theme.of(
+                                  sheetContext,
+                                ).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 6),
+                              SelectableText(loaded.snapshot.sourceRevision),
+                              if (loaded.previousSnapshot != null) ...<Widget>[
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Предыдущая revision',
+                                  style: Theme.of(
+                                    sheetContext,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 6),
+                                SelectableText(
+                                  loaded.previousSnapshot!.sourceRevision,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _confirmCurrentAsCleanBaseline() async {
     final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
 
@@ -1266,6 +1659,29 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
                         child: Row(
                           children: <Widget>[
+                            Badge(
+                              isLabelVisible: loaded.problems.isNotEmpty,
+                              label: Text('${loaded.problems.length}'),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.error,
+                              child: IconButton(
+                                key: const ValueKey<String>(
+                                  'registry-status-center-button',
+                                ),
+                                tooltip:
+                                    'Состояние Registry: '
+                                    '${loaded.problems.length} проблем',
+                                onPressed: () async {
+                                  await _showRegistryStatusCenter(loaded);
+                                },
+                                color: loaded.problems.isEmpty
+                                    ? null
+                                    : Theme.of(context).colorScheme.error,
+                                icon: const Icon(Icons.fact_check_outlined),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1310,236 +1726,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                   'История анализа: '
                                   '${loaded.analysisHistory.length}',
                               onPressed: () async {
-                                await showModalBottomSheet<void>(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  builder: (BuildContext sheetContext) {
-                                    return SafeArea(
-                                      child: SizedBox(
-                                        key: const ValueKey<String>(
-                                          'registry-analysis-history-sheet',
-                                        ),
-                                        height:
-                                            MediaQuery.sizeOf(
-                                              sheetContext,
-                                            ).height *
-                                            0.85,
-                                        child: Column(
-                                          children: <Widget>[
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                    16,
-                                                    12,
-                                                    8,
-                                                    12,
-                                                  ),
-                                              child: Row(
-                                                children: <Widget>[
-                                                  Expanded(
-                                                    child: Text(
-                                                      'История анализа Registry: '
-                                                      '${loaded.analysisHistory.length}',
-                                                      style: Theme.of(
-                                                        sheetContext,
-                                                      ).textTheme.titleLarge,
-                                                    ),
-                                                  ),
-                                                  IconButton(
-                                                    key: const ValueKey<String>(
-                                                      'registry-analysis-history-close',
-                                                    ),
-                                                    tooltip:
-                                                        'Закрыть историю анализа',
-                                                    onPressed: () {
-                                                      Navigator.of(
-                                                        sheetContext,
-                                                      ).pop();
-                                                    },
-                                                    icon: const Icon(
-                                                      Icons.close,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const Divider(height: 1),
-                                            Expanded(
-                                              child:
-                                                  loaded.analysisHistory.isEmpty
-                                                  ? const Center(
-                                                      child: Padding(
-                                                        padding: EdgeInsets.all(
-                                                          24,
-                                                        ),
-                                                        child: Text(
-                                                          'Успешные загрузки Registry '
-                                                          'ещё не зафиксированы.',
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : ListView.separated(
-                                                      key: const ValueKey<String>(
-                                                        'registry-analysis-history-list',
-                                                      ),
-                                                      itemCount: loaded
-                                                          .analysisHistory
-                                                          .length,
-                                                      separatorBuilder:
-                                                          (_, _) =>
-                                                              const Divider(
-                                                                height: 1,
-                                                              ),
-                                                      itemBuilder:
-                                                          (
-                                                            BuildContext
-                                                            context,
-                                                            int itemIndex,
-                                                          ) {
-                                                            final int
-                                                            historyIndex =
-                                                                loaded
-                                                                    .analysisHistory
-                                                                    .length -
-                                                                itemIndex -
-                                                                1;
-
-                                                            final RegistryAnalysisHistoryEntry
-                                                            entry = loaded
-                                                                .analysisHistory[historyIndex];
-
-                                                            return Padding(
-                                                              key: ValueKey<String>(
-                                                                'registry-analysis-history-entry-'
-                                                                '$historyIndex',
-                                                              ),
-                                                              padding:
-                                                                  const EdgeInsets.all(
-                                                                    16,
-                                                                  ),
-                                                              child: Column(
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .start,
-                                                                children: <Widget>[
-                                                                  Text(
-                                                                    'Revision: '
-                                                                    '${entry.sourceRevision}',
-                                                                    maxLines: 1,
-                                                                    overflow:
-                                                                        TextOverflow
-                                                                            .ellipsis,
-                                                                    style: Theme.of(
-                                                                      context,
-                                                                    ).textTheme.titleMedium,
-                                                                  ),
-                                                                  const SizedBox(
-                                                                    height: 4,
-                                                                  ),
-                                                                  Text(
-                                                                    'Время: '
-                                                                    '${entry.loadedAt.toLocal().toIso8601String()}',
-                                                                  ),
-                                                                  Text(
-                                                                    'Предыдущая revision: '
-                                                                    '${entry.previousRevision ?? 'нет baseline'}',
-                                                                  ),
-                                                                  Text(
-                                                                    'Clean baseline: '
-                                                                    '${entry.cleanBaselineRevision ?? 'не подтверждён'}',
-                                                                  ),
-                                                                  Text(
-                                                                    'С предыдущей revision: '
-                                                                    '+${entry.previousAddedCount} · '
-                                                                    '-${entry.previousRemovedCount} · '
-                                                                    '~${entry.previousChangedCount}',
-                                                                  ),
-                                                                  Text(
-                                                                    'С clean baseline: '
-                                                                    '+${entry.cleanBaselineAddedCount} · '
-                                                                    '-${entry.cleanBaselineRemovedCount} · '
-                                                                    '~${entry.cleanBaselineChangedCount}',
-                                                                  ),
-                                                                  Text(
-                                                                    'Проблем: '
-                                                                    '${entry.problemCount}',
-                                                                  ),
-                                                                  if (entry
-                                                                          .problems
-                                                                          .isEmpty &&
-                                                                      entry.problemCount >
-                                                                          0)
-                                                                    const Text(
-                                                                      'Подробности проблем '
-                                                                      'отсутствуют в legacy history.',
-                                                                    ),
-                                                                  for (
-                                                                    int
-                                                                    problemIndex =
-                                                                        0;
-                                                                    problemIndex <
-                                                                        entry
-                                                                            .problems
-                                                                            .length;
-                                                                    problemIndex +=
-                                                                        1
-                                                                  )
-                                                                    Padding(
-                                                                      key: ValueKey<String>(
-                                                                        'registry-analysis-history-problem-'
-                                                                        '$historyIndex-'
-                                                                        '$problemIndex-'
-                                                                        '${entry.problems[problemIndex].nodeId}',
-                                                                      ),
-                                                                      padding:
-                                                                          const EdgeInsets.only(
-                                                                            top:
-                                                                                12,
-                                                                          ),
-                                                                      child: Column(
-                                                                        crossAxisAlignment:
-                                                                            CrossAxisAlignment.start,
-                                                                        children:
-                                                                            <
-                                                                              Widget
-                                                                            >[
-                                                                              Text(
-                                                                                'Статус: '
-                                                                                '${entry.problems[problemIndex].status == 'affected' ? 'затронуто' : entry.problems[problemIndex].status} · '
-                                                                                '${entry.problems[problemIndex].pathSegments.last}',
-                                                                                style: const TextStyle(
-                                                                                  fontWeight: FontWeight.w600,
-                                                                                ),
-                                                                              ),
-                                                                              Text(
-                                                                                'Identity: '
-                                                                                '${entry.problems[problemIndex].nodeId}',
-                                                                              ),
-                                                                              Text(
-                                                                                'Путь: '
-                                                                                '${entry.problems[problemIndex].pathSegments.join(' → ')}',
-                                                                              ),
-                                                                              Text(
-                                                                                'Причина: '
-                                                                                '${entry.problems[problemIndex].reason}',
-                                                                              ),
-                                                                            ],
-                                                                      ),
-                                                                    ),
-                                                                ],
-                                                              ),
-                                                            );
-                                                          },
-                                                    ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
+                                await _showRegistryAnalysisHistory(loaded);
                               },
                               icon: const Icon(Icons.history),
                             ),
