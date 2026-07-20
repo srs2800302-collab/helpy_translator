@@ -11,6 +11,7 @@ import 'package:helpy_translator/registry_studio/maintenance/history/application
 import 'package:helpy_translator/registry_studio/maintenance/history/domain/entities/registry_analysis_history_entry.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
+import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
@@ -124,6 +125,7 @@ void main() {
 
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
+        snapshotRefreshLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
         analysisHistoryStore: historyStore,
@@ -342,6 +344,7 @@ void main() {
 
     final RegistryExplorerCubit cubit = RegistryExplorerCubit(
       snapshotLoader: loader,
+      snapshotRefreshLoader: loader,
       snapshotRevisionLoader: loader,
       revisionStateStore: store,
       analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -432,6 +435,7 @@ void main() {
 
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
+        snapshotRefreshLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
         analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -490,6 +494,7 @@ void main() {
 
     final RegistryExplorerCubit cubit = RegistryExplorerCubit(
       snapshotLoader: loader,
+      snapshotRefreshLoader: loader,
       snapshotRevisionLoader: loader,
       revisionStateStore: store,
       analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -627,6 +632,7 @@ void main() {
 
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
+        snapshotRefreshLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
         analysisHistoryStore: historyStore,
@@ -776,6 +782,7 @@ void main() {
 
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
+        snapshotRefreshLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
         analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -848,6 +855,7 @@ void main() {
 
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
+        snapshotRefreshLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
         analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -916,6 +924,7 @@ void main() {
 
     final RegistryExplorerCubit cubit = RegistryExplorerCubit(
       snapshotLoader: loader,
+      snapshotRefreshLoader: loader,
       snapshotRevisionLoader: loader,
       revisionStateStore: store,
       analysisHistoryStore: historyStore,
@@ -1001,6 +1010,7 @@ void main() {
       await tester.pumpWidget(
         RegistryStudioApplication(
           registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
           registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -1124,6 +1134,7 @@ void main() {
       await tester.pumpWidget(
         RegistryStudioApplication(
           registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: store,
           registryAnalysisHistoryStore: historyStore,
@@ -1605,9 +1616,19 @@ void main() {
       final Finder refreshButton = find.byTooltip('Перезагрузить Registry');
 
       expect(refreshButton, findsOneWidget);
+      final int refreshCountBeforeRepeat = loader.refreshBaseRevisions.length;
+
+      final String currentRevisionBeforeRepeat = store.state!.currentRevision;
 
       await tester.tap(refreshButton);
       await tester.pumpAndSettle();
+
+      expect(
+        loader.refreshBaseRevisions,
+        hasLength(refreshCountBeforeRepeat + 1),
+      );
+
+      expect(loader.refreshBaseRevisions.last, currentRevisionBeforeRepeat);
 
       expect(store.state?.openRegistryNodeId, changedChild.id);
       expect(store.state?.openRegistryPath, changedChild.path);
@@ -1876,6 +1897,7 @@ void main() {
     await tester.pumpWidget(
       RegistryStudioApplication(
         registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
         registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2060,6 +2082,7 @@ void main() {
     await tester.pumpWidget(
       RegistryStudioApplication(
         registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
         registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2151,6 +2174,7 @@ void main() {
     await tester.pumpWidget(
       RegistryStudioApplication(
         registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
         registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2270,6 +2294,7 @@ void main() {
       await tester.pumpWidget(
         RegistryStudioApplication(
           registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
           registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2432,6 +2457,7 @@ void main() {
       await tester.pumpWidget(
         RegistryStudioApplication(
           registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
           registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2568,6 +2594,7 @@ void main() {
     await tester.pumpWidget(
       RegistryStudioApplication(
         registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
         registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2646,6 +2673,7 @@ void main() {
     await tester.pumpWidget(
       RegistryStudioApplication(
         registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
         registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2710,6 +2738,7 @@ void main() {
     await tester.pumpWidget(
       RegistryStudioApplication(
         registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
         registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2815,6 +2844,7 @@ void main() {
 
       final RegistryExplorerCubit cubit = RegistryExplorerCubit(
         snapshotLoader: loader,
+        snapshotRefreshLoader: loader,
         snapshotRevisionLoader: loader,
         revisionStateStore: store,
         analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2917,6 +2947,7 @@ void main() {
 
       final RegistryExplorerCubit restartedCubit = RegistryExplorerCubit(
         snapshotLoader: restartLoader,
+        snapshotRefreshLoader: restartLoader,
         snapshotRevisionLoader: restartLoader,
         revisionStateStore: store,
         analysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2951,6 +2982,7 @@ void main() {
     await tester.pumpWidget(
       RegistryStudioApplication(
         registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
         registrySnapshotRevisionLoader: loader,
         registryRevisionStateStore: store,
         registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
@@ -2977,7 +3009,10 @@ void main() {
 }
 
 final class _QueuedRegistrySnapshotLoader
-    implements RegistrySnapshotLoader, RegistrySnapshotRevisionLoader {
+    implements
+        RegistrySnapshotLoader,
+        RegistrySnapshotRefreshLoader,
+        RegistrySnapshotRevisionLoader {
   _QueuedRegistrySnapshotLoader(
     this.loads, {
     Map<String, RegistrySnapshot> exactSnapshots =
@@ -2989,6 +3024,7 @@ final class _QueuedRegistrySnapshotLoader
   final List<Future<RegistrySnapshot> Function()> loads;
   final Map<String, RegistrySnapshot> exactSnapshots;
   final List<String> requestedRevisions = <String>[];
+  final List<String> refreshBaseRevisions = <String>[];
 
   int loadCount = 0;
 
@@ -3005,6 +3041,12 @@ final class _QueuedRegistrySnapshotLoader
     loadCount += 1;
 
     return load();
+  }
+
+  @override
+  Future<RegistrySnapshot> loadSnapshotAfterRevision(String previousRevision) {
+    refreshBaseRevisions.add(previousRevision);
+    return loadSnapshot();
   }
 
   @override

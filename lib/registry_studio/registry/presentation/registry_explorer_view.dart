@@ -7,6 +7,7 @@ import '../../maintenance/history/application/contracts/registry_analysis_histor
 import '../../maintenance/history/domain/entities/registry_analysis_history_entry.dart';
 import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
+import '../application/contracts/registry_snapshot_refresh_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
 import '../domain/entities/registry_node.dart';
 import '../domain/value_objects/registry_node_id.dart';
@@ -15,6 +16,7 @@ import 'registry_explorer_cubit.dart';
 final class RegistryExplorerView extends StatelessWidget {
   const RegistryExplorerView({
     required this.snapshotLoader,
+    required this.snapshotRefreshLoader,
     required this.snapshotRevisionLoader,
     required this.revisionStateStore,
     required this.analysisHistoryStore,
@@ -23,6 +25,7 @@ final class RegistryExplorerView extends StatelessWidget {
   });
 
   final RegistrySnapshotLoader snapshotLoader;
+  final RegistrySnapshotRefreshLoader snapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
   final RegistryRevisionStateStore revisionStateStore;
   final RegistryAnalysisHistoryStore analysisHistoryStore;
@@ -33,6 +36,7 @@ final class RegistryExplorerView extends StatelessWidget {
     return BlocProvider<RegistryExplorerCubit>(
       create: (_) => RegistryExplorerCubit(
         snapshotLoader: snapshotLoader,
+        snapshotRefreshLoader: snapshotRefreshLoader,
         snapshotRevisionLoader: snapshotRevisionLoader,
         revisionStateStore: revisionStateStore,
         analysisHistoryStore: analysisHistoryStore,

@@ -455,6 +455,63 @@ void main() {
           isEmpty,
         );
 
+        final HelpyRegistrySnapshotLoader refreshLoader =
+            HelpyRegistrySnapshotLoader(
+              identityStore: missingIdentityStore,
+              documentSource: GitHubRegistryDocumentSource(
+                owner: 'owner',
+                repository: 'repository',
+                documentPath: _registryDocumentPath,
+                ref: 'extra',
+                apiBaseUri: apiBaseUri,
+              ),
+              identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
+              ),
+            );
+
+        final RegistrySnapshot refreshedSnapshot = await refreshLoader
+            .loadSnapshotAfterRevision(missingCommitSha);
+
+        expect(refreshedSnapshot.sourceRevision, extraCommitSha);
+
+        expect(
+          refreshedSnapshot.roots.single.id,
+          RegistryNodeId('helpy.registry.node.000001'),
+        );
+
+        expect(refreshedSnapshot.roots.single.children, isEmpty);
+
+        expect(missingIdentityStore.loadedRevisions, <String>[
+          missingCommitSha,
+          missingCommitSha,
+          extraCommitSha,
+          missingCommitSha,
+          extraCommitSha,
+        ]);
+
+        expect(missingIdentityStore.savedRevisions, <String>[
+          missingCommitSha,
+          missingCommitSha,
+          extraCommitSha,
+          extraCommitSha,
+        ]);
+
+        expect(
+          missingIdentityStore.savedIdentitiesByRevision[extraCommitSha],
+          <RegistryPath, RegistryNodeId>{
+            RegistryPath(const <String>['Registry', 'Other']): RegistryNodeId(
+              'helpy.registry.node.000003',
+            ),
+          },
+        );
+
         final HelpyRegistrySnapshotLoader retiredIdentityLoader =
             HelpyRegistrySnapshotLoader(
               identityStore: _MemoryHelpyRegistryNodeIdentityStore(),

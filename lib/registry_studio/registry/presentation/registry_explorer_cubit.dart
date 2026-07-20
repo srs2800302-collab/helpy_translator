@@ -9,6 +9,7 @@ import '../../maintenance/history/application/contracts/registry_analysis_histor
 import '../../maintenance/history/domain/entities/registry_analysis_history_entry.dart';
 import '../application/contracts/registry_revision_state_store.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
+import '../application/contracts/registry_snapshot_refresh_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
 import '../domain/entities/registry_node.dart';
 import '../domain/entities/registry_snapshot.dart';
@@ -179,6 +180,7 @@ final class RegistryExplorerFailure extends RegistryExplorerState {
 final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   RegistryExplorerCubit({
     required this.snapshotLoader,
+    required this.snapshotRefreshLoader,
     required this.snapshotRevisionLoader,
     required this.revisionStateStore,
     required this.analysisHistoryStore,
@@ -186,6 +188,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   }) : super(const RegistryExplorerLoading());
 
   final RegistrySnapshotLoader snapshotLoader;
+  final RegistrySnapshotRefreshLoader snapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
   final RegistryRevisionStateStore revisionStateStore;
   final RegistryAnalysisHistoryStore analysisHistoryStore;
@@ -518,9 +521,13 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     try {
       await _pendingSearchQueryWrite;
 
-      final RegistrySnapshot snapshot = await snapshotLoader.loadSnapshot();
-
       final RegistrySnapshot? currentSnapshot = _currentSnapshot;
+
+      final RegistrySnapshot snapshot = currentSnapshot == null
+          ? await snapshotLoader.loadSnapshot()
+          : await snapshotRefreshLoader.loadSnapshotAfterRevision(
+              currentSnapshot.sourceRevision,
+            );
 
       RegistrySnapshot? previousSnapshot = _previousSnapshot;
 

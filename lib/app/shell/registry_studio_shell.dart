@@ -5,6 +5,7 @@ import '../../registry_studio/maintenance/analysis/application/registry_snapshot
 import '../../registry_studio/maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
+import '../../registry_studio/registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../registry_studio/registry/presentation/registry_explorer_view.dart';
 
@@ -27,6 +28,7 @@ final class RegistryStudioWorkspaceCubit
 final class RegistryStudioShell extends StatelessWidget {
   const RegistryStudioShell({
     required this.registrySnapshotLoader,
+    required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
     required this.registryRevisionStateStore,
     required this.registryAnalysisHistoryStore,
@@ -35,6 +37,7 @@ final class RegistryStudioShell extends StatelessWidget {
   });
 
   final RegistrySnapshotLoader registrySnapshotLoader;
+  final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
   final RegistryRevisionStateStore registryRevisionStateStore;
   final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
@@ -46,6 +49,7 @@ final class RegistryStudioShell extends StatelessWidget {
       create: (_) => RegistryStudioWorkspaceCubit(),
       child: _RegistryStudioShellView(
         registrySnapshotLoader: registrySnapshotLoader,
+        registrySnapshotRefreshLoader: registrySnapshotRefreshLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
         registryRevisionStateStore: registryRevisionStateStore,
         registryAnalysisHistoryStore: registryAnalysisHistoryStore,
@@ -58,6 +62,7 @@ final class RegistryStudioShell extends StatelessWidget {
 final class _RegistryStudioShellView extends StatelessWidget {
   const _RegistryStudioShellView({
     required this.registrySnapshotLoader,
+    required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
     required this.registryRevisionStateStore,
     required this.registryAnalysisHistoryStore,
@@ -65,6 +70,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
   });
 
   final RegistrySnapshotLoader registrySnapshotLoader;
+  final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
   final RegistryRevisionStateStore registryRevisionStateStore;
   final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
@@ -85,6 +91,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
             children: <Widget>[
               RegistryExplorerView(
                 snapshotLoader: registrySnapshotLoader,
+                snapshotRefreshLoader: registrySnapshotRefreshLoader,
                 snapshotRevisionLoader: registrySnapshotRevisionLoader,
                 revisionStateStore: registryRevisionStateStore,
                 analysisHistoryStore: registryAnalysisHistoryStore,

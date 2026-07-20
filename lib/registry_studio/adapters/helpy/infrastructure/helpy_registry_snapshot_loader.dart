@@ -1,6 +1,7 @@
 import '../../../core/domain/evidence/source_evidence.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
 import '../../../registry/application/contracts/registry_snapshot_loader.dart';
+import '../../../registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import '../../../registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../../registry/domain/entities/registry_node.dart';
 import '../../../registry/domain/entities/registry_snapshot.dart';
@@ -11,7 +12,10 @@ import 'helpy_registry_document_interpreter.dart';
 import 'helpy_registry_node_identity_ledger_source.dart';
 
 final class HelpyRegistrySnapshotLoader
-    implements RegistrySnapshotLoader, RegistrySnapshotRevisionLoader {
+    implements
+        RegistrySnapshotLoader,
+        RegistrySnapshotRefreshLoader,
+        RegistrySnapshotRevisionLoader {
   const HelpyRegistrySnapshotLoader({
     required this.documentSource,
     required this.identityLedgerSource,
@@ -38,11 +42,19 @@ final class HelpyRegistrySnapshotLoader
   }
 
   @override
+  Future<RegistrySnapshot> loadSnapshotAfterRevision(String previousRevision) {
+    return _loadSnapshot(inheritedRevision: previousRevision);
+  }
+
+  @override
   Future<RegistrySnapshot> loadSnapshotAtRevision(String sourceRevision) {
     return _loadSnapshot(exactRevision: sourceRevision);
   }
 
-  Future<RegistrySnapshot> _loadSnapshot({String? exactRevision}) async {
+  Future<RegistrySnapshot> _loadSnapshot({
+    String? exactRevision,
+    String? inheritedRevision,
+  }) async {
     final GitHubRegistryDocumentSource identityLedgerDocumentSource =
         identityLedgerSource.documentSource;
 
@@ -79,9 +91,18 @@ final class HelpyRegistrySnapshotLoader
         identityLedger.identitiesByPath;
 
     final Map<RegistryPath, RegistryNodeId> localIdentities =
-        Map<RegistryPath, RegistryNodeId>.of(
-          await identityStore.loadIdentities(sourceDocument.sourceRevision),
-        );
+        <RegistryPath, RegistryNodeId>{};
+
+    if (inheritedRevision != null &&
+        inheritedRevision != sourceDocument.sourceRevision) {
+      localIdentities.addAll(
+        await identityStore.loadIdentities(inheritedRevision),
+      );
+    }
+
+    localIdentities.addAll(
+      await identityStore.loadIdentities(sourceDocument.sourceRevision),
+    );
 
     final Map<RegistryNodeId, RegistryPath> ledgerPathsById =
         <RegistryNodeId, RegistryPath>{

@@ -7,6 +7,7 @@ import '../../registry_studio/maintenance/analysis/application/registry_snapshot
 import '../../registry_studio/maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
+import '../../registry_studio/registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/json_file_helpy_registry_node_identity_store.dart';
 import '../../registry_studio/technical/storage/json_file_registry_revision_state_store.dart';
@@ -16,6 +17,7 @@ import '../shell/registry_studio_shell.dart';
 final class RegistryStudioApplication extends StatelessWidget {
   const RegistryStudioApplication({
     required this.registrySnapshotLoader,
+    required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
     required this.registryRevisionStateStore,
     required this.registryAnalysisHistoryStore,
@@ -47,6 +49,7 @@ final class RegistryStudioApplication extends StatelessWidget {
     return RegistryStudioApplication(
       key: key,
       registrySnapshotLoader: registrySnapshotLoader,
+      registrySnapshotRefreshLoader: registrySnapshotLoader,
       registrySnapshotRevisionLoader: registrySnapshotLoader,
       registryRevisionStateStore: const JsonFileRegistryRevisionStateStore(),
       registryAnalysisHistoryStore:
@@ -55,6 +58,7 @@ final class RegistryStudioApplication extends StatelessWidget {
   }
 
   final RegistrySnapshotLoader registrySnapshotLoader;
+  final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
   final RegistryRevisionStateStore registryRevisionStateStore;
   final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
@@ -67,6 +71,7 @@ final class RegistryStudioApplication extends StatelessWidget {
       theme: ThemeData(useMaterial3: true),
       home: RegistryStudioShell(
         registrySnapshotLoader: registrySnapshotLoader,
+        registrySnapshotRefreshLoader: registrySnapshotRefreshLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
         registryRevisionStateStore: registryRevisionStateStore,
         registryAnalysisHistoryStore: registryAnalysisHistoryStore,
