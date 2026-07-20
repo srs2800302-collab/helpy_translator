@@ -59,6 +59,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   bool _showProblemQueue = false;
   bool _showProblemQueueFullScreen = false;
 
+  final Set<RegistryNodeId> _expandedRegistryNodeIds = <RegistryNodeId>{};
+
   @override
   void initState() {
     super.initState();
@@ -288,6 +290,31 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
         ),
       );
     }
+  }
+
+  List<RegistryNode> _visibleRegistryNodes(RegistryExplorerLoaded loaded) {
+    if (loaded.searchQuery.trim().isNotEmpty) {
+      return loaded.searchResults;
+    }
+
+    final List<RegistryNode> visibleNodes = <RegistryNode>[];
+
+    void appendNodes(List<RegistryNode> nodes, int depth) {
+      for (final RegistryNode node in nodes) {
+        visibleNodes.add(node);
+
+        final bool childrenVisible =
+            depth == 0 || _expandedRegistryNodeIds.contains(node.id);
+
+        if (childrenVisible && node.children.isNotEmpty) {
+          appendNodes(node.children, depth + 1);
+        }
+      }
+    }
+
+    appendNodes(loaded.snapshot.roots, 0);
+
+    return visibleNodes;
   }
 
   @override
@@ -795,7 +822,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         controller: _scrollController,
                         itemCount: _showProblemQueueFullScreen
                             ? loaded.problems.length + 1
-                            : loaded.searchResults.length +
+                            : _visibleRegistryNodes(loaded).length +
                                   4 +
                                   (_showProblemQueue
                                       ? loaded.problems.length
@@ -814,6 +841,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                           final RegistryNode? openRegistryNode =
                               loaded.openRegistryNode;
+
+                          final List<RegistryNode> visibleRegistryNodes =
+                              _visibleRegistryNodes(loaded);
 
                           final String baselineLabel =
                               loaded.cleanBaselineComparison != null
@@ -1400,20 +1430,73 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               itemIndex - fullRegistryHeaderIndex - 1;
 
                           final RegistryNode node =
-                              loaded.searchResults[nodeIndex];
+                              visibleRegistryNodes[nodeIndex];
 
                           final evidence = node.sourceEvidence.first;
 
+                          final bool searchActive = loaded.searchQuery
+                              .trim()
+                              .isNotEmpty;
+
+                          final int depth = node.path.segments.length - 1;
+
+                          final bool rootNode = depth == 0;
+
+                          final bool expandable = node.children.isNotEmpty;
+
+                          final bool expanded =
+                              rootNode ||
+                              _expandedRegistryNodeIds.contains(node.id);
+
                           return ListTile(
                             key: ValueKey<String>(node.id.value),
-                            leading: Icon(
-                              node.children.isEmpty
-                                  ? Icons.description_outlined
-                                  : Icons.account_tree_outlined,
+                            contentPadding: EdgeInsets.only(
+                              left: 8 + depth * 20,
+                              right: 8,
+                            ),
+                            leading: SizedBox(
+                              width: 40,
+                              child: expandable && !rootNode && !searchActive
+                                  ? IconButton(
+                                      key: ValueKey<String>(
+                                        'registry-tree-toggle-'
+                                        '${node.id.value}',
+                                      ),
+                                      tooltip: expanded
+                                          ? 'Свернуть '
+                                                '${node.path.segments.last}'
+                                          : 'Раскрыть '
+                                                '${node.path.segments.last}',
+                                      onPressed: () {
+                                        setState(() {
+                                          if (expanded) {
+                                            _expandedRegistryNodeIds.remove(
+                                              node.id,
+                                            );
+                                          } else {
+                                            _expandedRegistryNodeIds.add(
+                                              node.id,
+                                            );
+                                          }
+                                        });
+                                      },
+                                      icon: Icon(
+                                        expanded
+                                            ? Icons.expand_less
+                                            : Icons.expand_more,
+                                      ),
+                                    )
+                                  : Icon(
+                                      expandable
+                                          ? Icons.account_tree_outlined
+                                          : Icons.description_outlined,
+                                    ),
                             ),
                             title: Text(node.path.segments.last),
                             subtitle: Text(
                               '${node.path.segments.join(' → ')}\n'
+                              'Уровень: ${node.path.segments.length} · '
+                              'Дочерних узлов: ${node.children.length}\n'
                               'Строки ${evidence.startLine}–'
                               '${evidence.endLine}',
                             ),

@@ -2400,6 +2400,155 @@ void main() {
     },
   );
 
+  testWidgets('shows nested Registry nodes only after expanding their parent', (
+    WidgetTester tester,
+  ) async {
+    const String documentPath = 'tree-registry.md';
+    const String fingerprint =
+        'git-blob:abababababababababababababababababababab';
+
+    final RegistryNode entity = RegistryNode(
+      id: RegistryNodeId('project.registry.node.000003'),
+      kindId: 'project.registry.heading.3',
+      path: RegistryPath(const <String>['Registry', 'Category', 'Entity']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: fingerprint,
+          headingPath: const <String>['Registry', 'Category', 'Entity'],
+          startLine: 5,
+          endLine: 6,
+        ),
+      ],
+      content: 'Entity content.',
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode category = RegistryNode(
+      id: RegistryNodeId('project.registry.node.000002'),
+      kindId: 'project.registry.heading.2',
+      path: RegistryPath(const <String>['Registry', 'Category']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: fingerprint,
+          headingPath: const <String>['Registry', 'Category'],
+          startLine: 3,
+          endLine: 6,
+        ),
+      ],
+      content: 'Category content.',
+      businessScopeOwnerId: null,
+      children: <RegistryNode>[entity],
+    );
+
+    final RegistryNode root = RegistryNode(
+      id: RegistryNodeId('project.registry.node.000001'),
+      kindId: 'project.registry.heading.1',
+      path: RegistryPath(const <String>['Registry']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: fingerprint,
+          headingPath: const <String>['Registry'],
+          startLine: 1,
+          endLine: 6,
+        ),
+      ],
+      content: 'Root content.',
+      businessScopeOwnerId: null,
+      children: <RegistryNode>[category],
+    );
+
+    final RegistrySnapshot treeSnapshot = RegistrySnapshot(
+      projectId: 'project',
+      projectAdapterId: 'project.registry.adapter.v1',
+      sourceDocumentPath: documentPath,
+      sourceRevision: 'abababababababababababababababababababab',
+      sourceSnapshotFingerprint: fingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n'
+          '## Category\n'
+          'Category content.\n'
+          '### Entity\n'
+          'Entity content.\n',
+      roots: <RegistryNode>[root],
+    );
+
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => treeSnapshot],
+    );
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder registryScrollable = find.descendant(
+      of: find.byKey(const ValueKey<String>('registry-node-list')),
+      matching: find.byType(Scrollable),
+    );
+
+    expect(registryScrollable, findsOneWidget);
+
+    final Finder categoryRow = find.byKey(ValueKey<String>(category.id.value));
+
+    await tester.scrollUntilVisible(
+      categoryRow,
+      180,
+      scrollable: registryScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(categoryRow, findsOneWidget);
+
+    final Finder entityRow = find.byKey(ValueKey<String>(entity.id.value));
+
+    expect(entityRow, findsNothing);
+
+    final Finder categoryToggle = find.byKey(
+      ValueKey<String>('registry-tree-toggle-${category.id.value}'),
+    );
+
+    expect(categoryToggle, findsOneWidget);
+
+    await tester.tap(categoryToggle);
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      entityRow,
+      180,
+      scrollable: registryScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(entityRow, findsOneWidget);
+    expect(find.text('Entity'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      categoryToggle,
+      -180,
+      scrollable: registryScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(categoryToggle);
+    await tester.pumpAndSettle();
+
+    expect(entityRow, findsNothing);
+  });
+
   testWidgets('shows Registry failure and retries through the same loader', (
     WidgetTester tester,
   ) async {
