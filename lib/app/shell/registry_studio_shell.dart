@@ -90,7 +90,6 @@ final class _RegistryStudioShellView extends StatelessWidget {
             index: selectedIndex,
             children: <Widget>[
               RegistryExplorerView(
-                isActive: workspace == RegistryStudioWorkspace.registryStudio,
                 snapshotLoader: registrySnapshotLoader,
                 snapshotRefreshLoader: registrySnapshotRefreshLoader,
                 snapshotRevisionLoader: registrySnapshotRevisionLoader,
