@@ -748,6 +748,25 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       ],
                     ),
                   ),
+                  if (searchQuery.isNotEmpty)
+                    IconButton(
+                      key: const ValueKey<String>(
+                        'registry-selected-block-search-clear',
+                      ),
+                      tooltip: 'Сбросить поиск Registry',
+                      onPressed: () async {
+                        await _clearSearch();
+
+                        if (!mounted ||
+                            !_selectedRegistryBlockScrollController
+                                .hasClients) {
+                          return;
+                        }
+
+                        _selectedRegistryBlockScrollController.jumpTo(0);
+                      },
+                      icon: const Icon(Icons.search_off),
+                    ),
                   IconButton(
                     tooltip: 'Перезагрузить Registry',
                     onPressed: _refreshRegistry,
@@ -784,6 +803,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                       context,
                                     ).textTheme.titleMedium,
                                   ),
+                                  const SizedBox(height: 4),
+                                  const Text('Область: весь Registry'),
                                   const SizedBox(height: 6),
                                   Text(
                                     'Совпадение в ${searchMatch.key}',
@@ -1469,9 +1490,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         controller: _searchTextController(loaded.searchQuery),
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
-                          labelText: 'Поиск по Registry',
+                          labelText: 'Поиск по всему Registry',
                           hintText:
-                              'Identity, path, kind, content или source evidence',
+                              'Заголовки, пути, identity, типы, содержимое и source evidence',
                           prefixIcon: const Icon(Icons.search),
                           suffixText: loaded.searchQuery.trim().isEmpty
                               ? null

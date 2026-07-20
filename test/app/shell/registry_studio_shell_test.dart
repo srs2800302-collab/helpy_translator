@@ -2892,26 +2892,57 @@ void main() {
     expect(store.state?.searchQuery, 'Domain content');
     expect(store.state?.openRegistryNodeId, child.id);
 
+    expect(find.text('Область: весь Registry'), findsOneWidget);
+
+    final Finder blockClearSearchButton = find.byKey(
+      const ValueKey<String>('registry-selected-block-search-clear'),
+    );
+
+    expect(blockClearSearchButton, findsOneWidget);
+
+    await tester.tap(blockClearSearchButton);
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, isEmpty);
+    expect(store.state?.openRegistryNodeId, child.id);
+    expect(selectedBlockScreen, findsOneWidget);
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('registry-selected-block-search-context'),
+      ),
+      findsNothing,
+    );
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('registry-selected-block-match-navigation'),
+      ),
+      findsNothing,
+    );
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('registry-selected-block-content-highlight'),
+      ),
+      findsNothing,
+    );
+
+    expect(blockClearSearchButton, findsNothing);
+
     await tester.tap(
       find.byKey(const ValueKey<String>('registry-selected-block-back')),
     );
     await tester.pumpAndSettle();
 
     expect(selectedBlockScreen, findsNothing);
-    expect(store.state?.searchQuery, 'Domain content');
+    expect(store.state?.searchQuery, isEmpty);
+    expect(find.text('Дерево Registry'), findsOneWidget);
 
     final Finder clearSearchButton = find.byKey(
       const ValueKey<String>('registry-search-clear'),
     );
 
-    expect(clearSearchButton, findsOneWidget);
-
-    await tester.tap(clearSearchButton);
-    await tester.pumpAndSettle();
-
-    expect(store.state?.searchQuery, isEmpty);
-    expect(find.text('Дерево Registry'), findsOneWidget);
-    expect(find.text('Найдено: 2'), findsNothing);
     expect(clearSearchButton, findsNothing);
 
     final TextFormField restoredSearchField = tester.widget<TextFormField>(
