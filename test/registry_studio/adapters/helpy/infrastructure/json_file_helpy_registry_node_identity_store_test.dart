@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
-import 'package:helpy_translator/registry_studio/technical/storage/json_file_helpy_registry_node_identity_store.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/json_file_helpy_registry_node_identity_store.dart';
 
 void main() {
   group('JsonFileHelpyRegistryNodeIdentityStore', () {

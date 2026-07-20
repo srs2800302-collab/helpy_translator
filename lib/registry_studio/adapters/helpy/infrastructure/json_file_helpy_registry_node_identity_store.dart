@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:path_provider_android/path_provider_android.dart';
 
-import '../../adapters/helpy/application/contracts/helpy_registry_node_identity_store.dart';
-import '../../core/domain/value_objects/registry_path.dart';
-import '../../registry/domain/value_objects/registry_node_id.dart';
+import '../application/contracts/helpy_registry_node_identity_store.dart';
+import '../../../core/domain/value_objects/registry_path.dart';
+import '../../../registry/domain/value_objects/registry_node_id.dart';
 
 final class JsonFileHelpyRegistryNodeIdentityStore
     implements HelpyRegistryNodeIdentityStore {
