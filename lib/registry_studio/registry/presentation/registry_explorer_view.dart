@@ -1205,9 +1205,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           hintText:
                               'Identity, path, kind, content или source evidence',
                           prefixIcon: const Icon(Icons.search),
-                          suffixText:
-                              '${loaded.searchResults.length}/'
-                              '${loaded.index.nodes.length}',
+                          suffixText: loaded.searchQuery.trim().isEmpty
+                              ? null
+                              : 'Найдено: '
+                                    '${loaded.searchResults.length}',
                           suffixIcon: loaded.searchQuery.isEmpty
                               ? null
                               : IconButton(
@@ -1668,13 +1669,31 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           }
 
                           if (itemIndex == fullRegistryHeaderIndex) {
-                            return const ListTile(
-                              key: ValueKey<String>('full-registry-header'),
-                              title: Text('Полный Registry'),
+                            final bool searchActive = loaded.searchQuery
+                                .trim()
+                                .isNotEmpty;
+
+                            return ListTile(
+                              key: const ValueKey<String>(
+                                'full-registry-header',
+                              ),
+                              leading: Icon(
+                                searchActive
+                                    ? Icons.manage_search
+                                    : Icons.account_tree_outlined,
+                              ),
+                              title: Text(
+                                searchActive
+                                    ? 'Результаты поиска · '
+                                          '${loaded.searchResults.length} '
+                                          'из ${loaded.index.nodes.length}'
+                                    : 'Дерево Registry',
+                              ),
                               dense: true,
+                              visualDensity: VisualDensity.compact,
+                              minVerticalPadding: 0,
                             );
                           }
-
                           final int nodeIndex =
                               itemIndex - fullRegistryHeaderIndex - 1;
 
@@ -1702,118 +1721,252 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               rootNode ||
                               _expandedRegistryNodeIds.contains(node.id);
 
-                          return ListTile(
-                            key: ValueKey<String>(node.id.value),
-                            contentPadding: EdgeInsets.only(
-                              left: 8 + depth * 20,
-                              right: 8,
+                          final ColorScheme colorScheme = Theme.of(
+                            context,
+                          ).colorScheme;
+
+                          final int visibleDepth = depth > 6 ? 6 : depth;
+
+                          final Color treeLevelColor = switch (depth % 4) {
+                            0 => colorScheme.surfaceContainerLowest,
+                            1 => colorScheme.primaryContainer.withValues(
+                              alpha: 0.34,
                             ),
-                            leading: SizedBox(
-                              width: 40,
-                              child: expandable && !rootNode && !searchActive
-                                  ? IconButton(
-                                      key: ValueKey<String>(
-                                        'registry-tree-toggle-'
-                                        '${node.id.value}',
-                                      ),
-                                      tooltip: expanded
-                                          ? 'Свернуть '
-                                                '${node.path.segments.last}'
-                                          : 'Раскрыть '
-                                                '${node.path.segments.last}',
-                                      onPressed: () {
-                                        setState(() {
-                                          if (expanded) {
-                                            _expandedRegistryNodeIds.remove(
-                                              node.id,
-                                            );
-                                          } else {
+                            2 => colorScheme.secondaryContainer.withValues(
+                              alpha: 0.36,
+                            ),
+                            _ => colorScheme.tertiaryContainer.withValues(
+                              alpha: 0.36,
+                            ),
+                          };
+
+                          final Color treeLevelAccent = switch (depth % 4) {
+                            0 => colorScheme.outlineVariant,
+                            1 => colorScheme.primary,
+                            2 => colorScheme.secondary,
+                            _ => colorScheme.tertiary,
+                          };
+
+                          return Container(
+                            key: ValueKey<String>(
+                              'registry-tree-row-${node.id.value}',
+                            ),
+                            decoration: BoxDecoration(
+                              color: searchActive
+                                  ? colorScheme.surface
+                                  : treeLevelColor,
+                              border: Border(
+                                left: BorderSide(
+                                  width: depth == 0 ? 0 : 4,
+                                  color: searchActive
+                                      ? colorScheme.primary.withValues(
+                                          alpha: 0.48,
+                                        )
+                                      : treeLevelAccent.withValues(alpha: 0.58),
+                                ),
+                              ),
+                            ),
+                            child: ListTile(
+                              key: ValueKey<String>(node.id.value),
+                              contentPadding: EdgeInsets.only(
+                                left: 12 + visibleDepth * 24,
+                                right: 8,
+                              ),
+                              leading: SizedBox(
+                                width: 40,
+                                child: expandable && !rootNode && !searchActive
+                                    ? IconButton(
+                                        key: ValueKey<String>(
+                                          'registry-tree-toggle-'
+                                          '${node.id.value}',
+                                        ),
+                                        tooltip: expanded
+                                            ? 'Свернуть '
+                                                  '${node.path.segments.last}'
+                                            : 'Раскрыть '
+                                                  '${node.path.segments.last}',
+                                        onPressed: () {
+                                          setState(() {
+                                            if (expanded) {
+                                              final List<RegistryNode>
+                                              remainingNodes = <RegistryNode>[
+                                                node,
+                                              ];
+
+                                              while (remainingNodes
+                                                  .isNotEmpty) {
+                                                final RegistryNode
+                                                collapsedNode = remainingNodes
+                                                    .removeLast();
+
+                                                _expandedRegistryNodeIds.remove(
+                                                  collapsedNode.id,
+                                                );
+
+                                                remainingNodes.addAll(
+                                                  collapsedNode.children,
+                                                );
+                                              }
+
+                                              return;
+                                            }
+
+                                            final List<RegistryNode>
+                                            siblingSubtrees = <RegistryNode>[];
+
+                                            for (final RegistryNode candidate
+                                                in loaded.index.nodes) {
+                                              if (candidate.id == node.id ||
+                                                  candidate
+                                                          .path
+                                                          .segments
+                                                          .length !=
+                                                      node
+                                                          .path
+                                                          .segments
+                                                          .length) {
+                                                continue;
+                                              }
+
+                                              bool sameParent = true;
+
+                                              for (
+                                                int segmentIndex = 0;
+                                                segmentIndex <
+                                                    node.path.segments.length -
+                                                        1;
+                                                segmentIndex += 1
+                                              ) {
+                                                if (candidate
+                                                        .path
+                                                        .segments[segmentIndex] !=
+                                                    node
+                                                        .path
+                                                        .segments[segmentIndex]) {
+                                                  sameParent = false;
+                                                  break;
+                                                }
+                                              }
+
+                                              if (sameParent) {
+                                                siblingSubtrees.add(candidate);
+                                              }
+                                            }
+
+                                            final List<RegistryNode>
+                                            remainingSiblingNodes =
+                                                <RegistryNode>[
+                                                  ...siblingSubtrees,
+                                                ];
+
+                                            while (remainingSiblingNodes
+                                                .isNotEmpty) {
+                                              final RegistryNode siblingNode =
+                                                  remainingSiblingNodes
+                                                      .removeLast();
+
+                                              _expandedRegistryNodeIds.remove(
+                                                siblingNode.id,
+                                              );
+
+                                              remainingSiblingNodes.addAll(
+                                                siblingNode.children,
+                                              );
+                                            }
+
                                             _expandedRegistryNodeIds.add(
                                               node.id,
                                             );
-                                          }
-                                        });
-                                      },
-                                      icon: Icon(
-                                        expanded
-                                            ? Icons.expand_less
-                                            : Icons.expand_more,
-                                      ),
-                                    )
-                                  : Icon(
-                                      expandable
-                                          ? Icons.account_tree_outlined
-                                          : Icons.description_outlined,
-                                    ),
-                            ),
-                            title: searchActive
-                                ? _highlightRegistrySearchText(
-                                    context,
-                                    node.path.segments.last,
-                                    loaded.searchQuery,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  )
-                                : Text(node.path.segments.last),
-                            subtitle: searchActive
-                                ? Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      _highlightRegistrySearchText(
-                                        context,
-                                        node.path.segments.join(' → '),
-                                        loaded.searchQuery,
-                                      ),
-                                      if (searchMatch != null) ...<Widget>[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Найдено в: '
-                                          '${searchMatch.key}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                          });
+                                        },
+                                        icon: Icon(
+                                          expanded
+                                              ? Icons.folder_open_outlined
+                                              : Icons.folder_outlined,
                                         ),
+                                      )
+                                    : Icon(
+                                        expandable
+                                            ? Icons.account_tree_outlined
+                                            : Icons.description_outlined,
+                                      ),
+                              ),
+                              title: searchActive
+                                  ? _highlightRegistrySearchText(
+                                      context,
+                                      node.path.segments.last,
+                                      loaded.searchQuery,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    )
+                                  : Text(
+                                      node.path.segments.last,
+                                      style: TextStyle(
+                                        fontWeight: expandable
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                      ),
+                                    ),
+                              subtitle: searchActive
+                                  ? Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
                                         _highlightRegistrySearchText(
                                           context,
-                                          searchMatch.value,
+                                          node.path.segments.join(' → '),
                                           loaded.searchQuery,
-                                          key: ValueKey<String>(
-                                            'registry-search-highlight-'
-                                            '${node.id.value}',
+                                        ),
+                                        if (searchMatch != null) ...<Widget>[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Найдено в: '
+                                            '${searchMatch.key}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
+                                          _highlightRegistrySearchText(
+                                            context,
+                                            searchMatch.value,
+                                            loaded.searchQuery,
+                                            key: ValueKey<String>(
+                                              'registry-search-highlight-'
+                                              '${node.id.value}',
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Уровень: '
+                                          '${node.path.segments.length} · '
+                                          'Дочерних узлов: '
+                                          '${node.children.length}',
+                                        ),
+                                        Text(
+                                          'Строки '
+                                          '${evidence.startLine}–'
+                                          '${evidence.endLine}',
                                         ),
                                       ],
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Уровень: '
-                                        '${node.path.segments.length} · '
-                                        'Дочерних узлов: '
-                                        '${node.children.length}',
-                                      ),
-                                      Text(
-                                        'Строки '
-                                        '${evidence.startLine}–'
-                                        '${evidence.endLine}',
-                                      ),
-                                    ],
-                                  )
-                                : Text(
-                                    '${node.path.segments.join(' → ')}\n'
-                                    'Уровень: '
-                                    '${node.path.segments.length} · '
-                                    'Дочерних узлов: '
-                                    '${node.children.length}\n'
-                                    'Строки '
-                                    '${evidence.startLine}–'
-                                    '${evidence.endLine}',
-                                  ),
-                            isThreeLine: true,
-                            selected: loaded.openRegistryNodeId == node.id,
-                            onTap: () async {
-                              await _selectRegistryNode(node.id);
-                            },
+                                    )
+                                  : Text(
+                                      '${node.path.segments.join(' → ')}\n'
+                                      'Уровень: '
+                                      '${node.path.segments.length} · '
+                                      'Дочерних узлов: '
+                                      '${node.children.length}\n'
+                                      'Строки '
+                                      '${evidence.startLine}–'
+                                      '${evidence.endLine}',
+                                    ),
+                              isThreeLine: true,
+                              selected: loaded.openRegistryNodeId == node.id,
+                              onTap: () async {
+                                await _selectRegistryNode(node.id);
+                              },
+                            ),
                           );
                         },
                       ),

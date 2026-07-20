@@ -2510,7 +2510,7 @@ void main() {
     },
   );
 
-  testWidgets('shows nested Registry nodes only after expanding their parent', (
+  testWidgets('shows hierarchy styling and collapses sibling branches', (
     WidgetTester tester,
   ) async {
     const String documentPath = 'tree-registry.md';
@@ -2535,6 +2535,32 @@ void main() {
       children: const <RegistryNode>[],
     );
 
+    final RegistryNode siblingEntity = RegistryNode(
+      id: RegistryNodeId('project.registry.node.000005'),
+      kindId: 'project.registry.heading.3',
+      path: RegistryPath(const <String>[
+        'Registry',
+        'Second Category',
+        'Second Entity',
+      ]),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: fingerprint,
+          headingPath: const <String>[
+            'Registry',
+            'Second Category',
+            'Second Entity',
+          ],
+          startLine: 9,
+          endLine: 10,
+        ),
+      ],
+      content: 'Second entity content.',
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
     final RegistryNode category = RegistryNode(
       id: RegistryNodeId('project.registry.node.000002'),
       kindId: 'project.registry.heading.2',
@@ -2553,6 +2579,24 @@ void main() {
       children: <RegistryNode>[entity],
     );
 
+    final RegistryNode siblingCategory = RegistryNode(
+      id: RegistryNodeId('project.registry.node.000004'),
+      kindId: 'project.registry.heading.2',
+      path: RegistryPath(const <String>['Registry', 'Second Category']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: fingerprint,
+          headingPath: const <String>['Registry', 'Second Category'],
+          startLine: 7,
+          endLine: 10,
+        ),
+      ],
+      content: 'Second category content.',
+      businessScopeOwnerId: null,
+      children: <RegistryNode>[siblingEntity],
+    );
+
     final RegistryNode root = RegistryNode(
       id: RegistryNodeId('project.registry.node.000001'),
       kindId: 'project.registry.heading.1',
@@ -2563,12 +2607,12 @@ void main() {
           sourceSnapshotFingerprint: fingerprint,
           headingPath: const <String>['Registry'],
           startLine: 1,
-          endLine: 6,
+          endLine: 10,
         ),
       ],
       content: 'Root content.',
       businessScopeOwnerId: null,
-      children: <RegistryNode>[category],
+      children: <RegistryNode>[category, siblingCategory],
     );
 
     final RegistrySnapshot treeSnapshot = RegistrySnapshot(
@@ -2583,7 +2627,11 @@ void main() {
           '## Category\n'
           'Category content.\n'
           '### Entity\n'
-          'Entity content.\n',
+          'Entity content.\n'
+          '## Second Category\n'
+          'Second category content.\n'
+          '### Second Entity\n'
+          'Second entity content.\n',
       roots: <RegistryNode>[root],
     );
 
@@ -2646,18 +2694,89 @@ void main() {
     expect(entityRow, findsOneWidget);
     expect(find.text('Entity'), findsOneWidget);
 
+    final Container categoryContainer = tester.widget<Container>(
+      find.byKey(ValueKey<String>('registry-tree-row-${category.id.value}')),
+    );
+
+    final Container entityContainer = tester.widget<Container>(
+      find.byKey(ValueKey<String>('registry-tree-row-${entity.id.value}')),
+    );
+
+    final BoxDecoration categoryDecoration =
+        categoryContainer.decoration! as BoxDecoration;
+
+    final BoxDecoration entityDecoration =
+        entityContainer.decoration! as BoxDecoration;
+
+    expect(categoryDecoration.color, isNot(entityDecoration.color));
+
+    final Border categoryBorder = categoryDecoration.border! as Border;
+
+    final Border entityBorder = entityDecoration.border! as Border;
+
+    expect(categoryBorder.left.width, 4);
+    expect(entityBorder.left.width, 4);
+
+    final ListTile categoryTile = tester.widget<ListTile>(categoryRow);
+
+    final ListTile entityTile = tester.widget<ListTile>(entityRow);
+
+    final EdgeInsets categoryPadding =
+        categoryTile.contentPadding! as EdgeInsets;
+
+    final EdgeInsets entityPadding = entityTile.contentPadding! as EdgeInsets;
+
+    expect(entityPadding.left, greaterThan(categoryPadding.left));
+
+    final Finder siblingCategoryRow = find.byKey(
+      ValueKey<String>(siblingCategory.id.value),
+    );
+
     await tester.scrollUntilVisible(
-      categoryToggle,
+      siblingCategoryRow,
+      180,
+      scrollable: registryScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder siblingCategoryToggle = find.byKey(
+      ValueKey<String>('registry-tree-toggle-${siblingCategory.id.value}'),
+    );
+
+    expect(siblingCategoryToggle, findsOneWidget);
+
+    await tester.tap(siblingCategoryToggle);
+    await tester.pumpAndSettle();
+
+    final Finder siblingEntityRow = find.byKey(
+      ValueKey<String>(siblingEntity.id.value),
+    );
+
+    await tester.scrollUntilVisible(
+      siblingEntityRow,
+      180,
+      scrollable: registryScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(entityRow, findsNothing);
+    expect(siblingEntityRow, findsOneWidget);
+    expect(find.text('Second Entity'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      siblingCategoryToggle,
       -180,
       scrollable: registryScrollable,
     );
 
     await tester.pumpAndSettle();
 
-    await tester.tap(categoryToggle);
+    await tester.tap(siblingCategoryToggle);
     await tester.pumpAndSettle();
 
-    expect(entityRow, findsNothing);
+    expect(siblingEntityRow, findsNothing);
   });
 
   testWidgets('shows search match reason, highlight and clear action', (
@@ -2694,6 +2813,8 @@ void main() {
 
     expect(store.state?.searchQuery, 'Domain content');
 
+    expect(find.text('Найдено: 1'), findsOneWidget);
+    expect(find.text('Результаты поиска · 1 из 2'), findsOneWidget);
     expect(find.text('Найдено в: содержимое'), findsOneWidget);
 
     expect(
@@ -2716,7 +2837,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(store.state?.searchQuery, isEmpty);
-    expect(find.text('2/2'), findsOneWidget);
+    expect(find.text('Дерево Registry'), findsOneWidget);
+    expect(find.text('Найдено: 2'), findsNothing);
     expect(clearSearchButton, findsNothing);
 
     final TextFormField restoredSearchField = tester.widget<TextFormField>(
@@ -3004,7 +3126,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(store.state?.searchQuery, exactSearchQuery);
-    expect(find.text('1/2'), findsOneWidget);
+    expect(find.text('Найдено: 1'), findsOneWidget);
+    expect(find.text('Результаты поиска · 1 из 2'), findsOneWidget);
   });
 }
 
