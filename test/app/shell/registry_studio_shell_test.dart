@@ -2950,6 +2950,63 @@ void main() {
     );
 
     expect(restoredSearchField.controller?.text, isEmpty);
+
+    await tester.enterText(searchField, 'Domain content');
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, 'Domain content');
+
+    final Finder workspaceNavigation = find.byType(NavigationBar);
+
+    expect(workspaceNavigation, findsOneWidget);
+
+    final Finder registryDestination = find.descendant(
+      of: workspaceNavigation,
+      matching: find.text('Registry Studio'),
+    );
+
+    final Finder translatorDestination = find.descendant(
+      of: workspaceNavigation,
+      matching: find.text('Translator'),
+    );
+
+    expect(registryDestination, findsOneWidget);
+    expect(translatorDestination, findsOneWidget);
+
+    await tester.tap(registryDestination);
+    await tester.pumpAndSettle();
+
+    expect(
+      store.state?.searchQuery,
+      'Domain content',
+      reason: 'Повторный выбор активного workspace не очищает поиск.',
+    );
+
+    await tester.tap(translatorDestination);
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, isEmpty);
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-search-field')),
+      findsNothing,
+    );
+
+    await tester.tap(registryDestination);
+    await tester.pumpAndSettle();
+
+    final Finder restoredWorkspaceSearchField = find.byKey(
+      const ValueKey<String>('registry-search-field'),
+    );
+
+    expect(restoredWorkspaceSearchField, findsOneWidget);
+    expect(store.state?.searchQuery, isEmpty);
+    expect(find.text('Дерево Registry'), findsOneWidget);
+
+    final TextFormField searchFieldAfterWorkspaceReturn = tester
+        .widget<TextFormField>(restoredWorkspaceSearchField);
+
+    expect(searchFieldAfterWorkspaceReturn.controller?.text, isEmpty);
   });
 
   testWidgets(

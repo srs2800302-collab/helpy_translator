@@ -15,6 +15,7 @@ import 'registry_explorer_cubit.dart';
 
 final class RegistryExplorerView extends StatelessWidget {
   const RegistryExplorerView({
+    required this.isActive,
     required this.snapshotLoader,
     required this.snapshotRefreshLoader,
     required this.snapshotRevisionLoader,
@@ -24,6 +25,7 @@ final class RegistryExplorerView extends StatelessWidget {
     super.key,
   });
 
+  final bool isActive;
   final RegistrySnapshotLoader snapshotLoader;
   final RegistrySnapshotRefreshLoader snapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
@@ -42,13 +44,15 @@ final class RegistryExplorerView extends StatelessWidget {
         analysisHistoryStore: analysisHistoryStore,
         snapshotComparator: snapshotComparator,
       )..restore(),
-      child: const _RegistryExplorerView(),
+      child: _RegistryExplorerView(isActive: isActive),
     );
   }
 }
 
 final class _RegistryExplorerView extends StatefulWidget {
-  const _RegistryExplorerView();
+  const _RegistryExplorerView({required this.isActive});
+
+  final bool isActive;
 
   @override
   State<_RegistryExplorerView> createState() => _RegistryExplorerViewState();
@@ -1033,6 +1037,15 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
               },
       ),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant _RegistryExplorerView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.isActive && !widget.isActive) {
+      _clearSearch();
+    }
   }
 
   @override
