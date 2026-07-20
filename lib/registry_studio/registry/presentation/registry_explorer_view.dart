@@ -1766,206 +1766,215 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 ),
                               ),
                             ),
-                            child: ListTile(
-                              key: ValueKey<String>(node.id.value),
-                              contentPadding: EdgeInsets.only(
-                                left: 12 + visibleDepth * 24,
-                                right: 8,
-                              ),
-                              leading: SizedBox(
-                                width: 40,
-                                child: expandable && !rootNode && !searchActive
-                                    ? IconButton(
-                                        key: ValueKey<String>(
-                                          'registry-tree-toggle-'
-                                          '${node.id.value}',
-                                        ),
-                                        tooltip: expanded
-                                            ? 'Свернуть '
-                                                  '${node.path.segments.last}'
-                                            : 'Раскрыть '
-                                                  '${node.path.segments.last}',
-                                        onPressed: () {
-                                          setState(() {
-                                            if (expanded) {
-                                              final List<RegistryNode>
-                                              remainingNodes = <RegistryNode>[
-                                                node,
-                                              ];
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: ListTile(
+                                key: ValueKey<String>(node.id.value),
+                                contentPadding: EdgeInsets.only(
+                                  left: 12 + visibleDepth * 24,
+                                  right: 8,
+                                ),
+                                leading: SizedBox(
+                                  width: 40,
+                                  child:
+                                      expandable && !rootNode && !searchActive
+                                      ? IconButton(
+                                          key: ValueKey<String>(
+                                            'registry-tree-toggle-'
+                                            '${node.id.value}',
+                                          ),
+                                          tooltip: expanded
+                                              ? 'Свернуть '
+                                                    '${node.path.segments.last}'
+                                              : 'Раскрыть '
+                                                    '${node.path.segments.last}',
+                                          onPressed: () {
+                                            setState(() {
+                                              if (expanded) {
+                                                final List<RegistryNode>
+                                                remainingNodes = <RegistryNode>[
+                                                  node,
+                                                ];
 
-                                              while (remainingNodes
-                                                  .isNotEmpty) {
-                                                final RegistryNode
-                                                collapsedNode = remainingNodes
-                                                    .removeLast();
+                                                while (remainingNodes
+                                                    .isNotEmpty) {
+                                                  final RegistryNode
+                                                  collapsedNode = remainingNodes
+                                                      .removeLast();
 
-                                                _expandedRegistryNodeIds.remove(
-                                                  collapsedNode.id,
-                                                );
+                                                  _expandedRegistryNodeIds
+                                                      .remove(collapsedNode.id);
 
-                                                remainingNodes.addAll(
-                                                  collapsedNode.children,
-                                                );
+                                                  remainingNodes.addAll(
+                                                    collapsedNode.children,
+                                                  );
+                                                }
+
+                                                return;
                                               }
 
-                                              return;
-                                            }
+                                              final List<RegistryNode>
+                                              siblingSubtrees =
+                                                  <RegistryNode>[];
 
-                                            final List<RegistryNode>
-                                            siblingSubtrees = <RegistryNode>[];
+                                              for (final RegistryNode candidate
+                                                  in loaded.index.nodes) {
+                                                if (candidate.id == node.id ||
+                                                    candidate
+                                                            .path
+                                                            .segments
+                                                            .length !=
+                                                        node
+                                                            .path
+                                                            .segments
+                                                            .length) {
+                                                  continue;
+                                                }
 
-                                            for (final RegistryNode candidate
-                                                in loaded.index.nodes) {
-                                              if (candidate.id == node.id ||
-                                                  candidate
+                                                bool sameParent = true;
+
+                                                for (
+                                                  int segmentIndex = 0;
+                                                  segmentIndex <
+                                                      node
+                                                              .path
+                                                              .segments
+                                                              .length -
+                                                          1;
+                                                  segmentIndex += 1
+                                                ) {
+                                                  if (candidate
                                                           .path
-                                                          .segments
-                                                          .length !=
+                                                          .segments[segmentIndex] !=
                                                       node
                                                           .path
-                                                          .segments
-                                                          .length) {
-                                                continue;
-                                              }
+                                                          .segments[segmentIndex]) {
+                                                    sameParent = false;
+                                                    break;
+                                                  }
+                                                }
 
-                                              bool sameParent = true;
-
-                                              for (
-                                                int segmentIndex = 0;
-                                                segmentIndex <
-                                                    node.path.segments.length -
-                                                        1;
-                                                segmentIndex += 1
-                                              ) {
-                                                if (candidate
-                                                        .path
-                                                        .segments[segmentIndex] !=
-                                                    node
-                                                        .path
-                                                        .segments[segmentIndex]) {
-                                                  sameParent = false;
-                                                  break;
+                                                if (sameParent) {
+                                                  siblingSubtrees.add(
+                                                    candidate,
+                                                  );
                                                 }
                                               }
 
-                                              if (sameParent) {
-                                                siblingSubtrees.add(candidate);
+                                              final List<RegistryNode>
+                                              remainingSiblingNodes =
+                                                  <RegistryNode>[
+                                                    ...siblingSubtrees,
+                                                  ];
+
+                                              while (remainingSiblingNodes
+                                                  .isNotEmpty) {
+                                                final RegistryNode siblingNode =
+                                                    remainingSiblingNodes
+                                                        .removeLast();
+
+                                                _expandedRegistryNodeIds.remove(
+                                                  siblingNode.id,
+                                                );
+
+                                                remainingSiblingNodes.addAll(
+                                                  siblingNode.children,
+                                                );
                                               }
-                                            }
 
-                                            final List<RegistryNode>
-                                            remainingSiblingNodes =
-                                                <RegistryNode>[
-                                                  ...siblingSubtrees,
-                                                ];
-
-                                            while (remainingSiblingNodes
-                                                .isNotEmpty) {
-                                              final RegistryNode siblingNode =
-                                                  remainingSiblingNodes
-                                                      .removeLast();
-
-                                              _expandedRegistryNodeIds.remove(
-                                                siblingNode.id,
+                                              _expandedRegistryNodeIds.add(
+                                                node.id,
                                               );
-
-                                              remainingSiblingNodes.addAll(
-                                                siblingNode.children,
-                                              );
-                                            }
-
-                                            _expandedRegistryNodeIds.add(
-                                              node.id,
-                                            );
-                                          });
-                                        },
-                                        icon: Icon(
-                                          expanded
-                                              ? Icons.folder_open_outlined
-                                              : Icons.folder_outlined,
-                                        ),
-                                      )
-                                    : Icon(
-                                        expandable
-                                            ? Icons.account_tree_outlined
-                                            : Icons.description_outlined,
-                                      ),
-                              ),
-                              title: searchActive
-                                  ? _highlightRegistrySearchText(
-                                      context,
-                                      node.path.segments.last,
-                                      loaded.searchQuery,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium,
-                                    )
-                                  : Text(
-                                      node.path.segments.last,
-                                      style: TextStyle(
-                                        fontWeight: expandable
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
-                                      ),
-                                    ),
-                              subtitle: searchActive
-                                  ? Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: <Widget>[
-                                        _highlightRegistrySearchText(
-                                          context,
-                                          node.path.segments.join(' → '),
-                                          loaded.searchQuery,
-                                        ),
-                                        if (searchMatch != null) ...<Widget>[
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Найдено в: '
-                                            '${searchMatch.key}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            });
+                                          },
+                                          icon: Icon(
+                                            expanded
+                                                ? Icons.folder_open_outlined
+                                                : Icons.folder_outlined,
                                           ),
+                                        )
+                                      : Icon(
+                                          expandable
+                                              ? Icons.account_tree_outlined
+                                              : Icons.description_outlined,
+                                        ),
+                                ),
+                                title: searchActive
+                                    ? _highlightRegistrySearchText(
+                                        context,
+                                        node.path.segments.last,
+                                        loaded.searchQuery,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      )
+                                    : Text(
+                                        node.path.segments.last,
+                                        style: TextStyle(
+                                          fontWeight: expandable
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                        ),
+                                      ),
+                                subtitle: searchActive
+                                    ? Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
                                           _highlightRegistrySearchText(
                                             context,
-                                            searchMatch.value,
+                                            node.path.segments.join(' → '),
                                             loaded.searchQuery,
-                                            key: ValueKey<String>(
-                                              'registry-search-highlight-'
-                                              '${node.id.value}',
+                                          ),
+                                          if (searchMatch != null) ...<Widget>[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Найдено в: '
+                                              '${searchMatch.key}',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
+                                            _highlightRegistrySearchText(
+                                              context,
+                                              searchMatch.value,
+                                              loaded.searchQuery,
+                                              key: ValueKey<String>(
+                                                'registry-search-highlight-'
+                                                '${node.id.value}',
+                                              ),
+                                            ),
+                                          ],
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Уровень: '
+                                            '${node.path.segments.length} · '
+                                            'Дочерних узлов: '
+                                            '${node.children.length}',
+                                          ),
+                                          Text(
+                                            'Строки '
+                                            '${evidence.startLine}–'
+                                            '${evidence.endLine}',
                                           ),
                                         ],
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Уровень: '
-                                          '${node.path.segments.length} · '
-                                          'Дочерних узлов: '
-                                          '${node.children.length}',
-                                        ),
-                                        Text(
-                                          'Строки '
-                                          '${evidence.startLine}–'
-                                          '${evidence.endLine}',
-                                        ),
-                                      ],
-                                    )
-                                  : Text(
-                                      '${node.path.segments.join(' → ')}\n'
-                                      'Уровень: '
-                                      '${node.path.segments.length} · '
-                                      'Дочерних узлов: '
-                                      '${node.children.length}\n'
-                                      'Строки '
-                                      '${evidence.startLine}–'
-                                      '${evidence.endLine}',
-                                    ),
-                              isThreeLine: true,
-                              selected: loaded.openRegistryNodeId == node.id,
-                              onTap: () async {
-                                await _selectRegistryNode(node.id);
-                              },
+                                      )
+                                    : Text(
+                                        '${node.path.segments.join(' → ')}\n'
+                                        'Уровень: '
+                                        '${node.path.segments.length} · '
+                                        'Дочерних узлов: '
+                                        '${node.children.length}\n'
+                                        'Строки '
+                                        '${evidence.startLine}–'
+                                        '${evidence.endLine}',
+                                      ),
+                                isThreeLine: true,
+                                selected: loaded.openRegistryNodeId == node.id,
+                                onTap: () async {
+                                  await _selectRegistryNode(node.id);
+                                },
+                              ),
                             ),
                           );
                         },
