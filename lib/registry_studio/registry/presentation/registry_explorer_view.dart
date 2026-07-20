@@ -668,6 +668,82 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     );
   }
 
+  Widget _buildCompactProblemQueue(
+    BuildContext context,
+    RegistryExplorerLoaded loaded,
+  ) {
+    final List<RegistryStructuralProblem> problems = loaded.problems;
+
+    final String baselineLabel = loaded.cleanBaselineComparison != null
+        ? 'clean baseline'
+        : 'предыдущая revision';
+
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: ListTile(
+        key: const ValueKey<String>('registry-problem-queue'),
+        leading: Icon(
+          problems.isEmpty ? Icons.inbox_outlined : Icons.adjust,
+          color: problems.isEmpty
+              ? null
+              : Theme.of(context).colorScheme.primary,
+        ),
+        title: Text('Очередь проблем: ${problems.length}'),
+        subtitle: loaded.problemComparison == null
+            ? const Text('Baseline сравнения отсутствует.')
+            : problems.isEmpty
+            ? Text(
+                'Затронутых мест относительно '
+                '$baselineLabel не обнаружено.',
+              )
+            : Text(
+                'Источник: $baselineLabel. '
+                'Статус: затронуто.',
+              ),
+        trailing: problems.isEmpty
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  IconButton(
+                    key: const ValueKey<String>(
+                      'registry-problem-queue-fullscreen-button',
+                    ),
+                    tooltip:
+                        'Открыть очередь проблем '
+                        'на весь экран',
+                    onPressed: () {
+                      setState(() {
+                        _showProblemQueue = false;
+                        _showProblemQueueFullScreen = true;
+                      });
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted || !_scrollController.hasClients) {
+                          return;
+                        }
+
+                        _scrollController.jumpTo(0);
+                      });
+                    },
+                    icon: const Icon(Icons.open_in_full),
+                  ),
+                  Icon(
+                    _showProblemQueue ? Icons.expand_less : Icons.expand_more,
+                  ),
+                ],
+              ),
+        onTap: problems.isEmpty
+            ? null
+            : () {
+                setState(() {
+                  _showProblemQueue = !_showProblemQueue;
+                });
+              },
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scrollController
@@ -1090,6 +1166,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         onChanged: _updateSearchQuery,
                       ),
                     ),
+                    if (!_showProblemQueueFullScreen)
+                      _buildCompactProblemQueue(context, loaded),
                     Expanded(
                       child: ListView.separated(
                         key: const ValueKey<String>('registry-node-list'),
@@ -1097,7 +1175,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         itemCount: _showProblemQueueFullScreen
                             ? loaded.problems.length + 1
                             : _visibleRegistryNodes(loaded).length +
-                                  4 +
+                                  3 +
                                   (_showProblemQueue
                                       ? loaded.problems.length
                                       : 0) +
@@ -1122,7 +1200,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               _showProblemQueue || _showProblemQueueFullScreen;
 
                           final int problemRowsStartIndex =
-                              _showProblemQueueFullScreen ? 1 : 3;
+                              _showProblemQueueFullScreen ? 1 : 2;
 
                           final int problemRowsEndIndex =
                               problemRowsStartIndex +
@@ -1279,86 +1357,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                       : Icons.verified_user_outlined,
                                 ),
                               ),
-                            );
-                          }
-
-                          if (!_showProblemQueueFullScreen && itemIndex == 2) {
-                            return ListTile(
-                              key: const ValueKey<String>(
-                                'registry-problem-queue',
-                              ),
-                              leading: Icon(
-                                problems.isEmpty
-                                    ? Icons.inbox_outlined
-                                    : Icons.adjust,
-                                color: problems.isEmpty
-                                    ? null
-                                    : Theme.of(context).colorScheme.primary,
-                              ),
-                              title: Text(
-                                'Очередь проблем: '
-                                '${problems.length}',
-                              ),
-                              subtitle: loaded.problemComparison == null
-                                  ? const Text(
-                                      'Baseline сравнения '
-                                      'отсутствует.',
-                                    )
-                                  : problems.isEmpty
-                                  ? Text(
-                                      'Затронутых мест относительно '
-                                      '$baselineLabel не обнаружено.',
-                                    )
-                                  : Text(
-                                      'Источник: $baselineLabel. '
-                                      'Статус: затронуто.',
-                                    ),
-                              trailing: problems.isEmpty
-                                  ? null
-                                  : Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: <Widget>[
-                                        IconButton(
-                                          key: const ValueKey<String>(
-                                            'registry-problem-queue-fullscreen-button',
-                                          ),
-                                          tooltip:
-                                              'Открыть очередь '
-                                              'проблем на весь экран',
-                                          onPressed: () {
-                                            setState(() {
-                                              _showProblemQueue = false;
-                                              _showProblemQueueFullScreen =
-                                                  true;
-                                            });
-
-                                            WidgetsBinding.instance
-                                                .addPostFrameCallback((_) {
-                                                  if (!mounted ||
-                                                      !_scrollController
-                                                          .hasClients) {
-                                                    return;
-                                                  }
-
-                                                  _scrollController.jumpTo(0);
-                                                });
-                                          },
-                                          icon: const Icon(Icons.open_in_full),
-                                        ),
-                                        Icon(
-                                          _showProblemQueue
-                                              ? Icons.expand_less
-                                              : Icons.expand_more,
-                                        ),
-                                      ],
-                                    ),
-                              onTap: problems.isEmpty
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _showProblemQueue = !_showProblemQueue;
-                                      });
-                                    },
                             );
                           }
 

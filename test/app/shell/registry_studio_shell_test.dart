@@ -1358,6 +1358,17 @@ void main() {
 
       expect(problemQueue, findsOneWidget);
 
+      final Finder registryNodeList = find.byKey(
+        const ValueKey<String>('registry-node-list'),
+      );
+
+      expect(registryNodeList, findsOneWidget);
+
+      expect(
+        find.descendant(of: registryNodeList, matching: problemQueue),
+        findsNothing,
+      );
+
       expect(
         find.descendant(
           of: problemQueue,
@@ -1418,13 +1429,6 @@ void main() {
 
       expect(changedProblem, findsOneWidget);
 
-      await tester.scrollUntilVisible(
-        problemQueue,
-        -180,
-        scrollable: registryScrollable,
-      );
-      await tester.pumpAndSettle();
-
       await tester.tap(problemQueue);
       await tester.pumpAndSettle();
 
@@ -1434,13 +1438,6 @@ void main() {
       final Finder fullScreenButton = find.byTooltip(
         'Открыть очередь проблем на весь экран',
       );
-
-      await tester.scrollUntilVisible(
-        fullScreenButton,
-        -180,
-        scrollable: registryScrollable,
-      );
-      await tester.pumpAndSettle();
 
       await tester.tap(fullScreenButton);
       await tester.pumpAndSettle();
@@ -1485,13 +1482,6 @@ void main() {
         find.byKey(const ValueKey<String>('full-registry-header')),
         findsOneWidget,
       );
-
-      await tester.scrollUntilVisible(
-        fullScreenButton,
-        -180,
-        scrollable: registryScrollable,
-      );
-      await tester.pumpAndSettle();
 
       await tester.tap(fullScreenButton);
       await tester.pumpAndSettle();
