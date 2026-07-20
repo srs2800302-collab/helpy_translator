@@ -231,6 +231,88 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     });
   }
 
+  Future<void> _refreshRegistry() async {
+    final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
+
+    final ScaffoldMessengerState scaffoldMessenger = ScaffoldMessenger.of(
+      context,
+    );
+
+    final RegistryExplorerState stateBeforeRefresh = cubit.state;
+
+    final RegistryNode? openRegistryNodeBeforeRefresh =
+        stateBeforeRefresh is RegistryExplorerLoaded
+        ? stateBeforeRefresh.openRegistryNode
+        : null;
+
+    await cubit.refresh();
+
+    if (!mounted || openRegistryNodeBeforeRefresh == null) {
+      return;
+    }
+
+    final RegistryExplorerState stateAfterRefresh = cubit.state;
+
+    if (stateAfterRefresh is! RegistryExplorerLoaded) {
+      return;
+    }
+
+    final RegistryNode? openRegistryNodeAfterRefresh =
+        stateAfterRefresh.openRegistryNode;
+
+    final bool moved =
+        openRegistryNodeAfterRefresh != null &&
+        openRegistryNodeAfterRefresh.id == openRegistryNodeBeforeRefresh.id &&
+        openRegistryNodeAfterRefresh.path != openRegistryNodeBeforeRefresh.path;
+
+    final bool changed =
+        openRegistryNodeAfterRefresh != null &&
+        openRegistryNodeAfterRefresh.id == openRegistryNodeBeforeRefresh.id &&
+        (openRegistryNodeAfterRefresh.kindId !=
+                openRegistryNodeBeforeRefresh.kindId ||
+            openRegistryNodeAfterRefresh.content !=
+                openRegistryNodeBeforeRefresh.content ||
+            openRegistryNodeAfterRefresh.businessScopeOwnerId !=
+                openRegistryNodeBeforeRefresh.businessScopeOwnerId);
+
+    final String? message;
+
+    if (openRegistryNodeAfterRefresh == null) {
+      message =
+          'Открытый Registry block удалён '
+          'в новой revision.';
+    } else if (moved && changed) {
+      message =
+          'Открытый Registry block перемещён '
+          'и изменён.\n'
+          'Было: '
+          '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
+          'Стало: '
+          '${openRegistryNodeAfterRefresh.path.segments.join(' → ')}';
+    } else if (moved) {
+      message =
+          'Открытый Registry block перемещён.\n'
+          'Было: '
+          '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
+          'Стало: '
+          '${openRegistryNodeAfterRefresh.path.segments.join(' → ')}';
+    } else if (changed) {
+      message =
+          'Открытый Registry block изменён '
+          'в новой revision.';
+    } else {
+      message = null;
+    }
+
+    if (message == null) {
+      return;
+    }
+
+    scaffoldMessenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _confirmCurrentAsCleanBaseline() async {
     final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
 
@@ -315,6 +397,117 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     appendNodes(loaded.snapshot.roots, 0);
 
     return visibleNodes;
+  }
+
+  Widget _buildSelectedRegistryBlockScreen(
+    BuildContext context,
+    RegistryNode node,
+  ) {
+    return Material(
+      key: const ValueKey<String>('registry-selected-block-screen'),
+      child: SafeArea(
+        child: Column(
+          key: const ValueKey<String>('registry-selected-block'),
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+              child: Row(
+                children: <Widget>[
+                  IconButton(
+                    key: const ValueKey<String>('registry-selected-block-back'),
+                    tooltip: 'Закрыть Registry block',
+                    onPressed: () async {
+                      await _selectRegistryNode(null);
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Открытый Registry block',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        Text(
+                          node.path.segments.last,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Перезагрузить Registry',
+                    onPressed: _refreshRegistry,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16),
+                children: <Widget>[
+                  Container(
+                    key: _selectedRegistryBlockKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'RegistryPath: '
+                          '${node.path.segments.join(' → ')}',
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Structural identity: '
+                          '${node.id.value}',
+                        ),
+                        const SizedBox(height: 12),
+                        Text('Тип: ${node.kindId}'),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Уровень: '
+                          '${node.path.segments.length} · '
+                          'Дочерних узлов: '
+                          '${node.children.length}',
+                        ),
+                        const SizedBox(height: 12),
+                        for (final evidence in node.sourceEvidence)
+                          Text(
+                            'Evidence: '
+                            '${evidence.sourceDocumentPath}, '
+                            'строки '
+                            '${evidence.startLine}–'
+                            '${evidence.endLine}',
+                          ),
+                        const Divider(height: 24),
+                        SelectableText(node.content),
+                        const Divider(height: 24),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              await _selectRegistryNode(null);
+                            },
+                            icon: const Icon(Icons.close),
+                            label: const Text('Закрыть'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -694,103 +887,12 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ),
                             ),
                             IconButton(
-                              tooltip: 'Перезагрузить Registry',
-                              onPressed: () async {
-                                final RegistryExplorerCubit cubit = context
-                                    .read<RegistryExplorerCubit>();
-
-                                final ScaffoldMessengerState scaffoldMessenger =
-                                    ScaffoldMessenger.of(context);
-
-                                final RegistryExplorerState stateBeforeRefresh =
-                                    cubit.state;
-
-                                final RegistryNode?
-                                openRegistryNodeBeforeRefresh =
-                                    stateBeforeRefresh is RegistryExplorerLoaded
-                                    ? stateBeforeRefresh.openRegistryNode
-                                    : null;
-
-                                await cubit.refresh();
-
-                                if (!mounted ||
-                                    openRegistryNodeBeforeRefresh == null) {
-                                  return;
-                                }
-
-                                final RegistryExplorerState stateAfterRefresh =
-                                    cubit.state;
-
-                                if (stateAfterRefresh
-                                    is! RegistryExplorerLoaded) {
-                                  return;
-                                }
-
-                                final RegistryNode?
-                                openRegistryNodeAfterRefresh =
-                                    stateAfterRefresh.openRegistryNode;
-
-                                final bool moved =
-                                    openRegistryNodeAfterRefresh != null &&
-                                    openRegistryNodeAfterRefresh.id ==
-                                        openRegistryNodeBeforeRefresh.id &&
-                                    openRegistryNodeAfterRefresh.path !=
-                                        openRegistryNodeBeforeRefresh.path;
-
-                                final bool changed =
-                                    openRegistryNodeAfterRefresh != null &&
-                                    openRegistryNodeAfterRefresh.id ==
-                                        openRegistryNodeBeforeRefresh.id &&
-                                    (openRegistryNodeAfterRefresh.kindId !=
-                                            openRegistryNodeBeforeRefresh
-                                                .kindId ||
-                                        openRegistryNodeAfterRefresh.content !=
-                                            openRegistryNodeBeforeRefresh
-                                                .content ||
-                                        openRegistryNodeAfterRefresh
-                                                .businessScopeOwnerId !=
-                                            openRegistryNodeBeforeRefresh
-                                                .businessScopeOwnerId);
-
-                                final String? message;
-
-                                if (openRegistryNodeAfterRefresh == null) {
-                                  message =
-                                      'Открытый Registry block удалён '
-                                      'в новой revision.';
-                                } else if (moved && changed) {
-                                  message =
-                                      'Открытый Registry block перемещён '
-                                      'и изменён.\n'
-                                      'Было: '
-                                      '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
-                                      'Стало: '
-                                      '${openRegistryNodeAfterRefresh.path.segments.join(' → ')}';
-                                } else if (moved) {
-                                  message =
-                                      'Открытый Registry block перемещён.\n'
-                                      'Было: '
-                                      '${openRegistryNodeBeforeRefresh.path.segments.join(' → ')}\n'
-                                      'Стало: '
-                                      '${openRegistryNodeAfterRefresh.path.segments.join(' → ')}';
-                                } else if (changed) {
-                                  message =
-                                      'Открытый Registry block изменён '
-                                      'в новой revision.';
-                                } else {
-                                  message = null;
-                                }
-
-                                if (message == null) {
-                                  return;
-                                }
-
-                                scaffoldMessenger
-                                  ..hideCurrentSnackBar()
-                                  ..showSnackBar(
-                                    SnackBar(content: Text(message)),
-                                  );
-                              },
+                              tooltip:
+                                  loaded.selectedProblem == null &&
+                                      loaded.openRegistryNode != null
+                                  ? null
+                                  : 'Перезагрузить Registry',
+                              onPressed: _refreshRegistry,
                               icon: const Icon(Icons.refresh),
                             ),
                           ],
@@ -827,10 +929,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                   (_showProblemQueue
                                       ? loaded.problems.length
                                       : 0) +
-                                  (loaded.selectedProblem == null &&
-                                          loaded.openRegistryNode == null
-                                      ? 0
-                                      : 1),
+                                  (loaded.selectedProblem == null ? 0 : 1),
                         separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (BuildContext context, int itemIndex) {
                           final List<RegistryStructuralProblem> problems =
@@ -838,9 +937,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                           final RegistryStructuralProblem? selectedProblem =
                               loaded.selectedProblem;
-
-                          final RegistryNode? openRegistryNode =
-                              loaded.openRegistryNode;
 
                           final List<RegistryNode> visibleRegistryNodes =
                               _visibleRegistryNodes(loaded);
@@ -862,13 +958,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                           final int selectedProblemItemIndex =
                               problemRowsEndIndex;
-
                           final int fullRegistryHeaderIndex =
                               selectedProblemItemIndex +
-                              (selectedProblem == null &&
-                                      openRegistryNode == null
-                                  ? 0
-                                  : 1);
+                              (selectedProblem == null ? 0 : 1);
 
                           if (_showProblemQueueFullScreen && itemIndex == 0) {
                             return Material(
@@ -1346,78 +1438,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             );
                           }
 
-                          if (!_showProblemQueueFullScreen &&
-                              selectedProblem == null &&
-                              openRegistryNode != null &&
-                              itemIndex == selectedProblemItemIndex) {
-                            return KeyedSubtree(
-                              key: const ValueKey<String>(
-                                'registry-selected-block',
-                              ),
-                              child: Card(
-                                key: _selectedRegistryBlockKey,
-                                margin: const EdgeInsets.all(12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      Row(
-                                        children: <Widget>[
-                                          Icon(
-                                            Icons.description_outlined,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              'Открытый Registry block',
-                                              style: Theme.of(
-                                                context,
-                                              ).textTheme.titleLarge,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        'RegistryPath: '
-                                        '${openRegistryNode.path.segments.join(' → ')}',
-                                      ),
-                                      Text(
-                                        'Тип: '
-                                        '${openRegistryNode.kindId}',
-                                      ),
-                                      for (final evidence
-                                          in openRegistryNode.sourceEvidence)
-                                        Text(
-                                          'Evidence: '
-                                          '${evidence.sourceDocumentPath}, '
-                                          'строки ${evidence.startLine}–'
-                                          '${evidence.endLine}',
-                                        ),
-                                      const Divider(height: 24),
-                                      SelectableText(openRegistryNode.content),
-                                      const Divider(height: 24),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: TextButton(
-                                          onPressed: () async {
-                                            await _selectRegistryNode(null);
-                                          },
-                                          child: const Text('Закрыть'),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-
                           if (itemIndex == fullRegistryHeaderIndex) {
                             return const ListTile(
                               key: ValueKey<String>('full-registry-header'),
@@ -1511,7 +1531,18 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                     ),
                   ],
                 ),
-                if (_showScrollToTop)
+                if (loaded.selectedProblem == null &&
+                    loaded.openRegistryNode != null &&
+                    !_showProblemQueueFullScreen)
+                  Positioned.fill(
+                    child: _buildSelectedRegistryBlockScreen(
+                      context,
+                      loaded.openRegistryNode!,
+                    ),
+                  ),
+                if (_showScrollToTop &&
+                    (loaded.selectedProblem != null ||
+                        loaded.openRegistryNode == null))
                   Positioned(
                     right: 8,
                     bottom: 4,

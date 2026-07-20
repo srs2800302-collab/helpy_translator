@@ -2121,6 +2121,20 @@ void main() {
 
     expect(selectedRegistryBlock, findsOneWidget);
 
+    final Finder selectedRegistryBlockScreen = find.byKey(
+      const ValueKey<String>('registry-selected-block-screen'),
+    );
+
+    expect(selectedRegistryBlockScreen, findsOneWidget);
+
+    expect(
+      find.ancestor(
+        of: selectedRegistryBlock,
+        matching: selectedRegistryBlockScreen,
+      ),
+      findsOneWidget,
+    );
+
     expect(
       find.descendant(
         of: selectedRegistryBlock,
@@ -2163,6 +2177,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(selectedRegistryBlock, findsNothing);
+
+    expect(selectedRegistryBlockScreen, findsNothing);
 
     expect(store.state?.openRegistryNodeId, isNull);
 
