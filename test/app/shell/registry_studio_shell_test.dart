@@ -2257,15 +2257,13 @@ void main() {
 
     expect(store.state?.selectedProblemIndex, isNull);
 
-    final Finder closeButton = find.descendant(
-      of: selectedRegistryBlock,
-      matching: find.widgetWithText(TextButton, 'Закрыть'),
+    final Finder backButton = find.byKey(
+      const ValueKey<String>('registry-selected-block-back'),
     );
 
-    await tester.ensureVisible(closeButton);
-    await tester.pumpAndSettle();
+    expect(backButton, findsOneWidget);
 
-    await tester.tap(closeButton);
+    await tester.tap(backButton);
     await tester.pumpAndSettle();
 
     expect(selectedRegistryBlock, findsNothing);
@@ -3147,7 +3145,7 @@ void main() {
 
       expect(initialScrollableState.position.pixels, greaterThan(0));
 
-      expect(find.text('1 из 2'), findsOneWidget);
+      expect(find.text('1/2'), findsOneWidget);
 
       final Finder previousButton = find.byKey(
         const ValueKey<String>('registry-selected-block-match-previous'),
@@ -3157,6 +3155,20 @@ void main() {
         const ValueKey<String>('registry-selected-block-match-next'),
       );
 
+      final Finder matchNavigation = find.byKey(
+        const ValueKey<String>('registry-selected-block-match-navigation'),
+      );
+
+      expect(matchNavigation, findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: selectedBlockScreen,
+          matching: find.text('Закрыть'),
+        ),
+        findsNothing,
+      );
+
       expect(tester.widget<IconButton>(previousButton).onPressed, isNull);
 
       expect(tester.widget<IconButton>(nextButton).onPressed, isNotNull);
@@ -3164,13 +3176,29 @@ void main() {
       final double firstMatchScrollPosition =
           initialScrollableState.position.pixels;
 
+      initialScrollableState.position.jumpTo(
+        initialScrollableState.position.maxScrollExtent,
+      );
+      await tester.pumpAndSettle();
+
+      final Rect selectedBlockRect = tester.getRect(selectedBlockScreen);
+
+      final Rect matchNavigationRect = tester.getRect(matchNavigation);
+
+      expect(selectedBlockRect.overlaps(matchNavigationRect), isTrue);
+
+      expect(
+        matchNavigationRect.bottom,
+        lessThanOrEqualTo(selectedBlockRect.bottom),
+      );
+
       await tester.ensureVisible(nextButton);
       await tester.pumpAndSettle();
 
       await tester.tap(nextButton);
       await tester.pumpAndSettle();
 
-      expect(find.text('2 из 2'), findsOneWidget);
+      expect(find.text('2/2'), findsOneWidget);
 
       final ScrollableState secondScrollableState = tester
           .state<ScrollableState>(selectedBlockScrollable);
@@ -3190,7 +3218,7 @@ void main() {
       await tester.tap(previousButton);
       await tester.pumpAndSettle();
 
-      expect(find.text('1 из 2'), findsOneWidget);
+      expect(find.text('1/2'), findsOneWidget);
     },
   );
 

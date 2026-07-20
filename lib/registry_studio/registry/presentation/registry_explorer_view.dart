@@ -847,179 +847,182 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
             ),
             const Divider(height: 1),
             Expanded(
-              child: ListView(
-                controller: _selectedRegistryBlockScrollController,
-                padding: const EdgeInsets.all(16),
+              child: Stack(
                 children: <Widget>[
-                  Container(
-                    key: _selectedRegistryBlockKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        if (searchMatch != null) ...<Widget>[
-                          Card(
-                            key: const ValueKey<String>(
-                              'registry-selected-block-search-context',
+                  ListView(
+                    controller: _selectedRegistryBlockScrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 92),
+                    children: <Widget>[
+                      Container(
+                        key: _selectedRegistryBlockKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            if (searchMatch != null) ...<Widget>[
+                              Card(
+                                key: const ValueKey<String>(
+                                  'registry-selected-block-search-context',
+                                ),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        'Поиск: "$searchQuery"',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text('Область: весь Registry'),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Совпадение в ${searchMatch.key}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _highlightRegistrySearchText(
+                                        context,
+                                        searchMatch.value,
+                                        searchQuery,
+                                        key: const ValueKey<String>(
+                                          'registry-selected-block-search-highlight',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                            Text(
+                              'RegistryPath: '
+                              '${node.path.segments.join(' → ')}',
                             ),
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    'Поиск: "$searchQuery"',
+                            const SizedBox(height: 12),
+                            Text(
+                              'Structural identity: '
+                              '${node.id.value}',
+                            ),
+                            const SizedBox(height: 12),
+                            Text('Тип: ${node.kindId}'),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Уровень: '
+                              '${node.path.segments.length} · '
+                              'Дочерних узлов: '
+                              '${node.children.length}',
+                            ),
+                            const SizedBox(height: 12),
+                            for (final evidence in node.sourceEvidence)
+                              Text(
+                                'Evidence: '
+                                '${evidence.sourceDocumentPath}, '
+                                'строки '
+                                '${evidence.startLine}–'
+                                '${evidence.endLine}',
+                              ),
+                            const Divider(height: 24),
+                            if (searchQuery.isEmpty)
+                              SelectableText(node.content)
+                            else
+                              SelectionArea(
+                                child: Text.rich(
+                                  TextSpan(
                                     style: Theme.of(
                                       context,
-                                    ).textTheme.titleMedium,
+                                    ).textTheme.bodyMedium,
+                                    children: contentSpans,
                                   ),
-                                  const SizedBox(height: 4),
-                                  const Text('Область: весь Registry'),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Совпадение в ${searchMatch.key}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                  key: const ValueKey<String>(
+                                    'registry-selected-block-content-highlight',
                                   ),
-                                  const SizedBox(height: 4),
-                                  _highlightRegistrySearchText(
-                                    context,
-                                    searchMatch.value,
-                                    searchQuery,
-                                    key: const ValueKey<String>(
-                                      'registry-selected-block-search-highlight',
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
-                        Text(
-                          'RegistryPath: '
-                          '${node.path.segments.join(' → ')}',
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Structural identity: '
-                          '${node.id.value}',
-                        ),
-                        const SizedBox(height: 12),
-                        Text('Тип: ${node.kindId}'),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Уровень: '
-                          '${node.path.segments.length} · '
-                          'Дочерних узлов: '
-                          '${node.children.length}',
-                        ),
-                        const SizedBox(height: 12),
-                        for (final evidence in node.sourceEvidence)
-                          Text(
-                            'Evidence: '
-                            '${evidence.sourceDocumentPath}, '
-                            'строки '
-                            '${evidence.startLine}–'
-                            '${evidence.endLine}',
-                          ),
-                        if (searchQuery.isNotEmpty) ...<Widget>[
-                          if (contentMatchOffsets.isNotEmpty)
-                            Card(
-                              key: const ValueKey<String>(
-                                'registry-selected-block-match-navigation',
-                              ),
-                              margin: const EdgeInsets.only(top: 12),
-                              child: Row(
-                                children: <Widget>[
-                                  IconButton(
-                                    key: const ValueKey<String>(
-                                      'registry-selected-block-match-previous',
-                                    ),
-                                    tooltip: 'Предыдущее совпадение',
-                                    onPressed:
-                                        _selectedRegistrySearchMatchIndex > 0
-                                        ? () {
-                                            setState(() {
-                                              _selectedRegistrySearchMatchIndex -=
-                                                  1;
-                                              _selectedRegistrySearchScrollPending =
-                                                  true;
-                                            });
-                                          }
-                                        : null,
-                                    icon: const Icon(Icons.arrow_upward),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      '${_selectedRegistrySearchMatchIndex + 1} '
-                                      'из ${contentMatchOffsets.length}',
-                                      key: const ValueKey<String>(
-                                        'registry-selected-block-match-position',
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    key: const ValueKey<String>(
-                                      'registry-selected-block-match-next',
-                                    ),
-                                    tooltip: 'Следующее совпадение',
-                                    onPressed:
-                                        _selectedRegistrySearchMatchIndex <
-                                            contentMatchOffsets.length - 1
-                                        ? () {
-                                            setState(() {
-                                              _selectedRegistrySearchMatchIndex +=
-                                                  1;
-                                              _selectedRegistrySearchScrollPending =
-                                                  true;
-                                            });
-                                          }
-                                        : null,
-                                    icon: const Icon(Icons.arrow_downward),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else
-                            const Padding(
-                              padding: EdgeInsets.only(top: 12),
-                              child: Text('В содержимом блока совпадений нет.'),
-                            ),
-                        ],
-                        const Divider(height: 24),
-                        if (searchQuery.isEmpty)
-                          SelectableText(node.content)
-                        else
-                          SelectionArea(
-                            child: Text.rich(
-                              TextSpan(
-                                style: Theme.of(context).textTheme.bodyMedium,
-                                children: contentSpans,
-                              ),
-                              key: const ValueKey<String>(
-                                'registry-selected-block-content-highlight',
-                              ),
-                            ),
-                          ),
-                        const Divider(height: 24),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: () async {
-                              await _selectRegistryNode(null);
-                            },
-                            icon: const Icon(Icons.close),
-                            label: const Text('Закрыть'),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                  if (searchQuery.isNotEmpty && contentMatchOffsets.isNotEmpty)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 12,
+                      child: Center(
+                        child: Material(
+                          key: const ValueKey<String>(
+                            'registry-selected-block-match-navigation',
+                          ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surface.withAlpha(200),
+                          elevation: 2,
+                          borderRadius: BorderRadius.circular(28),
+                          clipBehavior: Clip.antiAlias,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              IconButton(
+                                key: const ValueKey<String>(
+                                  'registry-selected-block-match-previous',
+                                ),
+                                tooltip: 'Предыдущее совпадение',
+                                onPressed: _selectedRegistrySearchMatchIndex > 0
+                                    ? () {
+                                        setState(() {
+                                          _selectedRegistrySearchMatchIndex -=
+                                              1;
+                                          _selectedRegistrySearchScrollPending =
+                                              true;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.arrow_upward),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: Text(
+                                  '${_selectedRegistrySearchMatchIndex + 1}/'
+                                  '${contentMatchOffsets.length}',
+                                  key: const ValueKey<String>(
+                                    'registry-selected-block-match-position',
+                                  ),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                key: const ValueKey<String>(
+                                  'registry-selected-block-match-next',
+                                ),
+                                tooltip: 'Следующее совпадение',
+                                onPressed:
+                                    _selectedRegistrySearchMatchIndex <
+                                        contentMatchOffsets.length - 1
+                                    ? () {
+                                        setState(() {
+                                          _selectedRegistrySearchMatchIndex +=
+                                              1;
+                                          _selectedRegistrySearchScrollPending =
+                                              true;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.arrow_downward),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
