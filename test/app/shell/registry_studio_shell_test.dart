@@ -2815,7 +2815,7 @@ void main() {
 
     expect(find.text('Найдено: 1'), findsOneWidget);
     expect(find.text('Результаты поиска · 1 из 2'), findsOneWidget);
-    expect(find.text('Найдено в: содержимое'), findsOneWidget);
+    expect(find.text('Совпадение в содержимом'), findsOneWidget);
 
     expect(
       find.byKey(
@@ -2826,6 +2826,79 @@ void main() {
       ),
       findsOneWidget,
     );
+
+    final Finder selectedSearchResult = find.byKey(
+      ValueKey<String>(child.id.value),
+    );
+
+    await tester.ensureVisible(selectedSearchResult);
+    await tester.pumpAndSettle();
+
+    await tester.tap(selectedSearchResult);
+    await tester.pumpAndSettle();
+
+    final Finder selectedBlockScreen = find.byKey(
+      const ValueKey<String>('registry-selected-block-screen'),
+    );
+
+    expect(selectedBlockScreen, findsOneWidget);
+
+    expect(
+      find.descendant(
+        of: selectedBlockScreen,
+        matching: find.byKey(
+          const ValueKey<String>('registry-selected-block-search-context'),
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: selectedBlockScreen,
+        matching: find.text('Поиск: "Domain content"'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: selectedBlockScreen,
+        matching: find.text('Совпадение в содержимом'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: selectedBlockScreen,
+        matching: find.byKey(
+          const ValueKey<String>('registry-selected-block-search-highlight'),
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: selectedBlockScreen,
+        matching: find.byKey(
+          const ValueKey<String>('registry-selected-block-content-highlight'),
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    expect(store.state?.searchQuery, 'Domain content');
+    expect(store.state?.openRegistryNodeId, child.id);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-selected-block-back')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(selectedBlockScreen, findsNothing);
+    expect(store.state?.searchQuery, 'Domain content');
 
     final Finder clearSearchButton = find.byKey(
       const ValueKey<String>('registry-search-clear'),

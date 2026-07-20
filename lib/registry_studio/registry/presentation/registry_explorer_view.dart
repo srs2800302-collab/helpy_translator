@@ -56,6 +56,8 @@ final class _RegistryExplorerView extends StatefulWidget {
 
 final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _selectedRegistryBlockScrollController =
+      ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey _selectedProblemKey = GlobalKey();
   final GlobalKey _selectedRegistryBlockKey = GlobalKey();
@@ -413,22 +415,31 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     }
 
     if (matches(node.id.value)) {
-      return MapEntry<String, String>('identity', node.id.value);
+      return MapEntry<String, String>(
+        'структурном идентификаторе',
+        node.id.value,
+      );
+    }
+
+    final String title = node.path.segments.last;
+
+    if (matches(title)) {
+      return MapEntry<String, String>('заголовке', title);
     }
 
     final String registryPath = node.path.segments.join(' → ');
 
     if (matches(registryPath)) {
-      return MapEntry<String, String>('RegistryPath', registryPath);
+      return MapEntry<String, String>('пути', registryPath);
     }
 
     if (matches(node.kindId)) {
-      return MapEntry<String, String>('тип', node.kindId);
+      return MapEntry<String, String>('типе блока', node.kindId);
     }
 
     if (matches(node.content)) {
       return MapEntry<String, String>(
-        'содержимое',
+        'содержимом',
         _registrySearchSnippet(node.content, normalizedQuery),
       );
     }
@@ -436,14 +447,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     for (final evidence in node.sourceEvidence) {
       if (matches(evidence.sourceDocumentPath)) {
         return MapEntry<String, String>(
-          'документ-источник',
+          'документе-источнике',
           evidence.sourceDocumentPath,
         );
       }
 
       if (matches(evidence.sourceSnapshotFingerprint)) {
         return MapEntry<String, String>(
-          'fingerprint источника',
+          'версии источника',
           evidence.sourceSnapshotFingerprint,
         );
       }
@@ -451,13 +462,13 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       final String evidencePath = evidence.headingPath.join(' → ');
 
       if (matches(evidencePath)) {
-        return MapEntry<String, String>('путь evidence', evidencePath);
+        return MapEntry<String, String>('пути источника', evidencePath);
       }
 
       final String evidenceLines = '${evidence.startLine}-${evidence.endLine}';
 
       if (matches(evidenceLines)) {
-        return MapEntry<String, String>('строки evidence', evidenceLines);
+        return MapEntry<String, String>('номерах строк', evidenceLines);
       }
     }
 
@@ -563,8 +574,15 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
   Widget _buildSelectedRegistryBlockScreen(
     BuildContext context,
+    RegistryExplorerLoaded loaded,
     RegistryNode node,
   ) {
+    final String searchQuery = loaded.searchQuery.trim();
+
+    final MapEntry<String, String>? searchMatch = searchQuery.isEmpty
+        ? null
+        : _registrySearchMatch(node, searchQuery);
+
     return Material(
       key: const ValueKey<String>('registry-selected-block-screen'),
       child: SafeArea(
@@ -612,7 +630,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
             const Divider(height: 1),
             Expanded(
               child: ListView(
-                controller: _scrollController,
+                controller: _selectedRegistryBlockScrollController,
                 padding: const EdgeInsets.all(16),
                 children: <Widget>[
                   Container(
@@ -620,6 +638,44 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
+                        if (searchMatch != null) ...<Widget>[
+                          Card(
+                            key: const ValueKey<String>(
+                              'registry-selected-block-search-context',
+                            ),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Поиск: "$searchQuery"',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Совпадение в ${searchMatch.key}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  _highlightRegistrySearchText(
+                                    context,
+                                    searchMatch.value,
+                                    searchQuery,
+                                    key: const ValueKey<String>(
+                                      'registry-selected-block-search-highlight',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                         Text(
                           'RegistryPath: '
                           '${node.path.segments.join(' → ')}',
@@ -648,7 +704,19 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             '${evidence.endLine}',
                           ),
                         const Divider(height: 24),
-                        SelectableText(node.content),
+                        if (searchQuery.isEmpty)
+                          SelectableText(node.content)
+                        else
+                          SelectionArea(
+                            child: _highlightRegistrySearchText(
+                              context,
+                              node.content,
+                              searchQuery,
+                              key: const ValueKey<String>(
+                                'registry-selected-block-content-highlight',
+                              ),
+                            ),
+                          ),
                         const Divider(height: 24),
                         Align(
                           alignment: Alignment.centerRight,
@@ -755,6 +823,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       ..dispose();
 
     _searchController.dispose();
+
+    _selectedRegistryBlockScrollController.dispose();
 
     super.dispose();
   }
@@ -1929,7 +1999,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           if (searchMatch != null) ...<Widget>[
                                             const SizedBox(height: 4),
                                             Text(
-                                              'Найдено в: '
+                                              'Совпадение в '
                                               '${searchMatch.key}',
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w600,
@@ -1988,6 +2058,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                   Positioned.fill(
                     child: _buildSelectedRegistryBlockScreen(
                       context,
+                      loaded,
                       loaded.openRegistryNode!,
                     ),
                   ),
