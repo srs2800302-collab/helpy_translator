@@ -90,19 +90,18 @@ final class HelpyRegistrySnapshotLoader
     final Map<RegistryPath, RegistryNodeId> ledgerIdentities =
         identityLedger.identitiesByPath;
 
+    final Map<RegistryPath, RegistryNodeId> inheritedIdentities =
+        inheritedRevision != null &&
+            inheritedRevision != sourceDocument.sourceRevision
+        ? Map<RegistryPath, RegistryNodeId>.of(
+            await identityStore.loadIdentities(inheritedRevision),
+          )
+        : <RegistryPath, RegistryNodeId>{};
+
     final Map<RegistryPath, RegistryNodeId> localIdentities =
-        <RegistryPath, RegistryNodeId>{};
-
-    if (inheritedRevision != null &&
-        inheritedRevision != sourceDocument.sourceRevision) {
-      localIdentities.addAll(
-        await identityStore.loadIdentities(inheritedRevision),
-      );
-    }
-
-    localIdentities.addAll(
-      await identityStore.loadIdentities(sourceDocument.sourceRevision),
-    );
+        Map<RegistryPath, RegistryNodeId>.of(
+          await identityStore.loadIdentities(sourceDocument.sourceRevision),
+        );
 
     final Map<RegistryNodeId, RegistryPath> ledgerPathsById =
         <RegistryNodeId, RegistryPath>{
@@ -176,6 +175,53 @@ final class HelpyRegistrySnapshotLoader
       }
     }
 
+    final Map<RegistryNodeId, RegistryPath> inheritedPathsById =
+        <RegistryNodeId, RegistryPath>{};
+
+    for (final MapEntry<RegistryPath, RegistryNodeId> entry
+        in inheritedIdentities.entries) {
+      final RegExpMatch? match = _nodeIdPattern.firstMatch(entry.value.value);
+
+      if (match == null) {
+        throw StateError(
+          'Helpy Registry inherited identity '
+          '${entry.value.value} is invalid.',
+        );
+      }
+
+      final RegistryPath? duplicateInheritedPath =
+          inheritedPathsById[entry.value];
+
+      if (duplicateInheritedPath != null) {
+        throw StateError(
+          'Helpy Registry inherited identity '
+          '${entry.value.value} is assigned to both '
+          '${duplicateInheritedPath.segments.join(' → ')} and '
+          '${entry.key.segments.join(' → ')}.',
+        );
+      }
+
+      inheritedPathsById[entry.value] = entry.key;
+
+      final int assignedSequence = int.parse(match.group(1)!);
+
+      if (assignedSequence > maximumAssignedSequence) {
+        maximumAssignedSequence = assignedSequence;
+      }
+
+      final bool supersededByCurrentRevision =
+          ledgerIdentities.containsKey(entry.key) ||
+          localIdentities.containsKey(entry.key) ||
+          ledgerPathsById.containsKey(entry.value) ||
+          localPathsById.containsKey(entry.value);
+
+      if (supersededByCurrentRevision) {
+        continue;
+      }
+
+      localIdentities[entry.key] = entry.value;
+    }
+
     final List<HelpyRegistryDocumentNode> interpretedRoots = documentInterpreter
         .interpret(sourceDocument.content);
 
@@ -198,6 +244,7 @@ final class HelpyRegistrySnapshotLoader
     final Set<RegistryNodeId> usedIds = <RegistryNodeId>{
       ...ledgerPathsById.keys,
       ...localPathsById.keys,
+      ...inheritedPathsById.keys,
     };
 
     final Map<RegistryPath, RegistryNodeId> resolvedIdentities =

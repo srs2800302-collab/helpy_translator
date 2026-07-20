@@ -40,12 +40,19 @@ void main() {
             '2222222222222222222222222222222222222222';
         const String extraCommitSha =
             '3333333333333333333333333333333333333333';
+        const String movedCommitSha =
+            '4444444444444444444444444444444444444444';
+        const String renamedCommitSha =
+            '5555555555555555555555555555555555555555';
 
         const String successBlobSha =
             'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
         const String missingBlobSha =
             'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
         const String extraBlobSha = 'cccccccccccccccccccccccccccccccccccccccc';
+        const String movedBlobSha = 'abababababababababababababababababababab';
+        const String renamedBlobSha =
+            'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd';
 
         const String successContent =
             '# Registry\n'
@@ -62,34 +69,52 @@ void main() {
             '# Registry\n'
             'Root content.\n';
 
+        const String movedContent =
+            '# Registry\n'
+            '## Moved Other\n';
+
+        const String renamedContent =
+            '# Registry\n'
+            '## Renamed Other\n';
+
         final Map<String, String> commitByRequestedRef = <String, String>{
           'success': successCommitSha,
           'missing': missingCommitSha,
           'extra': extraCommitSha,
+          'moved': movedCommitSha,
+          'renamed': renamedCommitSha,
         };
 
         final Map<String, String> blobByCommit = <String, String>{
           successCommitSha: successBlobSha,
           missingCommitSha: missingBlobSha,
           extraCommitSha: extraBlobSha,
+          movedCommitSha: movedBlobSha,
+          renamedCommitSha: renamedBlobSha,
         };
 
         final Map<String, String> contentByCommit = <String, String>{
           successCommitSha: successContent,
           missingCommitSha: missingContent,
           extraCommitSha: extraContent,
+          movedCommitSha: movedContent,
+          renamedCommitSha: renamedContent,
         };
 
         final Map<String, String> ledgerBlobByCommit = <String, String>{
           successCommitSha: 'dddddddddddddddddddddddddddddddddddddddd',
           missingCommitSha: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
           extraCommitSha: 'ffffffffffffffffffffffffffffffffffffffff',
+          movedCommitSha: '1212121212121212121212121212121212121212',
+          renamedCommitSha: '3434343434343434343434343434343434343434',
         };
 
         final Map<String, String> ledgerContentByCommit = <String, String>{
           successCommitSha: _completeLedger,
           missingCommitSha: _rootOnlyLedger,
           extraCommitSha: _completeLedger,
+          movedCommitSha: _movedOtherLedger,
+          renamedCommitSha: _rootOnlyLedger,
         };
 
         final HttpServer server = await HttpServer.bind(
@@ -512,6 +537,102 @@ void main() {
           },
         );
 
+        final HelpyRegistrySnapshotLoader movedIdentityLoader =
+            HelpyRegistrySnapshotLoader(
+              identityStore: missingIdentityStore,
+              documentSource: GitHubRegistryDocumentSource(
+                owner: 'owner',
+                repository: 'repository',
+                documentPath: _registryDocumentPath,
+                ref: 'moved',
+                apiBaseUri: apiBaseUri,
+              ),
+              identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
+              ),
+            );
+
+        final RegistrySnapshot movedIdentitySnapshot = await movedIdentityLoader
+            .loadSnapshotAfterRevision(missingCommitSha);
+
+        final movedOther = movedIdentitySnapshot.roots.single.children.single;
+
+        expect(movedIdentitySnapshot.sourceRevision, movedCommitSha);
+
+        expect(
+          movedOther.path,
+          RegistryPath(const <String>['Registry', 'Moved Other']),
+        );
+
+        expect(movedOther.id, RegistryNodeId('helpy.registry.node.000003'));
+
+        expect(
+          missingIdentityStore.savedIdentitiesByRevision[movedCommitSha],
+          <RegistryPath, RegistryNodeId>{
+            RegistryPath(const <String>['Registry', 'Domain']): RegistryNodeId(
+              'helpy.registry.node.000002',
+            ),
+          },
+        );
+
+        final HelpyRegistrySnapshotLoader unconfirmedRenameLoader =
+            HelpyRegistrySnapshotLoader(
+              identityStore: missingIdentityStore,
+              documentSource: GitHubRegistryDocumentSource(
+                owner: 'owner',
+                repository: 'repository',
+                documentPath: _registryDocumentPath,
+                ref: 'renamed',
+                apiBaseUri: apiBaseUri,
+              ),
+              identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
+              ),
+            );
+
+        final RegistrySnapshot unconfirmedRenameSnapshot =
+            await unconfirmedRenameLoader.loadSnapshotAfterRevision(
+              missingCommitSha,
+            );
+
+        final renamedOther =
+            unconfirmedRenameSnapshot.roots.single.children.single;
+
+        expect(unconfirmedRenameSnapshot.sourceRevision, renamedCommitSha);
+
+        expect(
+          renamedOther.path,
+          RegistryPath(const <String>['Registry', 'Renamed Other']),
+        );
+
+        expect(renamedOther.id, RegistryNodeId('helpy.registry.node.000004'));
+
+        expect(
+          missingIdentityStore.savedIdentitiesByRevision[renamedCommitSha],
+          <RegistryPath, RegistryNodeId>{
+            RegistryPath(const <String>['Registry', 'Domain']): RegistryNodeId(
+              'helpy.registry.node.000002',
+            ),
+            RegistryPath(const <String>['Registry', 'Other']): RegistryNodeId(
+              'helpy.registry.node.000003',
+            ),
+            RegistryPath(const <String>['Registry', 'Renamed Other']):
+                RegistryNodeId('helpy.registry.node.000004'),
+          },
+        );
+
         final HelpyRegistrySnapshotLoader retiredIdentityLoader =
             HelpyRegistrySnapshotLoader(
               identityStore: _MemoryHelpyRegistryNodeIdentityStore(),
@@ -600,6 +721,28 @@ const String _completeLedger = '''
     {
       "nodeId": "helpy.registry.node.000002",
       "headingPath": ["Registry", "Domain"],
+      "parentNodeId": "helpy.registry.node.000001"
+    }
+  ]
+}
+''';
+
+const String _movedOtherLedger = '''
+{
+  "version": "v1",
+  "projectId": "helpy",
+  "registryDocumentPath": "docs/architecture/Helpy_Architecture_Registry_v1.md",
+  "initialSourceRevision": "0123456789abcdef0123456789abcdef01234567",
+  "initialSourceSnapshotFingerprint": "git-blob:89abcdef0123456789abcdef0123456789abcdef",
+  "entries": [
+    {
+      "nodeId": "helpy.registry.node.000001",
+      "headingPath": ["Registry"],
+      "parentNodeId": null
+    },
+    {
+      "nodeId": "helpy.registry.node.000003",
+      "headingPath": ["Registry", "Moved Other"],
       "parentNodeId": "helpy.registry.node.000001"
     }
   ]
