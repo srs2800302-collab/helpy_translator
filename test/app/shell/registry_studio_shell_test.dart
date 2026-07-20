@@ -2565,6 +2565,71 @@ void main() {
     expect(entityRow, findsNothing);
   });
 
+  testWidgets('shows search match reason, highlight and clear action', (
+    WidgetTester tester,
+  ) async {
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => snapshot],
+    );
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final RegistryNode child = snapshot.roots.single.children.single;
+
+    final Finder searchField = find.byKey(
+      const ValueKey<String>('registry-search-field'),
+    );
+
+    await tester.enterText(searchField, 'Domain content');
+
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, 'Domain content');
+
+    expect(find.text('Найдено в: содержимое'), findsOneWidget);
+
+    expect(
+      find.byKey(
+        ValueKey<String>(
+          'registry-search-highlight-'
+          '${child.id.value}',
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    final Finder clearSearchButton = find.byKey(
+      const ValueKey<String>('registry-search-clear'),
+    );
+
+    expect(clearSearchButton, findsOneWidget);
+
+    await tester.tap(clearSearchButton);
+    await tester.pumpAndSettle();
+
+    expect(store.state?.searchQuery, isEmpty);
+    expect(find.text('2/2'), findsOneWidget);
+    expect(clearSearchButton, findsNothing);
+
+    final TextFormField restoredSearchField = tester.widget<TextFormField>(
+      searchField,
+    );
+
+    expect(restoredSearchField.controller?.text, isEmpty);
+  });
+
   testWidgets('shows Registry failure and retries through the same loader', (
     WidgetTester tester,
   ) async {

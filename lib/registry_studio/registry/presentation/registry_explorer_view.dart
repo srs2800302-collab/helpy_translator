@@ -52,10 +52,12 @@ final class _RegistryExplorerView extends StatefulWidget {
 
 final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
   final GlobalKey _selectedProblemKey = GlobalKey();
   final GlobalKey _selectedRegistryBlockKey = GlobalKey();
 
   bool _showScrollToTop = false;
+  bool _searchControllerInitialized = false;
   bool _showProblemQueue = false;
   bool _showProblemQueueFullScreen = false;
 
@@ -95,6 +97,24 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
     );
+  }
+
+  TextEditingController _searchTextController(String searchQuery) {
+    if (!_searchControllerInitialized) {
+      _searchController.value = TextEditingValue(
+        text: searchQuery,
+        selection: TextSelection.collapsed(offset: searchQuery.length),
+      );
+
+      _searchControllerInitialized = true;
+    }
+
+    return _searchController;
+  }
+
+  Future<void> _clearSearch() async {
+    _searchController.clear();
+    await _updateSearchQuery('');
   }
 
   Future<void> _updateSearchQuery(String searchQuery) async {
@@ -374,6 +394,144 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     }
   }
 
+  MapEntry<String, String>? _registrySearchMatch(
+    RegistryNode node,
+    String query,
+  ) {
+    final String normalizedQuery = query.trim().toLowerCase();
+
+    if (normalizedQuery.isEmpty) {
+      return null;
+    }
+
+    bool matches(String value) {
+      return value.toLowerCase().contains(normalizedQuery);
+    }
+
+    if (matches(node.id.value)) {
+      return MapEntry<String, String>('identity', node.id.value);
+    }
+
+    final String registryPath = node.path.segments.join(' → ');
+
+    if (matches(registryPath)) {
+      return MapEntry<String, String>('RegistryPath', registryPath);
+    }
+
+    if (matches(node.kindId)) {
+      return MapEntry<String, String>('тип', node.kindId);
+    }
+
+    if (matches(node.content)) {
+      return MapEntry<String, String>(
+        'содержимое',
+        _registrySearchSnippet(node.content, normalizedQuery),
+      );
+    }
+
+    for (final evidence in node.sourceEvidence) {
+      if (matches(evidence.sourceDocumentPath)) {
+        return MapEntry<String, String>(
+          'документ-источник',
+          evidence.sourceDocumentPath,
+        );
+      }
+
+      if (matches(evidence.sourceSnapshotFingerprint)) {
+        return MapEntry<String, String>(
+          'fingerprint источника',
+          evidence.sourceSnapshotFingerprint,
+        );
+      }
+
+      final String evidencePath = evidence.headingPath.join(' → ');
+
+      if (matches(evidencePath)) {
+        return MapEntry<String, String>('путь evidence', evidencePath);
+      }
+
+      final String evidenceLines = '${evidence.startLine}-${evidence.endLine}';
+
+      if (matches(evidenceLines)) {
+        return MapEntry<String, String>('строки evidence', evidenceLines);
+      }
+    }
+
+    return null;
+  }
+
+  String _registrySearchSnippet(String content, String normalizedQuery) {
+    final String normalizedContent = content.toLowerCase();
+
+    final int matchIndex = normalizedContent.indexOf(normalizedQuery);
+
+    if (matchIndex < 0 || content.length <= 180) {
+      return content;
+    }
+
+    final int start = matchIndex > 70 ? matchIndex - 70 : 0;
+
+    final int proposedEnd = matchIndex + normalizedQuery.length + 90;
+
+    final int end = proposedEnd < content.length ? proposedEnd : content.length;
+
+    return '${start > 0 ? '…' : ''}'
+        '${content.substring(start, end).trim()}'
+        '${end < content.length ? '…' : ''}';
+  }
+
+  Widget _highlightRegistrySearchText(
+    BuildContext context,
+    String text,
+    String query, {
+    Key? key,
+    TextStyle? style,
+  }) {
+    final String normalizedQuery = query.trim().toLowerCase();
+
+    if (normalizedQuery.isEmpty) {
+      return Text(text, key: key, style: style);
+    }
+
+    final String normalizedText = text.toLowerCase();
+    final List<TextSpan> spans = <TextSpan>[];
+
+    int cursor = 0;
+
+    while (cursor < text.length) {
+      final int matchIndex = normalizedText.indexOf(normalizedQuery, cursor);
+
+      if (matchIndex < 0) {
+        spans.add(TextSpan(text: text.substring(cursor)));
+        break;
+      }
+
+      if (matchIndex > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, matchIndex)));
+      }
+
+      final int matchEnd = matchIndex + normalizedQuery.length;
+
+      spans.add(
+        TextSpan(
+          text: text.substring(matchIndex, matchEnd),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          ),
+        ),
+      );
+
+      cursor = matchEnd;
+    }
+
+    return Text.rich(
+      TextSpan(children: spans),
+      key: key,
+      style: style,
+    );
+  }
+
   List<RegistryNode> _visibleRegistryNodes(RegistryExplorerLoaded loaded) {
     if (loaded.searchQuery.trim().isNotEmpty) {
       return loaded.searchResults;
@@ -515,6 +673,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     _scrollController
       ..removeListener(_updateScrollToTopVisibility)
       ..dispose();
+
+    _searchController.dispose();
 
     super.dispose();
   }
@@ -903,7 +1063,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                       child: TextFormField(
                         key: const ValueKey<String>('registry-search-field'),
-                        initialValue: loaded.searchQuery,
+                        controller: _searchTextController(loaded.searchQuery),
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
                           labelText: 'Поиск по Registry',
@@ -913,6 +1073,18 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           suffixText:
                               '${loaded.searchResults.length}/'
                               '${loaded.index.nodes.length}',
+                          suffixIcon: loaded.searchQuery.isEmpty
+                              ? null
+                              : IconButton(
+                                  key: const ValueKey<String>(
+                                    'registry-search-clear',
+                                  ),
+                                  tooltip: 'Очистить поиск Registry',
+                                  onPressed: () async {
+                                    await _clearSearch();
+                                  },
+                                  icon: const Icon(Icons.clear),
+                                ),
                           border: const OutlineInputBorder(),
                         ),
                         onChanged: _updateSearchQuery,
@@ -1458,6 +1630,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               .trim()
                               .isNotEmpty;
 
+                          final MapEntry<String, String>? searchMatch =
+                              searchActive
+                              ? _registrySearchMatch(node, loaded.searchQuery)
+                              : null;
+
                           final int depth = node.path.segments.length - 1;
 
                           final bool rootNode = depth == 0;
@@ -1512,14 +1689,69 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           : Icons.description_outlined,
                                     ),
                             ),
-                            title: Text(node.path.segments.last),
-                            subtitle: Text(
-                              '${node.path.segments.join(' → ')}\n'
-                              'Уровень: ${node.path.segments.length} · '
-                              'Дочерних узлов: ${node.children.length}\n'
-                              'Строки ${evidence.startLine}–'
-                              '${evidence.endLine}',
-                            ),
+                            title: searchActive
+                                ? _highlightRegistrySearchText(
+                                    context,
+                                    node.path.segments.last,
+                                    loaded.searchQuery,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  )
+                                : Text(node.path.segments.last),
+                            subtitle: searchActive
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      _highlightRegistrySearchText(
+                                        context,
+                                        node.path.segments.join(' → '),
+                                        loaded.searchQuery,
+                                      ),
+                                      if (searchMatch != null) ...<Widget>[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Найдено в: '
+                                          '${searchMatch.key}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        _highlightRegistrySearchText(
+                                          context,
+                                          searchMatch.value,
+                                          loaded.searchQuery,
+                                          key: ValueKey<String>(
+                                            'registry-search-highlight-'
+                                            '${node.id.value}',
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Уровень: '
+                                        '${node.path.segments.length} · '
+                                        'Дочерних узлов: '
+                                        '${node.children.length}',
+                                      ),
+                                      Text(
+                                        'Строки '
+                                        '${evidence.startLine}–'
+                                        '${evidence.endLine}',
+                                      ),
+                                    ],
+                                  )
+                                : Text(
+                                    '${node.path.segments.join(' → ')}\n'
+                                    'Уровень: '
+                                    '${node.path.segments.length} · '
+                                    'Дочерних узлов: '
+                                    '${node.children.length}\n'
+                                    'Строки '
+                                    '${evidence.startLine}–'
+                                    '${evidence.endLine}',
+                                  ),
                             isThreeLine: true,
                             selected: loaded.openRegistryNodeId == node.id,
                             onTap: () async {
