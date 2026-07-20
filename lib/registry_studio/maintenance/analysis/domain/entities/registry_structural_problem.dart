@@ -42,6 +42,7 @@ final class RegistryStructuralProblem extends Equatable {
               return switch (aspect) {
                 RegistryNodeChangeAspect.kind => 'тип',
                 RegistryNodeChangeAspect.path => 'путь',
+                RegistryNodeChangeAspect.order => 'порядок',
                 RegistryNodeChangeAspect.content => 'содержимое',
                 RegistryNodeChangeAspect.businessScopeOwner => 'владелец бизнес-области',
               };

@@ -4,7 +4,7 @@ import '../../../../registry/domain/entities/registry_node.dart';
 
 enum RegistryNodeChangeKind { added, removed, changed }
 
-enum RegistryNodeChangeAspect { kind, path, content, businessScopeOwner }
+enum RegistryNodeChangeAspect { kind, path, order, content, businessScopeOwner }
 
 final class RegistryNodeChange extends Equatable {
   factory RegistryNodeChange.added({required RegistryNode currentNode}) {

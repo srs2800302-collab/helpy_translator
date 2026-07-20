@@ -206,6 +206,211 @@ void main() {
     );
   });
 
+  test('detects reordered root and sibling nodes by stable identity', () {
+    const String documentPath = 'registry.md';
+    const String previousFingerprint =
+        'git-blob:4444444444444444444444444444444444444444';
+    const String currentFingerprint =
+        'git-blob:5555555555555555555555555555555555555555';
+
+    final RegistryNode previousFirstChild = RegistryNode(
+      id: RegistryNodeId('project.registry.node.child-a'),
+      kindId: 'project.registry.heading.2',
+      path: RegistryPath(const <String>['Root A', 'Child A']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: previousFingerprint,
+          headingPath: const <String>['Root A', 'Child A'],
+          startLine: 2,
+          endLine: 2,
+        ),
+      ],
+      content: 'Child A content.',
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode previousSecondChild = RegistryNode(
+      id: RegistryNodeId('project.registry.node.child-b'),
+      kindId: 'project.registry.heading.2',
+      path: RegistryPath(const <String>['Root A', 'Child B']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: previousFingerprint,
+          headingPath: const <String>['Root A', 'Child B'],
+          startLine: 3,
+          endLine: 3,
+        ),
+      ],
+      content: 'Child B content.',
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode previousFirstRoot = RegistryNode(
+      id: RegistryNodeId('project.registry.node.root-a'),
+      kindId: 'project.registry.heading.1',
+      path: RegistryPath(const <String>['Root A']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: previousFingerprint,
+          headingPath: const <String>['Root A'],
+          startLine: 1,
+          endLine: 3,
+        ),
+      ],
+      content: 'Root A content.',
+      businessScopeOwnerId: null,
+      children: <RegistryNode>[previousFirstChild, previousSecondChild],
+    );
+
+    final RegistryNode previousSecondRoot = RegistryNode(
+      id: RegistryNodeId('project.registry.node.root-b'),
+      kindId: 'project.registry.heading.1',
+      path: RegistryPath(const <String>['Root B']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: previousFingerprint,
+          headingPath: const <String>['Root B'],
+          startLine: 4,
+          endLine: 4,
+        ),
+      ],
+      content: 'Root B content.',
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistrySnapshot previousSnapshot = RegistrySnapshot(
+      projectId: 'project',
+      projectAdapterId: 'project.registry.adapter.v1',
+      sourceDocumentPath: documentPath,
+      sourceRevision: 'revision-a',
+      sourceSnapshotFingerprint: previousFingerprint,
+      sourceContent: 'Previous Registry content.',
+      roots: <RegistryNode>[previousFirstRoot, previousSecondRoot],
+    );
+
+    final RegistryNode currentFirstChild = RegistryNode(
+      id: previousFirstChild.id,
+      kindId: previousFirstChild.kindId,
+      path: previousFirstChild.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: currentFingerprint,
+          headingPath: const <String>['Root A', 'Child A'],
+          startLine: 3,
+          endLine: 3,
+        ),
+      ],
+      content: previousFirstChild.content,
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode currentSecondChild = RegistryNode(
+      id: previousSecondChild.id,
+      kindId: previousSecondChild.kindId,
+      path: previousSecondChild.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: currentFingerprint,
+          headingPath: const <String>['Root A', 'Child B'],
+          startLine: 2,
+          endLine: 2,
+        ),
+      ],
+      content: previousSecondChild.content,
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode currentFirstRoot = RegistryNode(
+      id: previousFirstRoot.id,
+      kindId: previousFirstRoot.kindId,
+      path: previousFirstRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: currentFingerprint,
+          headingPath: const <String>['Root A'],
+          startLine: 1,
+          endLine: 3,
+        ),
+      ],
+      content: previousFirstRoot.content,
+      businessScopeOwnerId: null,
+      children: <RegistryNode>[currentSecondChild, currentFirstChild],
+    );
+
+    final RegistryNode currentSecondRoot = RegistryNode(
+      id: previousSecondRoot.id,
+      kindId: previousSecondRoot.kindId,
+      path: previousSecondRoot.path,
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: documentPath,
+          sourceSnapshotFingerprint: currentFingerprint,
+          headingPath: const <String>['Root B'],
+          startLine: 4,
+          endLine: 4,
+        ),
+      ],
+      content: previousSecondRoot.content,
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistrySnapshot currentSnapshot = RegistrySnapshot(
+      projectId: previousSnapshot.projectId,
+      projectAdapterId: previousSnapshot.projectAdapterId,
+      sourceDocumentPath: documentPath,
+      sourceRevision: 'revision-b',
+      sourceSnapshotFingerprint: currentFingerprint,
+      sourceContent: 'Current Registry content.',
+      roots: <RegistryNode>[currentSecondRoot, currentFirstRoot],
+    );
+
+    final comparison = const RegistrySnapshotComparator().compare(
+      previousIndex: RegistryStructuralIndex(previousSnapshot),
+      currentIndex: RegistryStructuralIndex(currentSnapshot),
+    );
+
+    expect(comparison.addedCount, 0);
+    expect(comparison.removedCount, 0);
+    expect(comparison.changedCount, 4);
+    expect(comparison.problems, hasLength(4));
+
+    for (final RegistryNodeId nodeId in <RegistryNodeId>[
+      previousFirstRoot.id,
+      previousSecondRoot.id,
+      previousFirstChild.id,
+      previousSecondChild.id,
+    ]) {
+      final RegistryNodeChange change = comparison.changes.singleWhere(
+        (RegistryNodeChange candidate) => candidate.currentNode?.id == nodeId,
+      );
+
+      expect(change.kind, RegistryNodeChangeKind.changed);
+      expect(change.aspects, <RegistryNodeChangeAspect>[
+        RegistryNodeChangeAspect.order,
+      ]);
+
+      final RegistryStructuralProblem problem = comparison.problems.singleWhere(
+        (RegistryStructuralProblem candidate) =>
+            candidate.exactNode.id == nodeId,
+      );
+
+      expect(problem.reason, 'Изменены: порядок.');
+    }
+  });
+
   test('rejects snapshots from different Registry coordinates', () {
     const String fingerprint =
         'git-blob:3333333333333333333333333333333333333333';
