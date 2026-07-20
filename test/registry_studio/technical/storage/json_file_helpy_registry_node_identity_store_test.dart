@@ -8,7 +8,11 @@ import 'package:helpy_translator/registry_studio/technical/storage/json_file_hel
 
 void main() {
   group('JsonFileHelpyRegistryNodeIdentityStore', () {
-    test('persists and restores stable local identities', () async {
+    test('persists isolated local identities for exact revisions', () async {
+      const String revisionA = '1111111111111111111111111111111111111111';
+
+      const String revisionB = '2222222222222222222222222222222222222222';
+
       final Directory directory = await Directory.systemTemp.createTemp(
         'helpy_registry_node_identity_store_',
       );
@@ -34,46 +38,65 @@ void main() {
         'Other',
       ]);
 
-      expect(await store.loadIdentities(), isEmpty);
+      expect(await store.loadIdentities(revisionA), isEmpty);
+      expect(await store.loadIdentities(revisionB), isEmpty);
 
-      await store.saveIdentities(<RegistryPath, RegistryNodeId>{
-        otherPath: RegistryNodeId('helpy.registry.node.000536'),
+      await store.saveIdentities(revisionA, <RegistryPath, RegistryNodeId>{
         domainPath: RegistryNodeId('helpy.registry.node.000535'),
       });
 
-      final Map<RegistryPath, RegistryNodeId> restored = await store
-          .loadIdentities();
-
-      expect(restored, <RegistryPath, RegistryNodeId>{
-        domainPath: RegistryNodeId('helpy.registry.node.000535'),
+      await store.saveIdentities(revisionB, <RegistryPath, RegistryNodeId>{
         otherPath: RegistryNodeId('helpy.registry.node.000536'),
       });
 
-      final File stateFile = File(
+      expect(
+        await store.loadIdentities(revisionA),
+        <RegistryPath, RegistryNodeId>{
+          domainPath: RegistryNodeId('helpy.registry.node.000535'),
+        },
+      );
+
+      expect(
+        await store.loadIdentities(revisionB),
+        <RegistryPath, RegistryNodeId>{
+          otherPath: RegistryNodeId('helpy.registry.node.000536'),
+        },
+      );
+
+      final File revisionAFile = File(
         '${directory.path}'
         '${Platform.pathSeparator}'
         '${JsonFileHelpyRegistryNodeIdentityStore.directoryName}'
         '${Platform.pathSeparator}'
-        '${JsonFileHelpyRegistryNodeIdentityStore.fileName}',
+        '${JsonFileHelpyRegistryNodeIdentityStore.revisionDirectoryName}'
+        '${Platform.pathSeparator}'
+        '$revisionA.json',
       );
 
       final Map<String, dynamic> encoded =
-          jsonDecode(await stateFile.readAsString()) as Map<String, dynamic>;
+          jsonDecode(await revisionAFile.readAsString())
+              as Map<String, dynamic>;
+
+      expect(encoded['version'], 'v2');
+      expect(encoded['projectId'], 'helpy');
+      expect(encoded['sourceRevision'], revisionA);
 
       final List<dynamic> entries = encoded['entries'] as List<dynamic>;
 
-      expect(encoded['version'], 'v1');
-      expect(encoded['projectId'], 'helpy');
-
-      expect((entries.first as Map<String, dynamic>)['headingPath'], <String>[
+      expect((entries.single as Map<String, dynamic>)['headingPath'], <String>[
         'Registry',
         'Domain',
       ]);
     });
 
-    test('rejects duplicate node identities in persisted state', () async {
+    test('migrates legacy identities into the first loaded revision', () async {
+      const String currentRevision = '3333333333333333333333333333333333333333';
+
+      const String historicalRevision =
+          '4444444444444444444444444444444444444444';
+
       final Directory directory = await Directory.systemTemp.createTemp(
-        'helpy_registry_node_identity_store_invalid_',
+        'helpy_registry_node_identity_store_legacy_',
       );
 
       addTearDown(() async {
@@ -90,16 +113,78 @@ void main() {
 
       await stateDirectory.create(recursive: true);
 
-      final File stateFile = File(
+      final File legacyFile = File(
         '${stateDirectory.path}'
         '${Platform.pathSeparator}'
-        '${JsonFileHelpyRegistryNodeIdentityStore.fileName}',
+        '${JsonFileHelpyRegistryNodeIdentityStore.legacyFileName}',
       );
 
-      await stateFile.writeAsString(
+      await legacyFile.writeAsString(
         jsonEncode(<String, Object?>{
           'version': 'v1',
           'projectId': 'helpy',
+          'entries': <Map<String, Object?>>[
+            <String, Object?>{
+              'nodeId': 'helpy.registry.node.000535',
+              'headingPath': <String>['Registry', 'Domain'],
+            },
+          ],
+        }),
+      );
+
+      final JsonFileHelpyRegistryNodeIdentityStore store =
+          JsonFileHelpyRegistryNodeIdentityStore(
+            applicationSupportDirectory: directory,
+          );
+
+      final Map<RegistryPath, RegistryNodeId> legacyIdentities = await store
+          .loadIdentities(currentRevision);
+
+      expect(legacyIdentities, hasLength(1));
+
+      await store.saveIdentities(currentRevision, legacyIdentities);
+
+      expect(await legacyFile.exists(), isFalse);
+
+      expect(await store.loadIdentities(currentRevision), legacyIdentities);
+
+      expect(await store.loadIdentities(historicalRevision), isEmpty);
+    });
+
+    test('rejects duplicate identities in revision state', () async {
+      const String revision = '5555555555555555555555555555555555555555';
+
+      final Directory directory = await Directory.systemTemp.createTemp(
+        'helpy_registry_node_identity_store_invalid_',
+      );
+
+      addTearDown(() async {
+        if (await directory.exists()) {
+          await directory.delete(recursive: true);
+        }
+      });
+
+      final Directory revisionDirectory = Directory(
+        '${directory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonFileHelpyRegistryNodeIdentityStore.directoryName}'
+        '${Platform.pathSeparator}'
+        '${JsonFileHelpyRegistryNodeIdentityStore.revisionDirectoryName}',
+      );
+
+      await revisionDirectory.create(recursive: true);
+
+      final File revisionFile = File(
+        '${revisionDirectory.path}'
+        '${Platform.pathSeparator}'
+        '$revision.json',
+      );
+
+      await revisionFile.writeAsString(
+        jsonEncode(<String, Object?>{
+          'version': 'v2',
+          'projectId': 'helpy',
+          'sourceRevision': revision,
           'entries': <Map<String, Object?>>[
             <String, Object?>{
               'nodeId': 'helpy.registry.node.000535',
@@ -119,7 +204,7 @@ void main() {
           );
 
       await expectLater(
-        store.loadIdentities(),
+        store.loadIdentities(revision),
         throwsA(isA<FormatException>()),
       );
     });

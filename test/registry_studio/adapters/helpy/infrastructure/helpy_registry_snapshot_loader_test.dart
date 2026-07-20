@@ -408,7 +408,10 @@ void main() {
           ],
         );
 
-        expect(missingIdentityStore.savedIdentities, hasLength(2));
+        expect(
+          missingIdentityStore.savedIdentitiesByRevision[missingCommitSha],
+          hasLength(2),
+        );
 
         final RegistrySnapshot repeatedMissingIdentitySnapshot =
             await missingIdentityLoader.loadSnapshot();
@@ -421,6 +424,35 @@ void main() {
             RegistryNodeId('helpy.registry.node.000002'),
             RegistryNodeId('helpy.registry.node.000003'),
           ],
+        );
+
+        final RegistrySnapshot exactHistoricalSnapshot =
+            await missingIdentityLoader.loadSnapshotAtRevision(extraCommitSha);
+
+        expect(exactHistoricalSnapshot.sourceRevision, extraCommitSha);
+
+        expect(
+          exactHistoricalSnapshot.roots.single.id,
+          RegistryNodeId('helpy.registry.node.000001'),
+        );
+
+        expect(exactHistoricalSnapshot.roots.single.children, isEmpty);
+
+        expect(missingIdentityStore.loadedRevisions, <String>[
+          missingCommitSha,
+          missingCommitSha,
+          extraCommitSha,
+        ]);
+
+        expect(missingIdentityStore.savedRevisions, <String>[
+          missingCommitSha,
+          missingCommitSha,
+          extraCommitSha,
+        ]);
+
+        expect(
+          missingIdentityStore.savedIdentitiesByRevision[extraCommitSha],
+          isEmpty,
         );
 
         final HelpyRegistrySnapshotLoader retiredIdentityLoader =
@@ -465,19 +497,33 @@ void main() {
 
 final class _MemoryHelpyRegistryNodeIdentityStore
     implements HelpyRegistryNodeIdentityStore {
-  Map<RegistryPath, RegistryNodeId> savedIdentities =
-      <RegistryPath, RegistryNodeId>{};
+  final Map<String, Map<RegistryPath, RegistryNodeId>>
+  savedIdentitiesByRevision = <String, Map<RegistryPath, RegistryNodeId>>{};
+
+  final List<String> loadedRevisions = <String>[];
+  final List<String> savedRevisions = <String>[];
 
   @override
-  Future<Map<RegistryPath, RegistryNodeId>> loadIdentities() async {
-    return Map<RegistryPath, RegistryNodeId>.unmodifiable(savedIdentities);
+  Future<Map<RegistryPath, RegistryNodeId>> loadIdentities(
+    String sourceRevision,
+  ) async {
+    loadedRevisions.add(sourceRevision);
+
+    return Map<RegistryPath, RegistryNodeId>.unmodifiable(
+      savedIdentitiesByRevision[sourceRevision] ??
+          const <RegistryPath, RegistryNodeId>{},
+    );
   }
 
   @override
   Future<void> saveIdentities(
+    String sourceRevision,
     Map<RegistryPath, RegistryNodeId> identities,
   ) async {
-    savedIdentities = Map<RegistryPath, RegistryNodeId>.of(identities);
+    savedRevisions.add(sourceRevision);
+
+    savedIdentitiesByRevision[sourceRevision] =
+        Map<RegistryPath, RegistryNodeId>.of(identities);
   }
 }
 

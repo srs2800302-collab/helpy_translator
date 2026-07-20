@@ -80,7 +80,7 @@ final class HelpyRegistrySnapshotLoader
 
     final Map<RegistryPath, RegistryNodeId> localIdentities =
         Map<RegistryPath, RegistryNodeId>.of(
-          await identityStore.loadIdentities(),
+          await identityStore.loadIdentities(sourceDocument.sourceRevision),
         );
 
     final Map<RegistryNodeId, RegistryPath> ledgerPathsById =
@@ -89,8 +89,6 @@ final class HelpyRegistrySnapshotLoader
               in ledgerIdentities.entries)
             entry.value: entry.key,
         };
-
-    bool localIdentitiesChanged = false;
 
     for (final MapEntry<RegistryPath, RegistryNodeId> entry
         in ledgerIdentities.entries) {
@@ -109,7 +107,6 @@ final class HelpyRegistrySnapshotLoader
       }
 
       localIdentities.remove(entry.key);
-      localIdentitiesChanged = true;
     }
 
     final Map<RegistryNodeId, RegistryPath> localPathsById =
@@ -212,7 +209,6 @@ final class HelpyRegistrySnapshotLoader
 
       localIdentities[interpretedNode.path] = allocatedId;
       resolvedIdentities[interpretedNode.path] = allocatedId;
-      localIdentitiesChanged = true;
     }
 
     final Map<RegistryPath, RegistryNode> nodesByPath =
@@ -274,11 +270,10 @@ final class HelpyRegistrySnapshotLoader
       roots.add(root);
     }
 
-    if (localIdentitiesChanged) {
-      await identityStore.saveIdentities(
-        Map<RegistryPath, RegistryNodeId>.unmodifiable(localIdentities),
-      );
-    }
+    await identityStore.saveIdentities(
+      sourceDocument.sourceRevision,
+      Map<RegistryPath, RegistryNodeId>.unmodifiable(localIdentities),
+    );
 
     return RegistrySnapshot(
       projectId: projectId,
