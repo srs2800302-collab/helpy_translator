@@ -2897,6 +2897,107 @@ void main() {
     expect(siblingEntityRow, findsNothing);
   });
 
+  testWidgets('filters only visible Registry nodes and keeps search global', (
+    WidgetTester tester,
+  ) async {
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => snapshot],
+    );
+
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final RegistryNode root = snapshot.roots.single;
+    final RegistryNode child = root.children.single;
+
+    final Finder rootNode = find.byKey(ValueKey<String>(root.id.value));
+
+    final Finder childNode = find.byKey(ValueKey<String>(child.id.value));
+
+    final Finder filterButton = find.byKey(
+      const ValueKey<String>('registry-view-filter-button'),
+    );
+
+    expect(rootNode, findsOneWidget);
+    expect(filterButton, findsOneWidget);
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-view-filter-sheet')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-leaves')),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(rootNode, findsNothing);
+    expect(childNode, findsOneWidget);
+
+    expect(
+      find.textContaining('Фильтр: Конечные блоки · показано:'),
+      findsOneWidget,
+    );
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-branches')),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(rootNode, findsOneWidget);
+    expect(childNode, findsNothing);
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('registry-search-field')),
+      'Domain content',
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Найдено: 1'), findsOneWidget);
+
+    expect(find.text('Фильтр: Ветки · показано: 0 из 1'), findsOneWidget);
+
+    expect(childNode, findsNothing);
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-all')),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(childNode, findsOneWidget);
+    expect(find.text('Найдено: 1'), findsOneWidget);
+
+    expect(store.state?.searchQuery, 'Domain content');
+    expect(store.state?.openRegistryNodeId, isNull);
+    expect(store.state?.selectedProblemIndex, isNull);
+    expect(loader.loadCount, 1);
+  });
+
   testWidgets('shows search match reason, highlight and clear action', (
     WidgetTester tester,
   ) async {

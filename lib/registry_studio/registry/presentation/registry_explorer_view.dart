@@ -69,6 +69,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   bool _searchControllerInitialized = false;
   bool _showProblemQueue = false;
   bool _showProblemQueueFullScreen = false;
+  String _registryViewFilter = 'all';
 
   final Set<RegistryNodeId> _expandedRegistryNodeIds = <RegistryNodeId>{};
 
@@ -176,6 +177,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
     setState(() {
       _expandedRegistryNodeIds.clear();
+      _registryViewFilter = 'all';
       _showProblemQueue = false;
       _showProblemQueueFullScreen = false;
       _selectedRegistrySearchContextId = null;
@@ -1005,8 +1007,226 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     );
   }
 
+  List<RegistryNode> _allRegistryNodes(List<RegistryNode> roots) {
+    final List<RegistryNode> nodes = <RegistryNode>[];
+
+    void append(List<RegistryNode> currentNodes) {
+      for (final RegistryNode node in currentNodes) {
+        nodes.add(node);
+
+        if (node.children.isNotEmpty) {
+          append(node.children);
+        }
+      }
+    }
+
+    append(roots);
+
+    return nodes;
+  }
+
+  bool _matchesRegistryViewFilter(RegistryNode node) {
+    switch (_registryViewFilter) {
+      case 'roots':
+        return node.path.segments.length == 1;
+      case 'branches':
+        return node.children.isNotEmpty;
+      case 'leaves':
+        return node.children.isEmpty;
+      default:
+        if (_registryViewFilter.startsWith('kind:')) {
+          return node.kindId == _registryViewFilter.substring('kind:'.length);
+        }
+
+        return true;
+    }
+  }
+
+  String _registryViewFilterLabel() {
+    switch (_registryViewFilter) {
+      case 'roots':
+        return 'Корневые узлы';
+      case 'branches':
+        return 'Ветки';
+      case 'leaves':
+        return 'Конечные блоки';
+      default:
+        if (_registryViewFilter.startsWith('kind:')) {
+          return 'Тип: '
+              '${_registryViewFilter.substring('kind:'.length)}';
+        }
+
+        return 'Все узлы';
+    }
+  }
+
+  Future<void> _showRegistryViewFilter(RegistryExplorerLoaded loaded) async {
+    final List<RegistryNode> allNodes = _allRegistryNodes(
+      loaded.snapshot.roots,
+    );
+
+    final Map<String, int> kindCounts = <String, int>{};
+
+    for (final RegistryNode node in allNodes) {
+      kindCounts.update(
+        node.kindId,
+        (int count) => count + 1,
+        ifAbsent: () => 1,
+      );
+    }
+
+    final List<String> kindIds = kindCounts.keys.toList()..sort();
+
+    final int rootCount = allNodes
+        .where((RegistryNode node) => node.path.segments.length == 1)
+        .length;
+
+    final int branchCount = allNodes
+        .where((RegistryNode node) => node.children.isNotEmpty)
+        .length;
+
+    final int leafCount = allNodes
+        .where((RegistryNode node) => node.children.isEmpty)
+        .length;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        Widget option({
+          required String keyValue,
+          required String filter,
+          required IconData icon,
+          required String title,
+          required int count,
+        }) {
+          final bool selected = _registryViewFilter == filter;
+
+          return ListTile(
+            key: ValueKey<String>(keyValue),
+            leading: Icon(icon),
+            title: Text(title),
+            subtitle: Text('Узлов: $count'),
+            selected: selected,
+            trailing: selected ? const Icon(Icons.check) : null,
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+
+              if (!mounted) {
+                return;
+              }
+
+              setState(() {
+                _registryViewFilter = filter;
+                _expandedRegistryNodeIds.clear();
+              });
+
+              if (_scrollController.hasClients) {
+                _scrollController.jumpTo(0);
+              }
+            },
+          );
+        }
+
+        return SafeArea(
+          child: SizedBox(
+            key: const ValueKey<String>('registry-view-filter-sheet'),
+            height: MediaQuery.sizeOf(sheetContext).height * 0.72,
+            child: Column(
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          'Фильтр отображения Registry',
+                          style: Theme.of(sheetContext).textTheme.titleLarge,
+                        ),
+                      ),
+                      IconButton(
+                        key: const ValueKey<String>(
+                          'registry-view-filter-close',
+                        ),
+                        tooltip: 'Закрыть фильтр',
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView(
+                    children: <Widget>[
+                      option(
+                        keyValue: 'registry-view-filter-all',
+                        filter: 'all',
+                        icon: Icons.view_list_outlined,
+                        title: 'Все узлы',
+                        count: allNodes.length,
+                      ),
+                      option(
+                        keyValue: 'registry-view-filter-roots',
+                        filter: 'roots',
+                        icon: Icons.account_tree_outlined,
+                        title: 'Корневые узлы',
+                        count: rootCount,
+                      ),
+                      option(
+                        keyValue: 'registry-view-filter-branches',
+                        filter: 'branches',
+                        icon: Icons.folder_outlined,
+                        title: 'Ветки',
+                        count: branchCount,
+                      ),
+                      option(
+                        keyValue: 'registry-view-filter-leaves',
+                        filter: 'leaves',
+                        icon: Icons.description_outlined,
+                        title: 'Конечные блоки',
+                        count: leafCount,
+                      ),
+                      if (kindIds.isNotEmpty)
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
+                          child: Text('Фактически обнаруженные типы'),
+                        ),
+                      for (final String kindId in kindIds)
+                        option(
+                          keyValue: 'registry-view-filter-kind-$kindId',
+                          filter: 'kind:$kindId',
+                          icon: Icons.category_outlined,
+                          title: kindId,
+                          count: kindCounts[kindId]!,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   List<RegistryNode> _visibleRegistryNodes(RegistryExplorerLoaded loaded) {
-    if (loaded.searchQuery.trim().isNotEmpty) {
+    final bool searchActive = loaded.searchQuery.trim().isNotEmpty;
+
+    if (_registryViewFilter != 'all') {
+      final List<RegistryNode> candidates = searchActive
+          ? loaded.searchResults
+          : _allRegistryNodes(loaded.snapshot.roots);
+
+      return candidates
+          .where(_matchesRegistryViewFilter)
+          .toList(growable: false);
+    }
+
+    if (searchActive) {
       return loaded.searchResults;
     }
 
@@ -1766,9 +1986,42 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ? null
                               : 'Найдено: '
                                     '${loaded.searchResults.length}',
-                          suffixIcon: loaded.searchQuery.isEmpty
+                          helperText: _registryViewFilter == 'all'
                               ? null
-                              : IconButton(
+                              : loaded.searchQuery.trim().isEmpty
+                              ? 'Фильтр: '
+                                    '${_registryViewFilterLabel()} · '
+                                    'показано: '
+                                    '${_visibleRegistryNodes(loaded).length}'
+                              : 'Фильтр: '
+                                    '${_registryViewFilterLabel()} · '
+                                    'показано: '
+                                    '${_visibleRegistryNodes(loaded).length} '
+                                    'из ${loaded.searchResults.length}',
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Badge(
+                                isLabelVisible: _registryViewFilter != 'all',
+                                child: IconButton(
+                                  key: const ValueKey<String>(
+                                    'registry-view-filter-button',
+                                  ),
+                                  tooltip: _registryViewFilter == 'all'
+                                      ? 'Фильтр отображения Registry'
+                                      : 'Фильтр: '
+                                            '${_registryViewFilterLabel()}',
+                                  color: _registryViewFilter == 'all'
+                                      ? null
+                                      : Theme.of(context).colorScheme.primary,
+                                  onPressed: () async {
+                                    await _showRegistryViewFilter(loaded);
+                                  },
+                                  icon: const Icon(Icons.filter_alt_outlined),
+                                ),
+                              ),
+                              if (loaded.searchQuery.isNotEmpty)
+                                IconButton(
                                   key: const ValueKey<String>(
                                     'registry-search-clear',
                                   ),
@@ -1778,6 +2031,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                   },
                                   icon: const Icon(Icons.clear),
                                 ),
+                            ],
+                          ),
+                          suffixIconConstraints: const BoxConstraints(
+                            minWidth: 48,
+                          ),
                           border: const OutlineInputBorder(),
                         ),
                         onChanged: _updateSearchQuery,
