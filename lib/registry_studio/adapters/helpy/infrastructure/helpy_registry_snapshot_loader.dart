@@ -1,14 +1,10 @@
-import '../../../core/domain/entities/registry_entity.dart';
 import '../../../core/domain/evidence/source_evidence.dart';
-import '../../../core/domain/value_objects/registry_entity_id.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
 import '../../../registry/application/contracts/registry_snapshot_loader.dart';
 import '../../../registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../../registry/domain/entities/registry_node.dart';
 import '../../../registry/domain/entities/registry_snapshot.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
-import '../domain/helpy_registry_semantic_contract.dart';
-import '../domain/helpy_registry_semantic_identity_overlay.dart';
 import 'github_registry_document_source.dart';
 import 'helpy_registry_document_interpreter.dart';
 import 'helpy_registry_node_identity_ledger_source.dart';
@@ -48,8 +44,7 @@ final class HelpyRegistrySnapshotLoader
   });
 
   static const String projectId = 'helpy';
-  static const String projectAdapterId =
-      HelpyRegistrySemanticContract.adapterId;
+  static const String projectAdapterId = 'helpy.registry.adapter.v1';
 
   final GitHubRegistryDocumentSource documentSource;
   final HelpyRegistryNodeIdentityLedgerSource identityLedgerSource;
@@ -135,52 +130,12 @@ final class HelpyRegistrySnapshotLoader
       );
     }
 
-    final HelpyRegistrySemanticIdentityOverlay semanticIdentityOverlay =
-        HelpyRegistrySemanticIdentityOverlay.v1;
-
-    final Map<RegistryNodeId, RegistryPath> activePathsByNodeId =
-        <RegistryNodeId, RegistryPath>{
-          for (final HelpyRegistryDocumentNode interpretedNode
-              in interpretedNodes)
-            identitiesByPath[interpretedNode.path]!: interpretedNode.path,
-        };
-
-    final Set<RegistryNodeId> activeNodeIds = activePathsByNodeId.keys.toSet();
-
-    final bool semanticIdentityOverlayApplies = semanticIdentityOverlay
-        .appliesTo(
-          sourceDocumentPath: sourceDocument.documentPath,
-          sourceRevision: sourceDocument.sourceRevision,
-        );
-
-    if (semanticIdentityOverlayApplies) {
-      semanticIdentityOverlay.validateActiveEvidencePaths(
-        activePathsByNodeId: activePathsByNodeId,
-      );
-    }
-
-    final Map<RegistryNodeId, RegistryEntityId?> businessScopeOwnerIdsByNodeId =
-        semanticIdentityOverlayApplies
-        ? semanticIdentityOverlay.resolveBusinessScopeOwnerIds(
-            activeNodeIds: activeNodeIds,
-            parentIdByNodeId: identityLedger.parentIdByNodeId,
-          )
-        : Map<RegistryNodeId, RegistryEntityId?>.unmodifiable(
-            <RegistryNodeId, RegistryEntityId?>{
-              for (final RegistryNodeId nodeId in activeNodeIds) nodeId: null,
-            },
-          );
-
     final Map<RegistryPath, RegistryNode> nodesByPath =
         <RegistryPath, RegistryNode>{};
 
     for (final HelpyRegistryDocumentNode interpretedNode
         in interpretedNodes.reversed) {
       final RegistryNodeId nodeId = identitiesByPath[interpretedNode.path]!;
-      final HelpyRegistrySemanticIdentity? semanticIdentity =
-          semanticIdentityOverlayApplies
-          ? semanticIdentityOverlay.identitiesByNodeId[nodeId]
-          : null;
 
       final List<RegistryNode> children = <RegistryNode>[];
 
@@ -201,9 +156,8 @@ final class HelpyRegistrySnapshotLoader
       nodesByPath[interpretedNode.path] = RegistryNode(
         id: nodeId,
         kindId:
-            semanticIdentity?.kind.kindId ??
             'helpy.registry.markdown.heading.'
-                '${interpretedNode.headingLevel}',
+            '${interpretedNode.headingLevel}',
         path: interpretedNode.path,
         sourceEvidence: <SourceEvidence>[
           SourceEvidence(
@@ -215,7 +169,7 @@ final class HelpyRegistrySnapshotLoader
           ),
         ],
         content: interpretedNode.content,
-        businessScopeOwnerId: businessScopeOwnerIdsByNodeId[nodeId],
+        businessScopeOwnerId: null,
         children: children,
       );
     }
@@ -235,25 +189,6 @@ final class HelpyRegistrySnapshotLoader
       roots.add(root);
     }
 
-    final Map<RegistryNodeId, RegistryNode> activeNodesById =
-        <RegistryNodeId, RegistryNode>{
-          for (final RegistryNode node in nodesByPath.values) node.id: node,
-        };
-
-    final List<RegistryEntity> entities = semanticIdentityOverlayApplies
-        ? <RegistryEntity>[
-            for (final HelpyRegistrySemanticIdentity identity
-                in semanticIdentityOverlay.identities)
-              identity.materializeEntity(
-                activeNodesById[identity.nodeId] ??
-                    (throw StateError(
-                      'Helpy Registry semantic node was not constructed for '
-                      '${identity.nodeId.value}.',
-                    )),
-              ),
-          ]
-        : const <RegistryEntity>[];
-
     return RegistrySnapshot(
       projectId: projectId,
       projectAdapterId: projectAdapterId,
@@ -262,7 +197,6 @@ final class HelpyRegistrySnapshotLoader
       sourceSnapshotFingerprint: sourceDocument.sourceSnapshotFingerprint,
       sourceContent: sourceDocument.content,
       roots: roots,
-      entities: entities,
     );
   }
 }
