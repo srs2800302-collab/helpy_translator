@@ -138,6 +138,96 @@ void main() {
       );
     });
 
+    test('falls back to the current ledger when an older revision '
+        'predates it', () async {
+      const String missingRevision = '1111111111111111111111111111111111111111';
+      const String currentRevision = '2222222222222222222222222222222222222222';
+      const String currentBlobSha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
+      final HttpServer server = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        0,
+      );
+
+      addTearDown(() async {
+        await server.close(force: true);
+      });
+
+      server.listen((HttpRequest request) async {
+        final String accept =
+            request.headers.value(HttpHeaders.acceptHeader) ?? '';
+
+        if (request.uri.path == '/repos/owner/repository/commits/main') {
+          request.response.headers.contentType = ContentType.json;
+
+          request.response.write(
+            jsonEncode(<String, Object>{'sha': currentRevision}),
+          );
+
+          await request.response.close();
+          return;
+        }
+
+        if (request.uri.path == _ledgerRequestPath &&
+            request.uri.queryParameters['ref'] == missingRevision) {
+          request.response.statusCode = HttpStatus.notFound;
+
+          await request.response.close();
+          return;
+        }
+
+        if (request.uri.path == _ledgerRequestPath &&
+            request.uri.queryParameters['ref'] == currentRevision &&
+            accept == 'application/vnd.github.object+json') {
+          request.response.headers.contentType = ContentType.json;
+
+          request.response.write(
+            jsonEncode(<String, Object>{'type': 'file', 'sha': currentBlobSha}),
+          );
+
+          await request.response.close();
+          return;
+        }
+
+        if (request.uri.path == _ledgerRequestPath &&
+            request.uri.queryParameters['ref'] == currentRevision &&
+            accept == 'application/vnd.github.raw+json') {
+          request.response.headers.contentType = ContentType.text;
+
+          request.response.write(_validLedger);
+
+          await request.response.close();
+          return;
+        }
+
+        request.response.statusCode = HttpStatus.notFound;
+
+        await request.response.close();
+      });
+
+      final HelpyRegistryNodeIdentityLedgerSource source =
+          HelpyRegistryNodeIdentityLedgerSource(
+            documentSource: GitHubRegistryDocumentSource(
+              owner: 'owner',
+              repository: 'repository',
+              documentPath:
+                  HelpyRegistryNodeIdentityLedgerSource.ledgerDocumentPath,
+              ref: 'main',
+              apiBaseUri: Uri.parse(
+                'http://${server.address.address}:'
+                '${server.port}/',
+              ),
+            ),
+          );
+
+      final HelpyRegistryNodeIdentityLedger ledger = await source.load(
+        exactRevision: missingRevision,
+      );
+
+      expect(ledger.entries, hasLength(2));
+      expect(ledger.maximumAssignedSequence, 2);
+    });
+
     test('rejects a configured non-ledger document path', () {
       expect(
         () => HelpyRegistryNodeIdentityLedgerSource(

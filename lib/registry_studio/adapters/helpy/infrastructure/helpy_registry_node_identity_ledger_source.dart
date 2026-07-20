@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import '../../../core/domain/value_objects/registry_path.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
@@ -74,20 +75,36 @@ final class HelpyRegistryNodeIdentityLedgerSource {
   Future<HelpyRegistryNodeIdentityLedger> load({
     required String exactRevision,
   }) async {
-    final ledgerDocument = await documentSource.load(
-      exactRevision: exactRevision,
-    );
+    try {
+      final ledgerDocument = await documentSource.load(
+        exactRevision: exactRevision,
+      );
+
+      if (ledgerDocument.documentPath != ledgerDocumentPath) {
+        throw const FormatException(
+          'Helpy Registry node identity ledger source path is invalid.',
+        );
+      }
+
+      if (ledgerDocument.sourceRevision != exactRevision) {
+        throw StateError(
+          'Helpy Registry node identity ledger was not loaded from '
+          'the requested exact revision.',
+        );
+      }
+
+      return decode(ledgerDocument.content);
+    } on HttpException catch (error) {
+      if (!error.message.contains('HTTP 404')) {
+        rethrow;
+      }
+    }
+
+    final ledgerDocument = await documentSource.load();
 
     if (ledgerDocument.documentPath != ledgerDocumentPath) {
       throw const FormatException(
         'Helpy Registry node identity ledger source path is invalid.',
-      );
-    }
-
-    if (ledgerDocument.sourceRevision != exactRevision) {
-      throw StateError(
-        'Helpy Registry node identity ledger was not loaded from '
-        'the requested exact revision.',
       );
     }
 

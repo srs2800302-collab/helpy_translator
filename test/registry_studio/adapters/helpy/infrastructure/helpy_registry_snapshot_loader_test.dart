@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/application/contracts/helpy_registry_node_identity_store.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_snapshot_loader.dart';
@@ -185,6 +186,7 @@ void main() {
 
         final HelpyRegistrySnapshotLoader successfulLoader =
             HelpyRegistrySnapshotLoader(
+              identityStore: _MemoryHelpyRegistryNodeIdentityStore(),
               documentSource: GitHubRegistryDocumentSource(
                 owner: 'owner',
                 repository: 'repository',
@@ -312,6 +314,7 @@ void main() {
 
         final HelpyRegistrySnapshotLoader mismatchedRepositoryLoader =
             HelpyRegistrySnapshotLoader(
+              identityStore: _MemoryHelpyRegistryNodeIdentityStore(),
               documentSource: GitHubRegistryDocumentSource(
                 owner: 'owner',
                 repository: 'repository',
@@ -339,6 +342,7 @@ void main() {
 
         final HelpyRegistrySnapshotLoader mismatchedDocumentLoader =
             HelpyRegistrySnapshotLoader(
+              identityStore: _MemoryHelpyRegistryNodeIdentityStore(),
               documentSource: GitHubRegistryDocumentSource(
                 owner: 'owner',
                 repository: 'repository',
@@ -362,8 +366,12 @@ void main() {
           throwsA(isA<FormatException>()),
         );
 
+        final _MemoryHelpyRegistryNodeIdentityStore missingIdentityStore =
+            _MemoryHelpyRegistryNodeIdentityStore();
+
         final HelpyRegistrySnapshotLoader missingIdentityLoader =
             HelpyRegistrySnapshotLoader(
+              identityStore: missingIdentityStore,
               documentSource: GitHubRegistryDocumentSource(
                 owner: 'owner',
                 repository: 'repository',
@@ -382,48 +390,42 @@ void main() {
               ),
             );
 
-        await expectLater(
-          missingIdentityLoader.loadSnapshot(),
-          throwsA(
-            isA<HelpyRegistryMissingNodeIdentityException>()
-                .having(
-                  (HelpyRegistryMissingNodeIdentityException error) =>
-                      error.sourceDocumentPath,
-                  'sourceDocumentPath',
-                  _registryDocumentPath,
-                )
-                .having(
-                  (HelpyRegistryMissingNodeIdentityException error) =>
-                      error.sourceRevision,
-                  'sourceRevision',
-                  missingCommitSha,
-                )
-                .having(
-                  (HelpyRegistryMissingNodeIdentityException error) =>
-                      error.sourceSnapshotFingerprint,
-                  'sourceSnapshotFingerprint',
-                  'git-blob:$missingBlobSha',
-                )
-                .having(
-                  (HelpyRegistryMissingNodeIdentityException error) =>
-                      error.missingPaths,
-                  'missingPaths',
-                  <RegistryPath>[
-                    RegistryPath(const <String>['Registry', 'Domain']),
-                    RegistryPath(const <String>['Registry', 'Other']),
-                  ],
-                )
-                .having(
-                  (HelpyRegistryMissingNodeIdentityException error) =>
-                      error.maximumAssignedSequence,
-                  'maximumAssignedSequence',
-                  1,
-                ),
-          ),
+        final RegistrySnapshot missingIdentitySnapshot =
+            await missingIdentityLoader.loadSnapshot();
+
+        expect(
+          missingIdentitySnapshot.roots.single.id,
+          RegistryNodeId('helpy.registry.node.000001'),
+        );
+
+        expect(
+          missingIdentitySnapshot.roots.single.children
+              .map((node) => node.id)
+              .toList(growable: false),
+          <RegistryNodeId>[
+            RegistryNodeId('helpy.registry.node.000002'),
+            RegistryNodeId('helpy.registry.node.000003'),
+          ],
+        );
+
+        expect(missingIdentityStore.savedIdentities, hasLength(2));
+
+        final RegistrySnapshot repeatedMissingIdentitySnapshot =
+            await missingIdentityLoader.loadSnapshot();
+
+        expect(
+          repeatedMissingIdentitySnapshot.roots.single.children
+              .map((node) => node.id)
+              .toList(growable: false),
+          <RegistryNodeId>[
+            RegistryNodeId('helpy.registry.node.000002'),
+            RegistryNodeId('helpy.registry.node.000003'),
+          ],
         );
 
         final HelpyRegistrySnapshotLoader retiredIdentityLoader =
             HelpyRegistrySnapshotLoader(
+              identityStore: _MemoryHelpyRegistryNodeIdentityStore(),
               documentSource: GitHubRegistryDocumentSource(
                 owner: 'owner',
                 repository: 'repository',
@@ -459,6 +461,24 @@ void main() {
       },
     );
   });
+}
+
+final class _MemoryHelpyRegistryNodeIdentityStore
+    implements HelpyRegistryNodeIdentityStore {
+  Map<RegistryPath, RegistryNodeId> savedIdentities =
+      <RegistryPath, RegistryNodeId>{};
+
+  @override
+  Future<Map<RegistryPath, RegistryNodeId>> loadIdentities() async {
+    return Map<RegistryPath, RegistryNodeId>.unmodifiable(savedIdentities);
+  }
+
+  @override
+  Future<void> saveIdentities(
+    Map<RegistryPath, RegistryNodeId> identities,
+  ) async {
+    savedIdentities = Map<RegistryPath, RegistryNodeId>.of(identities);
+  }
 }
 
 const String _completeLedger = '''

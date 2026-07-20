@@ -8,6 +8,7 @@ import '../../registry_studio/maintenance/history/application/contracts/registry
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
+import '../../registry_studio/technical/storage/json_file_helpy_registry_node_identity_store.dart';
 import '../../registry_studio/technical/storage/json_file_registry_revision_state_store.dart';
 import '../../registry_studio/technical/storage/json_lines_registry_analysis_history_store.dart';
 import '../shell/registry_studio_shell.dart';
@@ -40,6 +41,7 @@ final class RegistryStudioApplication extends StatelessWidget {
               ref: 'main',
             ),
           ),
+          identityStore: const JsonFileHelpyRegistryNodeIdentityStore(),
         );
 
     return RegistryStudioApplication(
@@ -47,7 +49,8 @@ final class RegistryStudioApplication extends StatelessWidget {
       registrySnapshotLoader: registrySnapshotLoader,
       registrySnapshotRevisionLoader: registrySnapshotLoader,
       registryRevisionStateStore: const JsonFileRegistryRevisionStateStore(),
-      registryAnalysisHistoryStore: const JsonLinesRegistryAnalysisHistoryStore(),
+      registryAnalysisHistoryStore:
+          const JsonLinesRegistryAnalysisHistoryStore(),
     );
   }
 
