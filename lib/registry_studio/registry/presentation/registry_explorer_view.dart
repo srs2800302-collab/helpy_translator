@@ -1100,6 +1100,68 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                                                     'Проблем: '
                                                                     '${entry.problemCount}',
                                                                   ),
+                                                                  if (entry
+                                                                          .problems
+                                                                          .isEmpty &&
+                                                                      entry.problemCount >
+                                                                          0)
+                                                                    const Text(
+                                                                      'Подробности проблем '
+                                                                      'отсутствуют в legacy history.',
+                                                                    ),
+                                                                  for (
+                                                                    int
+                                                                    problemIndex =
+                                                                        0;
+                                                                    problemIndex <
+                                                                        entry
+                                                                            .problems
+                                                                            .length;
+                                                                    problemIndex +=
+                                                                        1
+                                                                  )
+                                                                    Padding(
+                                                                      key: ValueKey<String>(
+                                                                        'registry-analysis-history-problem-'
+                                                                        '$historyIndex-'
+                                                                        '$problemIndex-'
+                                                                        '${entry.problems[problemIndex].nodeId}',
+                                                                      ),
+                                                                      padding:
+                                                                          const EdgeInsets.only(
+                                                                            top:
+                                                                                12,
+                                                                          ),
+                                                                      child: Column(
+                                                                        crossAxisAlignment:
+                                                                            CrossAxisAlignment.start,
+                                                                        children:
+                                                                            <
+                                                                              Widget
+                                                                            >[
+                                                                              Text(
+                                                                                'Статус: '
+                                                                                '${entry.problems[problemIndex].status == 'affected' ? 'затронуто' : entry.problems[problemIndex].status} · '
+                                                                                '${entry.problems[problemIndex].pathSegments.last}',
+                                                                                style: const TextStyle(
+                                                                                  fontWeight: FontWeight.w600,
+                                                                                ),
+                                                                              ),
+                                                                              Text(
+                                                                                'Identity: '
+                                                                                '${entry.problems[problemIndex].nodeId}',
+                                                                              ),
+                                                                              Text(
+                                                                                'Путь: '
+                                                                                '${entry.problems[problemIndex].pathSegments.join(' → ')}',
+                                                                              ),
+                                                                              Text(
+                                                                                'Причина: '
+                                                                                '${entry.problems[problemIndex].reason}',
+                                                                              ),
+                                                                            ],
+                                                                      ),
+                                                                    ),
                                                                 ],
                                                               ),
                                                             );

@@ -1,5 +1,80 @@
 import 'package:equatable/equatable.dart';
 
+final class RegistryAnalysisHistoryProblem extends Equatable {
+  factory RegistryAnalysisHistoryProblem({
+    required String nodeId,
+    required List<String> pathSegments,
+    required String status,
+    required String reason,
+  }) {
+    final String normalizedNodeId = nodeId.trim();
+    final List<String> normalizedPathSegments = pathSegments
+        .map((String segment) => segment.trim())
+        .toList(growable: false);
+    final String normalizedStatus = status.trim();
+    final String normalizedReason = reason.trim();
+
+    if (normalizedNodeId.isEmpty) {
+      throw ArgumentError.value(
+        nodeId,
+        'nodeId',
+        'Registry analysis history problem identity '
+            'must not be empty.',
+      );
+    }
+
+    if (normalizedPathSegments.isEmpty ||
+        normalizedPathSegments.any((String segment) => segment.isEmpty)) {
+      throw ArgumentError.value(
+        pathSegments,
+        'pathSegments',
+        'Registry analysis history problem path '
+            'must contain non-empty segments.',
+      );
+    }
+
+    if (normalizedStatus.isEmpty) {
+      throw ArgumentError.value(
+        status,
+        'status',
+        'Registry analysis history problem status '
+            'must not be empty.',
+      );
+    }
+
+    if (normalizedReason.isEmpty) {
+      throw ArgumentError.value(
+        reason,
+        'reason',
+        'Registry analysis history problem reason '
+            'must not be empty.',
+      );
+    }
+
+    return RegistryAnalysisHistoryProblem._(
+      nodeId: normalizedNodeId,
+      pathSegments: List<String>.unmodifiable(normalizedPathSegments),
+      status: normalizedStatus,
+      reason: normalizedReason,
+    );
+  }
+
+  const RegistryAnalysisHistoryProblem._({
+    required this.nodeId,
+    required this.pathSegments,
+    required this.status,
+    required this.reason,
+  });
+
+  final String nodeId;
+  final List<String> pathSegments;
+  final String status;
+  final String reason;
+
+  @override
+  List<Object> get props => <Object>[nodeId, pathSegments, status, reason];
+}
+
 final class RegistryAnalysisHistoryEntry extends Equatable {
   factory RegistryAnalysisHistoryEntry({
     required DateTime loadedAt,
@@ -17,6 +92,8 @@ final class RegistryAnalysisHistoryEntry extends Equatable {
     int cleanBaselineRemovedCount = 0,
     int cleanBaselineChangedCount = 0,
     int problemCount = 0,
+    List<RegistryAnalysisHistoryProblem> problems =
+        const <RegistryAnalysisHistoryProblem>[],
   }) {
     final String normalizedProjectId = projectId.trim();
     final String normalizedProjectAdapterId = projectAdapterId.trim();
@@ -27,6 +104,8 @@ final class RegistryAnalysisHistoryEntry extends Equatable {
     final String? normalizedPreviousRevision = previousRevision?.trim();
     final String? normalizedCleanBaselineRevision = cleanBaselineRevision
         ?.trim();
+    final List<RegistryAnalysisHistoryProblem> normalizedProblems =
+        List<RegistryAnalysisHistoryProblem>.unmodifiable(problems);
 
     if (normalizedProjectId.isEmpty) {
       throw ArgumentError.value(
@@ -116,6 +195,14 @@ final class RegistryAnalysisHistoryEntry extends Equatable {
       }
     }
 
+    if (normalizedProblems.isNotEmpty &&
+        normalizedProblems.length != problemCount) {
+      throw ArgumentError(
+        'Registry analysis history problem details '
+        'must match the problem count.',
+      );
+    }
+
     if (normalizedPreviousRevision == null &&
         (previousAddedCount != 0 ||
             previousRemovedCount != 0 ||
@@ -152,6 +239,7 @@ final class RegistryAnalysisHistoryEntry extends Equatable {
       cleanBaselineRemovedCount: cleanBaselineRemovedCount,
       cleanBaselineChangedCount: cleanBaselineChangedCount,
       problemCount: problemCount,
+      problems: normalizedProblems,
     );
   }
 
@@ -171,6 +259,7 @@ final class RegistryAnalysisHistoryEntry extends Equatable {
     required this.cleanBaselineRemovedCount,
     required this.cleanBaselineChangedCount,
     required this.problemCount,
+    required this.problems,
   });
 
   final DateTime loadedAt;
@@ -188,6 +277,7 @@ final class RegistryAnalysisHistoryEntry extends Equatable {
   final int cleanBaselineRemovedCount;
   final int cleanBaselineChangedCount;
   final int problemCount;
+  final List<RegistryAnalysisHistoryProblem> problems;
 
   int get previousChangeCount =>
       previousAddedCount + previousRemovedCount + previousChangedCount;
@@ -214,5 +304,6 @@ final class RegistryAnalysisHistoryEntry extends Equatable {
     cleanBaselineRemovedCount,
     cleanBaselineChangedCount,
     problemCount,
+    problems,
   ];
 }

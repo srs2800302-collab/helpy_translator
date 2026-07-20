@@ -1327,6 +1327,48 @@ void main() {
         findsOneWidget,
       );
 
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('Identity: ${previousChild.id.value}'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text(
+            'Путь: ${previousChild.path.segments.join(' → ')}',
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('Причина: Изменены: содержимое.'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('Identity: ${addedChild.id.value}'),
+        ),
+        findsOneWidget,
+      );
+
+      expect(
+        find.descendant(
+          of: latestHistoryEntry,
+          matching: find.text('Причина: Добавлен новый Registry-узел.'),
+        ),
+        findsOneWidget,
+      );
+
       await tester.tap(find.byTooltip('Закрыть историю анализа'));
       await tester.pumpAndSettle();
 

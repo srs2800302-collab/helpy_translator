@@ -387,6 +387,17 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         cleanBaselineRemovedCount: cleanBaselineComparison?.removedCount ?? 0,
         cleanBaselineChangedCount: cleanBaselineComparison?.changedCount ?? 0,
         problemCount: problems.length,
+        problems: problems
+            .map(
+              (RegistryStructuralProblem problem) =>
+                  RegistryAnalysisHistoryProblem(
+                    nodeId: problem.exactNode.id.value,
+                    pathSegments: problem.path.segments,
+                    status: problem.status.name,
+                    reason: problem.reason,
+                  ),
+            )
+            .toList(growable: false),
       );
 
       final bool historyEntryAlreadyRecorded =
@@ -410,7 +421,13 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
               historyEntry.cleanBaselineRemovedCount &&
           analysisHistory.last.cleanBaselineChangedCount ==
               historyEntry.cleanBaselineChangedCount &&
-          analysisHistory.last.problemCount == historyEntry.problemCount;
+          analysisHistory.last.problemCount == historyEntry.problemCount &&
+          analysisHistory.last.problems.length ==
+              historyEntry.problems.length &&
+          analysisHistory.last.problems.asMap().entries.every(
+            (MapEntry<int, RegistryAnalysisHistoryProblem> problemEntry) =>
+                problemEntry.value == historyEntry.problems[problemEntry.key],
+          );
 
       if (!historyEntryAlreadyRecorded) {
         await analysisHistoryStore.appendHistoryEntry(historyEntry);
@@ -619,9 +636,18 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         cleanBaselineAddedCount: cleanBaselineComparison?.addedCount ?? 0,
         cleanBaselineRemovedCount: cleanBaselineComparison?.removedCount ?? 0,
         cleanBaselineChangedCount: cleanBaselineComparison?.changedCount ?? 0,
-        problemCount:
-            (cleanBaselineComparison ?? previousComparison)?.problems.length ??
-            0,
+        problemCount: refreshedProblems.length,
+        problems: refreshedProblems
+            .map(
+              (RegistryStructuralProblem problem) =>
+                  RegistryAnalysisHistoryProblem(
+                    nodeId: problem.exactNode.id.value,
+                    pathSegments: problem.path.segments,
+                    status: problem.status.name,
+                    reason: problem.reason,
+                  ),
+            )
+            .toList(growable: false),
       );
 
       final bool historyEntryAlreadyRecorded =
@@ -647,7 +673,13 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           analysisHistoryBeforeRefresh.last.cleanBaselineChangedCount ==
               historyEntry.cleanBaselineChangedCount &&
           analysisHistoryBeforeRefresh.last.problemCount ==
-              historyEntry.problemCount;
+              historyEntry.problemCount &&
+          analysisHistoryBeforeRefresh.last.problems.length ==
+              historyEntry.problems.length &&
+          analysisHistoryBeforeRefresh.last.problems.asMap().entries.every(
+            (MapEntry<int, RegistryAnalysisHistoryProblem> problemEntry) =>
+                problemEntry.value == historyEntry.problems[problemEntry.key],
+          );
 
       if (!historyEntryAlreadyRecorded) {
         await analysisHistoryStore.appendHistoryEntry(historyEntry);

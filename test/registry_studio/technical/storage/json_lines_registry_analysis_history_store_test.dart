@@ -59,7 +59,15 @@ void main() {
               cleanBaselineAddedCount: 4,
               cleanBaselineRemovedCount: 5,
               cleanBaselineChangedCount: 6,
-              problemCount: 15,
+              problemCount: 1,
+              problems: <RegistryAnalysisHistoryProblem>[
+                RegistryAnalysisHistoryProblem(
+                  nodeId: 'project.registry.node.000002',
+                  pathSegments: const <String>['Registry', 'Domain'],
+                  status: 'affected',
+                  reason: 'Изменены: содержимое.',
+                ),
+              ],
             );
 
         await store.appendHistoryEntry(firstEntry);
@@ -95,12 +103,23 @@ void main() {
         final Map<String, dynamic> secondEncoded =
             jsonDecode(lines.last) as Map<String, dynamic>;
 
-        expect(firstEncoded['version'], 'v1');
+        expect(firstEncoded['version'], 'v2');
         expect(firstEncoded['loadedAt'], '2026-07-19T16:00:00.000Z');
         expect(secondEncoded['sourceRevision'], 'revision-b');
         expect(secondEncoded['previousAddedCount'], 2);
         expect(secondEncoded['cleanBaselineChangedCount'], 6);
-        expect(secondEncoded['problemCount'], 15);
+        expect(secondEncoded['problemCount'], 1);
+
+        final List<dynamic> encodedProblems =
+            secondEncoded['problems'] as List<dynamic>;
+
+        expect(encodedProblems, hasLength(1));
+        expect(encodedProblems.single, <String, Object?>{
+          'nodeId': 'project.registry.node.000002',
+          'path': <String>['Registry', 'Domain'],
+          'status': 'affected',
+          'reason': 'Изменены: содержимое.',
+        });
 
         for (final Map<String, dynamic> encoded in <Map<String, dynamic>>[
           firstEncoded,
@@ -109,10 +128,38 @@ void main() {
           expect(encoded.containsKey('sourceContent'), isFalse);
           expect(encoded.containsKey('roots'), isFalse);
           expect(encoded.containsKey('changes'), isFalse);
-          expect(encoded.containsKey('problems'), isFalse);
+          expect(encoded.containsKey('problems'), isTrue);
         }
       },
     );
+
+    test('restores legacy v1 history without problem details', () async {
+      final Directory historyDirectory = Directory(
+        '${directory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonLinesRegistryAnalysisHistoryStore.directoryName}',
+      );
+
+      await historyDirectory.create(recursive: true);
+
+      final File historyFile = File(
+        '${historyDirectory.path}'
+        '${Platform.pathSeparator}'
+        '${JsonLinesRegistryAnalysisHistoryStore.fileName}',
+      );
+
+      await historyFile.writeAsString(
+        '${jsonEncode(<String, Object?>{'version': 'v1', 'loadedAt': '2026-07-19T18:00:00.000Z', 'projectId': 'project', 'projectAdapterId': 'project.adapter', 'sourceDocumentPath': 'registry.md', 'sourceRevision': 'revision-legacy', 'sourceSnapshotFingerprint': 'git-blob:legacy', 'previousRevision': null, 'cleanBaselineRevision': null, 'previousAddedCount': 0, 'previousRemovedCount': 0, 'previousChangedCount': 0, 'cleanBaselineAddedCount': 0, 'cleanBaselineRemovedCount': 0, 'cleanBaselineChangedCount': 0, 'problemCount': 1})}\n',
+        flush: true,
+      );
+
+      final List<RegistryAnalysisHistoryEntry> restored = await store
+          .loadHistory();
+
+      expect(restored, hasLength(1));
+      expect(restored.single.problemCount, 1);
+      expect(restored.single.problems, isEmpty);
+    });
 
     test('rejects an invalid append-only history line', () async {
       final Directory historyDirectory = Directory(

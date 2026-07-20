@@ -15,7 +15,8 @@ final class JsonLinesRegistryAnalysisHistoryStore
   static const String directoryName = 'registry_studio';
   static const String fileName = 'registry_analysis_history_v1.jsonl';
 
-  static const String _formatVersion = 'v1';
+  static const String _legacyFormatVersion = 'v1';
+  static const String _formatVersion = 'v2';
 
   final Directory? applicationSupportDirectory;
 
@@ -94,7 +95,7 @@ final class JsonLinesRegistryAnalysisHistoryStore
 
       final Map<String, Object?> entry = decodedEntry.cast<String, Object?>();
 
-      const Set<String> expectedKeys = <String>{
+      const Set<String> legacyExpectedKeys = <String>{
         'version',
         'loadedAt',
         'projectId',
@@ -113,6 +114,25 @@ final class JsonLinesRegistryAnalysisHistoryStore
         'problemCount',
       };
 
+      const Set<String> currentExpectedKeys = <String>{
+        ...legacyExpectedKeys,
+        'problems',
+      };
+
+      final Object? version = entry['version'];
+      final Set<String> expectedKeys;
+
+      if (version == _legacyFormatVersion) {
+        expectedKeys = legacyExpectedKeys;
+      } else if (version == _formatVersion) {
+        expectedKeys = currentExpectedKeys;
+      } else {
+        throw FormatException(
+          'Registry analysis history line '
+          '${lineIndex + 1} version is unsupported.',
+        );
+      }
+
       final Set<String> actualKeys = entry.keys.toSet();
 
       if (actualKeys.length != expectedKeys.length ||
@@ -123,7 +143,6 @@ final class JsonLinesRegistryAnalysisHistoryStore
         );
       }
 
-      final Object? version = entry['version'];
       final Object? loadedAt = entry['loadedAt'];
       final Object? projectId = entry['projectId'];
       final Object? projectAdapterId = entry['projectAdapterId'];
@@ -142,13 +161,7 @@ final class JsonLinesRegistryAnalysisHistoryStore
       final Object? cleanBaselineChangedCount =
           entry['cleanBaselineChangedCount'];
       final Object? problemCount = entry['problemCount'];
-
-      if (version != _formatVersion) {
-        throw FormatException(
-          'Registry analysis history line '
-          '${lineIndex + 1} version is unsupported.',
-        );
-      }
+      final Object? problems = entry['problems'];
 
       if (loadedAt is! String ||
           projectId is! String ||
@@ -164,11 +177,88 @@ final class JsonLinesRegistryAnalysisHistoryStore
           cleanBaselineAddedCount is! int ||
           cleanBaselineRemovedCount is! int ||
           cleanBaselineChangedCount is! int ||
-          problemCount is! int) {
+          problemCount is! int ||
+          (version == _formatVersion && problems is! List<Object?>)) {
         throw FormatException(
           'Registry analysis history line '
           '${lineIndex + 1} field types are invalid.',
         );
+      }
+
+      final List<RegistryAnalysisHistoryProblem> parsedProblems =
+          <RegistryAnalysisHistoryProblem>[];
+
+      if (problems is List<Object?>) {
+        for (
+          int problemIndex = 0;
+          problemIndex < problems.length;
+          problemIndex += 1
+        ) {
+          final Object? decodedProblem = problems[problemIndex];
+
+          if (decodedProblem is! Map<Object?, Object?> ||
+              decodedProblem.keys.any((Object? key) => key is! String)) {
+            throw FormatException(
+              'Registry analysis history line '
+              '${lineIndex + 1} problem '
+              '${problemIndex + 1} must be an object.',
+            );
+          }
+
+          final Map<String, Object?> encodedProblem = decodedProblem
+              .cast<String, Object?>();
+
+          const Set<String> problemKeys = <String>{
+            'nodeId',
+            'path',
+            'status',
+            'reason',
+          };
+
+          if (encodedProblem.length != problemKeys.length ||
+              !encodedProblem.keys.toSet().containsAll(problemKeys)) {
+            throw FormatException(
+              'Registry analysis history line '
+              '${lineIndex + 1} problem '
+              '${problemIndex + 1} schema is invalid.',
+            );
+          }
+
+          final Object? nodeId = encodedProblem['nodeId'];
+          final Object? path = encodedProblem['path'];
+          final Object? status = encodedProblem['status'];
+          final Object? reason = encodedProblem['reason'];
+
+          if (nodeId is! String ||
+              path is! List<Object?> ||
+              status is! String ||
+              reason is! String ||
+              path.any((Object? segment) => segment is! String)) {
+            throw FormatException(
+              'Registry analysis history line '
+              '${lineIndex + 1} problem '
+              '${problemIndex + 1} field types are invalid.',
+            );
+          }
+
+          try {
+            parsedProblems.add(
+              RegistryAnalysisHistoryProblem(
+                nodeId: nodeId,
+                pathSegments: path.cast<String>(),
+                status: status,
+                reason: reason,
+              ),
+            );
+          } on ArgumentError catch (error) {
+            throw FormatException(
+              'Registry analysis history line '
+              '${lineIndex + 1} problem '
+              '${problemIndex + 1} values are invalid.',
+              error,
+            );
+          }
+        }
       }
 
       final DateTime parsedLoadedAt;
@@ -201,6 +291,7 @@ final class JsonLinesRegistryAnalysisHistoryStore
             cleanBaselineRemovedCount: cleanBaselineRemovedCount,
             cleanBaselineChangedCount: cleanBaselineChangedCount,
             problemCount: problemCount,
+            problems: parsedProblems,
           ),
         );
       } on ArgumentError catch (error) {
@@ -251,7 +342,25 @@ final class JsonLinesRegistryAnalysisHistoryStore
     );
 
     await historyFile.writeAsString(
-      '${jsonEncode(<String, Object?>{'version': _formatVersion, 'loadedAt': entry.loadedAt.toUtc().toIso8601String(), 'projectId': entry.projectId, 'projectAdapterId': entry.projectAdapterId, 'sourceDocumentPath': entry.sourceDocumentPath, 'sourceRevision': entry.sourceRevision, 'sourceSnapshotFingerprint': entry.sourceSnapshotFingerprint, 'previousRevision': entry.previousRevision, 'cleanBaselineRevision': entry.cleanBaselineRevision, 'previousAddedCount': entry.previousAddedCount, 'previousRemovedCount': entry.previousRemovedCount, 'previousChangedCount': entry.previousChangedCount, 'cleanBaselineAddedCount': entry.cleanBaselineAddedCount, 'cleanBaselineRemovedCount': entry.cleanBaselineRemovedCount, 'cleanBaselineChangedCount': entry.cleanBaselineChangedCount, 'problemCount': entry.problemCount})}\n',
+      '${jsonEncode(<String, Object?>{
+        'version': _formatVersion,
+        'loadedAt': entry.loadedAt.toUtc().toIso8601String(),
+        'projectId': entry.projectId,
+        'projectAdapterId': entry.projectAdapterId,
+        'sourceDocumentPath': entry.sourceDocumentPath,
+        'sourceRevision': entry.sourceRevision,
+        'sourceSnapshotFingerprint': entry.sourceSnapshotFingerprint,
+        'previousRevision': entry.previousRevision,
+        'cleanBaselineRevision': entry.cleanBaselineRevision,
+        'previousAddedCount': entry.previousAddedCount,
+        'previousRemovedCount': entry.previousRemovedCount,
+        'previousChangedCount': entry.previousChangedCount,
+        'cleanBaselineAddedCount': entry.cleanBaselineAddedCount,
+        'cleanBaselineRemovedCount': entry.cleanBaselineRemovedCount,
+        'cleanBaselineChangedCount': entry.cleanBaselineChangedCount,
+        'problemCount': entry.problemCount,
+        'problems': entry.problems.map((RegistryAnalysisHistoryProblem problem) => <String, Object?>{'nodeId': problem.nodeId, 'path': problem.pathSegments, 'status': problem.status, 'reason': problem.reason}).toList(growable: false),
+      })}\n',
       mode: FileMode.append,
       flush: true,
     );
