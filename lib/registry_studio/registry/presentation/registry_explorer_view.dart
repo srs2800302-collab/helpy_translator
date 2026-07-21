@@ -69,7 +69,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   bool _searchControllerInitialized = false;
   bool _showProblemQueue = false;
   bool _showProblemQueueFullScreen = false;
-  String _registryViewFilter = 'all';
   RegistryNodeId? _registryBranchScopeNodeId;
   double _registryBranchFilterScrollOffset = 0;
 
@@ -179,7 +178,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
     setState(() {
       _expandedRegistryNodeIds.clear();
-      _registryViewFilter = 'all';
       _registryBranchScopeNodeId = null;
       _registryBranchFilterScrollOffset = 0;
       _showProblemQueue = false;
@@ -215,6 +213,44 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _updateRegistryViewFilter(String filter) async {
+    final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
+
+    try {
+      await cubit.updateRegistryViewFilter(filter);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final String message = error.toString().trim();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.isEmpty ? 'Не удалось сохранить фильтр Registry.' : message,
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _registryBranchScopeNodeId = null;
+      _registryBranchFilterScrollOffset = 0;
+      _expandedRegistryNodeIds.clear();
+    });
+
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
     }
   }
 
@@ -1165,8 +1201,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     return nodes;
   }
 
-  bool _matchesRegistryViewFilter(RegistryNode node) {
-    switch (_registryViewFilter) {
+  bool _matchesRegistryViewFilter(
+    RegistryNode node,
+    String registryViewFilter,
+  ) {
+    switch (registryViewFilter) {
       case 'roots':
         return node.path.segments.length == 1;
       case 'branches':
@@ -1174,16 +1213,16 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       case 'leaves':
         return node.children.isEmpty;
       default:
-        if (_registryViewFilter.startsWith('kind:')) {
-          return node.kindId == _registryViewFilter.substring('kind:'.length);
+        if (registryViewFilter.startsWith('kind:')) {
+          return node.kindId == registryViewFilter.substring('kind:'.length);
         }
 
         return true;
     }
   }
 
-  String _registryViewFilterLabel() {
-    switch (_registryViewFilter) {
+  String _registryViewFilterLabel(String registryViewFilter) {
+    switch (registryViewFilter) {
       case 'roots':
         return 'Корневые узлы';
       case 'branches':
@@ -1191,9 +1230,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       case 'leaves':
         return 'Конечные блоки';
       default:
-        if (_registryViewFilter.startsWith('kind:')) {
+        if (registryViewFilter.startsWith('kind:')) {
           return 'Тип: '
-              '${_registryViewFilter.substring('kind:'.length)}';
+              '${registryViewFilter.substring('kind:'.length)}';
         }
 
         return 'Все узлы';
@@ -1240,7 +1279,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
           required String title,
           required int count,
         }) {
-          final bool selected = _registryViewFilter == filter;
+          final bool selected = loaded.registryViewFilter == filter;
 
           return ListTile(
             key: ValueKey<String>(keyValue),
@@ -1249,23 +1288,16 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
             subtitle: Text('Узлов: $count'),
             selected: selected,
             trailing: selected ? const Icon(Icons.check) : null,
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
+
+              await Future<void>.delayed(Duration.zero);
 
               if (!mounted) {
                 return;
               }
 
-              setState(() {
-                _registryViewFilter = filter;
-                _registryBranchScopeNodeId = null;
-                _registryBranchFilterScrollOffset = 0;
-                _expandedRegistryNodeIds.clear();
-              });
-
-              if (_scrollController.hasClients) {
-                _scrollController.jumpTo(0);
-              }
+              await _updateRegistryViewFilter(filter);
             },
           );
         }
@@ -1356,7 +1388,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   }
 
   RegistryNode? _registryBranchScopeRoot(RegistryExplorerLoaded loaded) {
-    if (_registryViewFilter != 'branches' ||
+    if (loaded.registryViewFilter != 'branches' ||
         _registryBranchScopeNodeId == null) {
       return null;
     }
@@ -1407,6 +1439,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
   bool _hasVisibleRegistryChildren(
     RegistryNode node, {
+    required String registryViewFilter,
     required bool searchActive,
     required bool branchScopeActive,
   }) {
@@ -1414,11 +1447,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       return false;
     }
 
-    if (_registryViewFilter == 'all') {
+    if (registryViewFilter == 'all') {
       return node.children.isNotEmpty;
     }
 
-    if (_registryViewFilter == 'branches' && branchScopeActive) {
+    if (registryViewFilter == 'branches' && branchScopeActive) {
       return node.children.isNotEmpty;
     }
 
@@ -1426,25 +1459,32 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   }
 
   List<RegistryNode> _visibleRegistryNodes(RegistryExplorerLoaded loaded) {
+    final String registryViewFilter = loaded.registryViewFilter;
     final bool searchActive = loaded.searchQuery.trim().isNotEmpty;
 
     if (searchActive) {
-      if (_registryViewFilter == 'all') {
+      if (registryViewFilter == 'all') {
         return loaded.searchResults;
       }
 
       return loaded.searchResults
-          .where(_matchesRegistryViewFilter)
+          .where(
+            (RegistryNode node) =>
+                _matchesRegistryViewFilter(node, registryViewFilter),
+          )
           .toList(growable: false);
     }
 
-    if (_registryViewFilter == 'branches') {
+    if (registryViewFilter == 'branches') {
       final RegistryNode? branchScopeRoot = _registryBranchScopeRoot(loaded);
 
       if (branchScopeRoot == null) {
-        return _allRegistryNodes(
-          loaded.snapshot.roots,
-        ).where(_matchesRegistryViewFilter).toList(growable: false);
+        return _allRegistryNodes(loaded.snapshot.roots)
+            .where(
+              (RegistryNode node) =>
+                  _matchesRegistryViewFilter(node, registryViewFilter),
+            )
+            .toList(growable: false);
       }
 
       final List<RegistryNode> visibleNodes = <RegistryNode>[];
@@ -1469,10 +1509,13 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       return visibleNodes;
     }
 
-    if (_registryViewFilter != 'all') {
-      return _allRegistryNodes(
-        loaded.snapshot.roots,
-      ).where(_matchesRegistryViewFilter).toList(growable: false);
+    if (registryViewFilter != 'all') {
+      return _allRegistryNodes(loaded.snapshot.roots)
+          .where(
+            (RegistryNode node) =>
+                _matchesRegistryViewFilter(node, registryViewFilter),
+          )
+          .toList(growable: false);
     }
 
     final List<RegistryNode> visibleNodes = <RegistryNode>[];
@@ -2117,15 +2160,15 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ? null
                               : 'Найдено: '
                                     '${loaded.searchResults.length}',
-                          helperText: _registryViewFilter == 'all'
+                          helperText: loaded.registryViewFilter == 'all'
                               ? null
                               : loaded.searchQuery.trim().isEmpty
                               ? 'Фильтр: '
-                                    '${_registryViewFilterLabel()} · '
+                                    '${_registryViewFilterLabel(loaded.registryViewFilter)} · '
                                     'показано: '
                                     '${_visibleRegistryNodes(loaded).length}'
                               : 'Фильтр: '
-                                    '${_registryViewFilterLabel()} · '
+                                    '${_registryViewFilterLabel(loaded.registryViewFilter)} · '
                                     'показано: '
                                     '${_visibleRegistryNodes(loaded).length} '
                                     'из ${loaded.searchResults.length}',
@@ -2133,16 +2176,17 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               Badge(
-                                isLabelVisible: _registryViewFilter != 'all',
+                                isLabelVisible:
+                                    loaded.registryViewFilter != 'all',
                                 child: IconButton(
                                   key: const ValueKey<String>(
                                     'registry-view-filter-button',
                                   ),
-                                  tooltip: _registryViewFilter == 'all'
+                                  tooltip: loaded.registryViewFilter == 'all'
                                       ? 'Фильтр отображения Registry'
                                       : 'Фильтр: '
-                                            '${_registryViewFilterLabel()}',
-                                  color: _registryViewFilter == 'all'
+                                            '${_registryViewFilterLabel(loaded.registryViewFilter)}',
+                                  color: loaded.registryViewFilter == 'all'
                                       ? null
                                       : Theme.of(context).colorScheme.primary,
                                   onPressed: () async {
@@ -2545,7 +2589,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 _registryBranchScopeRoot(loaded);
 
                             final bool branchEntryList =
-                                _registryViewFilter == 'branches' &&
+                                loaded.registryViewFilter == 'branches' &&
                                 branchScopeRoot == null &&
                                 !searchActive;
 
@@ -2613,7 +2657,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               _registryBranchScopeRoot(loaded);
 
                           final bool branchEntryList =
-                              _registryViewFilter == 'branches' &&
+                              loaded.registryViewFilter == 'branches' &&
                               branchScopeRoot == null &&
                               !searchActive;
 
@@ -2632,6 +2676,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                           final bool expandable = _hasVisibleRegistryChildren(
                             node,
+                            registryViewFilter: loaded.registryViewFilter,
                             searchActive: searchActive,
                             branchScopeActive: branchScopeRoot != null,
                           );

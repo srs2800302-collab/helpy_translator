@@ -2662,6 +2662,98 @@ void main() {
       lessThan(tester.getTopLeft(refreshButton).dx),
     );
   });
+  testWidgets('restores persisted Registry Explorer filter after restart', (
+    WidgetTester tester,
+  ) async {
+    final _MemoryRegistryRevisionStateStore store =
+        _MemoryRegistryRevisionStateStore();
+    final _MemoryRegistryAnalysisHistoryStore historyStore =
+        _MemoryRegistryAnalysisHistoryStore();
+
+    final _QueuedRegistrySnapshotLoader firstLoader =
+        _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+          () async => snapshot,
+        ]);
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: firstLoader,
+        registrySnapshotRefreshLoader: firstLoader,
+        registrySnapshotRevisionLoader: firstLoader,
+        registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: historyStore,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder filterButton = find.byKey(
+      const ValueKey<String>('registry-view-filter-button'),
+    );
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-branches')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.state?.registryViewFilter, 'branches');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+
+    final _QueuedRegistrySnapshotLoader restoredLoader =
+        _QueuedRegistrySnapshotLoader(
+          const <Future<RegistrySnapshot> Function()>[],
+          exactSnapshots: <String, RegistrySnapshot>{
+            snapshot.sourceRevision: snapshot,
+          },
+        );
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: restoredLoader,
+        registrySnapshotRefreshLoader: restoredLoader,
+        registrySnapshotRevisionLoader: restoredLoader,
+        registryRevisionStateStore: store,
+        registryAnalysisHistoryStore: historyStore,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder restoredFilterButton = find.byKey(
+      const ValueKey<String>('registry-view-filter-button'),
+    );
+
+    expect(
+      tester.widget<IconButton>(restoredFilterButton).tooltip,
+      'Фильтр: Ветки',
+    );
+
+    await tester.tap(restoredFilterButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<ListTile>(
+            find.byKey(const ValueKey<String>('registry-view-filter-branches')),
+          )
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<ListTile>(
+            find.byKey(const ValueKey<String>('registry-view-filter-all')),
+          )
+          .selected,
+      isFalse,
+    );
+  });
+
   testWidgets('filters only visible Registry nodes and keeps search global', (
     WidgetTester tester,
   ) async {
@@ -2758,6 +2850,7 @@ void main() {
     expect(find.text('Найдено: 1'), findsOneWidget);
 
     expect(store.state?.searchQuery, 'Domain content');
+    expect(store.state?.registryViewFilter, 'all');
     expect(store.state?.openRegistryNodeId, isNull);
     expect(store.state?.selectedProblemIndex, isNull);
     expect(loader.loadCount, 1);

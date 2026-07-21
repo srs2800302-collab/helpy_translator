@@ -35,6 +35,7 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
     required this.openRegistryNodeId,
     required this.openRegistryPath,
     required this.selectedProblemIndex,
+    required this.registryViewFilter,
     this.analysisHistory = const <RegistryAnalysisHistoryEntry>[],
     this.searchQuery = '',
   });
@@ -48,6 +49,7 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
   final RegistryNodeId? openRegistryNodeId;
   final RegistryPath? openRegistryPath;
   final int? selectedProblemIndex;
+  final String registryViewFilter;
   final List<RegistryAnalysisHistoryEntry> analysisHistory;
   final String searchQuery;
 
@@ -167,12 +169,14 @@ final class RegistryExplorerFailure extends RegistryExplorerState {
   const RegistryExplorerFailure(
     this.message, {
     required this.openRegistryNodeBeforeRefresh,
+    required this.registryViewFilterBeforeRefresh,
     this.searchQueryBeforeRefresh = '',
     this.analysisHistoryBeforeRefresh = const <RegistryAnalysisHistoryEntry>[],
   });
 
   final String message;
   final RegistryNode? openRegistryNodeBeforeRefresh;
+  final String registryViewFilterBeforeRefresh;
   final String searchQueryBeforeRefresh;
   final List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh;
 }
@@ -201,7 +205,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   RegistrySnapshot? _previousSnapshot;
   RegistrySnapshot? _cleanBaselineSnapshot;
 
-  Future<void> _pendingSearchQueryWrite = Future<void>.value();
+  Future<void> _pendingRevisionStateWrite = Future<void>.value();
 
   Future<void> restore() async {
     if (_isLoading) {
@@ -213,6 +217,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     emit(const RegistryExplorerLoading());
 
     String searchQuery = '';
+    String registryViewFilter = 'all';
     List<RegistryAnalysisHistoryEntry> analysisHistory =
         const <RegistryAnalysisHistoryEntry>[];
 
@@ -223,6 +228,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           await analysisHistoryStore.loadHistory();
 
       searchQuery = persistedState?.searchQuery ?? '';
+      registryViewFilter = persistedState?.registryViewFilter ?? 'all';
 
       late final RegistrySnapshot snapshot;
       RegistrySnapshot? previousSnapshot;
@@ -360,6 +366,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             previousRevision: null,
             cleanBaselineRevision: null,
             searchQuery: searchQuery,
+            registryViewFilter: registryViewFilter,
           ),
         );
       }
@@ -456,6 +463,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: openRegistryNodeId,
             openRegistryPath: openRegistryPath,
             selectedProblemIndex: selectedProblemIndex,
+            registryViewFilter: registryViewFilter,
             analysisHistory: analysisHistory,
             searchQuery: searchQuery,
           ),
@@ -469,6 +477,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           RegistryExplorerFailure(
             message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
             openRegistryNodeBeforeRefresh: null,
+            registryViewFilterBeforeRefresh: registryViewFilter,
             searchQueryBeforeRefresh: searchQuery,
             analysisHistoryBeforeRefresh: analysisHistory,
           ),
@@ -488,6 +497,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
     final RegistryNode? openRegistryNodeBeforeRefresh;
     final RegistryStructuralProblem? selectedProblemBeforeRefresh;
+    final String registryViewFilterBeforeRefresh;
     final String searchQueryBeforeRefresh;
     final List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh =
         stateBeforeRefresh is RegistryExplorerLoaded
@@ -499,15 +509,19 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     if (stateBeforeRefresh is RegistryExplorerLoaded) {
       openRegistryNodeBeforeRefresh = stateBeforeRefresh.openRegistryNode;
       selectedProblemBeforeRefresh = stateBeforeRefresh.selectedProblem;
+      registryViewFilterBeforeRefresh = stateBeforeRefresh.registryViewFilter;
       searchQueryBeforeRefresh = stateBeforeRefresh.searchQuery;
     } else if (stateBeforeRefresh is RegistryExplorerFailure) {
       openRegistryNodeBeforeRefresh =
           stateBeforeRefresh.openRegistryNodeBeforeRefresh;
       selectedProblemBeforeRefresh = null;
+      registryViewFilterBeforeRefresh =
+          stateBeforeRefresh.registryViewFilterBeforeRefresh;
       searchQueryBeforeRefresh = stateBeforeRefresh.searchQueryBeforeRefresh;
     } else {
       openRegistryNodeBeforeRefresh = null;
       selectedProblemBeforeRefresh = null;
+      registryViewFilterBeforeRefresh = 'all';
       searchQueryBeforeRefresh = '';
     }
 
@@ -519,7 +533,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     emit(const RegistryExplorerLoading());
 
     try {
-      await _pendingSearchQueryWrite;
+      await _pendingRevisionStateWrite;
 
       final RegistrySnapshot? currentSnapshot = _currentSnapshot;
 
@@ -624,6 +638,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           openRegistryPath: refreshedOpenRegistryPath,
           selectedProblemIndex: refreshedSelectedProblemIndex,
           searchQuery: searchQueryBeforeRefresh,
+          registryViewFilter: registryViewFilterBeforeRefresh,
         ),
       );
 
@@ -683,6 +698,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: refreshedOpenRegistryNodeId,
             openRegistryPath: refreshedOpenRegistryPath,
             selectedProblemIndex: refreshedSelectedProblemIndex,
+            registryViewFilter: registryViewFilterBeforeRefresh,
             analysisHistory: analysisHistory,
             searchQuery: searchQueryBeforeRefresh,
           ),
@@ -696,6 +712,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           RegistryExplorerFailure(
             message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
             openRegistryNodeBeforeRefresh: openRegistryNodeBeforeRefresh,
+            registryViewFilterBeforeRefresh: registryViewFilterBeforeRefresh,
             searchQueryBeforeRefresh: searchQueryBeforeRefresh,
             analysisHistoryBeforeRefresh: analysisHistoryBeforeRefresh,
           ),
@@ -723,6 +740,11 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     }
 
     final RegistryExplorerState currentState = state;
+    final String registryViewFilter = currentState is RegistryExplorerLoaded
+        ? currentState.registryViewFilter
+        : currentState is RegistryExplorerFailure
+        ? currentState.registryViewFilterBeforeRefresh
+        : 'all';
     final String searchQuery = currentState is RegistryExplorerLoaded
         ? currentState.searchQuery
         : currentState is RegistryExplorerFailure
@@ -738,7 +760,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     _isLoading = true;
 
     try {
-      await _pendingSearchQueryWrite;
+      await _pendingRevisionStateWrite;
 
       final RegistrySnapshot? previousSnapshot = _previousSnapshot;
 
@@ -751,6 +773,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           previousRevision: previousSnapshot?.sourceRevision,
           cleanBaselineRevision: currentSnapshot.sourceRevision,
           searchQuery: searchQuery,
+          registryViewFilter: registryViewFilter,
         ),
       );
 
@@ -783,6 +806,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: null,
             openRegistryPath: null,
             selectedProblemIndex: null,
+            registryViewFilter: registryViewFilter,
             analysisHistory: analysisHistory,
             searchQuery: searchQuery,
           ),
@@ -815,7 +839,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     _isLoading = true;
 
     try {
-      await _pendingSearchQueryWrite;
+      await _pendingRevisionStateWrite;
 
       await revisionStateStore.saveRevisionState(
         RegistryRevisionState(
@@ -830,6 +854,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           openRegistryPath: selectedProblem?.path,
           selectedProblemIndex: index,
           searchQuery: currentState.searchQuery,
+          registryViewFilter: currentState.registryViewFilter,
         ),
       );
 
@@ -845,6 +870,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: selectedProblem?.exactNode.id,
             openRegistryPath: selectedProblem?.path,
             selectedProblemIndex: index,
+            registryViewFilter: currentState.registryViewFilter,
             analysisHistory: currentState.analysisHistory,
             searchQuery: currentState.searchQuery,
           ),
@@ -877,7 +903,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     _isLoading = true;
 
     try {
-      await _pendingSearchQueryWrite;
+      await _pendingRevisionStateWrite;
 
       await revisionStateStore.saveRevisionState(
         RegistryRevisionState(
@@ -892,6 +918,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           openRegistryPath: openRegistryNode?.path,
           selectedProblemIndex: null,
           searchQuery: currentState.searchQuery,
+          registryViewFilter: currentState.registryViewFilter,
         ),
       );
 
@@ -907,6 +934,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: openRegistryNode?.id,
             openRegistryPath: openRegistryNode?.path,
             selectedProblemIndex: null,
+            registryViewFilter: currentState.registryViewFilter,
             analysisHistory: currentState.analysisHistory,
             searchQuery: currentState.searchQuery,
           ),
@@ -930,14 +958,15 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
     if (currentState.openRegistryNodeId == null &&
         currentState.selectedProblemIndex == null &&
-        currentState.searchQuery.isEmpty) {
+        currentState.searchQuery.isEmpty &&
+        currentState.registryViewFilter == 'all') {
       return;
     }
 
     _isLoading = true;
 
     try {
-      await _pendingSearchQueryWrite;
+      await _pendingRevisionStateWrite;
 
       await revisionStateStore.saveRevisionState(
         RegistryRevisionState(
@@ -952,6 +981,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           openRegistryPath: null,
           selectedProblemIndex: null,
           searchQuery: '',
+          registryViewFilter: 'all',
         ),
       );
 
@@ -967,6 +997,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             openRegistryNodeId: null,
             openRegistryPath: null,
             selectedProblemIndex: null,
+            registryViewFilter: 'all',
             analysisHistory: currentState.analysisHistory,
             searchQuery: '',
           ),
@@ -1005,6 +1036,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       openRegistryPath: currentState.openRegistryPath,
       selectedProblemIndex: currentState.selectedProblemIndex,
       searchQuery: searchQuery,
+      registryViewFilter: currentState.registryViewFilter,
     );
 
     emit(
@@ -1018,16 +1050,77 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         openRegistryNodeId: currentState.openRegistryNodeId,
         openRegistryPath: currentState.openRegistryPath,
         selectedProblemIndex: currentState.selectedProblemIndex,
+        registryViewFilter: currentState.registryViewFilter,
         analysisHistory: currentState.analysisHistory,
         searchQuery: searchQuery,
       ),
     );
 
-    final Future<void> write = _pendingSearchQueryWrite.then<void>(
+    final Future<void> write = _pendingRevisionStateWrite.then<void>(
       (_) => revisionStateStore.saveRevisionState(persistedState),
     );
 
-    _pendingSearchQueryWrite = write.then<void>(
+    _pendingRevisionStateWrite = write.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+
+    return write;
+  }
+
+  Future<void> updateRegistryViewFilter(String registryViewFilter) {
+    if (_isLoading) {
+      return Future<void>.error(
+        StateError('Контекст Registry уже обновляется.'),
+      );
+    }
+
+    final RegistryExplorerState currentState = state;
+
+    if (currentState is! RegistryExplorerLoaded) {
+      return Future<void>.error(StateError('Registry недоступен.'));
+    }
+
+    final RegistryRevisionState persistedState = RegistryRevisionState(
+      projectId: currentState.snapshot.projectId,
+      projectAdapterId: currentState.snapshot.projectAdapterId,
+      sourceDocumentPath: currentState.snapshot.sourceDocumentPath,
+      currentRevision: currentState.snapshot.sourceRevision,
+      previousRevision: currentState.previousSnapshot?.sourceRevision,
+      cleanBaselineRevision: currentState.cleanBaselineSnapshot?.sourceRevision,
+      openRegistryNodeId: currentState.openRegistryNodeId,
+      openRegistryPath: currentState.openRegistryPath,
+      selectedProblemIndex: currentState.selectedProblemIndex,
+      searchQuery: currentState.searchQuery,
+      registryViewFilter: registryViewFilter,
+    );
+
+    if (persistedState.registryViewFilter == currentState.registryViewFilter) {
+      return Future<void>.value();
+    }
+
+    emit(
+      RegistryExplorerLoaded(
+        snapshot: currentState.snapshot,
+        index: currentState.index,
+        previousSnapshot: currentState.previousSnapshot,
+        previousComparison: currentState.previousComparison,
+        cleanBaselineSnapshot: currentState.cleanBaselineSnapshot,
+        cleanBaselineComparison: currentState.cleanBaselineComparison,
+        openRegistryNodeId: currentState.openRegistryNodeId,
+        openRegistryPath: currentState.openRegistryPath,
+        selectedProblemIndex: currentState.selectedProblemIndex,
+        registryViewFilter: persistedState.registryViewFilter,
+        analysisHistory: currentState.analysisHistory,
+        searchQuery: currentState.searchQuery,
+      ),
+    );
+
+    final Future<void> write = _pendingRevisionStateWrite.then<void>(
+      (_) => revisionStateStore.saveRevisionState(persistedState),
+    );
+
+    _pendingRevisionStateWrite = write.then<void>(
       (_) {},
       onError: (Object _, StackTrace _) {},
     );
@@ -1045,7 +1138,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
   @override
   Future<void> close() async {
-    await _pendingSearchQueryWrite;
+    await _pendingRevisionStateWrite;
     await super.close();
   }
 }

@@ -13,6 +13,7 @@ final class RegistryRevisionState {
     RegistryPath? openRegistryPath,
     int? selectedProblemIndex,
     String searchQuery = '',
+    String registryViewFilter = 'all',
   }) {
     final String normalizedProjectId = projectId.trim();
     final String normalizedProjectAdapterId = projectAdapterId.trim();
@@ -21,6 +22,7 @@ final class RegistryRevisionState {
     final String? normalizedPreviousRevision = previousRevision?.trim();
     final String? normalizedCleanBaselineRevision = cleanBaselineRevision
         ?.trim();
+    final String normalizedRegistryViewFilter = registryViewFilter.trim();
 
     if (normalizedProjectId.isEmpty) {
       throw ArgumentError.value(
@@ -82,6 +84,25 @@ final class RegistryRevisionState {
       );
     }
 
+    final bool registryViewFilterValid =
+        normalizedRegistryViewFilter == 'all' ||
+        normalizedRegistryViewFilter == 'roots' ||
+        normalizedRegistryViewFilter == 'branches' ||
+        normalizedRegistryViewFilter == 'leaves' ||
+        (normalizedRegistryViewFilter.startsWith('kind:') &&
+            normalizedRegistryViewFilter
+                .substring('kind:'.length)
+                .trim()
+                .isNotEmpty);
+
+    if (!registryViewFilterValid) {
+      throw ArgumentError.value(
+        registryViewFilter,
+        'registryViewFilter',
+        'Registry revision state view filter is unsupported.',
+      );
+    }
+
     final bool hasOpenRegistryContext =
         openRegistryNodeId != null || openRegistryPath != null;
 
@@ -120,6 +141,7 @@ final class RegistryRevisionState {
       openRegistryPath: openRegistryPath,
       selectedProblemIndex: selectedProblemIndex,
       searchQuery: searchQuery,
+      registryViewFilter: normalizedRegistryViewFilter,
     );
   }
 
@@ -134,6 +156,7 @@ final class RegistryRevisionState {
     required this.openRegistryPath,
     required this.selectedProblemIndex,
     required this.searchQuery,
+    required this.registryViewFilter,
   });
 
   final String projectId;
@@ -146,6 +169,7 @@ final class RegistryRevisionState {
   final RegistryPath? openRegistryPath;
   final int? selectedProblemIndex;
   final String searchQuery;
+  final String registryViewFilter;
 }
 
 abstract interface class RegistryRevisionStateStore {
