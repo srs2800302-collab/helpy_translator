@@ -28,13 +28,13 @@ final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
       builder:
           (BuildContext context, CanonicalBusinessTextAnalysisState state) {
             return switch (state) {
-              CanonicalBusinessTextAnalysisInitial() => IconButton(
+              CanonicalBusinessTextAnalysisInitial() => const IconButton(
                 key: actionKey,
-                tooltip: 'Запустить канонический анализ',
-                onPressed: context
-                    .read<CanonicalBusinessTextAnalysisCubit>()
-                    .run,
-                icon: const Icon(Icons.fact_check_outlined),
+                tooltip:
+                    'Канонический анализ: '
+                    'ожидание Registry',
+                onPressed: null,
+                icon: Icon(Icons.fact_check_outlined),
               ),
               CanonicalBusinessTextAnalysisRunning() => const SizedBox(
                 key: runningKey,
@@ -91,7 +91,7 @@ final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
 
                               context
                                   .read<CanonicalBusinessTextAnalysisCubit>()
-                                  .run();
+                                  .retry();
                             },
                             child: const Text('Повторить'),
                           ),

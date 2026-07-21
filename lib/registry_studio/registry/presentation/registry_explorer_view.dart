@@ -10,6 +10,7 @@ import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_refresh_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
 import '../domain/entities/registry_node.dart';
+import '../domain/entities/registry_snapshot.dart';
 import '../domain/value_objects/registry_node_id.dart';
 import 'registry_explorer_cubit.dart';
 
@@ -21,6 +22,7 @@ final class RegistryExplorerView extends StatelessWidget {
     required this.revisionStateStore,
     required this.analysisHistoryStore,
     required this.snapshotComparator,
+    this.onSnapshotAccepted,
     super.key,
   });
 
@@ -30,6 +32,7 @@ final class RegistryExplorerView extends StatelessWidget {
   final RegistryRevisionStateStore revisionStateStore;
   final RegistryAnalysisHistoryStore analysisHistoryStore;
   final RegistrySnapshotComparator snapshotComparator;
+  final void Function(RegistrySnapshot snapshot)? onSnapshotAccepted;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +44,7 @@ final class RegistryExplorerView extends StatelessWidget {
         revisionStateStore: revisionStateStore,
         analysisHistoryStore: analysisHistoryStore,
         snapshotComparator: snapshotComparator,
+        onSnapshotAccepted: onSnapshotAccepted,
       )..restore(),
       child: const _RegistryExplorerView(),
     );

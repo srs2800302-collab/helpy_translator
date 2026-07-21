@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -141,6 +143,15 @@ final class _RegistryStudioShellView extends StatelessWidget {
                 revisionStateStore: registryRevisionStateStore,
                 analysisHistoryStore: registryAnalysisHistoryStore,
                 snapshotComparator: registrySnapshotComparator,
+                onSnapshotAccepted: showCanonicalBusinessTextAnalysisStatus
+                    ? (snapshot) {
+                        unawaited(
+                          context
+                              .read<CanonicalBusinessTextAnalysisCubit>()
+                              .acceptSnapshot(snapshot),
+                        );
+                      }
+                    : null,
               ),
               const _TranslatorWorkspaceView(),
             ],

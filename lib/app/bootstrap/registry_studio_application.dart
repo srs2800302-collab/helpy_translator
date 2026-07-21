@@ -73,7 +73,6 @@ final class RegistryStudioApplication extends StatelessWidget {
       canonicalDictionaryLoader: canonicalDictionaryLoader,
       canonicalBusinessTextAnalysisSessionRunner:
           RunCanonicalBusinessTextAnalysisSession(
-            registrySnapshotLoader: registrySnapshotLoader,
             canonicalDictionaryLoader: canonicalDictionaryLoader,
             analysis: const RunCanonicalBusinessTextAnalysis(
               candidateExtractor:

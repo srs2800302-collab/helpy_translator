@@ -11,29 +11,32 @@ import 'package:helpy_translator/registry_studio/canonical/domain/entities/canon
 import 'package:helpy_translator/registry_studio/canonical/presentation/canonical_business_text_analysis_cubit.dart';
 import 'package:helpy_translator/registry_studio/canonical/presentation/canonical_business_text_analysis_status_action.dart';
 import 'package:helpy_translator/registry_studio/canonical/presentation/canonical_business_text_analysis_view.dart';
+import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
+import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 
 void main() {
-  testWidgets('runs analysis and opens the full-screen result view', (
+  testWidgets('opens the automatically produced result', (
     WidgetTester tester,
   ) async {
     final CanonicalBusinessTextAnalysisResult result = _result();
 
     final CanonicalBusinessTextAnalysisCubit cubit =
         CanonicalBusinessTextAnalysisCubit(
-          sessionRunner: _SessionRunner(result: result),
+          sessionRunner: _SessionRunner(result),
         );
 
     await tester.pumpWidget(_application(cubit));
 
-    expect(
-      find.byKey(CanonicalBusinessTextAnalysisStatusAction.actionKey),
-      findsOneWidget,
-    );
-
-    await tester.tap(
+    final IconButton initialAction = tester.widget<IconButton>(
       find.byKey(CanonicalBusinessTextAnalysisStatusAction.actionKey),
     );
 
+    expect(initialAction.onPressed, isNull);
+
+    await cubit.acceptSnapshot(_snapshot());
     await tester.pumpAndSettle();
 
     expect(cubit.state, CanonicalBusinessTextAnalysisReady(result: result));
@@ -49,18 +52,14 @@ void main() {
       findsOneWidget,
     );
 
-    expect(find.text('Канонический анализ'), findsOneWidget);
-
-    expect(find.text('Кандидаты: 0'), findsOneWidget);
-
-    expect(find.text('Registry revision: registry-revision'), findsOneWidget);
-
     await tester.pumpWidget(const SizedBox.shrink());
 
     await cubit.close();
   });
 
-  testWidgets('shows failure and allows retry', (WidgetTester tester) async {
+  testWidgets('retries the latest accepted snapshot', (
+    WidgetTester tester,
+  ) async {
     final _FailingSessionRunner runner = _FailingSessionRunner();
 
     final CanonicalBusinessTextAnalysisCubit cubit =
@@ -68,10 +67,7 @@ void main() {
 
     await tester.pumpWidget(_application(cubit));
 
-    await tester.tap(
-      find.byKey(CanonicalBusinessTextAnalysisStatusAction.actionKey),
-    );
-
+    await cubit.acceptSnapshot(_snapshot());
     await tester.pumpAndSettle();
 
     expect(cubit.state, isA<CanonicalBusinessTextAnalysisFailed>());
@@ -91,6 +87,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(runner.callCount, 2);
+    expect(runner.snapshots, <RegistrySnapshot>[_snapshot(), _snapshot()]);
 
     await tester.pumpWidget(const SizedBox.shrink());
 
@@ -113,12 +110,14 @@ Widget _application(CanonicalBusinessTextAnalysisCubit cubit) {
 
 final class _SessionRunner
     implements CanonicalBusinessTextAnalysisSessionRunner {
-  _SessionRunner({required this.result});
+  _SessionRunner(this.result);
 
   final CanonicalBusinessTextAnalysisResult result;
 
   @override
-  Future<CanonicalBusinessTextAnalysisResult> runAnalysis() async {
+  Future<CanonicalBusinessTextAnalysisResult> runAnalysis(
+    RegistrySnapshot snapshot,
+  ) async {
     return result;
   }
 }
@@ -127,11 +126,51 @@ final class _FailingSessionRunner
     implements CanonicalBusinessTextAnalysisSessionRunner {
   int callCount = 0;
 
+  final List<RegistrySnapshot> snapshots = <RegistrySnapshot>[];
+
   @override
-  Future<CanonicalBusinessTextAnalysisResult> runAnalysis() async {
+  Future<CanonicalBusinessTextAnalysisResult> runAnalysis(
+    RegistrySnapshot snapshot,
+  ) async {
     callCount += 1;
+    snapshots.add(snapshot);
+
     throw StateError('Analysis unavailable');
   }
+}
+
+RegistrySnapshot _snapshot() {
+  const String fingerprint = 'git-blob:registry';
+
+  final RegistryPath path = RegistryPath(const <String>['Registry']);
+
+  return RegistrySnapshot(
+    projectId: 'helpy',
+    projectAdapterId: 'helpy.registry.adapter.v1',
+    sourceDocumentPath: 'registry.md',
+    sourceRevision: 'registry-revision',
+    sourceSnapshotFingerprint: fingerprint,
+    sourceContent: '# Registry',
+    roots: <RegistryNode>[
+      RegistryNode(
+        id: RegistryNodeId('node-1'),
+        kindId: 'helpy.registry.heading.1',
+        path: path,
+        sourceEvidence: <SourceEvidence>[
+          SourceEvidence(
+            sourceDocumentPath: 'registry.md',
+            sourceSnapshotFingerprint: fingerprint,
+            headingPath: path.segments,
+            startLine: 1,
+            endLine: 1,
+          ),
+        ],
+        content: '',
+        businessScopeOwnerId: null,
+        children: const <RegistryNode>[],
+      ),
+    ],
+  );
 }
 
 CanonicalBusinessTextAnalysisResult _result() {
@@ -155,7 +194,9 @@ CanonicalBusinessTextAnalysisResult _result() {
         endLine: 19,
         entries: <CanonicalPhraseEntry>[
           CanonicalPhraseEntry(
-            identity: 'canonical.phrases::canonical-phrase',
+            identity:
+                'canonical.phrases::'
+                'canonical-phrase',
             collectionId: 'canonical.phrases',
             phrase: 'Canonical phrase.',
             sourceDocumentPath: 'contract.md',

@@ -12,94 +12,53 @@ import 'package:helpy_translator/registry_studio/canonical/domain/entities/canon
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_phrase_entry.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
-import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 
 void main() {
   group('RunCanonicalBusinessTextAnalysisSession', () {
-    test(
-      'loads one exact Registry snapshot and one exact dictionary',
-      () async {
-        final RegistrySnapshot snapshot = _snapshot();
-        final CanonicalDictionary dictionary = _dictionary();
+    test('analyzes the accepted Registry snapshot '
+        'without loading Registry again', () async {
+      final RegistrySnapshot snapshot = _snapshot();
 
-        final _SnapshotLoader snapshotLoader = _SnapshotLoader(snapshot);
+      final _DictionaryLoader dictionaryLoader = _DictionaryLoader(
+        _dictionary(),
+      );
 
-        final _DictionaryLoader dictionaryLoader = _DictionaryLoader(
-          dictionary,
-        );
+      final CanonicalBusinessTextAnalysisResult result =
+          await RunCanonicalBusinessTextAnalysisSession(
+            canonicalDictionaryLoader: dictionaryLoader,
+            analysis: const RunCanonicalBusinessTextAnalysis(
+              candidateExtractor: _EmptyCandidateExtractor(),
+              classifier: _EmptyClassifier(),
+            ),
+          ).runAnalysis(snapshot);
 
-        final CanonicalBusinessTextAnalysisResult result =
-            await RunCanonicalBusinessTextAnalysisSession(
-              registrySnapshotLoader: snapshotLoader,
-              canonicalDictionaryLoader: dictionaryLoader,
-              analysis: const RunCanonicalBusinessTextAnalysis(
-                candidateExtractor: _EmptyCandidateExtractor(),
-                classifier: _EmptyClassifier(),
-              ),
-            ).runAnalysis();
+      expect(dictionaryLoader.callCount, 1);
+      expect(result.registrySourceRevision, snapshot.sourceRevision);
+      expect(
+        result.registrySourceSnapshotFingerprint,
+        snapshot.sourceSnapshotFingerprint,
+      );
+    });
 
-        expect(snapshotLoader.callCount, 1);
-        expect(dictionaryLoader.callCount, 1);
-
-        expect(result.registrySourceRevision, snapshot.sourceRevision);
-
-        expect(
-          result.registrySourceSnapshotFingerprint,
-          snapshot.sourceSnapshotFingerprint,
-        );
-
-        expect(result.dictionarySourceRevision, dictionary.sourceRevision);
-
-        expect(
-          result.dictionarySourceSnapshotFingerprint,
-          dictionary.sourceSnapshotFingerprint,
-        );
-      },
-    );
-
-    test('propagates Registry loading failure', () {
-      final Object error = StateError('Registry unavailable');
+    test('propagates Canonical Dictionary loading '
+        'failure', () {
+      final Object error = StateError('Dictionary unavailable');
 
       expect(
         RunCanonicalBusinessTextAnalysisSession(
-          registrySnapshotLoader: _FailingSnapshotLoader(error),
-          canonicalDictionaryLoader: _DictionaryLoader(_dictionary()),
+          canonicalDictionaryLoader: _FailingDictionaryLoader(error),
           analysis: const RunCanonicalBusinessTextAnalysis(
             candidateExtractor: _EmptyCandidateExtractor(),
             classifier: _EmptyClassifier(),
           ),
-        ).runAnalysis(),
+        ).runAnalysis(_snapshot()),
         throwsA(same(error)),
       );
     });
   });
-}
-
-final class _SnapshotLoader implements RegistrySnapshotLoader {
-  _SnapshotLoader(this.snapshot);
-
-  final RegistrySnapshot snapshot;
-  int callCount = 0;
-
-  @override
-  Future<RegistrySnapshot> loadSnapshot() async {
-    callCount += 1;
-    return snapshot;
-  }
-}
-
-final class _FailingSnapshotLoader implements RegistrySnapshotLoader {
-  _FailingSnapshotLoader(this.error);
-
-  final Object error;
-
-  @override
-  Future<RegistrySnapshot> loadSnapshot() async {
-    throw error;
-  }
 }
 
 final class _DictionaryLoader implements CanonicalDictionaryLoader {
@@ -112,6 +71,17 @@ final class _DictionaryLoader implements CanonicalDictionaryLoader {
   Future<CanonicalDictionary> loadDictionary() async {
     callCount += 1;
     return dictionary;
+  }
+}
+
+final class _FailingDictionaryLoader implements CanonicalDictionaryLoader {
+  _FailingDictionaryLoader(this.error);
+
+  final Object error;
+
+  @override
+  Future<CanonicalDictionary> loadDictionary() async {
+    throw error;
   }
 }
 
@@ -191,7 +161,9 @@ RegistrySnapshot _snapshot() {
 
 CanonicalDictionary _dictionary() {
   return CanonicalDictionary(
-    dictionaryId: 'REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1',
+    dictionaryId:
+        'REGISTRY_STUDIO_CANONICAL_'
+        'BUSINESS_DICTIONARY_V1',
     version: '1',
     status: 'APPROVED / STORED',
     sourceDocumentPath: 'contract.md',
@@ -210,7 +182,9 @@ CanonicalDictionary _dictionary() {
         endLine: 19,
         entries: <CanonicalPhraseEntry>[
           CanonicalPhraseEntry(
-            identity: 'canonical.phrases::canonical-phrase',
+            identity:
+                'canonical.phrases::'
+                'canonical-phrase',
             collectionId: 'canonical.phrases',
             phrase: 'Canonical phrase.',
             sourceDocumentPath: 'contract.md',

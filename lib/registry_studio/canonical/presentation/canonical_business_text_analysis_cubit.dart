@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../registry/domain/entities/registry_snapshot.dart';
 import '../application/contracts/canonical_business_text_analysis_session_runner.dart';
 import '../domain/entities/canonical_business_text_analysis_result.dart';
 
@@ -50,28 +51,41 @@ final class CanonicalBusinessTextAnalysisCubit
 
   final CanonicalBusinessTextAnalysisSessionRunner _sessionRunner;
 
-  Future<void> run() async {
-    if (state is CanonicalBusinessTextAnalysisRunning) {
-      return;
-    }
+  RegistrySnapshot? _latestSnapshot;
+  int _analysisSequence = 0;
+
+  Future<void> acceptSnapshot(RegistrySnapshot snapshot) async {
+    _latestSnapshot = snapshot;
+
+    final int analysisSequence = ++_analysisSequence;
 
     emit(const CanonicalBusinessTextAnalysisRunning());
 
     try {
       final CanonicalBusinessTextAnalysisResult result = await _sessionRunner
-          .runAnalysis();
+          .runAnalysis(snapshot);
 
-      if (isClosed) {
+      if (isClosed || analysisSequence != _analysisSequence) {
         return;
       }
 
       emit(CanonicalBusinessTextAnalysisReady(result: result));
     } on Object catch (error) {
-      if (isClosed) {
+      if (isClosed || analysisSequence != _analysisSequence) {
         return;
       }
 
       emit(CanonicalBusinessTextAnalysisFailed(message: error.toString()));
     }
+  }
+
+  Future<void> retry() {
+    final RegistrySnapshot? snapshot = _latestSnapshot;
+
+    if (snapshot == null) {
+      return Future<void>.value();
+    }
+
+    return acceptSnapshot(snapshot);
   }
 }

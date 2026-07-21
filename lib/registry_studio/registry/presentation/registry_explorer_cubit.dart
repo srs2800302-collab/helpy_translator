@@ -189,6 +189,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     required this.revisionStateStore,
     required this.analysisHistoryStore,
     required this.snapshotComparator,
+    this.onSnapshotAccepted,
   }) : super(const RegistryExplorerLoading());
 
   final RegistrySnapshotLoader snapshotLoader;
@@ -197,6 +198,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   final RegistryRevisionStateStore revisionStateStore;
   final RegistryAnalysisHistoryStore analysisHistoryStore;
   final RegistrySnapshotComparator snapshotComparator;
+  final void Function(RegistrySnapshot snapshot)? onSnapshotAccepted;
 
   bool _isLoading = false;
   bool _retryRefresh = false;
@@ -468,6 +470,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             searchQuery: searchQuery,
           ),
         );
+        onSnapshotAccepted?.call(snapshot);
       }
     } catch (error) {
       if (!isClosed) {
@@ -703,6 +706,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
             searchQuery: searchQueryBeforeRefresh,
           ),
         );
+        onSnapshotAccepted?.call(snapshot);
       }
     } catch (error) {
       if (!isClosed) {
