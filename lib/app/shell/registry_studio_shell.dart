@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../registry_studio/canonical/application/contracts/canonical_business_text_analysis_session_runner.dart';
 import '../../registry_studio/canonical/application/contracts/canonical_dictionary_loader.dart';
+import '../../registry_studio/canonical/presentation/canonical_business_text_analysis_cubit.dart';
+import '../../registry_studio/canonical/presentation/canonical_business_text_analysis_status_action.dart';
 import '../../registry_studio/canonical/presentation/canonical_dictionary_cubit.dart';
 import '../../registry_studio/canonical/presentation/canonical_dictionary_status_action.dart';
 import '../../registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
@@ -31,6 +34,7 @@ final class RegistryStudioWorkspaceCubit
 final class RegistryStudioShell extends StatelessWidget {
   const RegistryStudioShell({
     this.canonicalDictionaryLoader,
+    this.canonicalBusinessTextAnalysisSessionRunner,
     required this.registrySnapshotLoader,
     required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
@@ -41,6 +45,9 @@ final class RegistryStudioShell extends StatelessWidget {
   });
 
   final CanonicalDictionaryLoader? canonicalDictionaryLoader;
+
+  final CanonicalBusinessTextAnalysisSessionRunner?
+  canonicalBusinessTextAnalysisSessionRunner;
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
@@ -61,9 +68,17 @@ final class RegistryStudioShell extends StatelessWidget {
                 CanonicalDictionaryCubit(loader: canonicalDictionaryLoader!)
                   ..load(),
           ),
+        if (canonicalBusinessTextAnalysisSessionRunner != null)
+          BlocProvider<CanonicalBusinessTextAnalysisCubit>(
+            create: (_) => CanonicalBusinessTextAnalysisCubit(
+              sessionRunner: canonicalBusinessTextAnalysisSessionRunner!,
+            ),
+          ),
       ],
       child: _RegistryStudioShellView(
         showCanonicalDictionaryStatus: canonicalDictionaryLoader != null,
+        showCanonicalBusinessTextAnalysisStatus:
+            canonicalBusinessTextAnalysisSessionRunner != null,
         registrySnapshotLoader: registrySnapshotLoader,
         registrySnapshotRefreshLoader: registrySnapshotRefreshLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
@@ -78,6 +93,7 @@ final class RegistryStudioShell extends StatelessWidget {
 final class _RegistryStudioShellView extends StatelessWidget {
   const _RegistryStudioShellView({
     required this.showCanonicalDictionaryStatus,
+    required this.showCanonicalBusinessTextAnalysisStatus,
     required this.registrySnapshotLoader,
     required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
@@ -87,6 +103,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
   });
 
   final bool showCanonicalDictionaryStatus;
+  final bool showCanonicalBusinessTextAnalysisStatus;
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
@@ -109,6 +126,9 @@ final class _RegistryStudioShellView extends StatelessWidget {
               if (workspace == RegistryStudioWorkspace.registryStudio &&
                   showCanonicalDictionaryStatus)
                 const CanonicalDictionaryStatusAction(),
+              if (workspace == RegistryStudioWorkspace.registryStudio &&
+                  showCanonicalBusinessTextAnalysisStatus)
+                const CanonicalBusinessTextAnalysisStatusAction(),
             ],
           ),
           body: IndexedStack(

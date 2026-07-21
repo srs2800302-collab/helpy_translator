@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
+import '../../registry_studio/adapters/helpy/infrastructure/helpy_canonical_business_text_candidate_extractor.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_canonical_dictionary_loader.dart';
+import '../../registry_studio/canonical/application/contracts/canonical_business_text_analysis_session_runner.dart';
+import '../../registry_studio/canonical/application/deterministic_canonical_business_text_classifier.dart';
+import '../../registry_studio/canonical/application/run_canonical_business_text_analysis.dart';
+import '../../registry_studio/canonical/application/run_canonical_business_text_analysis_session.dart';
 import '../../registry_studio/canonical/application/contracts/canonical_dictionary_loader.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_snapshot_loader.dart';
@@ -19,6 +24,7 @@ import '../shell/registry_studio_shell.dart';
 final class RegistryStudioApplication extends StatelessWidget {
   const RegistryStudioApplication({
     this.canonicalDictionaryLoader,
+    this.canonicalBusinessTextAnalysisSessionRunner,
     required this.registrySnapshotLoader,
     required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
@@ -49,19 +55,32 @@ final class RegistryStudioApplication extends StatelessWidget {
           identityStore: const JsonFileHelpyRegistryNodeIdentityStore(),
         );
 
+    final HelpyCanonicalDictionaryLoader canonicalDictionaryLoader =
+        HelpyCanonicalDictionaryLoader(
+          documentSource: GitHubRegistryDocumentSource(
+            owner: 'srs2800302-collab',
+            repository: 'helpy_translator',
+            documentPath:
+                'docs/architecture/registry_studio/'
+                'Registry_Studio_Engineering_Change_Propagation_'
+                'and_Approval_Contract_v1.md',
+            ref: 'registry-studio/modular-rebuild',
+          ),
+        );
+
     return RegistryStudioApplication(
       key: key,
-      canonicalDictionaryLoader: HelpyCanonicalDictionaryLoader(
-        documentSource: GitHubRegistryDocumentSource(
-          owner: 'srs2800302-collab',
-          repository: 'helpy_translator',
-          documentPath:
-              'docs/architecture/registry_studio/'
-              'Registry_Studio_Engineering_Change_Propagation_'
-              'and_Approval_Contract_v1.md',
-          ref: 'registry-studio/modular-rebuild',
-        ),
-      ),
+      canonicalDictionaryLoader: canonicalDictionaryLoader,
+      canonicalBusinessTextAnalysisSessionRunner:
+          RunCanonicalBusinessTextAnalysisSession(
+            registrySnapshotLoader: registrySnapshotLoader,
+            canonicalDictionaryLoader: canonicalDictionaryLoader,
+            analysis: const RunCanonicalBusinessTextAnalysis(
+              candidateExtractor:
+                  HelpyCanonicalBusinessTextCandidateExtractor(),
+              classifier: DeterministicCanonicalBusinessTextClassifier(),
+            ),
+          ),
       registrySnapshotLoader: registrySnapshotLoader,
       registrySnapshotRefreshLoader: registrySnapshotLoader,
       registrySnapshotRevisionLoader: registrySnapshotLoader,
@@ -72,6 +91,9 @@ final class RegistryStudioApplication extends StatelessWidget {
   }
 
   final CanonicalDictionaryLoader? canonicalDictionaryLoader;
+
+  final CanonicalBusinessTextAnalysisSessionRunner?
+  canonicalBusinessTextAnalysisSessionRunner;
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
@@ -86,6 +108,8 @@ final class RegistryStudioApplication extends StatelessWidget {
       theme: ThemeData(useMaterial3: true),
       home: RegistryStudioShell(
         canonicalDictionaryLoader: canonicalDictionaryLoader,
+        canonicalBusinessTextAnalysisSessionRunner:
+            canonicalBusinessTextAnalysisSessionRunner,
         registrySnapshotLoader: registrySnapshotLoader,
         registrySnapshotRefreshLoader: registrySnapshotRefreshLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
