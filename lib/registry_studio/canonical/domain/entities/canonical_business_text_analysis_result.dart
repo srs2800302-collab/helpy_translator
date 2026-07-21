@@ -6,6 +6,7 @@ import 'canonical_business_text_candidate_index.dart';
 import 'canonical_business_text_classification.dart';
 import 'canonical_business_text_classification_index.dart';
 import 'canonical_business_text_classification_status.dart';
+import 'canonical_business_text_finding_index.dart';
 import 'canonical_dictionary.dart';
 
 final class CanonicalBusinessTextAnalysisResult extends Equatable {
@@ -202,9 +203,13 @@ final class CanonicalBusinessTextAnalysisResult extends Equatable {
       );
     }
 
+    final CanonicalBusinessTextFindingIndex findings =
+        CanonicalBusinessTextFindingIndex(classifications: classifications);
+
     return CanonicalBusinessTextAnalysisResult._(
       candidates: candidates,
       classifications: classifications,
+      findings: findings,
       registrySourceDocumentPath: candidates.sourceDocumentPath,
       registrySourceRevision: candidates.sourceRevision,
       registrySourceSnapshotFingerprint: candidates.sourceSnapshotFingerprint,
@@ -265,6 +270,7 @@ final class CanonicalBusinessTextAnalysisResult extends Equatable {
   const CanonicalBusinessTextAnalysisResult._({
     required this.candidates,
     required this.classifications,
+    required this.findings,
     required this.registrySourceDocumentPath,
     required this.registrySourceRevision,
     required this.registrySourceSnapshotFingerprint,
@@ -283,6 +289,7 @@ final class CanonicalBusinessTextAnalysisResult extends Equatable {
   final CanonicalBusinessTextCandidateIndex candidates;
 
   final CanonicalBusinessTextClassificationIndex classifications;
+  final CanonicalBusinessTextFindingIndex findings;
 
   final String registrySourceDocumentPath;
   final String registrySourceRevision;
@@ -308,6 +315,10 @@ final class CanonicalBusinessTextAnalysisResult extends Equatable {
   >
   countsByBusinessScopeOwnerAndStatus;
 
+  int get findingCount => findings.findingCount;
+
+  int get actionRequiredFindingCount => findings.actionRequiredCount;
+
   int get totalCandidateCount => candidates.candidateCount;
 
   int countForStatus(CanonicalBusinessTextClassificationStatus status) {
@@ -329,6 +340,7 @@ final class CanonicalBusinessTextAnalysisResult extends Equatable {
   List<Object?> get props => <Object?>[
     candidates,
     classifications,
+    findings,
     registrySourceDocumentPath,
     registrySourceRevision,
     registrySourceSnapshotFingerprint,

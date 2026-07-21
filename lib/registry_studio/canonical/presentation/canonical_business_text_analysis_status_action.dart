@@ -50,7 +50,9 @@ final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
                 key: actionKey,
                 tooltip:
                     'Канонический анализ: '
-                    '${result.totalCandidateCount} кандидатов',
+                    'Требуют внимания: '
+                    '${result.actionRequiredFindingCount} · '
+                    'Кандидатов: ${result.totalCandidateCount}',
                 onPressed: () {
                   Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(

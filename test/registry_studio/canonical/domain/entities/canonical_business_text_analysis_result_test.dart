@@ -69,6 +69,9 @@ void main() {
           );
 
       expect(result.totalCandidateCount, 2);
+      expect(result.findingCount, 1);
+      expect(result.actionRequiredFindingCount, 0);
+      expect(result.findings.findings.single.classification, same(neutral));
 
       expect(result.registrySourceRevision, 'registry-revision');
 
