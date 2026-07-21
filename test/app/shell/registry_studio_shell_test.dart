@@ -2818,6 +2818,28 @@ void main() {
     expect(leafRow, findsNothing);
     expect(nestedBranchToggle, findsNothing);
 
+    expect(
+      find.descendant(
+        of: rootRow,
+        matching: find.byIcon(Icons.folder_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: branchRow,
+        matching: find.byIcon(Icons.folder_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: nestedBranchRow,
+        matching: find.byIcon(Icons.folder_outlined),
+      ),
+      findsOneWidget,
+    );
+
     await tester.tap(branchRow);
     await tester.pumpAndSettle();
 

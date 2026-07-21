@@ -2763,7 +2763,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           ),
                                         )
                                       : Icon(
-                                          branchEntryList || expandable
+                                          branchEntryList
+                                              ? Icons.folder_outlined
+                                              : expandable
                                               ? Icons.account_tree_outlined
                                               : Icons.description_outlined,
                                         ),
