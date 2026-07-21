@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../domain/entities/canonical_business_text_analysis_result.dart';
-import '../domain/entities/canonical_business_text_classification_status.dart';
 import 'canonical_business_text_analysis_cubit.dart';
+import 'canonical_business_text_analysis_view.dart';
 
 final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
   const CanonicalBusinessTextAnalysisStatusAction({super.key});
@@ -14,10 +13,6 @@ final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
 
   static const Key runningKey = ValueKey<String>(
     'canonical-business-text-analysis-running',
-  );
-
-  static const Key resultDialogKey = ValueKey<String>(
-    'canonical-business-text-analysis-result-dialog',
   );
 
   static const Key failureDialogKey = ValueKey<String>(
@@ -57,13 +52,14 @@ final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
                     'Канонический анализ: '
                     '${result.totalCandidateCount} кандидатов',
                 onPressed: () {
-                  showDialog<void>(
-                    context: context,
-                    builder: (BuildContext dialogContext) {
-                      return _CanonicalBusinessTextAnalysisDialog(
-                        result: result,
-                      );
-                    },
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (BuildContext routeContext) {
+                        return CanonicalBusinessTextAnalysisView(
+                          result: result,
+                        );
+                      },
+                    ),
                   );
                 },
                 icon: const Icon(Icons.fact_check),
@@ -77,7 +73,10 @@ final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
                     builder: (BuildContext dialogContext) {
                       return AlertDialog(
                         key: failureDialogKey,
-                        title: const Text('Канонический анализ не выполнен'),
+                        title: const Text(
+                          'Канонический анализ '
+                          'не выполнен',
+                        ),
                         content: SelectableText(message),
                         actions: <Widget>[
                           TextButton(
@@ -105,95 +104,6 @@ final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
               ),
             };
           },
-    );
-  }
-}
-
-final class _CanonicalBusinessTextAnalysisDialog extends StatelessWidget {
-  const _CanonicalBusinessTextAnalysisDialog({required this.result});
-
-  final CanonicalBusinessTextAnalysisResult result;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      key: CanonicalBusinessTextAnalysisStatusAction.resultDialogKey,
-      title: const Text('Канонический анализ'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ListView(
-          shrinkWrap: true,
-          children: <Widget>[
-            Text(
-              'Кандидаты: '
-              '${result.totalCandidateCount}',
-            ),
-            Text(
-              'Business scopes: '
-              '${result.classificationsByBusinessScopeOwnerId.length}',
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Exact: '
-              '${result.countForStatus(CanonicalBusinessTextClassificationStatus.exact)}',
-            ),
-            Text(
-              'Review: '
-              '${result.countForStatus(CanonicalBusinessTextClassificationStatus.review)}',
-            ),
-            Text(
-              'Unclassified / Neutral: '
-              '${result.countForStatus(CanonicalBusinessTextClassificationStatus.unclassifiedNeutral)}',
-            ),
-            Text(
-              'Equivalent: '
-              '${result.countForStatus(CanonicalBusinessTextClassificationStatus.equivalent)}',
-            ),
-            Text(
-              'Drift: '
-              '${result.countForStatus(CanonicalBusinessTextClassificationStatus.drift)}',
-            ),
-            Text(
-              'Failed: '
-              '${result.countForStatus(CanonicalBusinessTextClassificationStatus.failed)}',
-            ),
-            const SizedBox(height: 12),
-            SelectableText(
-              'Registry revision: '
-              '${result.registrySourceRevision}',
-            ),
-            SelectableText(
-              'Registry fingerprint: '
-              '${result.registrySourceSnapshotFingerprint}',
-            ),
-            const SizedBox(height: 8),
-            SelectableText(
-              'Dictionary ID: '
-              '${result.dictionaryId}',
-            ),
-            Text(
-              'Dictionary version: '
-              '${result.dictionaryVersion}',
-            ),
-            SelectableText(
-              'Dictionary revision: '
-              '${result.dictionarySourceRevision}',
-            ),
-            SelectableText(
-              'Dictionary fingerprint: '
-              '${result.dictionarySourceSnapshotFingerprint}',
-            ),
-          ],
-        ),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text('Закрыть'),
-        ),
-      ],
     );
   }
 }

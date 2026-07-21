@@ -10,9 +10,10 @@ import 'package:helpy_translator/registry_studio/canonical/domain/entities/canon
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_phrase_entry.dart';
 import 'package:helpy_translator/registry_studio/canonical/presentation/canonical_business_text_analysis_cubit.dart';
 import 'package:helpy_translator/registry_studio/canonical/presentation/canonical_business_text_analysis_status_action.dart';
+import 'package:helpy_translator/registry_studio/canonical/presentation/canonical_business_text_analysis_view.dart';
 
 void main() {
-  testWidgets('runs analysis and opens the immutable result panel', (
+  testWidgets('runs analysis and opens the full-screen result view', (
     WidgetTester tester,
   ) async {
     final CanonicalBusinessTextAnalysisResult result = _result();
@@ -44,26 +45,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.byKey(CanonicalBusinessTextAnalysisStatusAction.resultDialogKey),
+      find.byKey(CanonicalBusinessTextAnalysisView.viewKey),
       findsOneWidget,
     );
 
     expect(find.text('Канонический анализ'), findsOneWidget);
-    expect(find.text('Кандидаты: 0'), findsOneWidget);
-    expect(find.text('Business scopes: 0'), findsOneWidget);
-    expect(find.text('Registry revision: registry-revision'), findsOneWidget);
-    expect(
-      find.text('Dictionary revision: dictionary-revision'),
-      findsOneWidget,
-    );
 
-    await tester.tap(find.text('Закрыть'));
-    await tester.pumpAndSettle();
+    expect(find.text('Кандидаты: 0'), findsOneWidget);
+
+    expect(find.text('Registry revision: registry-revision'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
 
     await cubit.close();
   });
 
-  testWidgets('shows failure and allows a retry', (WidgetTester tester) async {
+  testWidgets('shows failure and allows retry', (WidgetTester tester) async {
     final _FailingSessionRunner runner = _FailingSessionRunner();
 
     final CanonicalBusinessTextAnalysisCubit cubit =
@@ -90,12 +87,12 @@ void main() {
       findsOneWidget,
     );
 
-    expect(find.text('Повторить'), findsOneWidget);
-
     await tester.tap(find.text('Повторить'));
     await tester.pumpAndSettle();
 
     expect(runner.callCount, 2);
+
+    await tester.pumpWidget(const SizedBox.shrink());
 
     await cubit.close();
   });
@@ -107,7 +104,7 @@ Widget _application(CanonicalBusinessTextAnalysisCubit cubit) {
       value: cubit,
       child: Scaffold(
         appBar: AppBar(
-          actions: <Widget>[CanonicalBusinessTextAnalysisStatusAction()],
+          actions: const <Widget>[CanonicalBusinessTextAnalysisStatusAction()],
         ),
       ),
     ),
