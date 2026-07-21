@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/registry_studio/canonical/application/build_canonical_phrase_vocabulary.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_canonical_dictionary_document_interpreter.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_dictionary.dart';
 
@@ -167,6 +168,104 @@ void main() {
             'ordered_block',
             'ordered_rule_block',
           ],
+        );
+      },
+    );
+
+    test(
+      'builds the complete typed phrase vocabulary from the normative contract',
+      () async {
+        final File contract = File(
+          'docs/architecture/registry_studio/'
+          'Registry_Studio_Engineering_Change_Propagation_'
+          'and_Approval_Contract_v1.md',
+        );
+
+        expect(await contract.exists(), isTrue);
+
+        final CanonicalDictionary dictionary = interpreter.interpret(
+          sourceDocumentPath: contract.path,
+          sourceRevision: '7f3ff7f90fc8d8802f3fb8fcff851b23a224b920',
+          sourceSnapshotFingerprint:
+              'sha256:'
+              '73bb98686befe8885e487427537db32d54be7e3443b5d3b4aa192f9d03c976a6',
+          sourceContent: await contract.readAsString(),
+        );
+
+        final vocabulary = const BuildCanonicalPhraseVocabulary().call(
+          dictionary,
+        );
+
+        expect(vocabulary.entries, hasLength(81));
+        expect(vocabulary.uniquePhraseCount, 80);
+
+        expect(
+          vocabulary.entriesForCollection(
+            HelpyCanonicalDictionaryDocumentInterpreter
+                .generalPreparationCollectionId,
+          ),
+          hasLength(2),
+        );
+
+        expect(
+          vocabulary.entriesForCollection(
+            HelpyCanonicalDictionaryDocumentInterpreter.photoLabelsCollectionId,
+          ),
+          hasLength(50),
+        );
+
+        expect(
+          vocabulary.entriesForCollection(
+            HelpyCanonicalDictionaryDocumentInterpreter
+                .clientLabelsCollectionId,
+          ),
+          hasLength(29),
+        );
+
+        final matchingEntries = vocabulary.entriesForExactPhrase(
+          'Подготовьте доступ к установленному оборудованию.',
+        );
+
+        expect(matchingEntries, hasLength(2));
+
+        expect(
+          matchingEntries
+              .where((entry) => entry.applicability.isNotEmpty)
+              .single
+              .applicability,
+          <String>[
+            'Используется только для сценариев '
+                '«Заменить» и «Перенести».',
+          ],
+        );
+
+        expect(
+          dictionary
+              .collectionById('helpy.canonical.master_workflow_blocks')
+              ?.entries,
+          isEmpty,
+        );
+
+        expect(
+          dictionary
+              .collectionById('helpy.canonical.global_business_rules')
+              ?.entries,
+          isEmpty,
+        );
+
+        expect(
+          vocabulary.entries.every(
+            (entry) =>
+                entry.sourceDocumentPath == contract.path &&
+                entry.sourceRevision ==
+                    '7f3ff7f90fc8d8802f3fb8fcff851b23a224b920' &&
+                entry.sourceSnapshotFingerprint ==
+                    'sha256:'
+                        '73bb98686befe8885e487427537db32d54be7e3443b5d3b4aa192f9d03c976a6' &&
+                entry.sourceStartLine > 0 &&
+                entry.sourceEndLine >= entry.sourceStartLine,
+          ),
+          isTrue,
         );
       },
     );

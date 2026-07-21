@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../application/build_canonical_phrase_vocabulary.dart';
 import '../domain/entities/canonical_dictionary.dart';
 import 'canonical_dictionary_cubit.dart';
 
@@ -96,6 +97,11 @@ final class _CanonicalDictionaryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final int canonicalPhraseCount = const BuildCanonicalPhraseVocabulary()
+        .call(dictionary)
+        .entries
+        .length;
+
     return AlertDialog(
       key: CanonicalDictionaryStatusAction.dialogKey,
       title: const Text('Canonical Dictionary'),
@@ -109,6 +115,7 @@ final class _CanonicalDictionaryDialog extends StatelessWidget {
             Text('Версия: ${dictionary.version}'),
             Text('Статус: ${dictionary.status}'),
             Text('Collections: ${dictionary.collections.length}'),
+            Text('Канонические фразы: $canonicalPhraseCount'),
             const SizedBox(height: 12),
             for (final collection in dictionary.collections)
               ListTile(

@@ -1,5 +1,7 @@
 import '../../../canonical/domain/entities/canonical_dictionary.dart';
 import '../../../canonical/domain/entities/canonical_dictionary_collection.dart';
+import '../../../canonical/domain/entities/canonical_dictionary_entry.dart';
+import '../../../canonical/domain/entities/canonical_phrase_entry.dart';
 
 final class HelpyCanonicalDictionaryDocumentInterpreter {
   const HelpyCanonicalDictionaryDocumentInterpreter();
@@ -11,6 +13,14 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
       '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->';
 
   static const String approvedStoredStatus = 'APPROVED / STORED';
+
+  static const String generalPreparationCollectionId =
+      'helpy.canonical.general_preparation';
+
+  static const String photoLabelsCollectionId = 'helpy.canonical.photo_labels';
+
+  static const String clientLabelsCollectionId =
+      'helpy.canonical.client_labels';
 
   static final RegExp _dictionaryIdPattern = RegExp(
     r'^Dictionary ID:\s*`([^`]+)`\s*$',
@@ -31,6 +41,8 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
   static final RegExp _entryTypePattern = RegExp(
     r'^(?:Тип записи|Entry type):\s*`([^`]+)`\s*$',
   );
+
+  static final RegExp _bulletPattern = RegExp(r'^-\s+(.+?)\s*$');
 
   CanonicalDictionary interpret({
     required String sourceDocumentPath,
@@ -97,15 +109,15 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
     if (beginMarkerIndexes.length != 1) {
       throw FormatException(
-        'Canonical Dictionary source must contain exactly one begin marker; '
-        'found ${beginMarkerIndexes.length}.',
+        'Canonical Dictionary source must contain exactly one '
+        'begin marker; found ${beginMarkerIndexes.length}.',
       );
     }
 
     if (endMarkerIndexes.length != 1) {
       throw FormatException(
-        'Canonical Dictionary source must contain exactly one end marker; '
-        'found ${endMarkerIndexes.length}.',
+        'Canonical Dictionary source must contain exactly one '
+        'end marker; found ${endMarkerIndexes.length}.',
       );
     }
 
@@ -114,7 +126,8 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
     if (endMarkerIndex <= beginMarkerIndex) {
       throw const FormatException(
-        'Canonical Dictionary end marker must follow the begin marker.',
+        'Canonical Dictionary end marker must follow '
+        'the begin marker.',
       );
     }
 
@@ -136,7 +149,8 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
     if (collectionIndexes.isEmpty) {
       throw const FormatException(
-        'Canonical Dictionary must contain at least one Collection identifier.',
+        'Canonical Dictionary must contain at least one '
+        'Collection identifier.',
       );
     }
 
@@ -185,33 +199,37 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
     if (dictionaryIdCount != 1 || dictionaryId == null) {
       throw FormatException(
-        'Canonical Dictionary must contain exactly one Dictionary ID before '
-        'the first collection; found $dictionaryIdCount.',
+        'Canonical Dictionary must contain exactly one '
+        'Dictionary ID before the first collection; '
+        'found $dictionaryIdCount.',
       );
     }
 
     if (dictionaryVersionCount != 1 || dictionaryVersion == null) {
       throw FormatException(
-        'Canonical Dictionary must contain exactly one version before the '
-        'first collection; found $dictionaryVersionCount.',
+        'Canonical Dictionary must contain exactly one '
+        'version before the first collection; '
+        'found $dictionaryVersionCount.',
       );
     }
 
     if (dictionaryStatusCount != 1 || dictionaryStatus == null) {
       throw FormatException(
-        'Canonical Dictionary must contain exactly one approved status before '
-        'the first collection; found $dictionaryStatusCount.',
+        'Canonical Dictionary must contain exactly one '
+        'approved status before the first collection; '
+        'found $dictionaryStatusCount.',
       );
     }
 
     if (dictionaryStatus != approvedStoredStatus) {
       throw FormatException(
-        'Canonical Dictionary status must be $approvedStoredStatus, '
-        'but was $dictionaryStatus.',
+        'Canonical Dictionary status must be '
+        '$approvedStoredStatus, but was $dictionaryStatus.',
       );
     }
 
     final Set<String> uniqueCollectionIds = <String>{};
+
     final List<CanonicalDictionaryCollection> collections =
         <CanonicalDictionaryCollection>[];
 
@@ -238,8 +256,8 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
       if (!uniqueCollectionIds.add(collectionId)) {
         throw FormatException(
-          'Canonical Dictionary contains duplicate collection identifier '
-          '$collectionId.',
+          'Canonical Dictionary contains duplicate '
+          'collection identifier $collectionId.',
         );
       }
 
@@ -276,22 +294,25 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
       if (entryTypeCount != 1 || entryType == null) {
         throw FormatException(
-          'Canonical Dictionary collection $collectionId must contain '
-          'exactly one entry type; found $entryTypeCount.',
+          'Canonical Dictionary collection $collectionId '
+          'must contain exactly one entry type; '
+          'found $entryTypeCount.',
         );
       }
 
       if (collectionStatusCount != 1 || collectionStatus == null) {
         throw FormatException(
-          'Canonical Dictionary collection $collectionId must contain '
-          'exactly one approved status; found $collectionStatusCount.',
+          'Canonical Dictionary collection $collectionId '
+          'must contain exactly one approved status; '
+          'found $collectionStatusCount.',
         );
       }
 
       if (collectionStatus != approvedStoredStatus) {
         throw FormatException(
-          'Canonical Dictionary collection $collectionId status must be '
-          '$approvedStoredStatus, but was $collectionStatus.',
+          'Canonical Dictionary collection $collectionId '
+          'status must be $approvedStoredStatus, '
+          'but was $collectionStatus.',
         );
       }
 
@@ -302,9 +323,22 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
       if (collectionContent.isEmpty) {
         throw FormatException(
-          'Canonical Dictionary collection $collectionId must not be empty.',
+          'Canonical Dictionary collection $collectionId '
+          'must not be empty.',
         );
       }
+
+      final List<CanonicalDictionaryEntry> entries =
+          _interpretCollectionEntries(
+            lines: lines,
+            collectionId: collectionId,
+            entryType: entryType,
+            collectionStartIndex: collectionStartIndex,
+            collectionEndIndex: collectionEndIndex,
+            sourceDocumentPath: normalizedSourceDocumentPath,
+            sourceRevision: normalizedSourceRevision,
+            sourceSnapshotFingerprint: normalizedSourceSnapshotFingerprint,
+          );
 
       collections.add(
         CanonicalDictionaryCollection(
@@ -314,6 +348,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
           content: collectionContent,
           startLine: collectionStartIndex + 1,
           endLine: collectionEndIndex + 1,
+          entries: entries,
         ),
       );
     }
@@ -330,5 +365,266 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
       endMarkerLine: endMarkerIndex + 1,
       collections: collections,
     );
+  }
+
+  List<CanonicalDictionaryEntry> _interpretCollectionEntries({
+    required List<String> lines,
+    required String collectionId,
+    required String entryType,
+    required int collectionStartIndex,
+    required int collectionEndIndex,
+    required String sourceDocumentPath,
+    required String sourceRevision,
+    required String sourceSnapshotFingerprint,
+  }) {
+    return switch (entryType) {
+      'phrase_with_applicability' => _interpretPhrasesWithApplicability(
+        lines: lines,
+        collectionId: collectionId,
+        collectionStartIndex: collectionStartIndex,
+        collectionEndIndex: collectionEndIndex,
+        sourceDocumentPath: sourceDocumentPath,
+        sourceRevision: sourceRevision,
+        sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+      ),
+      'phrase' => _interpretPhraseCollection(
+        lines: lines,
+        collectionId: collectionId,
+        collectionStartIndex: collectionStartIndex,
+        collectionEndIndex: collectionEndIndex,
+        sourceDocumentPath: sourceDocumentPath,
+        sourceRevision: sourceRevision,
+        sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+      ),
+      _ => const <CanonicalDictionaryEntry>[],
+    };
+  }
+
+  List<CanonicalDictionaryEntry> _interpretPhrasesWithApplicability({
+    required List<String> lines,
+    required String collectionId,
+    required int collectionStartIndex,
+    required int collectionEndIndex,
+    required String sourceDocumentPath,
+    required String sourceRevision,
+    required String sourceSnapshotFingerprint,
+  }) {
+    const String entriesMarker =
+        'Правила применения утверждённых формулировок:';
+
+    final List<int> markerIndexes = <int>[];
+
+    for (
+      int index = collectionStartIndex + 1;
+      index <= collectionEndIndex;
+      index += 1
+    ) {
+      if (lines[index].trim() == entriesMarker) {
+        markerIndexes.add(index);
+      }
+    }
+
+    if (markerIndexes.length != 1) {
+      throw FormatException(
+        'Canonical phrase-with-applicability collection '
+        '$collectionId must contain exactly one entries marker; '
+        'found ${markerIndexes.length}.',
+      );
+    }
+
+    final List<CanonicalDictionaryEntry> entries = <CanonicalDictionaryEntry>[];
+
+    int index = markerIndexes.single + 1;
+
+    while (index <= collectionEndIndex) {
+      final String normalizedLine = lines[index].trim();
+
+      if (normalizedLine.isEmpty) {
+        index += 1;
+        continue;
+      }
+
+      if (normalizedLine.startsWith('- ')) {
+        throw FormatException(
+          'Canonical phrase-with-applicability collection '
+          '$collectionId contains applicability without a phrase '
+          'at line ${index + 1}.',
+        );
+      }
+
+      if (normalizedLine.startsWith('#')) {
+        throw FormatException(
+          'Canonical phrase-with-applicability collection '
+          '$collectionId contains an unexpected heading '
+          'at line ${index + 1}.',
+        );
+      }
+
+      final String phrase = normalizedLine;
+      final int phraseLineIndex = index;
+      final List<String> applicability = <String>[];
+
+      index += 1;
+
+      int sourceEndIndex = phraseLineIndex;
+
+      while (index <= collectionEndIndex) {
+        final String candidate = lines[index].trim();
+
+        if (candidate.isEmpty) {
+          index += 1;
+          continue;
+        }
+
+        final RegExpMatch? bulletMatch = _bulletPattern.firstMatch(candidate);
+
+        if (bulletMatch == null) {
+          break;
+        }
+
+        applicability.add(bulletMatch.group(1)!.trim());
+
+        sourceEndIndex = index;
+        index += 1;
+      }
+
+      if (applicability.isEmpty) {
+        throw FormatException(
+          'Canonical phrase $phrase in collection '
+          '$collectionId must contain applicability.',
+        );
+      }
+
+      entries.add(
+        CanonicalPhraseEntry(
+          identity: _phraseIdentity(collectionId, phrase),
+          collectionId: collectionId,
+          phrase: phrase,
+          applicability: applicability,
+          sourceDocumentPath: sourceDocumentPath,
+          sourceRevision: sourceRevision,
+          sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+          sourceStartLine: phraseLineIndex + 1,
+          sourceEndLine: sourceEndIndex + 1,
+        ),
+      );
+    }
+
+    if (entries.isEmpty) {
+      throw FormatException(
+        'Canonical phrase-with-applicability collection '
+        '$collectionId must contain at least one phrase.',
+      );
+    }
+
+    return entries;
+  }
+
+  List<CanonicalDictionaryEntry> _interpretPhraseCollection({
+    required List<String> lines,
+    required String collectionId,
+    required int collectionStartIndex,
+    required int collectionEndIndex,
+    required String sourceDocumentPath,
+    required String sourceRevision,
+    required String sourceSnapshotFingerprint,
+  }) {
+    int phraseStartIndex = collectionStartIndex + 1;
+    int phraseEndIndex = collectionEndIndex;
+
+    if (collectionId == clientLabelsCollectionId) {
+      const String startMarker = 'Утверждённые формулировки:';
+
+      const String endMarker = 'Требования к новым формулировкам:';
+
+      final List<int> startMarkerIndexes = <int>[];
+      final List<int> endMarkerIndexes = <int>[];
+
+      for (
+        int index = collectionStartIndex + 1;
+        index <= collectionEndIndex;
+        index += 1
+      ) {
+        final String normalizedLine = lines[index].trim();
+
+        if (normalizedLine == startMarker) {
+          startMarkerIndexes.add(index);
+        }
+
+        if (normalizedLine == endMarker) {
+          endMarkerIndexes.add(index);
+        }
+      }
+
+      if (startMarkerIndexes.length != 1) {
+        throw FormatException(
+          'Canonical client-label collection must contain '
+          'exactly one approved-phrases marker; '
+          'found ${startMarkerIndexes.length}.',
+        );
+      }
+
+      if (endMarkerIndexes.length != 1) {
+        throw FormatException(
+          'Canonical client-label collection must contain '
+          'exactly one requirements marker; '
+          'found ${endMarkerIndexes.length}.',
+        );
+      }
+
+      phraseStartIndex = startMarkerIndexes.single + 1;
+      phraseEndIndex = endMarkerIndexes.single - 1;
+
+      if (phraseEndIndex < phraseStartIndex) {
+        throw const FormatException(
+          'Canonical client-label phrase range is invalid.',
+        );
+      }
+    }
+
+    final List<CanonicalDictionaryEntry> entries = <CanonicalDictionaryEntry>[];
+
+    for (int index = phraseStartIndex; index <= phraseEndIndex; index += 1) {
+      final RegExpMatch? bulletMatch = _bulletPattern.firstMatch(
+        lines[index].trim(),
+      );
+
+      if (bulletMatch == null) {
+        continue;
+      }
+
+      final String phrase = bulletMatch.group(1)!.trim();
+
+      entries.add(
+        CanonicalPhraseEntry(
+          identity: _phraseIdentity(collectionId, phrase),
+          collectionId: collectionId,
+          phrase: phrase,
+          sourceDocumentPath: sourceDocumentPath,
+          sourceRevision: sourceRevision,
+          sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+          sourceStartLine: index + 1,
+          sourceEndLine: index + 1,
+        ),
+      );
+    }
+
+    if (entries.isEmpty) {
+      throw FormatException(
+        'Canonical phrase collection $collectionId '
+        'must contain at least one approved phrase.',
+      );
+    }
+
+    return entries;
+  }
+
+  String _phraseIdentity(String collectionId, String phrase) {
+    final String normalizedPhrase = phrase
+        .trim()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .toLowerCase();
+
+    return '$collectionId::phrase::$normalizedPhrase';
   }
 }
