@@ -70,6 +70,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   bool _showProblemQueue = false;
   bool _showProblemQueueFullScreen = false;
   String _registryViewFilter = 'all';
+  RegistryNodeId? _registryBranchScopeNodeId;
+  double _registryBranchFilterScrollOffset = 0;
 
   final Set<RegistryNodeId> _expandedRegistryNodeIds = <RegistryNodeId>{};
 
@@ -178,6 +180,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     setState(() {
       _expandedRegistryNodeIds.clear();
       _registryViewFilter = 'all';
+      _registryBranchScopeNodeId = null;
+      _registryBranchFilterScrollOffset = 0;
       _showProblemQueue = false;
       _showProblemQueueFullScreen = false;
       _selectedRegistrySearchContextId = null;
@@ -1204,6 +1208,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
               setState(() {
                 _registryViewFilter = filter;
+                _registryBranchScopeNodeId = null;
+                _registryBranchFilterScrollOffset = 0;
                 _expandedRegistryNodeIds.clear();
               });
 
@@ -1299,9 +1305,60 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     );
   }
 
+  RegistryNode? _registryBranchScopeRoot(RegistryExplorerLoaded loaded) {
+    if (_registryViewFilter != 'branches' ||
+        _registryBranchScopeNodeId == null) {
+      return null;
+    }
+
+    return loaded.index.nodesById[_registryBranchScopeNodeId];
+  }
+
+  void _openRegistryBranchScope(RegistryNode node) {
+    final double currentOffset = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : 0;
+
+    setState(() {
+      _registryBranchFilterScrollOffset = currentOffset;
+      _registryBranchScopeNodeId = node.id;
+      _expandedRegistryNodeIds.clear();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+
+      _scrollController.jumpTo(0);
+    });
+  }
+
+  void _closeRegistryBranchScope() {
+    final double restoreOffset = _registryBranchFilterScrollOffset;
+
+    setState(() {
+      _registryBranchScopeNodeId = null;
+      _expandedRegistryNodeIds.clear();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+
+      final double targetOffset = restoreOffset
+          .clamp(0.0, _scrollController.position.maxScrollExtent)
+          .toDouble();
+
+      _scrollController.jumpTo(targetOffset);
+    });
+  }
+
   bool _hasVisibleRegistryChildren(
     RegistryNode node, {
     required bool searchActive,
+    required bool branchScopeActive,
   }) {
     if (searchActive) {
       return false;
@@ -1311,8 +1368,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       return node.children.isNotEmpty;
     }
 
-    if (_registryViewFilter == 'branches') {
-      return node.children.any(_matchesRegistryViewFilter);
+    if (_registryViewFilter == 'branches' && branchScopeActive) {
+      return node.children.isNotEmpty;
     }
 
     return false;
@@ -1332,28 +1389,34 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     }
 
     if (_registryViewFilter == 'branches') {
-      final List<RegistryNode> visibleBranches = <RegistryNode>[];
+      final RegistryNode? branchScopeRoot = _registryBranchScopeRoot(loaded);
 
-      void appendBranches(List<RegistryNode> nodes, int depth) {
-        for (final RegistryNode node in nodes) {
-          if (!_matchesRegistryViewFilter(node)) {
-            continue;
-          }
+      if (branchScopeRoot == null) {
+        return _allRegistryNodes(
+          loaded.snapshot.roots,
+        ).where(_matchesRegistryViewFilter).toList(growable: false);
+      }
 
-          visibleBranches.add(node);
+      final List<RegistryNode> visibleNodes = <RegistryNode>[];
 
-          final bool childrenVisible =
-              depth == 0 || _expandedRegistryNodeIds.contains(node.id);
+      void appendNodes(RegistryNode node, int depth) {
+        visibleNodes.add(node);
 
-          if (childrenVisible) {
-            appendBranches(node.children, depth + 1);
-          }
+        final bool childrenVisible =
+            depth == 0 || _expandedRegistryNodeIds.contains(node.id);
+
+        if (!childrenVisible) {
+          return;
+        }
+
+        for (final RegistryNode child in node.children) {
+          appendNodes(child, depth + 1);
         }
       }
 
-      appendBranches(loaded.snapshot.roots, 0);
+      appendNodes(branchScopeRoot, 0);
 
-      return visibleBranches;
+      return visibleNodes;
     }
 
     if (_registryViewFilter != 'all') {
@@ -1922,6 +1985,27 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
                         child: Row(
                           children: <Widget>[
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Проект: ${loaded.snapshot.projectId}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('Узлов: ${loaded.index.nodes.length}'),
+                                  Text(
+                                    'Revision: '
+                                    '${loaded.snapshot.sourceRevision}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
                             Badge(
                               isLabelVisible: loaded.problems.isNotEmpty,
                               label: Text('${loaded.problems.length}'),
@@ -1944,29 +2028,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 icon: const Icon(Icons.fact_check_outlined),
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    'Проект: ${loaded.snapshot.projectId}',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text('Узлов: ${loaded.index.nodes.length}'),
-                                  Text(
-                                    'Revision: '
-                                    '${loaded.snapshot.sourceRevision}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-
                             IconButton(
                               key: const ValueKey<String>(
                                 'registry-studio-reset',
@@ -1976,6 +2037,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               icon: const Icon(Icons.restart_alt),
                             ),
                             IconButton(
+                              key: const ValueKey<String>(
+                                'registry-refresh-button',
+                              ),
                               tooltip:
                                   loaded.selectedProblem == null &&
                                       loaded.openRegistryNode != null
@@ -2427,22 +2491,52 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 .trim()
                                 .isNotEmpty;
 
+                            final RegistryNode? branchScopeRoot =
+                                _registryBranchScopeRoot(loaded);
+
+                            final bool branchEntryList =
+                                _registryViewFilter == 'branches' &&
+                                branchScopeRoot == null &&
+                                !searchActive;
+
                             return ListTile(
                               key: const ValueKey<String>(
                                 'full-registry-header',
                               ),
-                              leading: Icon(
-                                searchActive
-                                    ? Icons.manage_search
-                                    : Icons.account_tree_outlined,
-                              ),
+                              leading: branchScopeRoot != null && !searchActive
+                                  ? IconButton(
+                                      key: const ValueKey<String>(
+                                        'registry-branch-scope-back',
+                                      ),
+                                      tooltip: 'Вернуться к списку веток',
+                                      onPressed: _closeRegistryBranchScope,
+                                      icon: const Icon(Icons.arrow_back),
+                                    )
+                                  : Icon(
+                                      searchActive
+                                          ? Icons.manage_search
+                                          : branchEntryList
+                                          ? Icons.folder_copy_outlined
+                                          : Icons.account_tree_outlined,
+                                    ),
                               title: Text(
                                 searchActive
                                     ? 'Результаты поиска · '
                                           '${loaded.searchResults.length} '
                                           'из ${loaded.index.nodes.length}'
+                                    : branchScopeRoot != null
+                                    ? 'Ветка: '
+                                          '${branchScopeRoot.path.segments.last}'
+                                    : branchEntryList
+                                    ? 'Ветки Registry · '
+                                          '${visibleRegistryNodes.length}'
                                     : 'Дерево Registry',
                               ),
+                              subtitle: branchScopeRoot == null || searchActive
+                                  ? null
+                                  : Text(
+                                      branchScopeRoot.path.segments.join(' → '),
+                                    ),
                               dense: true,
                               visualDensity: VisualDensity.compact,
                               minVerticalPadding: 0,
@@ -2465,13 +2559,31 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ? _registrySearchMatch(node, loaded.searchQuery)
                               : null;
 
-                          final int depth = node.path.segments.length - 1;
+                          final RegistryNode? branchScopeRoot =
+                              _registryBranchScopeRoot(loaded);
 
-                          final bool rootNode = depth == 0;
+                          final bool branchEntryList =
+                              _registryViewFilter == 'branches' &&
+                              branchScopeRoot == null &&
+                              !searchActive;
+
+                          final int absoluteDepth =
+                              node.path.segments.length - 1;
+
+                          final int depth = searchActive || branchEntryList
+                              ? 0
+                              : branchScopeRoot == null
+                              ? absoluteDepth
+                              : absoluteDepth -
+                                    (branchScopeRoot.path.segments.length - 1);
+
+                          final bool rootNode =
+                              !searchActive && !branchEntryList && depth == 0;
 
                           final bool expandable = _hasVisibleRegistryChildren(
                             node,
                             searchActive: searchActive,
+                            branchScopeActive: branchScopeRoot != null,
                           );
 
                           final bool expanded =
@@ -2651,7 +2763,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           ),
                                         )
                                       : Icon(
-                                          expandable
+                                          branchEntryList || expandable
                                               ? Icons.account_tree_outlined
                                               : Icons.description_outlined,
                                         ),
@@ -2726,9 +2838,17 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                         '${evidence.startLine}–'
                                         '${evidence.endLine}',
                                       ),
+                                trailing: branchEntryList
+                                    ? const Icon(Icons.chevron_right)
+                                    : null,
                                 isThreeLine: true,
                                 selected: loaded.openRegistryNodeId == node.id,
                                 onTap: () async {
+                                  if (branchEntryList) {
+                                    _openRegistryBranchScope(node);
+                                    return;
+                                  }
+
                                   await _selectRegistryNode(node.id);
                                 },
                               ),

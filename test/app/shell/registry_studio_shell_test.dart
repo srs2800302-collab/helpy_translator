@@ -2523,6 +2523,48 @@ void main() {
     expect(siblingEntityRow, findsNothing);
   });
 
+  testWidgets('places Registry status before reset and refresh actions', (
+    WidgetTester tester,
+  ) async {
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => snapshot],
+    );
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder statusButton = find.byKey(
+      const ValueKey<String>('registry-status-center-button'),
+    );
+    final Finder resetButton = find.byKey(
+      const ValueKey<String>('registry-studio-reset'),
+    );
+    final Finder refreshButton = find.byKey(
+      const ValueKey<String>('registry-refresh-button'),
+    );
+
+    expect(statusButton, findsOneWidget);
+    expect(resetButton, findsOneWidget);
+    expect(refreshButton, findsOneWidget);
+
+    expect(
+      tester.getTopLeft(statusButton).dx,
+      lessThan(tester.getTopLeft(resetButton).dx),
+    );
+    expect(
+      tester.getTopLeft(resetButton).dx,
+      lessThan(tester.getTopLeft(refreshButton).dx),
+    );
+  });
   testWidgets('filters only visible Registry nodes and keeps search global', (
     WidgetTester tester,
   ) async {
@@ -2624,7 +2666,7 @@ void main() {
     expect(loader.loadCount, 1);
   });
 
-  testWidgets('expands only visible branches in the Registry branch filter', (
+  testWidgets('opens a filtered Registry branch as a complete local tree', (
     WidgetTester tester,
   ) async {
     const String filteredFingerprint =
@@ -2766,32 +2808,36 @@ void main() {
     );
     final Finder leafRow = find.byKey(ValueKey<String>(leaf.id.value));
 
-    final Finder branchToggle = find.byKey(
-      ValueKey<String>('registry-tree-toggle-${branch.id.value}'),
-    );
-
     final Finder nestedBranchToggle = find.byKey(
       ValueKey<String>('registry-tree-toggle-${nestedBranch.id.value}'),
     );
 
     expect(rootRow, findsOneWidget);
     expect(branchRow, findsOneWidget);
-    expect(nestedBranchRow, findsNothing);
-    expect(leafRow, findsNothing);
-    expect(branchToggle, findsOneWidget);
-
-    await tester.tap(branchToggle);
-    await tester.pumpAndSettle();
-
     expect(nestedBranchRow, findsOneWidget);
     expect(leafRow, findsNothing);
     expect(nestedBranchToggle, findsNothing);
 
-    await tester.tap(branchToggle);
+    await tester.tap(branchRow);
     await tester.pumpAndSettle();
 
-    expect(nestedBranchRow, findsNothing);
+    expect(find.text('Ветка: Branch'), findsOneWidget);
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-branch-scope-back')),
+      findsOneWidget,
+    );
+
+    expect(rootRow, findsNothing);
+    expect(branchRow, findsOneWidget);
+    expect(nestedBranchRow, findsOneWidget);
     expect(leafRow, findsNothing);
+    expect(nestedBranchToggle, findsOneWidget);
+
+    await tester.tap(nestedBranchToggle);
+    await tester.pumpAndSettle();
+
+    expect(leafRow, findsOneWidget);
 
     await tester.enterText(
       find.byKey(const ValueKey<String>('registry-search-field')),
@@ -2802,6 +2848,27 @@ void main() {
 
     expect(nestedBranchRow, findsOneWidget);
     expect(nestedBranchToggle, findsNothing);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-search-clear')),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ветка: Branch'), findsOneWidget);
+    expect(nestedBranchToggle, findsOneWidget);
+    expect(leafRow, findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-branch-scope-back')),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(rootRow, findsOneWidget);
+    expect(branchRow, findsOneWidget);
+    expect(nestedBranchRow, findsOneWidget);
+    expect(leafRow, findsNothing);
   });
 
   testWidgets('shows search match reason, highlight and clear action', (
