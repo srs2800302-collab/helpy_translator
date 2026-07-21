@@ -219,9 +219,9 @@ void main() {
       expect(store.state?.currentRevision, updatedSnapshot.sourceRevision);
       expect(store.state?.previousRevision, snapshot.sourceRevision);
 
-      expect(historyStore.entries, hasLength(2));
+      expect(historyStore.entries, hasLength(3));
       final RegistryAnalysisHistoryEntry sameRevisionHistoryEntry =
-          historyStore.entries[1];
+          historyStore.entries[2];
       expect(
         sameRevisionHistoryEntry.sourceRevision,
         updatedSnapshot.sourceRevision,
@@ -1428,10 +1428,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Событие: Обнаружены изменения Registry'),
-        findsOneWidget,
-      );
+      expect(find.text('Событие: Обнаружена новая revision'), findsOneWidget);
 
       final Finder historySheet = find.byKey(
         const ValueKey<String>('registry-analysis-history-sheet'),
@@ -2625,6 +2622,186 @@ void main() {
     expect(store.state?.openRegistryNodeId, isNull);
     expect(store.state?.selectedProblemIndex, isNull);
     expect(loader.loadCount, 1);
+  });
+
+  testWidgets('expands only visible branches in the Registry branch filter', (
+    WidgetTester tester,
+  ) async {
+    const String filteredFingerprint =
+        'git-blob:abababababababababababababababababababab';
+
+    final RegistryNode leaf = RegistryNode(
+      id: RegistryNodeId('project.registry.node.filtered.000004'),
+      kindId: 'project.registry.heading.4',
+      path: RegistryPath(const <String>[
+        'Registry',
+        'Branch',
+        'Nested Branch',
+        'Leaf',
+      ]),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: filteredFingerprint,
+          headingPath: const <String>[
+            'Registry',
+            'Branch',
+            'Nested Branch',
+            'Leaf',
+          ],
+          startLine: 7,
+          endLine: 8,
+        ),
+      ],
+      content: 'Leaf content.',
+      businessScopeOwnerId: null,
+      children: const <RegistryNode>[],
+    );
+
+    final RegistryNode nestedBranch = RegistryNode(
+      id: RegistryNodeId('project.registry.node.filtered.000003'),
+      kindId: 'project.registry.heading.3',
+      path: RegistryPath(const <String>['Registry', 'Branch', 'Nested Branch']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: filteredFingerprint,
+          headingPath: const <String>['Registry', 'Branch', 'Nested Branch'],
+          startLine: 5,
+          endLine: 8,
+        ),
+      ],
+      content: 'Nested branch content.',
+      businessScopeOwnerId: null,
+      children: <RegistryNode>[leaf],
+    );
+
+    final RegistryNode branch = RegistryNode(
+      id: RegistryNodeId('project.registry.node.filtered.000002'),
+      kindId: 'project.registry.heading.2',
+      path: RegistryPath(const <String>['Registry', 'Branch']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: filteredFingerprint,
+          headingPath: const <String>['Registry', 'Branch'],
+          startLine: 3,
+          endLine: 8,
+        ),
+      ],
+      content: 'Branch content.',
+      businessScopeOwnerId: null,
+      children: <RegistryNode>[nestedBranch],
+    );
+
+    final RegistryNode root = RegistryNode(
+      id: RegistryNodeId('project.registry.node.filtered.000001'),
+      kindId: 'project.registry.heading.1',
+      path: RegistryPath(const <String>['Registry']),
+      sourceEvidence: <SourceEvidence>[
+        SourceEvidence(
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          sourceSnapshotFingerprint: filteredFingerprint,
+          headingPath: const <String>['Registry'],
+          startLine: 1,
+          endLine: 8,
+        ),
+      ],
+      content: 'Root content.',
+      businessScopeOwnerId: null,
+      children: <RegistryNode>[branch],
+    );
+
+    final RegistrySnapshot filteredSnapshot = RegistrySnapshot(
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: '3333333333333333333333333333333333333333',
+      sourceSnapshotFingerprint: filteredFingerprint,
+      sourceContent:
+          '# Registry\n'
+          'Root content.\n'
+          '## Branch\n'
+          'Branch content.\n'
+          '### Nested Branch\n'
+          'Nested branch content.\n'
+          '#### Leaf\n'
+          'Leaf content.\n',
+      roots: <RegistryNode>[root],
+    );
+
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => filteredSnapshot],
+    );
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder filterButton = find.byKey(
+      const ValueKey<String>('registry-view-filter-button'),
+    );
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-branches')),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder rootRow = find.byKey(ValueKey<String>(root.id.value));
+    final Finder branchRow = find.byKey(ValueKey<String>(branch.id.value));
+    final Finder nestedBranchRow = find.byKey(
+      ValueKey<String>(nestedBranch.id.value),
+    );
+    final Finder leafRow = find.byKey(ValueKey<String>(leaf.id.value));
+
+    final Finder branchToggle = find.byKey(
+      ValueKey<String>('registry-tree-toggle-${branch.id.value}'),
+    );
+
+    final Finder nestedBranchToggle = find.byKey(
+      ValueKey<String>('registry-tree-toggle-${nestedBranch.id.value}'),
+    );
+
+    expect(rootRow, findsOneWidget);
+    expect(branchRow, findsOneWidget);
+    expect(nestedBranchRow, findsNothing);
+    expect(leafRow, findsNothing);
+    expect(branchToggle, findsOneWidget);
+
+    await tester.tap(branchToggle);
+    await tester.pumpAndSettle();
+
+    expect(nestedBranchRow, findsOneWidget);
+    expect(leafRow, findsNothing);
+    expect(nestedBranchToggle, findsNothing);
+
+    await tester.tap(branchToggle);
+    await tester.pumpAndSettle();
+
+    expect(nestedBranchRow, findsNothing);
+    expect(leafRow, findsNothing);
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('registry-search-field')),
+      'Nested branch content',
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(nestedBranchRow, findsOneWidget);
+    expect(nestedBranchToggle, findsNothing);
   });
 
   testWidgets('shows search match reason, highlight and clear action', (

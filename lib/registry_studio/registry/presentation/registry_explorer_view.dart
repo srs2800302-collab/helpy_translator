@@ -408,7 +408,21 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
   String _registryAnalysisHistoryEventLabel(
     RegistryAnalysisHistoryEntry entry,
+    RegistryAnalysisHistoryEntry? previousEntry,
   ) {
+    if (previousEntry == null) {
+      return 'Первичная загрузка Registry';
+    }
+
+    final bool sameRevision =
+        previousEntry.sourceRevision == entry.sourceRevision &&
+        previousEntry.sourceSnapshotFingerprint ==
+            entry.sourceSnapshotFingerprint;
+
+    if (sameRevision) {
+      return 'Refresh без новой revision';
+    }
+
     final bool hasChanges =
         entry.previousAddedCount > 0 ||
         entry.previousRemovedCount > 0 ||
@@ -418,18 +432,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
         entry.cleanBaselineChangedCount > 0;
 
     if (hasChanges) {
-      return 'Обнаружены изменения Registry';
+      return 'Обнаружена новая revision';
     }
 
-    if (entry.previousRevision == null && entry.cleanBaselineRevision == null) {
-      return 'Первичная загрузка Registry';
-    }
-
-    if (entry.previousRevision == null && entry.cleanBaselineRevision != null) {
-      return 'Проверка относительно clean baseline';
-    }
-
-    return 'Refresh без изменений';
+    return 'Новая revision без структурных изменений';
   }
 
   Future<void> _showRegistryAnalysisHistory(
@@ -503,6 +509,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             final RegistryAnalysisHistoryEntry entry =
                                 loaded.analysisHistory[historyIndex];
 
+                            final RegistryAnalysisHistoryEntry? previousEntry =
+                                historyIndex == 0
+                                ? null
+                                : loaded.analysisHistory[historyIndex - 1];
+
                             return Padding(
                               key: ValueKey<String>(
                                 'registry-analysis-history-entry-'
@@ -524,7 +535,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                   const SizedBox(height: 4),
                                   Text(
                                     'Событие: '
-                                    '${_registryAnalysisHistoryEventLabel(entry)}',
+                                    '${_registryAnalysisHistoryEventLabel(entry, previousEntry)}',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1288,21 +1299,67 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     );
   }
 
+  bool _hasVisibleRegistryChildren(
+    RegistryNode node, {
+    required bool searchActive,
+  }) {
+    if (searchActive) {
+      return false;
+    }
+
+    if (_registryViewFilter == 'all') {
+      return node.children.isNotEmpty;
+    }
+
+    if (_registryViewFilter == 'branches') {
+      return node.children.any(_matchesRegistryViewFilter);
+    }
+
+    return false;
+  }
+
   List<RegistryNode> _visibleRegistryNodes(RegistryExplorerLoaded loaded) {
     final bool searchActive = loaded.searchQuery.trim().isNotEmpty;
 
-    if (_registryViewFilter != 'all') {
-      final List<RegistryNode> candidates = searchActive
-          ? loaded.searchResults
-          : _allRegistryNodes(loaded.snapshot.roots);
+    if (searchActive) {
+      if (_registryViewFilter == 'all') {
+        return loaded.searchResults;
+      }
 
-      return candidates
+      return loaded.searchResults
           .where(_matchesRegistryViewFilter)
           .toList(growable: false);
     }
 
-    if (searchActive) {
-      return loaded.searchResults;
+    if (_registryViewFilter == 'branches') {
+      final List<RegistryNode> visibleBranches = <RegistryNode>[];
+
+      void appendBranches(List<RegistryNode> nodes, int depth) {
+        for (final RegistryNode node in nodes) {
+          if (!_matchesRegistryViewFilter(node)) {
+            continue;
+          }
+
+          visibleBranches.add(node);
+
+          final bool childrenVisible =
+              depth == 0 || _expandedRegistryNodeIds.contains(node.id);
+
+          if (childrenVisible) {
+            appendBranches(node.children, depth + 1);
+          }
+        }
+      }
+
+      appendBranches(loaded.snapshot.roots, 0);
+
+      return visibleBranches;
+    }
+
+    if (_registryViewFilter != 'all') {
+      return _allRegistryNodes(
+        loaded.snapshot.roots,
+      ).where(_matchesRegistryViewFilter).toList(growable: false);
     }
 
     final List<RegistryNode> visibleNodes = <RegistryNode>[];
@@ -2412,7 +2469,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                           final bool rootNode = depth == 0;
 
-                          final bool expandable = node.children.isNotEmpty;
+                          final bool expandable = _hasVisibleRegistryChildren(
+                            node,
+                            searchActive: searchActive,
+                          );
 
                           final bool expanded =
                               rootNode ||
