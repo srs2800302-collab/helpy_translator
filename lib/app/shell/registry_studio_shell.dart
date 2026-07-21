@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../registry_studio/canonical/application/contracts/canonical_business_text_analysis_session_runner.dart';
 import '../../registry_studio/canonical/application/contracts/canonical_dictionary_loader.dart';
+import '../../registry_studio/canonical/domain/entities/canonical_business_text_candidate.dart';
 import '../../registry_studio/canonical/presentation/canonical_business_text_analysis_cubit.dart';
 import '../../registry_studio/canonical/presentation/canonical_business_text_analysis_status_action.dart';
 import '../../registry_studio/canonical/presentation/canonical_dictionary_cubit.dart';
@@ -15,6 +16,7 @@ import '../../registry_studio/registry/application/contracts/registry_revision_s
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
+import '../../registry_studio/registry/domain/value_objects/registry_node_id.dart';
 import '../../registry_studio/registry/presentation/registry_explorer_view.dart';
 
 enum RegistryStudioWorkspace { registryStudio, translator }
@@ -92,7 +94,7 @@ final class RegistryStudioShell extends StatelessWidget {
   }
 }
 
-final class _RegistryStudioShellView extends StatelessWidget {
+final class _RegistryStudioShellView extends StatefulWidget {
   const _RegistryStudioShellView({
     required this.showCanonicalDictionaryStatus,
     required this.showCanonicalBusinessTextAnalysisStatus,
@@ -114,6 +116,34 @@ final class _RegistryStudioShellView extends StatelessWidget {
   final RegistrySnapshotComparator registrySnapshotComparator;
 
   @override
+  State<_RegistryStudioShellView> createState() =>
+      _RegistryStudioShellViewState();
+}
+
+final class _RegistryStudioShellViewState
+    extends State<_RegistryStudioShellView> {
+  Future<void> Function(RegistryNodeId? nodeId)? _selectRegistryNode;
+
+  void _bindRegistryNodeSelection(
+    Future<void> Function(RegistryNodeId? nodeId) selectRegistryNode,
+  ) {
+    _selectRegistryNode = selectRegistryNode;
+  }
+
+  Future<void> _openRegistryCandidate(
+    CanonicalBusinessTextCandidate candidate,
+  ) {
+    final Future<void> Function(RegistryNodeId? nodeId)? selectRegistryNode =
+        _selectRegistryNode;
+
+    if (selectRegistryNode == null) {
+      return Future<void>.error(StateError('Registry недоступен.'));
+    }
+
+    return selectRegistryNode(candidate.nodeId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return BlocBuilder<RegistryStudioWorkspaceCubit, RegistryStudioWorkspace>(
       builder: (BuildContext context, RegistryStudioWorkspace workspace) {
@@ -126,24 +156,28 @@ final class _RegistryStudioShellView extends StatelessWidget {
             title: Text(_titleFor(workspace)),
             actions: <Widget>[
               if (workspace == RegistryStudioWorkspace.registryStudio &&
-                  showCanonicalDictionaryStatus)
+                  widget.showCanonicalDictionaryStatus)
                 const CanonicalDictionaryStatusAction(),
               if (workspace == RegistryStudioWorkspace.registryStudio &&
-                  showCanonicalBusinessTextAnalysisStatus)
-                const CanonicalBusinessTextAnalysisStatusAction(),
+                  widget.showCanonicalBusinessTextAnalysisStatus)
+                CanonicalBusinessTextAnalysisStatusAction(
+                  onOpenRegistryCandidate: _openRegistryCandidate,
+                ),
             ],
           ),
           body: IndexedStack(
             index: selectedIndex,
             children: <Widget>[
               RegistryExplorerView(
-                snapshotLoader: registrySnapshotLoader,
-                snapshotRefreshLoader: registrySnapshotRefreshLoader,
-                snapshotRevisionLoader: registrySnapshotRevisionLoader,
-                revisionStateStore: registryRevisionStateStore,
-                analysisHistoryStore: registryAnalysisHistoryStore,
-                snapshotComparator: registrySnapshotComparator,
-                onSnapshotAccepted: showCanonicalBusinessTextAnalysisStatus
+                snapshotLoader: widget.registrySnapshotLoader,
+                snapshotRefreshLoader: widget.registrySnapshotRefreshLoader,
+                snapshotRevisionLoader: widget.registrySnapshotRevisionLoader,
+                revisionStateStore: widget.registryRevisionStateStore,
+                analysisHistoryStore: widget.registryAnalysisHistoryStore,
+                snapshotComparator: widget.registrySnapshotComparator,
+                onRegistryNodeSelectionReady: _bindRegistryNodeSelection,
+                onSnapshotAccepted:
+                    widget.showCanonicalBusinessTextAnalysisStatus
                     ? (snapshot) {
                         unawaited(
                           context

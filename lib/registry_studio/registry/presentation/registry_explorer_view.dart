@@ -23,6 +23,7 @@ final class RegistryExplorerView extends StatelessWidget {
     required this.analysisHistoryStore,
     required this.snapshotComparator,
     this.onSnapshotAccepted,
+    this.onRegistryNodeSelectionReady,
     super.key,
   });
 
@@ -33,6 +34,10 @@ final class RegistryExplorerView extends StatelessWidget {
   final RegistryAnalysisHistoryStore analysisHistoryStore;
   final RegistrySnapshotComparator snapshotComparator;
   final void Function(RegistrySnapshot snapshot)? onSnapshotAccepted;
+  final void Function(
+    Future<void> Function(RegistryNodeId? nodeId) selectRegistryNode,
+  )?
+  onRegistryNodeSelectionReady;
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +51,20 @@ final class RegistryExplorerView extends StatelessWidget {
         snapshotComparator: snapshotComparator,
         onSnapshotAccepted: onSnapshotAccepted,
       )..restore(),
-      child: const _RegistryExplorerView(),
+      child: _RegistryExplorerView(
+        onRegistryNodeSelectionReady: onRegistryNodeSelectionReady,
+      ),
     );
   }
 }
 
 final class _RegistryExplorerView extends StatefulWidget {
-  const _RegistryExplorerView();
+  const _RegistryExplorerView({required this.onRegistryNodeSelectionReady});
+
+  final void Function(
+    Future<void> Function(RegistryNodeId? nodeId) selectRegistryNode,
+  )?
+  onRegistryNodeSelectionReady;
 
   @override
   State<_RegistryExplorerView> createState() => _RegistryExplorerViewState();
@@ -82,6 +94,19 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   void initState() {
     super.initState();
     _scrollController.addListener(_updateScrollToTopVisibility);
+    widget.onRegistryNodeSelectionReady?.call(_selectRegistryNode);
+  }
+
+  @override
+  void didUpdateWidget(covariant _RegistryExplorerView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.onRegistryNodeSelectionReady ==
+        widget.onRegistryNodeSelectionReady) {
+      return;
+    }
+
+    widget.onRegistryNodeSelectionReady?.call(_selectRegistryNode);
   }
 
   void _updateScrollToTopVisibility() {

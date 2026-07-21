@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../domain/entities/canonical_business_text_analysis_result.dart';
+import '../domain/entities/canonical_business_text_candidate.dart';
 import '../domain/entities/canonical_business_text_classification.dart';
 import '../domain/entities/canonical_business_text_classification_status.dart';
 import 'canonical_business_text_classification_details.dart';
 
 final class CanonicalBusinessTextAnalysisView extends StatefulWidget {
-  const CanonicalBusinessTextAnalysisView({required this.result, super.key});
+  const CanonicalBusinessTextAnalysisView({
+    required this.result,
+    this.onOpenRegistryCandidate,
+    super.key,
+  });
 
   static const Key viewKey = ValueKey<String>(
     'canonical-business-text-analysis-view',
@@ -17,6 +22,8 @@ final class CanonicalBusinessTextAnalysisView extends StatefulWidget {
   );
 
   final CanonicalBusinessTextAnalysisResult result;
+  final Future<void> Function(CanonicalBusinessTextCandidate candidate)?
+  onOpenRegistryCandidate;
 
   @override
   State<CanonicalBusinessTextAnalysisView> createState() =>
@@ -206,6 +213,47 @@ final class _CanonicalBusinessTextAnalysisViewState
                                 builder: (BuildContext sheetContext) {
                                   return CanonicalBusinessTextClassificationDetails(
                                     classification: classification,
+                                    onOpenRegistryCandidate:
+                                        widget.onOpenRegistryCandidate == null
+                                        ? null
+                                        : (candidate) async {
+                                            try {
+                                              await widget
+                                                  .onOpenRegistryCandidate!(
+                                                candidate,
+                                              );
+                                            } catch (error) {
+                                              if (!context.mounted) {
+                                                return;
+                                              }
+
+                                              final String message = error
+                                                  .toString()
+                                                  .trim();
+
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    message.isEmpty
+                                                        ? 'Не удалось открыть Registry block.'
+                                                        : message,
+                                                  ),
+                                                ),
+                                              );
+
+                                              return;
+                                            }
+
+                                            if (sheetContext.mounted) {
+                                              Navigator.of(sheetContext).pop();
+                                            }
+
+                                            if (context.mounted) {
+                                              Navigator.of(context).pop();
+                                            }
+                                          },
                                   );
                                 },
                               );

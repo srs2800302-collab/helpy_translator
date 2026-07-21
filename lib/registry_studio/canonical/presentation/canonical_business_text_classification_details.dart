@@ -7,6 +7,7 @@ import '../domain/entities/canonical_business_text_classification_status.dart';
 final class CanonicalBusinessTextClassificationDetails extends StatelessWidget {
   const CanonicalBusinessTextClassificationDetails({
     required this.classification,
+    this.onOpenRegistryCandidate,
     super.key,
   });
 
@@ -14,7 +15,13 @@ final class CanonicalBusinessTextClassificationDetails extends StatelessWidget {
     'canonical-business-text-classification-details',
   );
 
+  static const Key openRegistryKey = ValueKey<String>(
+    'canonical-business-text-classification-open-registry',
+  );
+
   final CanonicalBusinessTextClassification classification;
+  final Future<void> Function(CanonicalBusinessTextCandidate candidate)?
+  onOpenRegistryCandidate;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +97,17 @@ final class CanonicalBusinessTextClassificationDetails extends StatelessWidget {
                     'Direct content line: '
                     '${candidate.directContentLine}',
                   ),
+                  if (onOpenRegistryCandidate != null) ...<Widget>[
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      key: openRegistryKey,
+                      onPressed: () async {
+                        await onOpenRegistryCandidate!(candidate);
+                      },
+                      icon: const Icon(Icons.account_tree),
+                      label: const Text('Открыть в Registry'),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   const Text(
                     'Raw text',

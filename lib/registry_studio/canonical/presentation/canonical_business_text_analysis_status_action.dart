@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../domain/entities/canonical_business_text_candidate.dart';
+
 import 'canonical_business_text_analysis_cubit.dart';
 import 'canonical_business_text_analysis_view.dart';
 
 final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
-  const CanonicalBusinessTextAnalysisStatusAction({super.key});
+  const CanonicalBusinessTextAnalysisStatusAction({
+    this.onOpenRegistryCandidate,
+    super.key,
+  });
+
+  final Future<void> Function(CanonicalBusinessTextCandidate candidate)?
+  onOpenRegistryCandidate;
 
   static const Key actionKey = ValueKey<String>(
     'canonical-business-text-analysis-status-action',
@@ -59,6 +67,7 @@ final class CanonicalBusinessTextAnalysisStatusAction extends StatelessWidget {
                       builder: (BuildContext routeContext) {
                         return CanonicalBusinessTextAnalysisView(
                           result: result,
+                          onOpenRegistryCandidate: onOpenRegistryCandidate,
                         );
                       },
                     ),
