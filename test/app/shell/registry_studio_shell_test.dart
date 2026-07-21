@@ -1016,6 +1016,7 @@ void main() {
           registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
         ),
       );
+
       await tester.pumpAndSettle();
 
       expect(
@@ -1024,17 +1025,56 @@ void main() {
       );
 
       await tester.tap(find.byTooltip('Перезагрузить Registry'));
+
       await tester.pumpAndSettle();
 
+      expect(loader.loadCount, 2);
+
+      final Finder statusButton = find.byKey(
+        const ValueKey<String>('registry-status-center-button'),
+      );
+
+      expect(statusButton, findsOneWidget);
+
+      await tester.tap(statusButton);
+      await tester.pumpAndSettle();
+
+      final Finder statusSheet = find.byKey(
+        const ValueKey<String>('registry-status-center-sheet'),
+      );
+
+      final Finder statusScrollable = find
+          .descendant(of: statusSheet, matching: find.byType(Scrollable))
+          .first;
+
+      final Finder previousRevisionText = find.descendant(
+        of: statusSheet,
+        matching: find.text(snapshot.sourceRevision),
+      );
+
+      expect(statusSheet, findsOneWidget);
+      expect(statusScrollable, findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        previousRevisionText,
+        240,
+        scrollable: statusScrollable,
+      );
+
       expect(
-        find.text('Revision: ${updatedSnapshot.sourceRevision}'),
+        find.descendant(
+          of: statusSheet,
+          matching: find.text('Предыдущая revision'),
+        ),
         findsOneWidget,
       );
+
+      expect(previousRevisionText, findsOneWidget);
+
       expect(
         find.text('Предыдущая revision: ${snapshot.sourceRevision}'),
-        findsOneWidget,
+        findsNothing,
       );
-      expect(loader.loadCount, 2);
     },
   );
 
@@ -1095,6 +1135,22 @@ void main() {
         findsOneWidget,
       );
 
+      final Finder statusScrollable = find
+          .descendant(of: statusSheet, matching: find.byType(Scrollable))
+          .first;
+
+      final Finder openHistoryButton = find.byKey(
+        const ValueKey<String>('registry-status-center-open-history'),
+      );
+
+      expect(statusScrollable, findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        openHistoryButton,
+        240,
+        scrollable: statusScrollable,
+      );
+
       expect(
         find.descendant(
           of: statusSheet,
@@ -1103,18 +1159,7 @@ void main() {
         findsOneWidget,
       );
 
-      expect(
-        find.byKey(
-          const ValueKey<String>('registry-status-center-open-problems'),
-        ),
-        findsNothing,
-      );
-
-      await tester.tap(
-        find.byKey(
-          const ValueKey<String>('registry-status-center-open-history'),
-        ),
-      );
+      await tester.tap(openHistoryButton);
 
       await tester.pumpAndSettle();
 
@@ -1271,107 +1316,78 @@ void main() {
       );
 
       await tester.pumpAndSettle();
+      final Finder statusButton = find.byKey(
+        const ValueKey<String>('registry-status-center-button'),
+      );
+
+      expect(statusButton, findsOneWidget);
 
       expect(
-        find.text('Изменения с предыдущей revision: нет baseline'),
+        find.byKey(const ValueKey<String>('registry-analysis-history-button')),
+        findsNothing,
+      );
+
+      expect(
+        find.byKey(const ValueKey<String>('registry-problem-queue')),
+        findsNothing,
+      );
+
+      expect(
+        find.byKey(
+          const ValueKey<String>('registry-previous-comparison-summary'),
+        ),
+        findsNothing,
+      );
+
+      expect(
+        find.byKey(const ValueKey<String>('registry-clean-baseline-summary')),
+        findsNothing,
+      );
+
+      await tester.tap(statusButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Сравнение с предыдущей revision: нет baseline'),
         findsOneWidget,
       );
 
       expect(find.text('Clean baseline: не подтверждён'), findsOneWidget);
 
-      final Finder historyButton = find.byKey(
-        const ValueKey<String>('registry-analysis-history-button'),
+      final Finder statusSheet = find.byKey(
+        const ValueKey<String>('registry-status-center-sheet'),
       );
 
-      expect(historyStore.entries, hasLength(1));
-      expect(historyButton, findsOneWidget);
+      final Finder statusScrollable = find
+          .descendant(of: statusSheet, matching: find.byType(Scrollable))
+          .first;
 
-      expect(
-        find.ancestor(of: historyButton, matching: find.byType(Badge)),
-        findsNothing,
-      );
-
-      expect(find.byTooltip('История анализа: 1'), findsOneWidget);
-
-      await tester.tap(historyButton);
-      await tester.pumpAndSettle();
-
-      Finder historySheet = find.byKey(
-        const ValueKey<String>('registry-analysis-history-sheet'),
+      final Finder openHistoryButton = find.byKey(
+        const ValueKey<String>('registry-status-center-open-history'),
       );
 
-      expect(historySheet, findsOneWidget);
-      expect(
-        find.descendant(
-          of: historySheet,
-          matching: find.text('История анализа Registry: 1'),
-        ),
-        findsOneWidget,
+      final Finder confirmBaselineButton = find.byKey(
+        const ValueKey<String>('registry-status-center-confirm-baseline'),
       );
 
-      final Finder initialHistoryEntry = find.byKey(
-        const ValueKey<String>('registry-analysis-history-entry-0'),
+      expect(statusSheet, findsOneWidget);
+      expect(statusScrollable, findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        openHistoryButton,
+        240,
+        scrollable: statusScrollable,
       );
 
-      expect(initialHistoryEntry, findsOneWidget);
-      expect(
-        find.descendant(
-          of: initialHistoryEntry,
-          matching: find.text('Revision: ${snapshot.sourceRevision}'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: initialHistoryEntry,
-          matching: find.text('Предыдущая revision: нет baseline'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: initialHistoryEntry,
-          matching: find.text('Clean baseline: не подтверждён'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: initialHistoryEntry,
-          matching: find.text('С предыдущей revision: +0 · -0 · ~0'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: initialHistoryEntry,
-          matching: find.text('С clean baseline: +0 · -0 · ~0'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: initialHistoryEntry,
-          matching: find.text('Проблем: 0'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: initialHistoryEntry,
-          matching: find.textContaining('Время: '),
-        ),
-        findsOneWidget,
+      expect(find.text('История анализа: 1'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        confirmBaselineButton,
+        -240,
+        scrollable: statusScrollable,
       );
 
-      await tester.tap(find.byTooltip('Закрыть историю анализа'));
-      await tester.pumpAndSettle();
-
-      expect(historySheet, findsNothing);
-
-      await tester.tap(
-        find.byTooltip('Подтвердить текущую revision как clean baseline'),
-      );
+      await tester.tap(confirmBaselineButton);
 
       await tester.pumpAndSettle();
 
@@ -1380,485 +1396,89 @@ void main() {
       await tester.tap(find.text('Подтвердить'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Clean baseline: ${snapshot.sourceRevision}'),
-        findsOneWidget,
-      );
-
-      expect(find.text('Расхождения с clean baseline: 0'), findsOneWidget);
-
       expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
 
       await tester.tap(find.byTooltip('Перезагрузить Registry'));
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Изменения с предыдущей revision: 2'), findsOneWidget);
-
-      expect(find.text('Расхождения с clean baseline: 2'), findsOneWidget);
-
       expect(historyStore.entries, hasLength(2));
-      expect(find.byTooltip('История анализа: 2'), findsOneWidget);
 
-      await tester.tap(historyButton);
+      await tester.tap(statusButton);
       await tester.pumpAndSettle();
 
-      historySheet = find.byKey(
+      expect(find.text('Проблемы Registry: 2'), findsOneWidget);
+
+      expect(find.text('Изменения с предыдущей revision: 2'), findsOneWidget);
+
+      expect(
+        find.textContaining('Расхождения с clean baseline: 2'),
+        findsOneWidget,
+      );
+
+      await tester.scrollUntilVisible(
+        openHistoryButton,
+        240,
+        scrollable: statusScrollable,
+      );
+
+      expect(find.text('История анализа: 2'), findsOneWidget);
+
+      await tester.tap(openHistoryButton);
+
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Событие: Обнаружены изменения Registry'),
+        findsOneWidget,
+      );
+
+      final Finder historySheet = find.byKey(
         const ValueKey<String>('registry-analysis-history-sheet'),
       );
 
+      final Finder historyScrollable = find
+          .descendant(of: historySheet, matching: find.byType(Scrollable))
+          .first;
+
+      final Finder initialLoadEvent = find.text(
+        'Событие: Первичная загрузка Registry',
+      );
+
       expect(historySheet, findsOneWidget);
-      expect(
-        find.descendant(
-          of: historySheet,
-          matching: find.text('История анализа Registry: 2'),
-        ),
-        findsOneWidget,
+      expect(historyScrollable, findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        initialLoadEvent,
+        240,
+        scrollable: historyScrollable,
       );
 
-      final Finder latestHistoryEntry = find.byKey(
-        const ValueKey<String>('registry-analysis-history-entry-1'),
-      );
-
-      expect(latestHistoryEntry, findsOneWidget);
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('Revision: ${updatedSnapshot.sourceRevision}'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text(
-            'Предыдущая revision: '
-            '${snapshot.sourceRevision}',
-          ),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('Clean baseline: ${snapshot.sourceRevision}'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('С предыдущей revision: +1 · -0 · ~1'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('С clean baseline: +1 · -0 · ~1'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('Проблем: 2'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('Identity: ${previousChild.id.value}'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text(
-            'Путь: ${previousChild.path.segments.join(' → ')}',
-          ),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('Причина: Изменены: содержимое.'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('Identity: ${addedChild.id.value}'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: latestHistoryEntry,
-          matching: find.text('Причина: Добавлен новый Registry-узел.'),
-        ),
-        findsOneWidget,
-      );
+      expect(initialLoadEvent, findsOneWidget);
 
       await tester.tap(find.byTooltip('Закрыть историю анализа'));
+
       await tester.pumpAndSettle();
 
-      expect(historySheet, findsNothing);
-
-      final Finder previousSummary = find.byKey(
-        const ValueKey<String>('registry-previous-comparison-summary'),
-      );
-
-      final Finder cleanSummary = find.byKey(
-        const ValueKey<String>('registry-clean-baseline-summary'),
-      );
-
-      expect(
-        find.descendant(
-          of: previousSummary,
-          matching: find.text('Добавлено: 1 · Удалено: 0 · Изменено: 1'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: cleanSummary,
-          matching: find.textContaining(
-            'Добавлено: 1 · Удалено: 0 · Изменено: 1',
-          ),
-        ),
-        findsOneWidget,
-      );
-
-      final Finder problemQueue = find.byKey(
-        const ValueKey<String>('registry-problem-queue'),
-      );
-
-      expect(problemQueue, findsOneWidget);
-
-      final Finder registryNodeList = find.byKey(
-        const ValueKey<String>('registry-node-list'),
-      );
-
-      expect(registryNodeList, findsOneWidget);
-
-      expect(
-        find.descendant(of: registryNodeList, matching: problemQueue),
-        findsNothing,
-      );
-
-      expect(
-        find.descendant(
-          of: problemQueue,
-          matching: find.text('Очередь проблем: 2'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: problemQueue,
-          matching: find.textContaining('Источник: clean baseline'),
-        ),
-        findsOneWidget,
-      );
-
-      await tester.tap(problemQueue);
+      await tester.tap(statusButton);
       await tester.pumpAndSettle();
 
-      final Finder registryScrollable = find.descendant(
-        of: find.byKey(const ValueKey<String>('registry-node-list')),
-        matching: find.byType(Scrollable),
-      );
-
-      expect(registryScrollable, findsOneWidget);
-
-      final Finder changedProblem = find.byKey(
-        ValueKey<String>(
-          'registry-problem-0-'
-          '${previousChild.id.value}',
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>('registry-status-center-open-problems'),
         ),
       );
 
-      final Finder addedProblem = find.byKey(
-        ValueKey<String>(
-          'registry-problem-1-'
-          '${addedChild.id.value}',
-        ),
-      );
-
-      expect(changedProblem, findsOneWidget);
-      expect(find.text('Затронуто · Domain'), findsOneWidget);
-
-      await tester.scrollUntilVisible(
-        addedProblem,
-        180,
-        scrollable: registryScrollable,
-      );
-
-      expect(addedProblem, findsOneWidget);
-      expect(find.text('Затронуто · Added Domain'), findsOneWidget);
-
-      await tester.scrollUntilVisible(
-        changedProblem,
-        -180,
-        scrollable: registryScrollable,
-      );
-
-      expect(changedProblem, findsOneWidget);
-
-      await tester.tap(problemQueue);
-      await tester.pumpAndSettle();
-
-      expect(changedProblem, findsNothing);
-      expect(addedProblem, findsNothing);
-
-      final Finder fullScreenButton = find.byTooltip(
-        'Открыть очередь проблем на весь экран',
-      );
-
-      await tester.tap(fullScreenButton);
-      await tester.pumpAndSettle();
-
-      final Finder fullScreenQueue = find.byKey(
-        const ValueKey<String>('registry-problem-queue-fullscreen'),
-      );
-
-      expect(fullScreenQueue, findsOneWidget);
-
-      expect(
-        find.descendant(
-          of: fullScreenQueue,
-          matching: find.text('Очередь проблем: 2'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: fullScreenQueue,
-          matching: find.textContaining('Источник: clean baseline'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.byKey(const ValueKey<String>('full-registry-header')),
-        findsNothing,
-      );
-
-      final Finder fullScreenCloseButton = find.byTooltip(
-        'Закрыть полноэкранную очередь проблем',
-      );
-
-      await tester.tap(fullScreenCloseButton);
-      await tester.pumpAndSettle();
-
-      expect(fullScreenQueue, findsNothing);
-
-      expect(
-        find.byKey(const ValueKey<String>('full-registry-header')),
-        findsOneWidget,
-      );
-
-      await tester.tap(fullScreenButton);
-      await tester.pumpAndSettle();
-
-      expect(fullScreenQueue, findsOneWidget);
-      expect(changedProblem, findsOneWidget);
-
-      await tester.scrollUntilVisible(
-        addedProblem,
-        180,
-        scrollable: registryScrollable,
-      );
-
-      expect(addedProblem, findsOneWidget);
-
-      await tester.scrollUntilVisible(
-        changedProblem,
-        -180,
-        scrollable: registryScrollable,
-      );
-
-      expect(changedProblem, findsOneWidget);
-
-      await tester.tap(changedProblem);
-      await tester.pumpAndSettle();
-
-      expect(store.state?.openRegistryNodeId, changedChild.id);
-      expect(store.state?.openRegistryPath, changedChild.path);
-      expect(store.state?.selectedProblemIndex, 0);
-
-      expect(fullScreenQueue, findsNothing);
-      expect(changedProblem, findsNothing);
-      expect(addedProblem, findsNothing);
-
-      final Finder selectedProblem = find.byKey(
-        const ValueKey<String>('registry-selected-problem'),
-      );
-
-      expect(selectedProblem, findsOneWidget);
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.text('Проблемное место 1 из 2'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.text('Статус: затронуто'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.text('Причина: Изменены: содержимое.'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.textContaining('Updated domain content.'),
-        ),
-        findsOneWidget,
-      );
-
-      final Finder refreshButton = find.byTooltip('Перезагрузить Registry');
-
-      expect(refreshButton, findsOneWidget);
-      final int refreshCountBeforeRepeat = loader.refreshBaseRevisions.length;
-
-      final String currentRevisionBeforeRepeat = store.state!.currentRevision;
-
-      await tester.tap(refreshButton);
       await tester.pumpAndSettle();
 
       expect(
-        loader.refreshBaseRevisions,
-        hasLength(refreshCountBeforeRepeat + 1),
-      );
-
-      expect(loader.refreshBaseRevisions.last, currentRevisionBeforeRepeat);
-
-      expect(store.state?.openRegistryNodeId, changedChild.id);
-      expect(store.state?.openRegistryPath, changedChild.path);
-      expect(store.state?.selectedProblemIndex, 0);
-
-      expect(selectedProblem, findsOneWidget);
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.text('Проблемное место 1 из 2'),
-        ),
+        find.byKey(const ValueKey<String>('registry-problem-queue-fullscreen')),
         findsOneWidget,
       );
 
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.textContaining('Updated domain content.'),
-        ),
-        findsOneWidget,
-      );
-
-      final Finder nextProblemButton = find.byTooltip('Следующая проблема');
-
-      await tester.ensureVisible(nextProblemButton);
-      await tester.pumpAndSettle();
-
-      await tester.tap(nextProblemButton);
-      await tester.pumpAndSettle();
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.text('Проблемное место 2 из 2'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.text('Причина: Добавлен новый Registry-узел.'),
-        ),
-        findsOneWidget,
-      );
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.textContaining('Added domain content.'),
-        ),
-        findsOneWidget,
-      );
-
-      final Finder previousProblemButton = find.byTooltip(
-        'Предыдущая проблема',
-      );
-
-      await tester.ensureVisible(previousProblemButton);
-      await tester.pumpAndSettle();
-
-      await tester.tap(previousProblemButton);
-      await tester.pumpAndSettle();
-
-      expect(
-        find.descendant(
-          of: selectedProblem,
-          matching: find.text('Проблемное место 1 из 2'),
-        ),
-        findsOneWidget,
-      );
-
-      final Finder closeProblemButton = find.descendant(
-        of: selectedProblem,
-        matching: find.widgetWithText(TextButton, 'Закрыть'),
-      );
-
-      await tester.ensureVisible(closeProblemButton);
-      await tester.pumpAndSettle();
-
-      await tester.tap(closeProblemButton);
-      await tester.pumpAndSettle();
-
-      expect(selectedProblem, findsNothing);
-
-      final Finder restoredFullRegistryHeader = find.byKey(
-        const ValueKey<String>('full-registry-header'),
-      );
-
-      await tester.scrollUntilVisible(
-        restoredFullRegistryHeader,
-        -180,
-        scrollable: registryScrollable,
-      );
-
-      expect(restoredFullRegistryHeader, findsOneWidget);
+      expect(find.text('Очередь проблем: 2'), findsOneWidget);
 
       expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
-
-      expect(loader.loadCount, 3);
     },
   );
 

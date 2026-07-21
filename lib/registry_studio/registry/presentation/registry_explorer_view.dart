@@ -708,13 +708,40 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                     }
 
                                     setState(() {
-                                      _showProblemQueue = true;
+                                      _showProblemQueue = false;
                                       _showProblemQueueFullScreen = true;
                                     });
                                   },
                                   icon: const Icon(Icons.arrow_forward),
                                 )
                               : null,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.compare_arrows_outlined),
+                          title: Text(
+                            loaded.previousComparison == null
+                                ? 'Сравнение с предыдущей revision: '
+                                      'нет baseline'
+                                : 'Изменения с предыдущей revision: '
+                                      '${loaded.previousComparison!.changes.length}',
+                          ),
+                          subtitle: loaded.previousComparison == null
+                              ? const Text(
+                                  'Предыдущая известная revision '
+                                  'отсутствует. Сравнение появится '
+                                  'после загрузки новой revision.',
+                                )
+                              : Text(
+                                  'Добавлено: '
+                                  '${loaded.previousComparison!.addedCount} · '
+                                  'Удалено: '
+                                  '${loaded.previousComparison!.removedCount} · '
+                                  'Изменено: '
+                                  '${loaded.previousComparison!.changedCount}',
+                                ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -733,15 +760,22 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          subtitle: isCurrentCleanBaseline
+                          subtitle: loaded.cleanBaselineComparison == null
                               ? const Text(
-                                  'Текущая revision подтверждена инженером '
-                                  'как чистое контрольное состояние.',
-                                )
-                              : const Text(
                                   'Clean baseline используется как '
-                                  'подтверждённая контрольная точка и '
-                                  'не меняется автоматически при refresh.',
+                                  'подтверждённая инженером контрольная '
+                                  'точка и не меняется автоматически '
+                                  'при refresh.',
+                                )
+                              : Text(
+                                  'Расхождения с clean baseline: '
+                                  '${loaded.cleanBaselineComparison!.changes.length}\n'
+                                  'Добавлено: '
+                                  '${loaded.cleanBaselineComparison!.addedCount} · '
+                                  'Удалено: '
+                                  '${loaded.cleanBaselineComparison!.removedCount} · '
+                                  'Изменено: '
+                                  '${loaded.cleanBaselineComparison!.changedCount}',
                                 ),
                           trailing: isCurrentCleanBaseline
                               ? null
@@ -1686,95 +1720,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     );
   }
 
-  Widget _buildCompactProblemQueue(
-    BuildContext context,
-    RegistryExplorerLoaded loaded,
-  ) {
-    final List<RegistryStructuralProblem> problems = loaded.problems;
-
-    final String baselineLabel = loaded.cleanBaselineComparison != null
-        ? 'clean baseline'
-        : 'предыдущая revision';
-
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      child: ListTile(
-        key: const ValueKey<String>('registry-problem-queue'),
-        leading: Icon(
-          problems.isEmpty ? Icons.inbox_outlined : Icons.adjust,
-          color: problems.isEmpty
-              ? null
-              : Theme.of(context).colorScheme.primary,
-        ),
-        title: Text('Очередь проблем: ${problems.length}'),
-        subtitle: loaded.problemComparison == null
-            ? const Text('Baseline сравнения отсутствует.')
-            : problems.isEmpty
-            ? Text(
-                'Затронутых мест относительно '
-                '$baselineLabel не обнаружено.',
-              )
-            : Text(
-                'Источник: $baselineLabel. '
-                'Статус: затронуто.',
-              ),
-        trailing: problems.isEmpty
-            ? null
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  IconButton(
-                    key: const ValueKey<String>(
-                      'registry-problem-queue-fullscreen-button',
-                    ),
-                    tooltip:
-                        'Открыть очередь проблем '
-                        'на весь экран',
-                    onPressed: () {
-                      setState(() {
-                        _showProblemQueue = false;
-                        _showProblemQueueFullScreen = true;
-                      });
-
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (!mounted || !_scrollController.hasClients) {
-                          return;
-                        }
-
-                        _scrollController.jumpTo(0);
-                      });
-                    },
-                    icon: const Icon(Icons.open_in_full),
-                  ),
-                  Icon(
-                    _showProblemQueue ? Icons.expand_less : Icons.expand_more,
-                  ),
-                ],
-              ),
-        onTap: problems.isEmpty
-            ? null
-            : () {
-                setState(() {
-                  _showProblemQueue = !_showProblemQueue;
-                });
-              },
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _scrollController
-      ..removeListener(_updateScrollToTopVisibility)
-      ..dispose();
-
-    _searchController.dispose();
-
-    _selectedRegistryBlockScrollController.dispose();
-
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<RegistryExplorerCubit, RegistryExplorerState>(
@@ -1961,36 +1906,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  if (loaded.previousSnapshot != null)
-                                    Text(
-                                      'Предыдущая revision: '
-                                      '${loaded.previousSnapshot!.sourceRevision}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  if (loaded.cleanBaselineSnapshot != null)
-                                    Text(
-                                      'Clean baseline: '
-                                      '${loaded.cleanBaselineSnapshot!.sourceRevision}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
                                 ],
                               ),
                             ),
 
-                            IconButton(
-                              key: const ValueKey<String>(
-                                'registry-analysis-history-button',
-                              ),
-                              tooltip:
-                                  'История анализа: '
-                                  '${loaded.analysisHistory.length}',
-                              onPressed: () async {
-                                await _showRegistryAnalysisHistory(loaded);
-                              },
-                              icon: const Icon(Icons.history),
-                            ),
                             IconButton(
                               key: const ValueKey<String>(
                                 'registry-studio-reset',
@@ -2082,8 +2001,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         onChanged: _updateSearchQuery,
                       ),
                     ),
-                    if (!_showProblemQueueFullScreen)
-                      _buildCompactProblemQueue(context, loaded),
                     Expanded(
                       child: ListView.separated(
                         key: const ValueKey<String>('registry-node-list'),
@@ -2091,7 +2008,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         itemCount: _showProblemQueueFullScreen
                             ? loaded.problems.length + 1
                             : _visibleRegistryNodes(loaded).length +
-                                  3 +
+                                  1 +
                                   (_showProblemQueue
                                       ? loaded.problems.length
                                       : 0) +
@@ -2116,7 +2033,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               _showProblemQueue || _showProblemQueueFullScreen;
 
                           final int problemRowsStartIndex =
-                              _showProblemQueueFullScreen ? 1 : 2;
+                              _showProblemQueueFullScreen ? 1 : 0;
 
                           final int problemRowsEndIndex =
                               problemRowsStartIndex +
@@ -2195,82 +2112,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                       icon: const Icon(Icons.close_fullscreen),
                                     ),
                                   ],
-                                ),
-                              ),
-                            );
-                          }
-
-                          if (!_showProblemQueueFullScreen && itemIndex == 0) {
-                            return ListTile(
-                              key: const ValueKey<String>(
-                                'registry-previous-comparison-summary',
-                              ),
-                              title: Text(
-                                loaded.previousComparison == null
-                                    ? 'Изменения с предыдущей revision: '
-                                          'нет baseline'
-                                    : 'Изменения с предыдущей revision: '
-                                          '${loaded.previousComparison!.changes.length}',
-                              ),
-                              subtitle: loaded.previousComparison == null
-                                  ? const Text(
-                                      'Предыдущая известная revision '
-                                      'отсутствует.',
-                                    )
-                                  : Text(
-                                      'Добавлено: '
-                                      '${loaded.previousComparison!.addedCount} · '
-                                      'Удалено: '
-                                      '${loaded.previousComparison!.removedCount} · '
-                                      'Изменено: '
-                                      '${loaded.previousComparison!.changedCount}',
-                                    ),
-                            );
-                          }
-
-                          if (!_showProblemQueueFullScreen && itemIndex == 1) {
-                            final bool isCurrentCleanBaseline =
-                                loaded.cleanBaselineSnapshot?.sourceRevision ==
-                                loaded.snapshot.sourceRevision;
-
-                            return ListTile(
-                              key: const ValueKey<String>(
-                                'registry-clean-baseline-summary',
-                              ),
-                              title: Text(
-                                loaded.cleanBaselineComparison == null
-                                    ? 'Clean baseline: не подтверждён'
-                                    : 'Расхождения с clean baseline: '
-                                          '${loaded.cleanBaselineComparison!.changes.length}',
-                              ),
-                              subtitle: loaded.cleanBaselineComparison == null
-                                  ? const Text(
-                                      'Новая revision не принимается '
-                                      'как clean baseline автоматически.',
-                                    )
-                                  : Text(
-                                      'Baseline: '
-                                      '${loaded.cleanBaselineSnapshot!.sourceRevision}\n'
-                                      'Добавлено: '
-                                      '${loaded.cleanBaselineComparison!.addedCount} · '
-                                      'Удалено: '
-                                      '${loaded.cleanBaselineComparison!.removedCount} · '
-                                      'Изменено: '
-                                      '${loaded.cleanBaselineComparison!.changedCount}',
-                                    ),
-                              trailing: IconButton(
-                                tooltip: isCurrentCleanBaseline
-                                    ? 'Текущая revision уже является '
-                                          'clean baseline'
-                                    : 'Подтвердить текущую revision '
-                                          'как clean baseline',
-                                onPressed: isCurrentCleanBaseline
-                                    ? null
-                                    : _confirmCurrentAsCleanBaseline,
-                                icon: Icon(
-                                  isCurrentCleanBaseline
-                                      ? Icons.verified_outlined
-                                      : Icons.verified_user_outlined,
                                 ),
                               ),
                             );
