@@ -1,5 +1,6 @@
 import '../../../core/domain/evidence/source_evidence.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
+import '../../../registry/application/contracts/registry_business_scope_resolver.dart';
 import '../../../registry/application/contracts/registry_snapshot_loader.dart';
 import '../../../registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import '../../../registry/application/contracts/registry_snapshot_revision_loader.dart';
@@ -9,6 +10,7 @@ import '../../../registry/domain/value_objects/registry_node_id.dart';
 import '../application/contracts/helpy_registry_node_identity_store.dart';
 import 'github_registry_document_source.dart';
 import 'helpy_registry_document_interpreter.dart';
+import 'helpy_registry_business_scope_resolver.dart';
 import 'helpy_registry_node_identity_ledger_source.dart';
 
 final class HelpyRegistrySnapshotLoader
@@ -21,6 +23,7 @@ final class HelpyRegistrySnapshotLoader
     required this.identityLedgerSource,
     required this.identityStore,
     this.documentInterpreter = const HelpyRegistryDocumentInterpreter(),
+    this.businessScopeResolver = const HelpyRegistryBusinessScopeResolver(),
   });
 
   static const String projectId = 'helpy';
@@ -35,6 +38,7 @@ final class HelpyRegistrySnapshotLoader
   final HelpyRegistryNodeIdentityLedgerSource identityLedgerSource;
   final HelpyRegistryNodeIdentityStore identityStore;
   final HelpyRegistryDocumentInterpreter documentInterpreter;
+  final RegistryBusinessScopeResolver businessScopeResolver;
 
   @override
   Future<RegistrySnapshot> loadSnapshot() {
@@ -343,7 +347,7 @@ final class HelpyRegistrySnapshotLoader
       Map<RegistryPath, RegistryNodeId>.unmodifiable(localIdentities),
     );
 
-    return RegistrySnapshot(
+    final RegistrySnapshot structuralSnapshot = RegistrySnapshot(
       projectId: projectId,
       projectAdapterId: projectAdapterId,
       sourceDocumentPath: sourceDocument.documentPath,
@@ -352,5 +356,7 @@ final class HelpyRegistrySnapshotLoader
       sourceContent: sourceDocument.content,
       roots: roots,
     );
+
+    return businessScopeResolver.resolveBusinessScope(structuralSnapshot);
   }
 }

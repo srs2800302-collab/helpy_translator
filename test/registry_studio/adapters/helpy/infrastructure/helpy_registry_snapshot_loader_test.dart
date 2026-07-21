@@ -7,6 +7,7 @@ import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/g
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_snapshot_loader.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
+import 'package:helpy_translator/registry_studio/registry/application/contracts/registry_business_scope_resolver.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_structural_index.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
@@ -209,9 +210,13 @@ void main() {
           'http://${server.address.address}:${server.port}/',
         );
 
+        final _RecordingBusinessScopeResolver businessScopeResolver =
+            _RecordingBusinessScopeResolver();
+
         final HelpyRegistrySnapshotLoader successfulLoader =
             HelpyRegistrySnapshotLoader(
               identityStore: _MemoryHelpyRegistryNodeIdentityStore(),
+              businessScopeResolver: businessScopeResolver,
               documentSource: GitHubRegistryDocumentSource(
                 owner: 'owner',
                 repository: 'repository',
@@ -231,6 +236,9 @@ void main() {
             );
 
         final RegistrySnapshot snapshot = await successfulLoader.loadSnapshot();
+
+        expect(businessScopeResolver.callCount, 1);
+        expect(businessScopeResolver.lastSnapshot, same(snapshot));
 
         expect(
           requests.where((request) => request.path.contains('/commits/')),
@@ -671,6 +679,19 @@ void main() {
       },
     );
   });
+}
+
+final class _RecordingBusinessScopeResolver
+    implements RegistryBusinessScopeResolver {
+  int callCount = 0;
+  RegistrySnapshot? lastSnapshot;
+
+  @override
+  RegistrySnapshot resolveBusinessScope(RegistrySnapshot snapshot) {
+    callCount += 1;
+    lastSnapshot = snapshot;
+    return snapshot;
+  }
 }
 
 final class _MemoryHelpyRegistryNodeIdentityStore
