@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
+import '../../registry_studio/adapters/helpy/infrastructure/helpy_canonical_dictionary_loader.dart';
+import '../../registry_studio/canonical/application/contracts/canonical_dictionary_loader.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_snapshot_loader.dart';
 import '../../registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
@@ -16,6 +18,7 @@ import '../shell/registry_studio_shell.dart';
 
 final class RegistryStudioApplication extends StatelessWidget {
   const RegistryStudioApplication({
+    this.canonicalDictionaryLoader,
     required this.registrySnapshotLoader,
     required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
@@ -48,6 +51,17 @@ final class RegistryStudioApplication extends StatelessWidget {
 
     return RegistryStudioApplication(
       key: key,
+      canonicalDictionaryLoader: HelpyCanonicalDictionaryLoader(
+        documentSource: GitHubRegistryDocumentSource(
+          owner: 'srs2800302-collab',
+          repository: 'helpy_translator',
+          documentPath:
+              'docs/architecture/registry_studio/'
+              'Registry_Studio_Engineering_Change_Propagation_'
+              'and_Approval_Contract_v1.md',
+          ref: 'registry-studio/modular-rebuild',
+        ),
+      ),
       registrySnapshotLoader: registrySnapshotLoader,
       registrySnapshotRefreshLoader: registrySnapshotLoader,
       registrySnapshotRevisionLoader: registrySnapshotLoader,
@@ -57,6 +71,7 @@ final class RegistryStudioApplication extends StatelessWidget {
     );
   }
 
+  final CanonicalDictionaryLoader? canonicalDictionaryLoader;
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
@@ -70,6 +85,7 @@ final class RegistryStudioApplication extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true),
       home: RegistryStudioShell(
+        canonicalDictionaryLoader: canonicalDictionaryLoader,
         registrySnapshotLoader: registrySnapshotLoader,
         registrySnapshotRefreshLoader: registrySnapshotRefreshLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,

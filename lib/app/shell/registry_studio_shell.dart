@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../registry_studio/canonical/application/contracts/canonical_dictionary_loader.dart';
+import '../../registry_studio/canonical/presentation/canonical_dictionary_cubit.dart';
+import '../../registry_studio/canonical/presentation/canonical_dictionary_status_action.dart';
 import '../../registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
 import '../../registry_studio/maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
@@ -27,6 +30,7 @@ final class RegistryStudioWorkspaceCubit
 
 final class RegistryStudioShell extends StatelessWidget {
   const RegistryStudioShell({
+    this.canonicalDictionaryLoader,
     required this.registrySnapshotLoader,
     required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
@@ -36,6 +40,7 @@ final class RegistryStudioShell extends StatelessWidget {
     super.key,
   });
 
+  final CanonicalDictionaryLoader? canonicalDictionaryLoader;
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
@@ -45,9 +50,20 @@ final class RegistryStudioShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<RegistryStudioWorkspaceCubit>(
-      create: (_) => RegistryStudioWorkspaceCubit(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<RegistryStudioWorkspaceCubit>(
+          create: (_) => RegistryStudioWorkspaceCubit(),
+        ),
+        if (canonicalDictionaryLoader != null)
+          BlocProvider<CanonicalDictionaryCubit>(
+            create: (_) =>
+                CanonicalDictionaryCubit(loader: canonicalDictionaryLoader!)
+                  ..load(),
+          ),
+      ],
       child: _RegistryStudioShellView(
+        showCanonicalDictionaryStatus: canonicalDictionaryLoader != null,
         registrySnapshotLoader: registrySnapshotLoader,
         registrySnapshotRefreshLoader: registrySnapshotRefreshLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
@@ -61,6 +77,7 @@ final class RegistryStudioShell extends StatelessWidget {
 
 final class _RegistryStudioShellView extends StatelessWidget {
   const _RegistryStudioShellView({
+    required this.showCanonicalDictionaryStatus,
     required this.registrySnapshotLoader,
     required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
@@ -69,6 +86,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
     required this.registrySnapshotComparator,
   });
 
+  final bool showCanonicalDictionaryStatus;
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
@@ -85,7 +103,14 @@ final class _RegistryStudioShellView extends StatelessWidget {
         );
 
         return Scaffold(
-          appBar: AppBar(title: Text(_titleFor(workspace))),
+          appBar: AppBar(
+            title: Text(_titleFor(workspace)),
+            actions: <Widget>[
+              if (workspace == RegistryStudioWorkspace.registryStudio &&
+                  showCanonicalDictionaryStatus)
+                const CanonicalDictionaryStatusAction(),
+            ],
+          ),
           body: IndexedStack(
             index: selectedIndex,
             children: <Widget>[
