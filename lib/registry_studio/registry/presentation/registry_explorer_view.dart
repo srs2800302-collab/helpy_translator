@@ -13,6 +13,7 @@ import '../domain/entities/registry_node.dart';
 import '../domain/entities/registry_snapshot.dart';
 import '../domain/value_objects/registry_node_id.dart';
 import 'registry_explorer_cubit.dart';
+import 'registry_problem_queue_entry.dart';
 
 final class RegistryExplorerView extends StatelessWidget {
   const RegistryExplorerView({
@@ -24,6 +25,7 @@ final class RegistryExplorerView extends StatelessWidget {
     required this.snapshotComparator,
     this.onSnapshotAccepted,
     this.onRegistryNodeSelectionReady,
+    this.analysisProblemEntries = const <RegistryProblemQueueEntry>[],
     super.key,
   });
 
@@ -38,6 +40,7 @@ final class RegistryExplorerView extends StatelessWidget {
     Future<void> Function(RegistryNodeId? nodeId) selectRegistryNode,
   )?
   onRegistryNodeSelectionReady;
+  final List<RegistryProblemQueueEntry> analysisProblemEntries;
 
   @override
   Widget build(BuildContext context) {
@@ -53,18 +56,23 @@ final class RegistryExplorerView extends StatelessWidget {
       )..restore(),
       child: _RegistryExplorerView(
         onRegistryNodeSelectionReady: onRegistryNodeSelectionReady,
+        analysisProblemEntries: analysisProblemEntries,
       ),
     );
   }
 }
 
 final class _RegistryExplorerView extends StatefulWidget {
-  const _RegistryExplorerView({required this.onRegistryNodeSelectionReady});
+  const _RegistryExplorerView({
+    required this.onRegistryNodeSelectionReady,
+    required this.analysisProblemEntries,
+  });
 
   final void Function(
     Future<void> Function(RegistryNodeId? nodeId) selectRegistryNode,
   )?
   onRegistryNodeSelectionReady;
+  final List<RegistryProblemQueueEntry> analysisProblemEntries;
 
   @override
   State<_RegistryExplorerView> createState() => _RegistryExplorerViewState();
@@ -393,6 +401,33 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     });
   }
 
+  Future<void> _selectAnalysisProblemEntry(
+    RegistryProblemQueueEntry entry,
+  ) async {
+    await _selectRegistryNode(entry.nodeId);
+
+    if (!mounted) {
+      return;
+    }
+
+    final RegistryExplorerState currentState = context
+        .read<RegistryExplorerCubit>()
+        .state;
+
+    if (currentState is! RegistryExplorerLoaded ||
+        currentState.openRegistryNodeId != entry.nodeId ||
+        currentState.openRegistryPath != entry.path) {
+      return;
+    }
+
+    if (_showProblemQueue || _showProblemQueueFullScreen) {
+      setState(() {
+        _showProblemQueue = false;
+        _showProblemQueueFullScreen = false;
+      });
+    }
+  }
+
   Future<void> _refreshRegistry() async {
     final RegistryExplorerCubit cubit = context.read<RegistryExplorerCubit>();
 
@@ -698,7 +733,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   }
 
   Future<void> _showRegistryStatusCenter(RegistryExplorerLoaded loaded) async {
-    final bool hasProblems = loaded.problems.isNotEmpty;
+    final int totalProblemCount =
+        loaded.problems.length + widget.analysisProblemEntries.length;
+    final bool hasProblems = totalProblemCount > 0;
 
     final bool isCurrentCleanBaseline =
         loaded.cleanBaselineSnapshot?.sourceRevision ==
@@ -756,23 +793,26 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           ),
                           title: Text(
                             'Проблемы Registry: '
-                            '${loaded.problems.length}',
+                            '$totalProblemCount',
                           ),
-                          subtitle: loaded.problemComparison == null
+                          subtitle: hasProblems
+                              ? Text(
+                                  'Структурных: '
+                                  '${loaded.problems.length} · '
+                                  'Аналитических: '
+                                  '${widget.analysisProblemEntries.length}. '
+                                  'Откройте список для перехода к каждому '
+                                  'Registry block.',
+                                )
+                              : loaded.problemComparison == null
                               ? const Text(
                                   'Baseline сравнения отсутствует. '
-                                  'После появления baseline здесь будут '
-                                  'показаны структурные расхождения.',
-                                )
-                              : hasProblems
-                              ? const Text(
-                                  'Обнаружены места, требующие проверки. '
-                                  'Откройте список для перехода к каждому '
-                                  'затронутому Registry block.',
+                                  'Canonical findings и structural '
+                                  'расхождения не обнаружены.',
                                 )
                               : const Text(
-                                  'Структурные проблемы относительно '
-                                  'текущего baseline не обнаружены.',
+                                  'Проблемы относительно текущего '
+                                  'baseline не обнаружены.',
                                 ),
                           trailing: hasProblems
                               ? IconButton(
@@ -2129,8 +2169,12 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ),
                             ),
                             Badge(
-                              isLabelVisible: loaded.problems.isNotEmpty,
-                              label: Text('${loaded.problems.length}'),
+                              isLabelVisible:
+                                  loaded.problems.isNotEmpty ||
+                                  widget.analysisProblemEntries.isNotEmpty,
+                              label: Text(
+                                '${loaded.problems.length + widget.analysisProblemEntries.length}',
+                              ),
                               backgroundColor: Theme.of(
                                 context,
                               ).colorScheme.error,
@@ -2140,11 +2184,13 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 ),
                                 tooltip:
                                     'Состояние Registry: '
-                                    '${loaded.problems.length} проблем',
+                                    '${loaded.problems.length + widget.analysisProblemEntries.length} проблем',
                                 onPressed: () async {
                                   await _showRegistryStatusCenter(loaded);
                                 },
-                                color: loaded.problems.isEmpty
+                                color:
+                                    loaded.problems.isEmpty &&
+                                        widget.analysisProblemEntries.isEmpty
                                     ? null
                                     : Theme.of(context).colorScheme.error,
                                 icon: const Icon(Icons.fact_check_outlined),
@@ -2250,11 +2296,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         key: const ValueKey<String>('registry-node-list'),
                         controller: _scrollController,
                         itemCount: _showProblemQueueFullScreen
-                            ? loaded.problems.length + 1
+                            ? loaded.problems.length +
+                                  widget.analysisProblemEntries.length +
+                                  1
                             : _visibleRegistryNodes(loaded).length +
                                   1 +
                                   (_showProblemQueue
-                                      ? loaded.problems.length
+                                      ? loaded.problems.length +
+                                            widget.analysisProblemEntries.length
                                       : 0) +
                                   (loaded.selectedProblem == null ? 0 : 1),
                         separatorBuilder: (_, _) => const Divider(height: 1),
@@ -2262,16 +2311,17 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           final List<RegistryStructuralProblem> problems =
                               loaded.problems;
 
+                          final List<RegistryProblemQueueEntry>
+                          analysisProblems = widget.analysisProblemEntries;
+
+                          final int totalProblemCount =
+                              problems.length + analysisProblems.length;
+
                           final RegistryStructuralProblem? selectedProblem =
                               loaded.selectedProblem;
 
                           final List<RegistryNode> visibleRegistryNodes =
                               _visibleRegistryNodes(loaded);
-
-                          final String baselineLabel =
-                              loaded.cleanBaselineComparison != null
-                              ? 'clean baseline'
-                              : 'предыдущая revision';
 
                           final bool showProblemRows =
                               _showProblemQueue || _showProblemQueueFullScreen;
@@ -2281,7 +2331,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                           final int problemRowsEndIndex =
                               problemRowsStartIndex +
-                              (showProblemRows ? problems.length : 0);
+                              (showProblemRows ? totalProblemCount : 0);
 
                           final int selectedProblemItemIndex =
                               problemRowsEndIndex;
@@ -2316,16 +2366,17 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                         children: <Widget>[
                                           Text(
                                             'Очередь проблем: '
-                                            '${problems.length}',
+                                            '$totalProblemCount',
                                             style: Theme.of(
                                               context,
                                             ).textTheme.titleLarge,
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Источник: '
-                                            '$baselineLabel. '
-                                            'Статус: затронуто.',
+                                            'Структурных: '
+                                            '${problems.length} · '
+                                            'Аналитических: '
+                                            '${analysisProblems.length}',
                                           ),
                                         ],
                                       ),
@@ -2365,6 +2416,98 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               itemIndex < problemRowsEndIndex) {
                             final int problemIndex =
                                 itemIndex - problemRowsStartIndex;
+
+                            if (problemIndex >= problems.length) {
+                              final int analysisProblemIndex =
+                                  problemIndex - problems.length;
+
+                              final RegistryProblemQueueEntry entry =
+                                  analysisProblems[analysisProblemIndex];
+
+                              final evidence = entry.sourceEvidence.first;
+
+                              final Color entryColor = switch (entry.severity) {
+                                RegistryProblemQueueEntrySeverity
+                                    .informational =>
+                                  Theme.of(context).colorScheme.outline,
+                                RegistryProblemQueueEntrySeverity
+                                    .reviewRequired =>
+                                  Theme.of(context).colorScheme.tertiary,
+                                RegistryProblemQueueEntrySeverity.blocking =>
+                                  Theme.of(context).colorScheme.error,
+                              };
+
+                              final IconData entryIcon = switch (entry
+                                  .severity) {
+                                RegistryProblemQueueEntrySeverity
+                                    .informational =>
+                                  Icons.info_outline,
+                                RegistryProblemQueueEntrySeverity
+                                    .reviewRequired =>
+                                  Icons.rate_review_outlined,
+                                RegistryProblemQueueEntrySeverity.blocking =>
+                                  Icons.error_outline,
+                              };
+
+                              return InkWell(
+                                key: ValueKey<String>(
+                                  'registry-analysis-problem-'
+                                  '${entry.identity}',
+                                ),
+                                onTap: () async {
+                                  await _selectAnalysisProblemEntry(entry);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Icon(entryIcon, color: entryColor),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            Text(
+                                              '${entry.typeLabel} · '
+                                              '${entry.path.segments.last}',
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.titleMedium,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Статус: '
+                                              '${entry.statusLabel}',
+                                            ),
+                                            Text(
+                                              'RegistryPath: '
+                                              '${entry.path.segments.join(' → ')}',
+                                            ),
+                                            Text(
+                                              'Причина: '
+                                              '${entry.reason}',
+                                            ),
+                                            Text(
+                                              'Evidence: '
+                                              '${evidence.sourceDocumentPath}, '
+                                              'строки '
+                                              '${evidence.startLine}–'
+                                              '${evidence.endLine}',
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
 
                             final RegistryStructuralProblem problem =
                                 problems[problemIndex];

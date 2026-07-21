@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../registry_studio/canonical/application/contracts/canonical_business_text_analysis_session_runner.dart';
 import '../../registry_studio/canonical/application/contracts/canonical_dictionary_loader.dart';
 import '../../registry_studio/canonical/domain/entities/canonical_business_text_candidate.dart';
+import '../../registry_studio/canonical/domain/entities/canonical_business_text_finding.dart';
 import '../../registry_studio/canonical/presentation/canonical_business_text_analysis_cubit.dart';
 import '../../registry_studio/canonical/presentation/canonical_business_text_analysis_status_action.dart';
 import '../../registry_studio/canonical/presentation/canonical_dictionary_cubit.dart';
@@ -18,6 +19,7 @@ import '../../registry_studio/registry/application/contracts/registry_snapshot_r
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../registry_studio/registry/domain/value_objects/registry_node_id.dart';
 import '../../registry_studio/registry/presentation/registry_explorer_view.dart';
+import '../../registry_studio/registry/presentation/registry_problem_queue_entry.dart';
 
 enum RegistryStudioWorkspace { registryStudio, translator }
 
@@ -151,6 +153,12 @@ final class _RegistryStudioShellViewState
           workspace,
         );
 
+        final List<RegistryProblemQueueEntry> canonicalProblemEntries =
+            widget.showCanonicalBusinessTextAnalysisStatus
+            ? _canonicalProblemEntries(
+                context.watch<CanonicalBusinessTextAnalysisCubit>().state,
+              )
+            : const <RegistryProblemQueueEntry>[];
         return Scaffold(
           appBar: AppBar(
             title: Text(_titleFor(workspace)),
@@ -175,6 +183,7 @@ final class _RegistryStudioShellViewState
                 revisionStateStore: widget.registryRevisionStateStore,
                 analysisHistoryStore: widget.registryAnalysisHistoryStore,
                 snapshotComparator: widget.registrySnapshotComparator,
+                analysisProblemEntries: canonicalProblemEntries,
                 onRegistryNodeSelectionReady: _bindRegistryNodeSelection,
                 onSnapshotAccepted:
                     widget.showCanonicalBusinessTextAnalysisStatus
@@ -213,6 +222,64 @@ final class _RegistryStudioShellViewState
         );
       },
     );
+  }
+
+  List<RegistryProblemQueueEntry> _canonicalProblemEntries(
+    CanonicalBusinessTextAnalysisState state,
+  ) {
+    if (state is! CanonicalBusinessTextAnalysisReady) {
+      return const <RegistryProblemQueueEntry>[];
+    }
+
+    return List<RegistryProblemQueueEntry>.unmodifiable(
+      state.result.findings.findings.map((
+        CanonicalBusinessTextFinding finding,
+      ) {
+        return RegistryProblemQueueEntry(
+          identity: 'canonical:${finding.identity}',
+          nodeId: finding.candidate.nodeId,
+          path: finding.candidate.path,
+          typeLabel: 'Canonical finding',
+          statusLabel: _canonicalStatusLabel(finding.status.name),
+          reason: _canonicalReasonLabel(finding.reason.name),
+          severity: switch (finding.disposition) {
+            CanonicalBusinessTextFindingDisposition.informational =>
+              RegistryProblemQueueEntrySeverity.informational,
+            CanonicalBusinessTextFindingDisposition.reviewRequired =>
+              RegistryProblemQueueEntrySeverity.reviewRequired,
+            CanonicalBusinessTextFindingDisposition.blocking =>
+              RegistryProblemQueueEntrySeverity.blocking,
+          },
+          sourceEvidence: finding.candidate.sourceEvidence,
+        );
+      }),
+    );
+  }
+
+  String _canonicalStatusLabel(String status) {
+    return switch (status) {
+      'unclassifiedNeutral' => 'Без точного канонического совпадения',
+      'review' => 'Требуется проверка',
+      'drift' => 'Каноническое расхождение',
+      'failed' => 'Ошибка анализа',
+      'exact' => 'Точное совпадение',
+      'equivalent' => 'Эквивалентная формулировка',
+      _ => status,
+    };
+  }
+
+  String _canonicalReasonLabel(String reason) {
+    return switch (reason) {
+      'noExactCanonicalTextMatch' =>
+        'Точное каноническое совпадение не найдено',
+      'singleExactUniversalMatch' =>
+        'Найдено одно точное универсальное совпадение',
+      'exactTextRequiresApplicabilityReview' =>
+        'Требуется проверка применимости',
+      'ambiguousExactCanonicalTextMatch' =>
+        'Найдено несколько точных совпадений',
+      _ => reason,
+    };
   }
 
   String _titleFor(RegistryStudioWorkspace workspace) {

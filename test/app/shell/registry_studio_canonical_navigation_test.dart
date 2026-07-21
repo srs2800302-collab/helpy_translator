@@ -121,6 +121,95 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('projects a canonical finding into the existing Registry queue', (
+    WidgetTester tester,
+  ) async {
+    final RegistrySnapshot snapshot = _snapshot();
+    final RegistryNode targetNode = snapshot.roots.single.children.single;
+
+    final CanonicalBusinessTextAnalysisResult result = _result(
+      snapshot: snapshot,
+      targetNode: targetNode,
+    );
+
+    final _RevisionStateStore revisionStateStore = _RevisionStateStore();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RegistryStudioShell(
+          canonicalBusinessTextAnalysisSessionRunner: _SessionRunner(result),
+          registrySnapshotLoader: _SnapshotLoader(snapshot),
+          registrySnapshotRefreshLoader: _SnapshotRefreshLoader(),
+          registrySnapshotRevisionLoader: _SnapshotRevisionLoader(),
+          registryRevisionStateStore: revisionStateStore,
+          registryAnalysisHistoryStore: _AnalysisHistoryStore(),
+          registrySnapshotComparator: const RegistrySnapshotComparator(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder statusCenterButton = find.byKey(
+      const ValueKey<String>('registry-status-center-button'),
+    );
+
+    expect(statusCenterButton, findsOneWidget);
+
+    await tester.tap(statusCenterButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Проблемы Registry: 1'), findsOneWidget);
+
+    expect(
+      find.text(
+        'Структурных: 0 · Аналитических: 1. '
+        'Откройте список для перехода к каждому '
+        'Registry block.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('registry-status-center-open-problems'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Очередь проблем: 1'), findsOneWidget);
+
+    expect(find.text('Структурных: 0 · Аналитических: 1'), findsOneWidget);
+
+    final Finder canonicalFinding = find.byKey(
+      const ValueKey<String>(
+        'registry-analysis-problem-'
+        'canonical:candidate-domain-rule',
+      ),
+    );
+
+    expect(canonicalFinding, findsOneWidget);
+
+    await tester.tap(canonicalFinding);
+    await tester.pumpAndSettle();
+
+    expect(revisionStateStore.state?.openRegistryNodeId, targetNode.id);
+    expect(revisionStateStore.state?.openRegistryPath, targetNode.path);
+    expect(revisionStateStore.state?.selectedProblemIndex, isNull);
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-problem-queue-fullscreen')),
+      findsNothing,
+    );
+
+    expect(
+      find.text('RegistryPath: Registry → Domain'),
+      findsAtLeastNWidgets(1),
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 RegistrySnapshot _snapshot() {
@@ -237,10 +326,10 @@ CanonicalBusinessTextAnalysisResult _result({
   final CanonicalBusinessTextClassification classification =
       CanonicalBusinessTextClassification(
         candidate: candidate,
-        status: CanonicalBusinessTextClassificationStatus.exact,
+        status: CanonicalBusinessTextClassificationStatus.unclassifiedNeutral,
         reason:
-            CanonicalBusinessTextClassificationReason.singleExactUniversalMatch,
-        matchedCanonicalEntries: <CanonicalPhraseEntry>[phrase],
+            CanonicalBusinessTextClassificationReason.noExactCanonicalTextMatch,
+        matchedCanonicalEntries: const <CanonicalPhraseEntry>[],
       );
 
   return CanonicalBusinessTextAnalysisResult(
