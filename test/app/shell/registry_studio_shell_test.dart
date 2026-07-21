@@ -1130,7 +1130,7 @@ void main() {
       expect(
         find.descendant(
           of: statusSheet,
-          matching: find.text('Clean baseline: не подтверждён'),
+          matching: find.text('Clean baseline не подтверждён'),
         ),
         findsOneWidget,
       );
@@ -1192,11 +1192,21 @@ void main() {
 
       expect(statusSheet, findsOneWidget);
 
-      await tester.tap(
-        find.byKey(
-          const ValueKey<String>('registry-status-center-confirm-baseline'),
-        ),
+      final Finder confirmBaselineButton = find.byKey(
+        const ValueKey<String>('registry-status-center-confirm-baseline'),
       );
+
+      await tester.dragUntilVisible(
+        confirmBaselineButton,
+        statusScrollable,
+        const Offset(0, -80),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(confirmBaselineButton.hitTestable(), findsOneWidget);
+
+      await tester.tap(confirmBaselineButton);
 
       await tester.pumpAndSettle();
 
@@ -1212,6 +1222,93 @@ void main() {
     },
   );
 
+  testWidgets(
+    'lays out the clean baseline action below its content on mobile',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => snapshot,
+          ]);
+
+      await tester.pumpWidget(
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+          registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('registry-status-center-button')),
+      );
+
+      await tester.pumpAndSettle();
+
+      final Finder statusSheet = find.byKey(
+        const ValueKey<String>('registry-status-center-sheet'),
+      );
+
+      final Finder statusScrollable = find
+          .descendant(of: statusSheet, matching: find.byType(Scrollable))
+          .first;
+
+      final Finder card = find.byKey(
+        const ValueKey<String>('registry-status-center-clean-baseline-card'),
+      );
+
+      final Finder description = find.byKey(
+        const ValueKey<String>(
+          'registry-status-center-clean-baseline-description',
+        ),
+      );
+
+      final Finder confirmButton = find.byKey(
+        const ValueKey<String>('registry-status-center-confirm-baseline'),
+      );
+
+      await tester.dragUntilVisible(
+        confirmButton,
+        statusScrollable,
+        const Offset(0, -80),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(card, findsOneWidget);
+      expect(description, findsOneWidget);
+      expect(confirmButton.hitTestable(), findsOneWidget);
+
+      expect(find.text('Clean baseline не подтверждён'), findsOneWidget);
+
+      expect(
+        find.text(
+          'Текущая revision ещё не сохранена как '
+          'подтверждённая инженером контрольная точка. '
+          'Clean baseline не изменяется автоматически '
+          'при refresh.',
+        ),
+        findsOneWidget,
+      );
+
+      final Rect cardRect = tester.getRect(card);
+      final Rect descriptionRect = tester.getRect(description);
+      final Rect buttonRect = tester.getRect(confirmButton);
+
+      expect(buttonRect.top, greaterThan(descriptionRect.bottom));
+
+      expect(buttonRect.width, greaterThan(cardRect.width * 0.75));
+    },
+  );
   testWidgets(
     'shows previous and clean baseline changes after manual refresh',
     (WidgetTester tester) async {
@@ -1352,7 +1449,7 @@ void main() {
         findsOneWidget,
       );
 
-      expect(find.text('Clean baseline: не подтверждён'), findsOneWidget);
+      expect(find.text('Clean baseline не подтверждён'), findsOneWidget);
 
       final Finder statusSheet = find.byKey(
         const ValueKey<String>('registry-status-center-sheet'),
@@ -2855,6 +2952,22 @@ void main() {
     expect(nestedBranchRow, findsOneWidget);
     expect(leafRow, findsNothing);
     expect(nestedBranchToggle, findsOneWidget);
+
+    expect(
+      find.descendant(
+        of: branchRow,
+        matching: find.byIcon(Icons.folder_open_outlined),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: branchRow,
+        matching: find.byIcon(Icons.account_tree_outlined),
+      ),
+      findsNothing,
+    );
 
     await tester.tap(nestedBranchToggle);
     await tester.pumpAndSettle();

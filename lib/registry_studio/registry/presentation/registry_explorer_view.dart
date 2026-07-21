@@ -761,42 +761,85 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       ),
                       const SizedBox(height: 12),
                       Card(
-                        child: ListTile(
-                          leading: Icon(
-                            isCurrentCleanBaseline
-                                ? Icons.verified_outlined
-                                : Icons.verified_user_outlined,
-                          ),
-                          title: Text(
-                            loaded.cleanBaselineSnapshot == null
-                                ? 'Clean baseline: не подтверждён'
-                                : 'Clean baseline: '
-                                      '${loaded.cleanBaselineSnapshot!.sourceRevision}',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: loaded.cleanBaselineComparison == null
-                              ? const Text(
-                                  'Clean baseline используется как '
-                                  'подтверждённая инженером контрольная '
-                                  'точка и не меняется автоматически '
-                                  'при refresh.',
-                                )
-                              : Text(
-                                  'Расхождения с clean baseline: '
-                                  '${loaded.cleanBaselineComparison!.changes.length}\n'
-                                  'Добавлено: '
-                                  '${loaded.cleanBaselineComparison!.addedCount} · '
-                                  'Удалено: '
-                                  '${loaded.cleanBaselineComparison!.removedCount} · '
-                                  'Изменено: '
-                                  '${loaded.cleanBaselineComparison!.changedCount}',
+                        key: const ValueKey<String>(
+                          'registry-status-center-clean-baseline-card',
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(
+                                  isCurrentCleanBaseline
+                                      ? Icons.verified_outlined
+                                      : Icons.verified_user_outlined,
                                 ),
-                          trailing: isCurrentCleanBaseline
-                              ? null
-                              : TextButton(
+                                title: Text(
+                                  loaded.cleanBaselineSnapshot == null
+                                      ? 'Clean baseline не подтверждён'
+                                      : 'Clean baseline подтверждён',
                                   key: const ValueKey<String>(
-                                    'registry-status-center-confirm-baseline',
+                                    'registry-status-center-'
+                                    'clean-baseline-title',
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    if (loaded.cleanBaselineSnapshot !=
+                                        null) ...<Widget>[
+                                      const SizedBox(height: 6),
+                                      SelectableText(
+                                        loaded
+                                            .cleanBaselineSnapshot!
+                                            .sourceRevision,
+                                        key: const ValueKey<String>(
+                                          'registry-status-center-'
+                                          'clean-baseline-revision',
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      loaded.cleanBaselineSnapshot == null
+                                          ? 'Текущая revision ещё не '
+                                                'сохранена как '
+                                                'подтверждённая инженером '
+                                                'контрольная точка. '
+                                                'Clean baseline не '
+                                                'изменяется автоматически '
+                                                'при refresh.'
+                                          : loaded.cleanBaselineComparison ==
+                                                null
+                                          ? 'Clean baseline используется '
+                                                'как подтверждённая '
+                                                'инженером контрольная '
+                                                'точка и не изменяется '
+                                                'автоматически при refresh.'
+                                          : 'Расхождения с clean baseline: '
+                                                '${loaded.cleanBaselineComparison!.changes.length}\n'
+                                                'Добавлено: '
+                                                '${loaded.cleanBaselineComparison!.addedCount} · '
+                                                'Удалено: '
+                                                '${loaded.cleanBaselineComparison!.removedCount} · '
+                                                'Изменено: '
+                                                '${loaded.cleanBaselineComparison!.changedCount}',
+                                      key: const ValueKey<String>(
+                                        'registry-status-center-'
+                                        'clean-baseline-description',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!isCurrentCleanBaseline) ...<Widget>[
+                                const SizedBox(height: 12),
+                                FilledButton(
+                                  key: const ValueKey<String>(
+                                    'registry-status-center-'
+                                    'confirm-baseline',
                                   ),
                                   onPressed: () async {
                                     Navigator.of(sheetContext).pop();
@@ -809,8 +852,15 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
                                     await _confirmCurrentAsCleanBaseline();
                                   },
-                                  child: const Text('Подтвердить'),
+                                  child: Text(
+                                    loaded.cleanBaselineSnapshot == null
+                                        ? 'Подтвердить текущую revision'
+                                        : 'Обновить clean baseline',
+                                  ),
                                 ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -2765,6 +2815,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                       : Icon(
                                           branchEntryList
                                               ? Icons.folder_outlined
+                                              : rootNode &&
+                                                    branchScopeRoot != null
+                                              ? Icons.folder_open_outlined
                                               : expandable
                                               ? Icons.account_tree_outlined
                                               : Icons.description_outlined,
