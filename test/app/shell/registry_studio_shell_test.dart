@@ -1125,6 +1125,15 @@ void main() {
         findsOneWidget,
       );
 
+      expect(find.text('Событие: Первичная загрузка Registry'), findsOneWidget);
+
+      expect(
+        find.textContaining(
+          'Каждая запись фиксирует результат загрузки или refresh',
+        ),
+        findsOneWidget,
+      );
+
       await tester.tap(find.byTooltip('Закрыть историю анализа'));
 
       await tester.pumpAndSettle();

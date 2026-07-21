@@ -406,6 +406,32 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  String _registryAnalysisHistoryEventLabel(
+    RegistryAnalysisHistoryEntry entry,
+  ) {
+    final bool hasChanges =
+        entry.previousAddedCount > 0 ||
+        entry.previousRemovedCount > 0 ||
+        entry.previousChangedCount > 0 ||
+        entry.cleanBaselineAddedCount > 0 ||
+        entry.cleanBaselineRemovedCount > 0 ||
+        entry.cleanBaselineChangedCount > 0;
+
+    if (hasChanges) {
+      return 'Обнаружены изменения Registry';
+    }
+
+    if (entry.previousRevision == null && entry.cleanBaselineRevision == null) {
+      return 'Первичная загрузка Registry';
+    }
+
+    if (entry.previousRevision == null && entry.cleanBaselineRevision != null) {
+      return 'Проверка относительно clean baseline';
+    }
+
+    return 'Refresh без изменений';
+  }
+
   Future<void> _showRegistryAnalysisHistory(
     RegistryExplorerLoaded loaded,
   ) async {
@@ -444,6 +470,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                   ),
                 ),
                 const Divider(height: 1),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Text(
+                    'Каждая запись фиксирует результат загрузки или '
+                    'refresh: revision, baseline, изменения и проблемы. '
+                    'История не изменяет Registry.',
+                  ),
+                ),
                 Expanded(
                   child: loaded.analysisHistory.isEmpty
                       ? const Center(
@@ -488,6 +522,13 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                     ).textTheme.titleMedium,
                                   ),
                                   const SizedBox(height: 4),
+                                  Text(
+                                    'Событие: '
+                                    '${_registryAnalysisHistoryEventLabel(entry)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   Text(
                                     'Время: '
                                     '${entry.loadedAt.toLocal().toIso8601String()}',
