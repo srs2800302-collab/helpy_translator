@@ -14,6 +14,7 @@ final class RegistryRevisionState {
     int? selectedProblemIndex,
     String searchQuery = '',
     String registryViewFilter = 'all',
+    String canonicalStatusFilter = 'all',
   }) {
     final String normalizedProjectId = projectId.trim();
     final String normalizedProjectAdapterId = projectAdapterId.trim();
@@ -23,6 +24,7 @@ final class RegistryRevisionState {
     final String? normalizedCleanBaselineRevision = cleanBaselineRevision
         ?.trim();
     final String normalizedRegistryViewFilter = registryViewFilter.trim();
+    final String normalizedCanonicalStatusFilter = canonicalStatusFilter.trim();
 
     if (normalizedProjectId.isEmpty) {
       throw ArgumentError.value(
@@ -103,6 +105,26 @@ final class RegistryRevisionState {
       );
     }
 
+    const Set<String> supportedCanonicalStatusFilters = <String>{
+      'all',
+      'unclassifiedNeutral',
+      'exact',
+      'equivalent',
+      'review',
+      'drift',
+      'failed',
+    };
+
+    if (!supportedCanonicalStatusFilters.contains(
+      normalizedCanonicalStatusFilter,
+    )) {
+      throw ArgumentError.value(
+        canonicalStatusFilter,
+        'canonicalStatusFilter',
+        'Registry revision state canonical status filter is unsupported.',
+      );
+    }
+
     final bool hasOpenRegistryContext =
         openRegistryNodeId != null || openRegistryPath != null;
 
@@ -142,6 +164,7 @@ final class RegistryRevisionState {
       selectedProblemIndex: selectedProblemIndex,
       searchQuery: searchQuery,
       registryViewFilter: normalizedRegistryViewFilter,
+      canonicalStatusFilter: normalizedCanonicalStatusFilter,
     );
   }
 
@@ -157,6 +180,7 @@ final class RegistryRevisionState {
     required this.selectedProblemIndex,
     required this.searchQuery,
     required this.registryViewFilter,
+    required this.canonicalStatusFilter,
   });
 
   final String projectId;
@@ -170,6 +194,7 @@ final class RegistryRevisionState {
   final int? selectedProblemIndex;
   final String searchQuery;
   final String registryViewFilter;
+  final String canonicalStatusFilter;
 }
 
 abstract interface class RegistryRevisionStateStore {

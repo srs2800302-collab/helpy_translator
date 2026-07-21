@@ -13,6 +13,7 @@ import '../domain/entities/registry_node.dart';
 import '../domain/entities/registry_snapshot.dart';
 import '../domain/value_objects/registry_node_id.dart';
 import 'registry_explorer_cubit.dart';
+import 'registry_analysis_status_entry.dart';
 import 'registry_problem_queue_entry.dart';
 
 final class RegistryExplorerView extends StatelessWidget {
@@ -26,6 +27,7 @@ final class RegistryExplorerView extends StatelessWidget {
     this.onSnapshotAccepted,
     this.onRegistryNodeSelectionReady,
     this.analysisProblemEntries = const <RegistryProblemQueueEntry>[],
+    this.analysisStatusEntries = const <RegistryAnalysisStatusEntry>[],
     super.key,
   });
 
@@ -41,6 +43,7 @@ final class RegistryExplorerView extends StatelessWidget {
   )?
   onRegistryNodeSelectionReady;
   final List<RegistryProblemQueueEntry> analysisProblemEntries;
+  final List<RegistryAnalysisStatusEntry> analysisStatusEntries;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +60,7 @@ final class RegistryExplorerView extends StatelessWidget {
       child: _RegistryExplorerView(
         onRegistryNodeSelectionReady: onRegistryNodeSelectionReady,
         analysisProblemEntries: analysisProblemEntries,
+        analysisStatusEntries: analysisStatusEntries,
       ),
     );
   }
@@ -66,6 +70,7 @@ final class _RegistryExplorerView extends StatefulWidget {
   const _RegistryExplorerView({
     required this.onRegistryNodeSelectionReady,
     required this.analysisProblemEntries,
+    required this.analysisStatusEntries,
   });
 
   final void Function(
@@ -73,6 +78,7 @@ final class _RegistryExplorerView extends StatefulWidget {
   )?
   onRegistryNodeSelectionReady;
   final List<RegistryProblemQueueEntry> analysisProblemEntries;
+  final List<RegistryAnalysisStatusEntry> analysisStatusEntries;
 
   @override
   State<_RegistryExplorerView> createState() => _RegistryExplorerViewState();
@@ -1308,6 +1314,107 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     }
   }
 
+  Future<void> _updateCanonicalStatusFilter(
+    String canonicalStatusFilter,
+  ) async {
+    try {
+      await context.read<RegistryExplorerCubit>().updateCanonicalStatusFilter(
+        canonicalStatusFilter,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final String message = error.toString().trim();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.isEmpty
+                ? 'Не удалось сохранить canonical status filter.'
+                : message,
+          ),
+        ),
+      );
+    }
+  }
+
+  String _canonicalStatusFilterLabel(String canonicalStatusFilter) {
+    return switch (canonicalStatusFilter) {
+      'unclassifiedNeutral' => 'Unclassified / Neutral',
+      'exact' => 'Exact',
+      'equivalent' => 'Equivalent',
+      'review' => 'Review',
+      'drift' => 'Drift',
+      'failed' => 'Failed',
+      _ => 'All',
+    };
+  }
+
+  IconData _canonicalStatusFilterIcon(String canonicalStatusFilter) {
+    return switch (canonicalStatusFilter) {
+      'unclassifiedNeutral' => Icons.help_outline,
+      'exact' => Icons.check_circle_outline,
+      'equivalent' => Icons.done_all,
+      'review' => Icons.rate_review_outlined,
+      'drift' => Icons.warning_amber_rounded,
+      'failed' => Icons.error_outline,
+      _ => Icons.select_all,
+    };
+  }
+
+  bool _matchesCanonicalStatusFilter(
+    RegistryNode node,
+    String canonicalStatusFilter,
+  ) {
+    if (canonicalStatusFilter == 'all') {
+      return true;
+    }
+
+    return widget.analysisStatusEntries.any(
+      (RegistryAnalysisStatusEntry entry) =>
+          entry.nodeId == node.id && entry.statusId == canonicalStatusFilter,
+    );
+  }
+
+  String? _registryFilterHelperText(RegistryExplorerLoaded loaded) {
+    final bool structuralFilterActive = loaded.registryViewFilter != 'all';
+    final bool canonicalFilterActive = loaded.canonicalStatusFilter != 'all';
+
+    if (!structuralFilterActive && !canonicalFilterActive) {
+      return null;
+    }
+
+    final String filterLabel;
+
+    if (structuralFilterActive && canonicalFilterActive) {
+      filterLabel =
+          'Фильтры: '
+          '${_registryViewFilterLabel(loaded.registryViewFilter)} · '
+          'Canonical: '
+          '${_canonicalStatusFilterLabel(loaded.canonicalStatusFilter)}';
+    } else if (structuralFilterActive) {
+      filterLabel =
+          'Фильтр: '
+          '${_registryViewFilterLabel(loaded.registryViewFilter)}';
+    } else {
+      filterLabel =
+          'Canonical: '
+          '${_canonicalStatusFilterLabel(loaded.canonicalStatusFilter)}';
+    }
+
+    final int visibleCount = _visibleRegistryNodes(loaded).length;
+    final int searchResultCount = loaded.searchResults.length;
+
+    if (loaded.searchQuery.trim().isEmpty) {
+      return '$filterLabel · показано: $visibleCount';
+    }
+
+    return '$filterLabel · '
+        'показано: $visibleCount из $searchResultCount';
+  }
+
   Future<void> _showRegistryViewFilter(RegistryExplorerLoaded loaded) async {
     final List<RegistryNode> allNodes = _allRegistryNodes(
       loaded.snapshot.roots,
@@ -1341,6 +1448,25 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       context: context,
       isScrollControlled: true,
       builder: (BuildContext sheetContext) {
+        final Map<String, int> canonicalStatusCounts = <String, int>{
+          'all': widget.analysisStatusEntries.length,
+          'unclassifiedNeutral': 0,
+          'exact': 0,
+          'equivalent': 0,
+          'review': 0,
+          'drift': 0,
+          'failed': 0,
+        };
+
+        for (final RegistryAnalysisStatusEntry entry
+            in widget.analysisStatusEntries) {
+          canonicalStatusCounts.update(
+            entry.statusId,
+            (int count) => count + 1,
+            ifAbsent: () => 1,
+          );
+        }
+
         Widget option({
           required String keyValue,
           required String filter,
@@ -1432,6 +1558,50 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         title: 'Конечные блоки',
                         count: leafCount,
                       ),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
+                        child: Text('Канонический статус'),
+                      ),
+                      for (final String canonicalStatusFilter in const <String>[
+                        'all',
+                        'unclassifiedNeutral',
+                        'exact',
+                        'equivalent',
+                        'review',
+                        'drift',
+                        'failed',
+                      ])
+                        ListTile(
+                          key: ValueKey<String>(
+                            'registry-canonical-status-filter-'
+                            '$canonicalStatusFilter',
+                          ),
+                          leading: Icon(
+                            _canonicalStatusFilterIcon(canonicalStatusFilter),
+                          ),
+                          title: Text(
+                            _canonicalStatusFilterLabel(canonicalStatusFilter),
+                          ),
+                          trailing: Text(
+                            '${canonicalStatusCounts[canonicalStatusFilter] ?? 0}',
+                          ),
+                          selected:
+                              loaded.canonicalStatusFilter ==
+                              canonicalStatusFilter,
+                          onTap: () async {
+                            Navigator.of(sheetContext).pop();
+
+                            await Future<void>.delayed(Duration.zero);
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            await _updateCanonicalStatusFilter(
+                              canonicalStatusFilter,
+                            );
+                          },
+                        ),
                       if (kindIds.isNotEmpty)
                         const Padding(
                           padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
@@ -1509,9 +1679,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   bool _hasVisibleRegistryChildren(
     RegistryNode node, {
     required String registryViewFilter,
+    required String canonicalStatusFilter,
     required bool searchActive,
     required bool branchScopeActive,
   }) {
+    if (canonicalStatusFilter != 'all') {
+      return false;
+    }
+
     if (searchActive) {
       return false;
     }
@@ -1530,6 +1705,28 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   List<RegistryNode> _visibleRegistryNodes(RegistryExplorerLoaded loaded) {
     final String registryViewFilter = loaded.registryViewFilter;
     final bool searchActive = loaded.searchQuery.trim().isNotEmpty;
+
+    if (loaded.canonicalStatusFilter != 'all') {
+      Iterable<RegistryNode> canonicalStatusNodes = searchActive
+          ? loaded.searchResults
+          : _allRegistryNodes(loaded.snapshot.roots);
+
+      if (registryViewFilter != 'all') {
+        canonicalStatusNodes = canonicalStatusNodes.where(
+          (RegistryNode node) =>
+              _matchesRegistryViewFilter(node, registryViewFilter),
+        );
+      }
+
+      return canonicalStatusNodes
+          .where(
+            (RegistryNode node) => _matchesCanonicalStatusFilter(
+              node,
+              loaded.canonicalStatusFilter,
+            ),
+          )
+          .toList(growable: false);
+    }
 
     if (searchActive) {
       if (registryViewFilter == 'all') {
@@ -2235,33 +2432,39 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ? null
                               : 'Найдено: '
                                     '${loaded.searchResults.length}',
-                          helperText: loaded.registryViewFilter == 'all'
-                              ? null
-                              : loaded.searchQuery.trim().isEmpty
-                              ? 'Фильтр: '
-                                    '${_registryViewFilterLabel(loaded.registryViewFilter)} · '
-                                    'показано: '
-                                    '${_visibleRegistryNodes(loaded).length}'
-                              : 'Фильтр: '
-                                    '${_registryViewFilterLabel(loaded.registryViewFilter)} · '
-                                    'показано: '
-                                    '${_visibleRegistryNodes(loaded).length} '
-                                    'из ${loaded.searchResults.length}',
+                          helperText: _registryFilterHelperText(loaded),
                           suffixIcon: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               Badge(
                                 isLabelVisible:
-                                    loaded.registryViewFilter != 'all',
+                                    loaded.registryViewFilter != 'all' ||
+                                    loaded.canonicalStatusFilter != 'all',
                                 child: IconButton(
                                   key: const ValueKey<String>(
                                     'registry-view-filter-button',
                                   ),
-                                  tooltip: loaded.registryViewFilter == 'all'
-                                      ? 'Фильтр отображения Registry'
-                                      : 'Фильтр: '
-                                            '${_registryViewFilterLabel(loaded.registryViewFilter)}',
-                                  color: loaded.registryViewFilter == 'all'
+                                  tooltip: switch ((
+                                    loaded.registryViewFilter == 'all',
+                                    loaded.canonicalStatusFilter == 'all',
+                                  )) {
+                                    (true, true) =>
+                                      'Фильтр отображения Registry',
+                                    (false, true) =>
+                                      'Фильтр: '
+                                          '${_registryViewFilterLabel(loaded.registryViewFilter)}',
+                                    (true, false) =>
+                                      'Canonical: '
+                                          '${_canonicalStatusFilterLabel(loaded.canonicalStatusFilter)}',
+                                    (false, false) =>
+                                      'Фильтры: '
+                                          '${_registryViewFilterLabel(loaded.registryViewFilter)} · '
+                                          'Canonical: '
+                                          '${_canonicalStatusFilterLabel(loaded.canonicalStatusFilter)}',
+                                  },
+                                  color:
+                                      loaded.registryViewFilter == 'all' &&
+                                          loaded.canonicalStatusFilter == 'all'
                                       ? null
                                       : Theme.of(context).colorScheme.primary,
                                   onPressed: () async {
@@ -2849,6 +3052,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           final bool expandable = _hasVisibleRegistryChildren(
                             node,
                             registryViewFilter: loaded.registryViewFilter,
+                            canonicalStatusFilter: loaded.canonicalStatusFilter,
                             searchActive: searchActive,
                             branchScopeActive: branchScopeRoot != null,
                           );

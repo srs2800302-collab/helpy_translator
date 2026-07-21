@@ -102,9 +102,10 @@ void main() {
         'selectedProblemIndex',
         'searchQuery',
         'registryViewFilter',
+        'canonicalStatusFilter',
       });
 
-      expect(encodedState['version'], 'v6');
+      expect(encodedState['version'], 'v7');
       expect(encodedState['searchQuery'], '  exact Registry query  ');
       expect(encodedState['registryViewFilter'], 'branches');
       expect(

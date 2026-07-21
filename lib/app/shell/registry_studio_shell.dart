@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../registry_studio/canonical/application/contracts/canonical_business_text_analysis_session_runner.dart';
 import '../../registry_studio/canonical/application/contracts/canonical_dictionary_loader.dart';
 import '../../registry_studio/canonical/domain/entities/canonical_business_text_candidate.dart';
+import '../../registry_studio/canonical/domain/entities/canonical_business_text_classification.dart';
 import '../../registry_studio/canonical/domain/entities/canonical_business_text_finding.dart';
 import '../../registry_studio/canonical/presentation/canonical_business_text_analysis_cubit.dart';
 import '../../registry_studio/canonical/presentation/canonical_business_text_analysis_status_action.dart';
@@ -18,6 +19,7 @@ import '../../registry_studio/registry/application/contracts/registry_snapshot_l
 import '../../registry_studio/registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../registry_studio/registry/domain/value_objects/registry_node_id.dart';
+import '../../registry_studio/registry/presentation/registry_analysis_status_entry.dart';
 import '../../registry_studio/registry/presentation/registry_explorer_view.dart';
 import '../../registry_studio/registry/presentation/registry_problem_queue_entry.dart';
 
@@ -159,6 +161,14 @@ final class _RegistryStudioShellViewState
                 context.watch<CanonicalBusinessTextAnalysisCubit>().state,
               )
             : const <RegistryProblemQueueEntry>[];
+
+        final List<RegistryAnalysisStatusEntry> canonicalStatusEntries =
+            widget.showCanonicalBusinessTextAnalysisStatus
+            ? _canonicalStatusEntries(
+                context.watch<CanonicalBusinessTextAnalysisCubit>().state,
+              )
+            : const <RegistryAnalysisStatusEntry>[];
+
         return Scaffold(
           appBar: AppBar(
             title: Text(_titleFor(workspace)),
@@ -184,6 +194,7 @@ final class _RegistryStudioShellViewState
                 analysisHistoryStore: widget.registryAnalysisHistoryStore,
                 snapshotComparator: widget.registrySnapshotComparator,
                 analysisProblemEntries: canonicalProblemEntries,
+                analysisStatusEntries: canonicalStatusEntries,
                 onRegistryNodeSelectionReady: _bindRegistryNodeSelection,
                 onSnapshotAccepted:
                     widget.showCanonicalBusinessTextAnalysisStatus
@@ -251,6 +262,26 @@ final class _RegistryStudioShellViewState
               RegistryProblemQueueEntrySeverity.blocking,
           },
           sourceEvidence: finding.candidate.sourceEvidence,
+        );
+      }),
+    );
+  }
+
+  List<RegistryAnalysisStatusEntry> _canonicalStatusEntries(
+    CanonicalBusinessTextAnalysisState state,
+  ) {
+    if (state is! CanonicalBusinessTextAnalysisReady) {
+      return const <RegistryAnalysisStatusEntry>[];
+    }
+
+    return List<RegistryAnalysisStatusEntry>.unmodifiable(
+      state.result.classifications.classifications.map((
+        CanonicalBusinessTextClassification classification,
+      ) {
+        return RegistryAnalysisStatusEntry(
+          identity: 'canonical-status:${classification.candidate.identity}',
+          nodeId: classification.candidate.nodeId,
+          statusId: classification.status.name,
         );
       }),
     );
