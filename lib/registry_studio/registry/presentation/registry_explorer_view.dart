@@ -2570,76 +2570,82 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       color: Theme.of(context).colorScheme.surfaceContainerLow,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    'Проект: ${loaded.snapshot.projectId}',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text(
+                                    'Registry Studio',
+                                    key: const ValueKey<String>(
+                                      'registry-explorer-title',
+                                    ),
+                                    style: Theme.of(context).textTheme.titleLarge,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text('Узлов: ${loaded.index.nodes.length}'),
-                                  Text(
-                                    'Revision: '
-                                    '${loaded.snapshot.sourceRevision}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Badge(
-                              isLabelVisible:
-                                  loaded.problems.isNotEmpty ||
-                                  widget.analysisProblemEntries.isNotEmpty,
-                              label: Text(
-                                '${loaded.problems.length + widget.analysisProblemEntries.length}',
-                              ),
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.error,
-                              child: IconButton(
-                                key: const ValueKey<String>(
-                                  'registry-status-center-button',
                                 ),
-                                tooltip:
-                                    'Состояние Registry: '
-                                    '${loaded.problems.length + widget.analysisProblemEntries.length} проблем',
-                                onPressed: () async {
-                                  await _showRegistryStatusCenter(loaded);
-                                },
-                                color:
-                                    loaded.problems.isEmpty &&
-                                        widget.analysisProblemEntries.isEmpty
-                                    ? null
-                                    : Theme.of(context).colorScheme.error,
-                                icon: const Icon(Icons.fact_check_outlined),
-                              ),
+                                Badge(
+                                  isLabelVisible:
+                                      loaded.problems.isNotEmpty ||
+                                      widget.analysisProblemEntries.isNotEmpty,
+                                  label: Text(
+                                    '${loaded.problems.length + widget.analysisProblemEntries.length}',
+                                  ),
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.error,
+                                  child: IconButton(
+                                    key: const ValueKey<String>(
+                                      'registry-status-center-button',
+                                    ),
+                                    tooltip:
+                                        'Состояние Registry: '
+                                        '${loaded.problems.length + widget.analysisProblemEntries.length} проблем',
+                                    onPressed: () async {
+                                      await _showRegistryStatusCenter(loaded);
+                                    },
+                                    color:
+                                        loaded.problems.isEmpty &&
+                                            widget.analysisProblemEntries.isEmpty
+                                        ? null
+                                        : Theme.of(context).colorScheme.error,
+                                    icon: const Icon(Icons.fact_check_outlined),
+                                  ),
+                                ),
+                                IconButton(
+                                  key: const ValueKey<String>(
+                                    'registry-studio-reset',
+                                  ),
+                                  tooltip: 'Сбросить контекст Registry Studio',
+                                  onPressed: _resetRegistryStudio,
+                                  icon: const Icon(Icons.layers_clear_outlined),
+                                ),
+                                IconButton(
+                                  key: const ValueKey<String>(
+                                    'registry-refresh-button',
+                                  ),
+                                  tooltip:
+                                      loaded.selectedProblem == null &&
+                                          loaded.openRegistryNode != null
+                                      ? null
+                                      : 'Перезагрузить Registry',
+                                  onPressed: _refreshRegistry,
+                                  icon: const Icon(Icons.refresh),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              key: const ValueKey<String>(
-                                'registry-studio-reset',
-                              ),
-                              tooltip: 'Сбросить контекст Registry Studio',
-                              onPressed: _resetRegistryStudio,
-                              icon: const Icon(Icons.restart_alt),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Проект: ${loaded.snapshot.projectId}',
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                            IconButton(
-                              key: const ValueKey<String>(
-                                'registry-refresh-button',
-                              ),
-                              tooltip:
-                                  loaded.selectedProblem == null &&
-                                      loaded.openRegistryNode != null
-                                  ? null
-                                  : 'Перезагрузить Registry',
-                              onPressed: _refreshRegistry,
-                              icon: const Icon(Icons.refresh),
+                            const SizedBox(height: 4),
+                            Text('Узлов: ${loaded.index.nodes.length}'),
+                            Text(
+                              'Revision: '
+                              '${loaded.snapshot.sourceRevision}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),

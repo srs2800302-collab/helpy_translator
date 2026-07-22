@@ -248,7 +248,16 @@ void main() {
       'формулировок: 2',
     );
 
-    await tester.tap(targetRow);
+    final Finder classifiedDomainNode = targetRow;
+
+    expect(classifiedDomainNode, findsOneWidget);
+
+    await tester.ensureVisible(classifiedDomainNode);
+    await tester.pumpAndSettle();
+
+    expect(classifiedDomainNode.hitTestable(), findsOneWidget);
+
+    await tester.tap(classifiedDomainNode);
     await tester.pumpAndSettle();
 
     expect(

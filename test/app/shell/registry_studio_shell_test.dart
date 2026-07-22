@@ -2664,48 +2664,90 @@ void main() {
     expect(siblingEntityRow, findsNothing);
   });
 
-  testWidgets('places Registry status before reset and refresh actions', (
-    WidgetTester tester,
-  ) async {
-    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
-      <Future<RegistrySnapshot> Function()>[() async => snapshot],
-    );
+  testWidgets(
+    'places Registry Studio title before status reset and refresh actions on mobile',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
 
-    await tester.pumpWidget(
-      RegistryStudioApplication(
-        registrySnapshotLoader: loader,
-        registrySnapshotRefreshLoader: loader,
-        registrySnapshotRevisionLoader: loader,
-        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
-        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
-      ),
-    );
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpAndSettle();
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => snapshot,
+          ]);
 
-    final Finder statusButton = find.byKey(
-      const ValueKey<String>('registry-status-center-button'),
-    );
-    final Finder resetButton = find.byKey(
-      const ValueKey<String>('registry-studio-reset'),
-    );
-    final Finder refreshButton = find.byKey(
-      const ValueKey<String>('registry-refresh-button'),
-    );
+      await tester.pumpWidget(
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+          registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+        ),
+      );
 
-    expect(statusButton, findsOneWidget);
-    expect(resetButton, findsOneWidget);
-    expect(refreshButton, findsOneWidget);
+      await tester.pumpAndSettle();
 
-    expect(
-      tester.getTopLeft(statusButton).dx,
-      lessThan(tester.getTopLeft(resetButton).dx),
-    );
-    expect(
-      tester.getTopLeft(resetButton).dx,
-      lessThan(tester.getTopLeft(refreshButton).dx),
-    );
-  });
+      final Finder title = find.byKey(
+        const ValueKey<String>('registry-explorer-title'),
+      );
+      final Finder statusButton = find.byKey(
+        const ValueKey<String>('registry-status-center-button'),
+      );
+      final Finder resetButton = find.byKey(
+        const ValueKey<String>('registry-studio-reset'),
+      );
+      final Finder refreshButton = find.byKey(
+        const ValueKey<String>('registry-refresh-button'),
+      );
+
+      expect(title, findsOneWidget);
+      expect(tester.widget<Text>(title).data, 'Registry Studio');
+      expect(statusButton.hitTestable(), findsOneWidget);
+      expect(resetButton.hitTestable(), findsOneWidget);
+      expect(refreshButton.hitTestable(), findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: statusButton,
+          matching: find.byIcon(Icons.fact_check_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: resetButton,
+          matching: find.byIcon(Icons.layers_clear_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: refreshButton,
+          matching: find.byIcon(Icons.refresh),
+        ),
+        findsOneWidget,
+      );
+
+      final Rect titleRect = tester.getRect(title);
+      final Rect statusRect = tester.getRect(statusButton);
+      final Rect resetRect = tester.getRect(resetButton);
+      final Rect refreshRect = tester.getRect(refreshButton);
+
+      expect(titleRect.left, lessThan(statusRect.left));
+      expect(titleRect.right, lessThanOrEqualTo(statusRect.left));
+
+      expect(statusRect.left, lessThan(resetRect.left));
+      expect(resetRect.left, lessThan(refreshRect.left));
+
+      expect(titleRect.center.dy, closeTo(statusRect.center.dy, 1));
+      expect(statusRect.center.dy, closeTo(resetRect.center.dy, 1));
+      expect(resetRect.center.dy, closeTo(refreshRect.center.dy, 1));
+    },
+  );
+
   testWidgets('restores persisted Registry Explorer filter after restart', (
     WidgetTester tester,
   ) async {
@@ -3073,7 +3115,30 @@ void main() {
 
     expect(rootRow, findsOneWidget);
     expect(branchRow, findsOneWidget);
-    expect(nestedBranchRow, findsOneWidget);
+    final Finder filteredBranchNodeList = find.byKey(
+      const ValueKey<String>('registry-node-list'),
+    );
+
+    expect(filteredBranchNodeList, findsOneWidget);
+
+    final Finder filteredBranchScrollable = find
+        .descendant(
+          of: filteredBranchNodeList,
+          matching: find.byType(Scrollable),
+        )
+        .first;
+
+    final Finder deepestFilteredBranchNode = nestedBranchRow;
+
+    await tester.scrollUntilVisible(
+      deepestFilteredBranchNode,
+      240,
+      scrollable: filteredBranchScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(deepestFilteredBranchNode, findsOneWidget);
     expect(leafRow, findsNothing);
     expect(nestedBranchToggle, findsNothing);
 
@@ -3104,10 +3169,11 @@ void main() {
 
     expect(find.text('Ветка: Branch'), findsOneWidget);
 
-    expect(
-      find.byKey(const ValueKey<String>('registry-branch-scope-back')),
-      findsOneWidget,
+    final Finder branchScopeBack = find.byKey(
+      const ValueKey<String>('registry-branch-scope-back'),
     );
+
+    expect(branchScopeBack, findsOneWidget);
 
     expect(rootRow, findsNothing);
     expect(branchRow, findsOneWidget);
@@ -3134,6 +3200,14 @@ void main() {
     await tester.tap(nestedBranchToggle);
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      leafRow,
+      240,
+      scrollable: filteredBranchScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
     expect(leafRow, findsOneWidget);
 
     await tester.enterText(
@@ -3154,11 +3228,27 @@ void main() {
 
     expect(find.text('Ветка: Branch'), findsOneWidget);
     expect(nestedBranchToggle, findsOneWidget);
+    await tester.scrollUntilVisible(
+      leafRow,
+      240,
+      scrollable: filteredBranchScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
     expect(leafRow, findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('registry-branch-scope-back')),
+    await tester.scrollUntilVisible(
+      branchScopeBack,
+      -240,
+      scrollable: filteredBranchScrollable,
     );
+
+    await tester.pumpAndSettle();
+
+    expect(branchScopeBack, findsOneWidget);
+
+    await tester.tap(branchScopeBack);
 
     await tester.pumpAndSettle();
 
