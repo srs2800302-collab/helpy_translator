@@ -134,6 +134,10 @@ void main() {
 
     await tester.tap(exactFilter);
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
+    await tester.pumpAndSettle();
 
     expect(targetRow, findsNothing);
     expect(revisionStateStore.state?.canonicalStatusFilter, 'exact');
@@ -219,6 +223,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(restoredNeutralFilter);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
     await tester.pumpAndSettle();
 
     expect(targetRow, findsOneWidget);
@@ -406,6 +414,10 @@ void main() {
 
     await tester.tap(rootFilter);
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
+    await tester.pumpAndSettle();
 
     expect(rootRow, findsOneWidget);
     expect(targetRow, findsNothing);
@@ -463,6 +475,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(branchFilter);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
     await tester.pumpAndSettle();
 
     expect(rootRow, findsOneWidget);
@@ -522,6 +538,10 @@ void main() {
 
     await tester.tap(leafFilter);
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
+    await tester.pumpAndSettle();
 
     expect(rootRow, findsNothing);
     expect(targetRow, findsOneWidget);
@@ -566,6 +586,147 @@ void main() {
       'Формулировок: 2 · узлов: 1',
     );
 
+    expect(revisionStateStore.state?.registryViewFilter, 'leaves');
+    expect(
+      revisionStateStore.state?.canonicalStatusFilter,
+      'unclassifiedNeutral',
+    );
+  });
+  testWidgets('keeps the Registry filter sheet open while selections update', (
+    WidgetTester tester,
+  ) async {
+    final RegistrySnapshot snapshot = _snapshot();
+    final RegistryNode targetNode = snapshot.roots.single.children.single;
+
+    final _RevisionStateStore revisionStateStore = _RevisionStateStore();
+
+    final _SnapshotLoader loader = _SnapshotLoader(snapshot);
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: revisionStateStore,
+        registryAnalysisHistoryStore: _HistoryStore(),
+        canonicalBusinessTextAnalysisSessionRunner: _SessionRunner(
+          _result(snapshot: snapshot, targetNode: targetNode),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final Finder filterButton = find.byKey(
+      const ValueKey<String>('registry-view-filter-button'),
+    );
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    final Finder filterSheet = find.byKey(
+      const ValueKey<String>('registry-view-filter-sheet'),
+    );
+
+    final Finder filterScrollable = find.descendant(
+      of: filterSheet,
+      matching: find.byType(Scrollable),
+    );
+
+    expect(filterSheet, findsOneWidget);
+    expect(filterScrollable, findsOneWidget);
+
+    final Finder rootsFilter = find.byKey(
+      const ValueKey<String>('registry-view-filter-roots'),
+    );
+
+    await tester.tap(rootsFilter);
+    await tester.pumpAndSettle();
+
+    expect(filterSheet, findsOneWidget);
+    expect(tester.widget<ListTile>(rootsFilter).selected, isTrue);
+    expect(revisionStateStore.state?.registryViewFilter, 'roots');
+
+    final Finder exactFilter = find.byKey(
+      const ValueKey<String>('registry-canonical-status-filter-exact'),
+    );
+
+    await tester.scrollUntilVisible(
+      exactFilter,
+      300,
+      scrollable: filterScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(exactFilter);
+    await tester.pumpAndSettle();
+
+    expect(filterSheet, findsOneWidget);
+    expect(tester.widget<ListTile>(exactFilter).selected, isTrue);
+    expect(revisionStateStore.state?.canonicalStatusFilter, 'exact');
+
+    final Finder neutralFilter = find.byKey(
+      const ValueKey<String>(
+        'registry-canonical-status-filter-'
+        'unclassifiedNeutral',
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      neutralFilter,
+      -300,
+      scrollable: filterScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(neutralFilter);
+    await tester.pumpAndSettle();
+
+    expect(filterSheet, findsOneWidget);
+    expect(tester.widget<ListTile>(neutralFilter).selected, isTrue);
+    expect(tester.widget<ListTile>(exactFilter).selected, isFalse);
+    expect(
+      revisionStateStore.state?.canonicalStatusFilter,
+      'unclassifiedNeutral',
+    );
+
+    final Finder leavesFilter = find.byKey(
+      const ValueKey<String>('registry-view-filter-leaves'),
+    );
+
+    await tester.scrollUntilVisible(
+      leavesFilter,
+      -300,
+      scrollable: filterScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(leavesFilter);
+    await tester.pumpAndSettle();
+
+    expect(filterSheet, findsOneWidget);
+    expect(tester.widget<ListTile>(leavesFilter).selected, isTrue);
+    expect(revisionStateStore.state?.registryViewFilter, 'leaves');
+
+    await tester.scrollUntilVisible(
+      rootsFilter,
+      -300,
+      scrollable: filterScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<ListTile>(rootsFilter).selected, isFalse);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(filterSheet, findsNothing);
     expect(revisionStateStore.state?.registryViewFilter, 'leaves');
     expect(
       revisionStateStore.state?.canonicalStatusFilter,

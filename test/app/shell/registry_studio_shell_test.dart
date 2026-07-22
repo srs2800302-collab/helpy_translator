@@ -2699,6 +2699,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
+    await tester.pumpAndSettle();
+
     expect(store.state?.registryViewFilter, 'branches');
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -2804,6 +2809,11 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
+    await tester.pumpAndSettle();
+
     expect(rootNode, findsNothing);
     expect(childNode, findsOneWidget);
 
@@ -2819,6 +2829,11 @@ void main() {
       find.byKey(const ValueKey<String>('registry-view-filter-branches')),
     );
 
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
     await tester.pumpAndSettle();
 
     expect(rootNode, findsOneWidget);
@@ -2844,6 +2859,11 @@ void main() {
       find.byKey(const ValueKey<String>('registry-view-filter-all')),
     );
 
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
     await tester.pumpAndSettle();
 
     expect(childNode, findsOneWidget);
@@ -2989,6 +3009,11 @@ void main() {
       find.byKey(const ValueKey<String>('registry-view-filter-branches')),
     );
 
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
     await tester.pumpAndSettle();
 
     final Finder rootRow = find.byKey(ValueKey<String>(root.id.value));
