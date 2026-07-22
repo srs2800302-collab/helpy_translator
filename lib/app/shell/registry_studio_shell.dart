@@ -282,6 +282,11 @@ final class _RegistryStudioShellViewState
           identity: 'canonical-status:${classification.candidate.identity}',
           nodeId: classification.candidate.nodeId,
           statusId: classification.status.name,
+          statusLabel: _canonicalStatusLabel(classification.status.name),
+          reason: _canonicalReasonLabel(classification.reason.name),
+          text: classification.candidate.text,
+          directContentLine: classification.candidate.directContentLine,
+          sourceEvidence: classification.candidate.sourceEvidence,
         );
       }),
     );

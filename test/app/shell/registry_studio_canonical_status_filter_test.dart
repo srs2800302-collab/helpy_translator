@@ -24,179 +24,318 @@ import 'package:helpy_translator/registry_studio/registry/domain/entities/regist
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 
 void main() {
-  testWidgets(
-    'filters Registry by canonical status and restores the selection',
-    (WidgetTester tester) async {
-      final RegistrySnapshot snapshot = _snapshot();
-      final RegistryNode targetNode = snapshot.roots.single.children.single;
+  testWidgets('explains canonical counts and exposes classified formulations', (
+    WidgetTester tester,
+  ) async {
+    final RegistrySnapshot snapshot = _snapshot();
+    final RegistryNode targetNode = snapshot.roots.single.children.single;
 
-      final _RevisionStateStore revisionStateStore = _RevisionStateStore();
+    final _RevisionStateStore revisionStateStore = _RevisionStateStore();
+    final _SnapshotLoader firstLoader = _SnapshotLoader(snapshot);
 
-      final _SnapshotLoader firstLoader = _SnapshotLoader(snapshot);
-
-      await tester.pumpWidget(
-        RegistryStudioApplication(
-          registrySnapshotLoader: firstLoader,
-          registrySnapshotRefreshLoader: firstLoader,
-          registrySnapshotRevisionLoader: firstLoader,
-          registryRevisionStateStore: revisionStateStore,
-          registryAnalysisHistoryStore: _HistoryStore(),
-          canonicalBusinessTextAnalysisSessionRunner: _SessionRunner(
-            _result(snapshot: snapshot, targetNode: targetNode),
-          ),
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: firstLoader,
+        registrySnapshotRefreshLoader: firstLoader,
+        registrySnapshotRevisionLoader: firstLoader,
+        registryRevisionStateStore: revisionStateStore,
+        registryAnalysisHistoryStore: _HistoryStore(),
+        canonicalBusinessTextAnalysisSessionRunner: _SessionRunner(
+          _result(snapshot: snapshot, targetNode: targetNode),
         ),
-      );
+      ),
+    );
 
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
 
-      final Finder targetRow = find.byKey(
-        ValueKey<String>(targetNode.id.value),
-      );
+    final Finder targetRow = find.byKey(ValueKey<String>(targetNode.id.value));
 
-      expect(targetRow, findsOneWidget);
+    expect(targetRow, findsOneWidget);
 
-      final Finder filterButton = find.byKey(
-        const ValueKey<String>('registry-view-filter-button'),
-      );
+    final Finder filterButton = find.byKey(
+      const ValueKey<String>('registry-view-filter-button'),
+    );
 
-      await tester.tap(filterButton);
-      await tester.pumpAndSettle();
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
 
-      final Finder filterSheet = find.byKey(
-        const ValueKey<String>('registry-view-filter-sheet'),
-      );
+    final Finder filterSheet = find.byKey(
+      const ValueKey<String>('registry-view-filter-sheet'),
+    );
 
-      final Finder filterScrollable = find.descendant(
-        of: filterSheet,
-        matching: find.byType(Scrollable),
-      );
+    final Finder filterScrollable = find.descendant(
+      of: filterSheet,
+      matching: find.byType(Scrollable),
+    );
 
-      expect(filterScrollable, findsOneWidget);
+    expect(filterScrollable, findsOneWidget);
 
-      final Finder neutralFilter = find.byKey(
+    final Finder neutralFilter = find.byKey(
+      const ValueKey<String>(
+        'registry-canonical-status-filter-unclassifiedNeutral',
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      neutralFilter,
+      300,
+      scrollable: filterScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    final Finder exactFilter = find.byKey(
+      const ValueKey<String>('registry-canonical-status-filter-exact'),
+    );
+
+    expect(neutralFilter, findsOneWidget);
+    expect(exactFilter, findsOneWidget);
+
+    final Finder neutralCount = find.descendant(
+      of: neutralFilter,
+      matching: find.byKey(
         const ValueKey<String>(
-          'registry-canonical-status-filter-unclassifiedNeutral',
+          'registry-canonical-status-count-unclassifiedNeutral',
         ),
-      );
+      ),
+    );
 
-      await tester.scrollUntilVisible(
-        neutralFilter,
-        300,
-        scrollable: filterScrollable,
-        maxScrolls: 50,
-      );
-      await tester.pumpAndSettle();
+    final Finder exactCount = find.descendant(
+      of: exactFilter,
+      matching: find.byKey(
+        const ValueKey<String>('registry-canonical-status-count-exact'),
+      ),
+    );
 
-      final Finder exactFilter = find.byKey(
-        const ValueKey<String>('registry-canonical-status-filter-exact'),
-      );
+    expect(
+      tester.widget<Text>(neutralCount).data,
+      'Формулировок: 2 · узлов: 1',
+    );
+    expect(tester.widget<Text>(exactCount).data, 'Формулировок: 0 · узлов: 0');
 
-      expect(neutralFilter, findsOneWidget);
-      expect(exactFilter, findsOneWidget);
+    await tester.tap(exactFilter);
+    await tester.pumpAndSettle();
 
-      expect(tester.widget<ListTile>(neutralFilter).selected, isFalse);
+    expect(targetRow, findsNothing);
+    expect(revisionStateStore.state?.canonicalStatusFilter, 'exact');
+    expect(revisionStateStore.state?.registryViewFilter, 'all');
 
-      await tester.tap(exactFilter);
-      await tester.pumpAndSettle();
+    final Finder activeFilterBadge = find.ancestor(
+      of: filterButton,
+      matching: find.byType(Badge),
+    );
 
-      expect(targetRow, findsNothing);
-      expect(revisionStateStore.state?.canonicalStatusFilter, 'exact');
-      expect(revisionStateStore.state?.registryViewFilter, 'all');
+    expect(activeFilterBadge, findsOneWidget);
+    expect(tester.widget<Badge>(activeFilterBadge).isLabelVisible, isTrue);
 
-      final Finder activeFilterBadge = find.ancestor(
-        of: filterButton,
-        matching: find.byType(Badge),
-      );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
 
-      expect(activeFilterBadge, findsOneWidget);
-      expect(tester.widget<Badge>(activeFilterBadge).isLabelVisible, isTrue);
+    final _SnapshotLoader restartLoader = _SnapshotLoader(snapshot);
 
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpAndSettle();
-
-      final _SnapshotLoader restartLoader = _SnapshotLoader(snapshot);
-
-      await tester.pumpWidget(
-        RegistryStudioApplication(
-          registrySnapshotLoader: restartLoader,
-          registrySnapshotRefreshLoader: restartLoader,
-          registrySnapshotRevisionLoader: restartLoader,
-          registryRevisionStateStore: revisionStateStore,
-          registryAnalysisHistoryStore: _HistoryStore(),
-          canonicalBusinessTextAnalysisSessionRunner: _SessionRunner(
-            _result(snapshot: snapshot, targetNode: targetNode),
-          ),
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: restartLoader,
+        registrySnapshotRefreshLoader: restartLoader,
+        registrySnapshotRevisionLoader: restartLoader,
+        registryRevisionStateStore: revisionStateStore,
+        registryAnalysisHistoryStore: _HistoryStore(),
+        canonicalBusinessTextAnalysisSessionRunner: _SessionRunner(
+          _result(snapshot: snapshot, targetNode: targetNode),
         ),
-      );
+      ),
+    );
 
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
 
-      expect(targetRow, findsNothing);
+    expect(targetRow, findsNothing);
 
-      final Finder restoredFilterButton = find.byKey(
-        const ValueKey<String>('registry-view-filter-button'),
-      );
+    final Finder restoredFilterButton = find.byKey(
+      const ValueKey<String>('registry-view-filter-button'),
+    );
 
-      expect(
-        tester.widget<IconButton>(restoredFilterButton).tooltip,
-        contains('Canonical: Exact'),
-      );
+    expect(
+      tester.widget<IconButton>(restoredFilterButton).tooltip,
+      contains('Canonical: Exact'),
+    );
 
-      await tester.tap(restoredFilterButton);
-      await tester.pumpAndSettle();
+    await tester.tap(restoredFilterButton);
+    await tester.pumpAndSettle();
 
-      final Finder restoredFilterSheet = find.byKey(
-        const ValueKey<String>('registry-view-filter-sheet'),
-      );
+    final Finder restoredFilterSheet = find.byKey(
+      const ValueKey<String>('registry-view-filter-sheet'),
+    );
 
-      final Finder restoredFilterScrollable = find.descendant(
-        of: restoredFilterSheet,
-        matching: find.byType(Scrollable),
-      );
+    final Finder restoredFilterScrollable = find.descendant(
+      of: restoredFilterSheet,
+      matching: find.byType(Scrollable),
+    );
 
-      expect(restoredFilterScrollable, findsOneWidget);
+    final Finder restoredExactFilter = find.byKey(
+      const ValueKey<String>('registry-canonical-status-filter-exact'),
+    );
 
-      final Finder restoredExactFilter = find.byKey(
-        const ValueKey<String>('registry-canonical-status-filter-exact'),
-      );
+    await tester.scrollUntilVisible(
+      restoredExactFilter,
+      300,
+      scrollable: restoredFilterScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(
-        restoredExactFilter,
-        300,
-        scrollable: restoredFilterScrollable,
-        maxScrolls: 50,
-      );
-      await tester.pumpAndSettle();
+    expect(tester.widget<ListTile>(restoredExactFilter).selected, isTrue);
 
-      expect(tester.widget<ListTile>(restoredExactFilter).selected, isTrue);
+    final Finder restoredNeutralFilter = find.byKey(
+      const ValueKey<String>(
+        'registry-canonical-status-filter-unclassifiedNeutral',
+      ),
+    );
 
-      final Finder restoredNeutralFilter = find.byKey(
+    await tester.scrollUntilVisible(
+      restoredNeutralFilter,
+      -300,
+      scrollable: restoredFilterScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(restoredNeutralFilter);
+    await tester.pumpAndSettle();
+
+    expect(targetRow, findsOneWidget);
+    expect(
+      revisionStateStore.state?.canonicalStatusFilter,
+      'unclassifiedNeutral',
+    );
+
+    final Finder nodeCanonicalSummary = find.byKey(
+      ValueKey<String>(
+        'registry-node-canonical-summary-${targetNode.id.value}',
+      ),
+    );
+
+    expect(nodeCanonicalSummary, findsOneWidget);
+    expect(
+      tester.widget<Text>(nodeCanonicalSummary).data,
+      'Canonical: Без точного канонического совпадения · '
+      'формулировок: 2',
+    );
+
+    await tester.tap(targetRow);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('registry-selected-canonical-analysis'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.byKey(
         const ValueKey<String>(
-          'registry-canonical-status-filter-unclassifiedNeutral',
+          'registry-selected-analysis-'
+          'canonical-status:candidate-domain-rule-1',
         ),
-      );
+      ),
+      findsOneWidget,
+    );
 
-      await tester.scrollUntilVisible(
-        restoredNeutralFilter,
-        -300,
-        scrollable: restoredFilterScrollable,
-        maxScrolls: 50,
-      );
-      await tester.pumpAndSettle();
+    expect(
+      find.byKey(
+        const ValueKey<String>(
+          'registry-selected-analysis-'
+          'canonical-status:candidate-domain-rule-2',
+        ),
+      ),
+      findsOneWidget,
+    );
 
-      expect(restoredNeutralFilter, findsOneWidget);
+    expect(find.text('Место: строка 1 внутри блока'), findsOneWidget);
+    expect(find.text('Место: строка 2 внутри блока'), findsOneWidget);
 
-      await tester.tap(restoredNeutralFilter);
+    expect(
+      find.text('Причина: Точное каноническое совпадение не найдено'),
+      findsNWidgets(2),
+    );
 
-      await tester.pumpAndSettle();
+    expect(find.text('Canonical candidate phrase.'), findsOneWidget);
+    expect(find.text('Second canonical candidate phrase.'), findsOneWidget);
 
-      expect(targetRow, findsOneWidget);
-      expect(
-        revisionStateStore.state?.canonicalStatusFilter,
-        'unclassifiedNeutral',
-      );
-    },
-  );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-selected-block-back')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    final Finder structuralFilterSheet = find.byKey(
+      const ValueKey<String>('registry-view-filter-sheet'),
+    );
+
+    final Finder structuralFilterScrollable = find.descendant(
+      of: structuralFilterSheet,
+      matching: find.byType(Scrollable),
+    );
+
+    final Finder branchFilter = find.byKey(
+      const ValueKey<String>('registry-view-filter-branches'),
+    );
+
+    await tester.scrollUntilVisible(
+      branchFilter,
+      -300,
+      scrollable: structuralFilterScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(branchFilter);
+    await tester.pumpAndSettle();
+
+    expect(targetRow, findsNothing);
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    final Finder branchScopedSheet = find.byKey(
+      const ValueKey<String>('registry-view-filter-sheet'),
+    );
+
+    final Finder branchScopedScrollable = find.descendant(
+      of: branchScopedSheet,
+      matching: find.byType(Scrollable),
+    );
+
+    final Finder branchScopedNeutralFilter = find.byKey(
+      const ValueKey<String>(
+        'registry-canonical-status-filter-unclassifiedNeutral',
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      branchScopedNeutralFilter,
+      300,
+      scrollable: branchScopedScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    final Finder branchScopedNeutralCount = find.descendant(
+      of: branchScopedNeutralFilter,
+      matching: find.byKey(
+        const ValueKey<String>(
+          'registry-canonical-status-count-unclassifiedNeutral',
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<Text>(branchScopedNeutralCount).data,
+      'Формулировок: 0 · узлов: 0',
+    );
+  });
 }
 
 RegistrySnapshot _snapshot() {
@@ -219,10 +358,12 @@ RegistrySnapshot _snapshot() {
         sourceSnapshotFingerprint: fingerprint,
         headingPath: targetPath.segments,
         startLine: 2,
-        endLine: 4,
+        endLine: 5,
       ),
     ],
-    content: 'Canonical candidate phrase.',
+    content:
+        'Canonical candidate phrase.\n'
+        'Second canonical candidate phrase.',
     businessScopeOwnerId: RegistryEntityId('owner-domain'),
     children: const <RegistryNode>[],
   );
@@ -237,7 +378,7 @@ RegistrySnapshot _snapshot() {
         sourceSnapshotFingerprint: fingerprint,
         headingPath: rootPath.segments,
         startLine: 1,
-        endLine: 4,
+        endLine: 5,
       ),
     ],
     content: '',
@@ -254,7 +395,8 @@ RegistrySnapshot _snapshot() {
     sourceContent:
         '# Registry\n'
         '## Domain\n'
-        'Canonical candidate phrase.',
+        'Canonical candidate phrase.\n'
+        'Second canonical candidate phrase.',
     roots: <RegistryNode>[root],
   );
 }
@@ -286,22 +428,43 @@ CanonicalBusinessTextAnalysisResult _result({
     ],
   );
 
-  final CanonicalBusinessTextCandidate candidate =
+  final CanonicalBusinessTextCandidate firstCandidate =
       CanonicalBusinessTextCandidate(
-        identity: 'candidate-domain-rule',
+        identity: 'candidate-domain-rule-1',
         nodeId: targetNode.id,
         businessScopeOwnerId: targetNode.businessScopeOwnerId!,
         path: targetNode.path,
         sourceEvidence: targetNode.sourceEvidence,
         kind: CanonicalBusinessTextCandidateKind.paragraph,
-        rawText: targetNode.content,
-        text: targetNode.content,
+        rawText: 'Canonical candidate phrase.',
+        text: 'Canonical candidate phrase.',
         directContentLine: 1,
       );
 
-  final CanonicalBusinessTextClassification classification =
+  final CanonicalBusinessTextCandidate secondCandidate =
+      CanonicalBusinessTextCandidate(
+        identity: 'candidate-domain-rule-2',
+        nodeId: targetNode.id,
+        businessScopeOwnerId: targetNode.businessScopeOwnerId!,
+        path: targetNode.path,
+        sourceEvidence: targetNode.sourceEvidence,
+        kind: CanonicalBusinessTextCandidateKind.paragraph,
+        rawText: 'Second canonical candidate phrase.',
+        text: 'Second canonical candidate phrase.',
+        directContentLine: 2,
+      );
+
+  final CanonicalBusinessTextClassification firstClassification =
       CanonicalBusinessTextClassification(
-        candidate: candidate,
+        candidate: firstCandidate,
+        status: CanonicalBusinessTextClassificationStatus.unclassifiedNeutral,
+        reason:
+            CanonicalBusinessTextClassificationReason.noExactCanonicalTextMatch,
+      );
+
+  final CanonicalBusinessTextClassification secondClassification =
+      CanonicalBusinessTextClassification(
+        candidate: secondCandidate,
         status: CanonicalBusinessTextClassificationStatus.unclassifiedNeutral,
         reason:
             CanonicalBusinessTextClassificationReason.noExactCanonicalTextMatch,
@@ -313,7 +476,10 @@ CanonicalBusinessTextAnalysisResult _result({
       sourceDocumentPath: snapshot.sourceDocumentPath,
       sourceRevision: snapshot.sourceRevision,
       sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
-      candidates: <CanonicalBusinessTextCandidate>[candidate],
+      candidates: <CanonicalBusinessTextCandidate>[
+        firstCandidate,
+        secondCandidate,
+      ],
     ),
     classifications: CanonicalBusinessTextClassificationIndex(
       projectId: snapshot.projectId,
@@ -324,7 +490,10 @@ CanonicalBusinessTextAnalysisResult _result({
       dictionaryVersion: dictionary.version,
       dictionarySourceRevision: dictionary.sourceRevision,
       dictionarySourceSnapshotFingerprint: dictionary.sourceSnapshotFingerprint,
-      classifications: <CanonicalBusinessTextClassification>[classification],
+      classifications: <CanonicalBusinessTextClassification>[
+        firstClassification,
+        secondClassification,
+      ],
     ),
     dictionary: dictionary,
   );

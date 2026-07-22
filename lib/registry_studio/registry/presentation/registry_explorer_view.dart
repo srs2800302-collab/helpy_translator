@@ -1444,12 +1444,21 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
         .where((RegistryNode node) => node.children.isEmpty)
         .length;
 
+    final Set<RegistryNodeId> structurallyVisibleNodeIds = allNodes
+        .where(
+          (RegistryNode node) =>
+              loaded.registryViewFilter == 'all' ||
+              _matchesRegistryViewFilter(node, loaded.registryViewFilter),
+        )
+        .map((RegistryNode node) => node.id)
+        .toSet();
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (BuildContext sheetContext) {
-        final Map<String, int> canonicalStatusCounts = <String, int>{
-          'all': widget.analysisStatusEntries.length,
+        final Map<String, int> canonicalStatusFormulationCounts = <String, int>{
+          'all': 0,
           'unclassifiedNeutral': 0,
           'exact': 0,
           'equivalent': 0,
@@ -1458,13 +1467,37 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
           'failed': 0,
         };
 
+        final Map<String, Set<RegistryNodeId>> canonicalStatusNodeIds =
+            <String, Set<RegistryNodeId>>{
+              'all': <RegistryNodeId>{},
+              'unclassifiedNeutral': <RegistryNodeId>{},
+              'exact': <RegistryNodeId>{},
+              'equivalent': <RegistryNodeId>{},
+              'review': <RegistryNodeId>{},
+              'drift': <RegistryNodeId>{},
+              'failed': <RegistryNodeId>{},
+            };
+
         for (final RegistryAnalysisStatusEntry entry
             in widget.analysisStatusEntries) {
-          canonicalStatusCounts.update(
+          if (!structurallyVisibleNodeIds.contains(entry.nodeId)) {
+            continue;
+          }
+
+          canonicalStatusFormulationCounts.update(
+            'all',
+            (int count) => count + 1,
+          );
+          canonicalStatusNodeIds['all']!.add(entry.nodeId);
+
+          canonicalStatusFormulationCounts.update(
             entry.statusId,
             (int count) => count + 1,
             ifAbsent: () => 1,
           );
+          canonicalStatusNodeIds
+              .putIfAbsent(entry.statusId, () => <RegistryNodeId>{})
+              .add(entry.nodeId);
         }
 
         Widget option({
@@ -1582,9 +1615,21 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           title: Text(
                             _canonicalStatusFilterLabel(canonicalStatusFilter),
                           ),
-                          trailing: Text(
-                            '${canonicalStatusCounts[canonicalStatusFilter] ?? 0}',
+                          subtitle: Text(
+                            'Формулировок: '
+                            '${canonicalStatusFormulationCounts[canonicalStatusFilter] ?? 0} · '
+                            'узлов: '
+                            '${canonicalStatusNodeIds[canonicalStatusFilter]?.length ?? 0}',
+                            key: ValueKey<String>(
+                              'registry-canonical-status-count-'
+                              '$canonicalStatusFilter',
+                            ),
                           ),
+                          trailing:
+                              loaded.canonicalStatusFilter ==
+                                  canonicalStatusFilter
+                              ? const Icon(Icons.check)
+                              : null,
                           selected:
                               loaded.canonicalStatusFilter ==
                               canonicalStatusFilter,
@@ -1809,6 +1854,16 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     RegistryExplorerLoaded loaded,
     RegistryNode node,
   ) {
+    final List<RegistryAnalysisStatusEntry> selectedAnalysisStatusEntries =
+        widget.analysisStatusEntries
+            .where(
+              (RegistryAnalysisStatusEntry entry) =>
+                  entry.nodeId == node.id &&
+                  (loaded.canonicalStatusFilter == 'all' ||
+                      entry.statusId == loaded.canonicalStatusFilter),
+            )
+            .toList(growable: false);
+
     final String searchQuery = loaded.searchQuery.trim();
 
     final MapEntry<String, String>? searchMatch = searchQuery.isEmpty
@@ -2093,6 +2148,73 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                 '${evidence.startLine}–'
                                 '${evidence.endLine}',
                               ),
+                            if (selectedAnalysisStatusEntries
+                                .isNotEmpty) ...<Widget>[
+                              const Divider(height: 24),
+                              Text(
+                                'Канонический анализ · '
+                                '${selectedAnalysisStatusEntries.length} '
+                                'формулировок',
+                                key: const ValueKey<String>(
+                                  'registry-selected-canonical-analysis',
+                                ),
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              for (final RegistryAnalysisStatusEntry entry
+                                  in selectedAnalysisStatusEntries)
+                                Card(
+                                  key: ValueKey<String>(
+                                    'registry-selected-analysis-'
+                                    '${entry.identity}',
+                                  ),
+                                  margin: const EdgeInsets.only(top: 10),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        Text(
+                                          entry.statusLabel,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleSmall,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          entry.directContentLine == 0
+                                              ? 'Место: заголовок блока'
+                                              : 'Место: строка '
+                                                    '${entry.directContentLine} '
+                                                    'внутри блока',
+                                        ),
+                                        const SizedBox(height: 8),
+                                        SelectableText(
+                                          entry.text,
+                                          key: ValueKey<String>(
+                                            'registry-selected-analysis-text-'
+                                            '${entry.identity}',
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text('Причина: ${entry.reason}'),
+                                        for (final evidence
+                                            in entry.sourceEvidence)
+                                          Text(
+                                            'Source evidence: '
+                                            '${evidence.sourceDocumentPath}, '
+                                            'строки '
+                                            '${evidence.startLine}–'
+                                            '${evidence.endLine}',
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
                             const Divider(height: 24),
                             if (searchQuery.isEmpty)
                               SelectableText(node.content)
@@ -3028,6 +3150,34 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ? _registrySearchMatch(node, loaded.searchQuery)
                               : null;
 
+                          final List<RegistryAnalysisStatusEntry>
+                          nodeAnalysisStatusEntries = widget
+                              .analysisStatusEntries
+                              .where(
+                                (RegistryAnalysisStatusEntry entry) =>
+                                    entry.nodeId == node.id &&
+                                    (loaded.canonicalStatusFilter == 'all' ||
+                                        entry.statusId ==
+                                            loaded.canonicalStatusFilter),
+                              )
+                              .toList(growable: false);
+
+                          final Set<String> nodeCanonicalStatusLabels =
+                              nodeAnalysisStatusEntries
+                                  .map(
+                                    (RegistryAnalysisStatusEntry entry) =>
+                                        entry.statusLabel,
+                                  )
+                                  .toSet();
+
+                          final String? nodeCanonicalSummary =
+                              nodeAnalysisStatusEntries.isEmpty
+                              ? null
+                              : 'Canonical: '
+                                    '${nodeCanonicalStatusLabels.join(', ')} · '
+                                    'формулировок: '
+                                    '${nodeAnalysisStatusEntries.length}';
+
                           final RegistryNode? branchScopeRoot =
                               _registryBranchScopeRoot(loaded);
 
@@ -3271,6 +3421,20 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                             node.path.segments.join(' → '),
                                             loaded.searchQuery,
                                           ),
+                                          if (nodeCanonicalSummary !=
+                                              null) ...<Widget>[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              nodeCanonicalSummary,
+                                              key: ValueKey<String>(
+                                                'registry-node-canonical-summary-'
+                                                '${node.id.value}',
+                                              ),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
                                           if (searchMatch != null) ...<Widget>[
                                             const SizedBox(height: 4),
                                             Text(
@@ -3304,7 +3468,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           ),
                                         ],
                                       )
-                                    : Text(
+                                    : nodeCanonicalSummary == null
+                                    ? Text(
                                         '${node.path.segments.join(' → ')}\n'
                                         'Уровень: '
                                         '${node.path.segments.length} · '
@@ -3313,6 +3478,33 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                         'Строки '
                                         '${evidence.startLine}–'
                                         '${evidence.endLine}',
+                                      )
+                                    : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            '${node.path.segments.join(' → ')}\n'
+                                            'Уровень: '
+                                            '${node.path.segments.length} · '
+                                            'Дочерних узлов: '
+                                            '${node.children.length}\n'
+                                            'Строки '
+                                            '${evidence.startLine}–'
+                                            '${evidence.endLine}',
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            nodeCanonicalSummary,
+                                            key: ValueKey<String>(
+                                              'registry-node-canonical-summary-'
+                                              '${node.id.value}',
+                                            ),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                 trailing: branchEntryList
                                     ? const Icon(Icons.chevron_right)
