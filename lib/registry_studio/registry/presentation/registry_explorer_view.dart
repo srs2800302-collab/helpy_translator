@@ -229,8 +229,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       _expandedRegistryNodeIds.clear();
       _registryBranchScopeNodeIds.clear();
       _registryBranchScopeScrollOffsets.clear();
-      _registryBranchScopeNodeIds.clear();
-      _registryBranchScopeScrollOffsets.clear();
       _showProblemQueue = false;
       _showProblemQueueFullScreen = false;
       _selectedRegistrySearchContextId = null;
@@ -295,8 +293,6 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     }
 
     setState(() {
-      _registryBranchScopeNodeIds.clear();
-      _registryBranchScopeScrollOffsets.clear();
       _registryBranchScopeNodeIds.clear();
       _registryBranchScopeScrollOffsets.clear();
       _expandedRegistryNodeIds.clear();
