@@ -104,12 +104,46 @@ final class _CanonicalDictionaryDialog extends StatelessWidget {
 
     return AlertDialog(
       key: CanonicalDictionaryStatusAction.dialogKey,
-      title: const Text('Canonical Dictionary'),
+      title: const Text('Состояние Canonical Dictionary'),
       content: SizedBox(
         width: double.maxFinite,
         child: ListView(
           shrinkWrap: true,
           children: <Widget>[
+            const Text(
+              'Назначение: специальный источник канонических '
+              'формулировок для проверки текстов Registry.',
+              key: ValueKey<String>('canonical-dictionary-purpose'),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Сопоставление выполняется только по точному '
+              'совпадению. Нечёткий поиск и оценка сходства '
+              'не применяются.',
+              key: ValueKey<String>('canonical-dictionary-matching-policy'),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Режим только чтение: просмотр не изменяет Registry, '
+              'Canonical Dictionary, набор изменений или публикацию.',
+              key: ValueKey<String>('canonical-dictionary-read-only'),
+            ),
+            const SizedBox(height: 12),
+            SelectableText(
+              'Источник: ${dictionary.sourceDocumentPath}',
+              key: const ValueKey<String>('canonical-dictionary-source'),
+            ),
+            SelectableText(
+              'Ревизия: ${dictionary.sourceRevision}',
+              key: const ValueKey<String>('canonical-dictionary-revision'),
+            ),
+            Text(
+              'Границы словаря: строки '
+              '${dictionary.beginMarkerLine}–'
+              '${dictionary.endMarkerLine}',
+              key: const ValueKey<String>('canonical-dictionary-source-range'),
+            ),
+            const Divider(height: 24),
             SelectableText('Dictionary ID: ${dictionary.dictionaryId}'),
             const SizedBox(height: 8),
             Text('Версия: ${dictionary.version}'),

@@ -89,6 +89,74 @@ void main() {
         findsOneWidget,
       );
 
+      expect(find.text('Состояние Canonical Dictionary'), findsOneWidget);
+
+      final Finder canonicalDictionaryPurpose = find.byKey(
+        const ValueKey<String>('canonical-dictionary-purpose'),
+      );
+
+      final Finder canonicalDictionaryMatchingPolicy = find.byKey(
+        const ValueKey<String>('canonical-dictionary-matching-policy'),
+      );
+
+      final Finder canonicalDictionaryReadOnly = find.byKey(
+        const ValueKey<String>('canonical-dictionary-read-only'),
+      );
+
+      final Finder canonicalDictionarySource = find.byKey(
+        const ValueKey<String>('canonical-dictionary-source'),
+      );
+
+      final Finder canonicalDictionaryRevision = find.byKey(
+        const ValueKey<String>('canonical-dictionary-revision'),
+      );
+
+      final Finder canonicalDictionarySourceRange = find.byKey(
+        const ValueKey<String>('canonical-dictionary-source-range'),
+      );
+
+      expect(canonicalDictionaryPurpose, findsOneWidget);
+      expect(canonicalDictionaryMatchingPolicy, findsOneWidget);
+      expect(canonicalDictionaryReadOnly, findsOneWidget);
+      expect(canonicalDictionarySource, findsOneWidget);
+      expect(canonicalDictionaryRevision, findsOneWidget);
+      expect(canonicalDictionarySourceRange, findsOneWidget);
+
+      expect(
+        tester.widget<Text>(canonicalDictionaryPurpose).data,
+        'Назначение: специальный источник канонических '
+        'формулировок для проверки текстов Registry.',
+      );
+
+      expect(
+        tester.widget<Text>(canonicalDictionaryMatchingPolicy).data,
+        'Сопоставление выполняется только по точному '
+        'совпадению. Нечёткий поиск и оценка сходства '
+        'не применяются.',
+      );
+
+      expect(
+        tester.widget<Text>(canonicalDictionaryReadOnly).data,
+        'Режим только чтение: просмотр не изменяет Registry, '
+        'Canonical Dictionary, набор изменений или публикацию.',
+      );
+
+      expect(
+        tester.widget<SelectableText>(canonicalDictionarySource).data,
+        'Источник: docs/contract.md',
+      );
+
+      expect(
+        tester.widget<SelectableText>(canonicalDictionaryRevision).data,
+        'Ревизия: '
+        '1111111111111111111111111111111111111111',
+      );
+
+      expect(
+        tester.widget<Text>(canonicalDictionarySourceRange).data,
+        'Границы словаря: строки 5–20',
+      );
+
       expect(
         find.text(
           'Dictionary ID: '
@@ -98,11 +166,46 @@ void main() {
       );
 
       expect(find.text('Версия: 1'), findsOneWidget);
-      expect(find.text('Collections: 1'), findsOneWidget);
 
-      expect(find.text('Канонические фразы: 1'), findsOneWidget);
+      final Finder canonicalDictionaryDialog = find.byKey(
+        CanonicalDictionaryStatusAction.dialogKey,
+      );
 
-      expect(find.text('helpy.canonical.phrases'), findsOneWidget);
+      final Finder canonicalDictionaryList = find.descendant(
+        of: canonicalDictionaryDialog,
+        matching: find.byType(ListView),
+      );
+
+      final Finder canonicalDictionaryCollections = find.text('Collections: 1');
+
+      final Finder canonicalDictionaryPhraseCount = find.text(
+        'Канонические фразы: 1',
+      );
+
+      final Finder canonicalDictionaryCollectionId = find.text(
+        'helpy.canonical.phrases',
+      );
+
+      expect(canonicalDictionaryList, findsOneWidget);
+
+      await tester.dragUntilVisible(
+        canonicalDictionaryCollections,
+        canonicalDictionaryList,
+        const Offset(0, -160),
+      );
+      await tester.pumpAndSettle();
+
+      expect(canonicalDictionaryCollections, findsOneWidget);
+      expect(canonicalDictionaryPhraseCount, findsOneWidget);
+
+      await tester.dragUntilVisible(
+        canonicalDictionaryCollectionId,
+        canonicalDictionaryList,
+        const Offset(0, -120),
+      );
+      await tester.pumpAndSettle();
+
+      expect(canonicalDictionaryCollectionId, findsOneWidget);
     },
   );
 }
