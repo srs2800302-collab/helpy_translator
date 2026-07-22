@@ -1110,6 +1110,35 @@ void main() {
 
       expect(statusButton, findsOneWidget);
 
+      final Finder searchField = find.byKey(
+        const ValueKey<String>('registry-search-field'),
+      );
+
+      final Finder searchEditable = find.descendant(
+        of: searchField,
+        matching: find.byType(EditableText),
+      );
+
+      expect(searchField, findsOneWidget);
+      expect(searchEditable, findsOneWidget);
+
+      final FocusNode searchFocusNode = tester
+          .widget<EditableText>(searchEditable)
+          .focusNode;
+
+      final List<bool> searchFocusStates = <bool>[];
+
+      void recordSearchFocusState() {
+        searchFocusStates.add(searchFocusNode.hasFocus);
+      }
+
+      searchFocusNode.addListener(recordSearchFocusState);
+
+      addTearDown(() => searchFocusNode.removeListener(recordSearchFocusState));
+
+      await tester.showKeyboard(searchEditable);
+      expect(searchFocusNode.hasFocus, isTrue);
+
       await tester.tap(statusButton);
       await tester.pumpAndSettle();
 
@@ -1159,9 +1188,15 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(openHistoryButton);
+      searchFocusStates.clear();
 
+      await tester.tap(openHistoryButton);
+      await tester.pump();
       await tester.pumpAndSettle();
+
+      expect(searchFocusStates, isNot(contains(true)));
+      expect(searchFocusNode.hasFocus, isFalse);
+      expect(tester.testTextInput.isVisible, isFalse);
 
       expect(statusSheet, findsNothing);
 
@@ -1182,6 +1217,9 @@ void main() {
       await tester.tap(find.byTooltip('Закрыть историю анализа'));
 
       await tester.pumpAndSettle();
+
+      await tester.showKeyboard(searchEditable);
+      expect(searchFocusNode.hasFocus, isTrue);
 
       await tester.tap(statusButton);
       await tester.pumpAndSettle();
@@ -1206,9 +1244,15 @@ void main() {
 
       expect(confirmBaselineButton.hitTestable(), findsOneWidget);
 
-      await tester.tap(confirmBaselineButton);
+      searchFocusStates.clear();
 
+      await tester.tap(confirmBaselineButton);
+      await tester.pump();
       await tester.pumpAndSettle();
+
+      expect(searchFocusStates, isNot(contains(true)));
+      expect(searchFocusNode.hasFocus, isFalse);
+      expect(tester.testTextInput.isVisible, isFalse);
 
       expect(find.text('Подтвердить clean baseline?'), findsOneWidget);
 

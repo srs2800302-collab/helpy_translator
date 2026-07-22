@@ -753,6 +753,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
         loaded.cleanBaselineSnapshot?.sourceRevision ==
         loaded.snapshot.sourceRevision;
 
+    FocusManager.instance.primaryFocus?.unfocus(
+      disposition: UnfocusDisposition.scope,
+    );
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
