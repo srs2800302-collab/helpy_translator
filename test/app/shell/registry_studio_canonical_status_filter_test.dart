@@ -28,7 +28,8 @@ void main() {
     WidgetTester tester,
   ) async {
     final RegistrySnapshot snapshot = _snapshot();
-    final RegistryNode targetNode = snapshot.roots.single.children.single;
+    final RegistryNode rootNode = snapshot.roots.single;
+    final RegistryNode targetNode = rootNode.children.single;
 
     final _RevisionStateStore revisionStateStore = _RevisionStateStore();
     final _SnapshotLoader firstLoader = _SnapshotLoader(snapshot);
@@ -69,6 +70,24 @@ void main() {
     );
 
     expect(filterScrollable, findsOneWidget);
+
+    final Finder allCanonicalFilter = find.byKey(
+      const ValueKey<String>('registry-canonical-status-filter-all'),
+    );
+
+    expect(allCanonicalFilter, findsOneWidget);
+
+    final Finder allCanonicalCount = find.descendant(
+      of: allCanonicalFilter,
+      matching: find.byKey(
+        const ValueKey<String>('registry-canonical-status-count-all'),
+      ),
+    );
+
+    expect(
+      tester.widget<Text>(allCanonicalCount).data,
+      'Формулировок: 2 · узлов: 1',
+    );
 
     final Finder neutralFilter = find.byKey(
       const ValueKey<String>(
@@ -360,16 +379,75 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final Finder rootRow = find.byKey(ValueKey<String>(rootNode.id.value));
+
+    expect(rootRow, findsOneWidget);
+    expect(targetRow, findsOneWidget);
+
+    final Finder rootCanonicalSummary = find.byKey(
+      ValueKey<String>('registry-node-canonical-summary-${rootNode.id.value}'),
+    );
+
+    expect(rootCanonicalSummary, findsOneWidget);
+    expect(
+      tester.widget<Text>(rootCanonicalSummary).data,
+      'Canonical: Без точного канонического совпадения · '
+      'формулировок: 2',
+    );
+
     await tester.tap(filterButton);
     await tester.pumpAndSettle();
 
-    final Finder structuralFilterSheet = find.byKey(
+    final Finder rootFilter = find.byKey(
+      const ValueKey<String>('registry-view-filter-roots'),
+    );
+
+    expect(rootFilter, findsOneWidget);
+
+    await tester.tap(rootFilter);
+    await tester.pumpAndSettle();
+
+    expect(rootRow, findsOneWidget);
+    expect(targetRow, findsNothing);
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    final Finder rootScopedSheet = find.byKey(
       const ValueKey<String>('registry-view-filter-sheet'),
     );
 
-    final Finder structuralFilterScrollable = find.descendant(
-      of: structuralFilterSheet,
+    final Finder rootScopedScrollable = find.descendant(
+      of: rootScopedSheet,
       matching: find.byType(Scrollable),
+    );
+
+    final Finder rootScopedNeutralFilter = find.byKey(
+      const ValueKey<String>(
+        'registry-canonical-status-filter-unclassifiedNeutral',
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      rootScopedNeutralFilter,
+      300,
+      scrollable: rootScopedScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    final Finder rootScopedNeutralCount = find.descendant(
+      of: rootScopedNeutralFilter,
+      matching: find.byKey(
+        const ValueKey<String>(
+          'registry-canonical-status-count-unclassifiedNeutral',
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<Text>(rootScopedNeutralCount).data,
+      'Формулировок: 2 · узлов: 1',
     );
 
     final Finder branchFilter = find.byKey(
@@ -379,7 +457,7 @@ void main() {
     await tester.scrollUntilVisible(
       branchFilter,
       -300,
-      scrollable: structuralFilterScrollable,
+      scrollable: rootScopedScrollable,
       maxScrolls: 50,
     );
     await tester.pumpAndSettle();
@@ -387,6 +465,7 @@ void main() {
     await tester.tap(branchFilter);
     await tester.pumpAndSettle();
 
+    expect(rootRow, findsOneWidget);
     expect(targetRow, findsNothing);
 
     await tester.tap(filterButton);
@@ -426,7 +505,71 @@ void main() {
 
     expect(
       tester.widget<Text>(branchScopedNeutralCount).data,
-      'Формулировок: 0 · узлов: 0',
+      'Формулировок: 2 · узлов: 1',
+    );
+
+    final Finder leafFilter = find.byKey(
+      const ValueKey<String>('registry-view-filter-leaves'),
+    );
+
+    await tester.scrollUntilVisible(
+      leafFilter,
+      -300,
+      scrollable: branchScopedScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(leafFilter);
+    await tester.pumpAndSettle();
+
+    expect(rootRow, findsNothing);
+    expect(targetRow, findsOneWidget);
+
+    await tester.tap(filterButton);
+    await tester.pumpAndSettle();
+
+    final Finder leafScopedSheet = find.byKey(
+      const ValueKey<String>('registry-view-filter-sheet'),
+    );
+
+    final Finder leafScopedScrollable = find.descendant(
+      of: leafScopedSheet,
+      matching: find.byType(Scrollable),
+    );
+
+    final Finder leafScopedNeutralFilter = find.byKey(
+      const ValueKey<String>(
+        'registry-canonical-status-filter-unclassifiedNeutral',
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      leafScopedNeutralFilter,
+      300,
+      scrollable: leafScopedScrollable,
+      maxScrolls: 50,
+    );
+    await tester.pumpAndSettle();
+
+    final Finder leafScopedNeutralCount = find.descendant(
+      of: leafScopedNeutralFilter,
+      matching: find.byKey(
+        const ValueKey<String>(
+          'registry-canonical-status-count-unclassifiedNeutral',
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<Text>(leafScopedNeutralCount).data,
+      'Формулировок: 2 · узлов: 1',
+    );
+
+    expect(revisionStateStore.state?.registryViewFilter, 'leaves');
+    expect(
+      revisionStateStore.state?.canonicalStatusFilter,
+      'unclassifiedNeutral',
     );
   });
 }

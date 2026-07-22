@@ -1370,6 +1370,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   }
 
   bool _matchesCanonicalStatusFilter(
+    RegistryExplorerLoaded loaded,
     RegistryNode node,
     String canonicalStatusFilter,
   ) {
@@ -1377,10 +1378,41 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       return true;
     }
 
-    return widget.analysisStatusEntries.any(
-      (RegistryAnalysisStatusEntry entry) =>
-          entry.nodeId == node.id && entry.statusId == canonicalStatusFilter,
-    );
+    final List<String> nodePath = node.path.segments;
+
+    for (final RegistryAnalysisStatusEntry entry
+        in widget.analysisStatusEntries) {
+      if (entry.statusId != canonicalStatusFilter) {
+        continue;
+      }
+
+      final RegistryNode? entryNode = loaded.index.nodesById[entry.nodeId];
+
+      if (entryNode == null) {
+        continue;
+      }
+
+      final List<String> entryNodePath = entryNode.path.segments;
+
+      if (entryNodePath.length < nodePath.length) {
+        continue;
+      }
+
+      bool insideNodeSubtree = true;
+
+      for (int index = 0; index < nodePath.length; index += 1) {
+        if (entryNodePath[index] != nodePath[index]) {
+          insideNodeSubtree = false;
+          break;
+        }
+      }
+
+      if (insideNodeSubtree) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   String? _registryFilterHelperText(RegistryExplorerLoaded loaded) {
@@ -1449,14 +1481,29 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
         .where((RegistryNode node) => node.children.isEmpty)
         .length;
 
-    final Set<RegistryNodeId> structurallyVisibleNodeIds = allNodes
-        .where(
-          (RegistryNode node) =>
-              loaded.registryViewFilter == 'all' ||
-              _matchesRegistryViewFilter(node, loaded.registryViewFilter),
-        )
-        .map((RegistryNode node) => node.id)
-        .toSet();
+    final RegistryNode? activeBranchScopeRoot = _registryBranchScopeRoot(
+      loaded,
+    );
+
+    final bool aggregateCanonicalSubtrees =
+        loaded.registryViewFilter == 'roots' ||
+        loaded.registryViewFilter == 'branches';
+
+    final List<RegistryNode> canonicalStructuralScopeNodes =
+        loaded.registryViewFilter == 'branches' && activeBranchScopeRoot != null
+        ? <RegistryNode>[activeBranchScopeRoot]
+        : allNodes
+              .where(
+                (RegistryNode node) =>
+                    loaded.registryViewFilter == 'all' ||
+                    _matchesRegistryViewFilter(node, loaded.registryViewFilter),
+              )
+              .toList(growable: false);
+
+    final Set<RegistryNodeId> canonicalStructuralScopeNodeIds =
+        canonicalStructuralScopeNodes
+            .map((RegistryNode node) => node.id)
+            .toSet();
 
     await showModalBottomSheet<void>(
       context: context,
@@ -1483,23 +1530,83 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
               'failed': <RegistryNodeId>{},
             };
 
+        final Map<String, Set<String>> canonicalStatusEntryIdentities =
+            <String, Set<String>>{
+              'all': <String>{},
+              'unclassifiedNeutral': <String>{},
+              'exact': <String>{},
+              'equivalent': <String>{},
+              'review': <String>{},
+              'drift': <String>{},
+              'failed': <String>{},
+            };
+
         for (final RegistryAnalysisStatusEntry entry
             in widget.analysisStatusEntries) {
-          if (!structurallyVisibleNodeIds.contains(entry.nodeId)) {
+          final RegistryNode? entryNode = loaded.index.nodesById[entry.nodeId];
+
+          if (entryNode == null) {
             continue;
           }
 
-          canonicalStatusFormulationCounts.update(
-            'all',
-            (int count) => count + 1,
+          bool insideScopeSubtree = canonicalStructuralScopeNodeIds.contains(
+            entry.nodeId,
           );
-          canonicalStatusNodeIds['all']!.add(entry.nodeId);
+
+          if (!insideScopeSubtree && aggregateCanonicalSubtrees) {
+            final List<String> entryNodePath = entryNode.path.segments;
+
+            for (final RegistryNode scopeNode
+                in canonicalStructuralScopeNodes) {
+              final List<String> scopeNodePath = scopeNode.path.segments;
+
+              if (entryNodePath.length < scopeNodePath.length) {
+                continue;
+              }
+
+              bool pathPrefixMatches = true;
+
+              for (int index = 0; index < scopeNodePath.length; index += 1) {
+                if (entryNodePath[index] != scopeNodePath[index]) {
+                  pathPrefixMatches = false;
+                  break;
+                }
+              }
+
+              if (pathPrefixMatches) {
+                insideScopeSubtree = true;
+                break;
+              }
+            }
+          }
+
+          if (!insideScopeSubtree) {
+            continue;
+          }
+
+          if (canonicalStatusEntryIdentities['all']!.add(entry.identity)) {
+            canonicalStatusFormulationCounts['all'] =
+                canonicalStatusFormulationCounts['all']! + 1;
+
+            canonicalStatusNodeIds['all']!.add(entry.nodeId);
+          }
+
+          final Set<String> statusEntryIdentities =
+              canonicalStatusEntryIdentities.putIfAbsent(
+                entry.statusId,
+                () => <String>{},
+              );
+
+          if (!statusEntryIdentities.add(entry.identity)) {
+            continue;
+          }
 
           canonicalStatusFormulationCounts.update(
             entry.statusId,
             (int count) => count + 1,
             ifAbsent: () => 1,
           );
+
           canonicalStatusNodeIds
               .putIfAbsent(entry.statusId, () => <RegistryNodeId>{})
               .add(entry.nodeId);
@@ -1771,6 +1878,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       return canonicalStatusNodes
           .where(
             (RegistryNode node) => _matchesCanonicalStatusFilter(
+              loaded,
               node,
               loaded.canonicalStatusFilter,
             ),
@@ -3468,17 +3576,77 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ? _registrySearchMatch(node, loaded.searchQuery)
                               : null;
 
+                          final Map<String, RegistryAnalysisStatusEntry>
+                          nodeAnalysisStatusEntriesByIdentity =
+                              <String, RegistryAnalysisStatusEntry>{};
+
+                          final List<String> nodePath = node.path.segments;
+
+                          for (final RegistryAnalysisStatusEntry entry
+                              in widget.analysisStatusEntries) {
+                            if (loaded.canonicalStatusFilter != 'all' &&
+                                entry.statusId !=
+                                    loaded.canonicalStatusFilter) {
+                              continue;
+                            }
+
+                            final RegistryNode? entryNode =
+                                loaded.index.nodesById[entry.nodeId];
+
+                            if (entryNode == null) {
+                              continue;
+                            }
+
+                            final List<String> entryNodePath =
+                                entryNode.path.segments;
+
+                            if (entryNodePath.length < nodePath.length) {
+                              continue;
+                            }
+
+                            bool insideNodeSubtree = true;
+
+                            for (
+                              int index = 0;
+                              index < nodePath.length;
+                              index += 1
+                            ) {
+                              if (entryNodePath[index] != nodePath[index]) {
+                                insideNodeSubtree = false;
+                                break;
+                              }
+                            }
+
+                            if (!insideNodeSubtree) {
+                              continue;
+                            }
+
+                            nodeAnalysisStatusEntriesByIdentity.putIfAbsent(
+                              entry.identity,
+                              () => entry,
+                            );
+                          }
+
                           final List<RegistryAnalysisStatusEntry>
-                          nodeAnalysisStatusEntries = widget
-                              .analysisStatusEntries
-                              .where(
-                                (RegistryAnalysisStatusEntry entry) =>
-                                    entry.nodeId == node.id &&
-                                    (loaded.canonicalStatusFilter == 'all' ||
-                                        entry.statusId ==
-                                            loaded.canonicalStatusFilter),
-                              )
-                              .toList(growable: false);
+                          nodeAnalysisStatusEntries =
+                              nodeAnalysisStatusEntriesByIdentity.values
+                                  .toList()
+                                ..sort((
+                                  RegistryAnalysisStatusEntry first,
+                                  RegistryAnalysisStatusEntry second,
+                                ) {
+                                  final int lineComparison = first
+                                      .directContentLine
+                                      .compareTo(second.directContentLine);
+
+                                  if (lineComparison != 0) {
+                                    return lineComparison;
+                                  }
+
+                                  return first.identity.compareTo(
+                                    second.identity,
+                                  );
+                                });
 
                           final Set<String> nodeCanonicalStatusLabels =
                               nodeAnalysisStatusEntries
