@@ -3298,7 +3298,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                       searchActive
                                           ? Icons.manage_search
                                           : branchEntryList
-                                          ? Icons.folder_copy_outlined
+                                          ? Icons.folder_outlined
                                           : Icons.account_tree_outlined,
                                     ),
                               title: Text(

@@ -203,12 +203,20 @@ void main() {
         const ValueKey<String>('registry-view-filter-sheet'),
       );
 
-      final Finder branchesFilter = find.byKey(
-        const ValueKey<String>('registry-view-filter-branches'),
+      final Finder allFilter = find.byKey(
+        const ValueKey<String>('registry-view-filter-all'),
       );
 
       final Finder rootsFilter = find.byKey(
         const ValueKey<String>('registry-view-filter-roots'),
+      );
+
+      final Finder branchesFilter = find.byKey(
+        const ValueKey<String>('registry-view-filter-branches'),
+      );
+
+      final Finder leavesFilter = find.byKey(
+        const ValueKey<String>('registry-view-filter-leaves'),
       );
 
       final Finder exactFilter = find.byKey(
@@ -226,8 +234,40 @@ void main() {
 
       expect(sheet, findsOneWidget);
       expect(filterList, findsOneWidget);
-      expect(branchesFilter, findsOneWidget);
+      expect(allFilter, findsOneWidget);
       expect(rootsFilter, findsOneWidget);
+      expect(branchesFilter, findsOneWidget);
+      expect(leavesFilter, findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: allFilter,
+          matching: find.byIcon(Icons.account_tree_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: rootsFilter,
+          matching: find.byIcon(Icons.home_work_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: branchesFilter,
+          matching: find.byIcon(Icons.folder_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: leavesFilter,
+          matching: find.byIcon(Icons.description_outlined),
+        ),
+        findsOneWidget,
+      );
+
       expect(tester.widget<ListTile>(branchesFilter).selected, isTrue);
 
       await tester.dragUntilVisible(

@@ -2878,8 +2878,20 @@ void main() {
       const ValueKey<String>('registry-view-filter-button'),
     );
 
+    final Finder fullRegistryHeader = find.byKey(
+      const ValueKey<String>('full-registry-header'),
+    );
+
     expect(rootNode, findsOneWidget);
     expect(filterButton, findsOneWidget);
+    expect(fullRegistryHeader, findsOneWidget);
+    expect(
+      find.descendant(
+        of: fullRegistryHeader,
+        matching: find.byIcon(Icons.account_tree_outlined),
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(filterButton);
     await tester.pumpAndSettle();
@@ -2924,6 +2936,20 @@ void main() {
 
     expect(rootNode, findsOneWidget);
     expect(childNode, findsNothing);
+    expect(
+      find.descendant(
+        of: fullRegistryHeader,
+        matching: find.byIcon(Icons.folder_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: fullRegistryHeader,
+        matching: find.byIcon(Icons.folder_copy_outlined),
+      ),
+      findsNothing,
+    );
 
     await tester.enterText(
       find.byKey(const ValueKey<String>('registry-search-field')),
