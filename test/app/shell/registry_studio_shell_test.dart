@@ -3667,6 +3667,20 @@ void main() {
     );
 
     expect(selectedResetButton, findsOneWidget);
+    expect(
+      find.descendant(
+        of: selectedResetButton,
+        matching: find.byIcon(Icons.layers_clear_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: selectedResetButton,
+        matching: find.byIcon(Icons.restart_alt),
+      ),
+      findsNothing,
+    );
 
     await tester.tap(selectedResetButton);
     await tester.pumpAndSettle();

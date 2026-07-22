@@ -2006,7 +2006,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                     ),
                     tooltip: 'Сбросить контекст Registry Studio',
                     onPressed: _resetRegistryStudio,
-                    icon: const Icon(Icons.restart_alt),
+                    icon: const Icon(Icons.layers_clear_outlined),
                   ),
                   if (searchQuery.isNotEmpty)
                     IconButton(
