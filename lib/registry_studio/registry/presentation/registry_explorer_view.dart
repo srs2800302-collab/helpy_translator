@@ -1805,6 +1805,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
     final List<String> contentLines = node.content.split('\n');
 
+    final GlobalKey canonicalHeadingKey = GlobalKey(
+      debugLabel: 'registry-selected-canonical-heading',
+    );
+
+    final bool hasCanonicalHeadingEntries = selectedAnalysisStatusEntries.any(
+      (RegistryAnalysisStatusEntry entry) => entry.directContentLine == 0,
+    );
+
     final Map<int, List<RegistryAnalysisStatusEntry>> canonicalEntriesByLine =
         <int, List<RegistryAnalysisStatusEntry>>{};
 
@@ -1866,21 +1874,26 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
       final int targetLine = selectedCanonicalEntry.directContentLine;
 
-      if (targetLine > 0 && targetLine <= canonicalLineKeys.length) {
+      final GlobalKey? targetKey = targetLine == 0
+          ? canonicalHeadingKey
+          : targetLine > 0 && targetLine <= canonicalLineKeys.length
+          ? canonicalLineKeys[targetLine - 1]
+          : null;
+
+      if (targetKey != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) {
             return;
           }
 
-          final BuildContext? lineContext =
-              canonicalLineKeys[targetLine - 1]?.currentContext;
+          final BuildContext? targetContext = targetKey.currentContext;
 
-          if (lineContext == null) {
+          if (targetContext == null) {
             return;
           }
 
           Scrollable.ensureVisible(
-            lineContext,
+            targetContext,
             alignment: 0.24,
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
@@ -1916,11 +1929,70 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           'Открытый Registry block',
                           style: Theme.of(context).textTheme.labelLarge,
                         ),
-                        Text(
-                          node.path.segments.last,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge,
+                        Container(
+                          key: canonicalHeadingKey,
+                          child: Container(
+                            key: ValueKey<String>(
+                              selectedCanonicalEntry?.directContentLine == 0
+                                  ? 'registry-selected-canonical-heading-active'
+                                  : 'registry-selected-canonical-heading',
+                            ),
+                            padding: hasCanonicalHeadingEntries
+                                ? const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  )
+                                : EdgeInsets.zero,
+                            decoration: hasCanonicalHeadingEntries
+                                ? BoxDecoration(
+                                    color:
+                                        selectedCanonicalEntry
+                                                ?.directContentLine ==
+                                            0
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.tertiaryContainer
+                                        : Theme.of(context)
+                                              .colorScheme
+                                              .tertiaryContainer
+                                              .withValues(alpha: 0.42),
+                                    border: Border(
+                                      left: BorderSide(
+                                        width:
+                                            selectedCanonicalEntry
+                                                    ?.directContentLine ==
+                                                0
+                                            ? 4
+                                            : 2,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.tertiary,
+                                      ),
+                                    ),
+                                    borderRadius: BorderRadius.circular(3),
+                                  )
+                                : null,
+                            child: Text(
+                              node.path.segments.last,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: !hasCanonicalHeadingEntries
+                                  ? Theme.of(context).textTheme.titleLarge
+                                  : Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onTertiaryContainer,
+                                      fontWeight:
+                                          selectedCanonicalEntry
+                                                  ?.directContentLine ==
+                                              0
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                    ),
+                            ),
+                          ),
                         ),
                       ],
                     ),

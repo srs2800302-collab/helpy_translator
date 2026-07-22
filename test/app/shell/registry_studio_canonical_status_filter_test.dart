@@ -287,7 +287,7 @@ void main() {
       findsOneWidget,
     );
 
-    expect(find.text('Место: строка 1 внутри блока'), findsOneWidget);
+    expect(find.text('Место: заголовок блока'), findsOneWidget);
     expect(find.text('Место: строка 2 внутри блока'), findsOneWidget);
 
     expect(
@@ -295,7 +295,19 @@ void main() {
       findsNWidgets(2),
     );
 
-    expect(find.text('Canonical candidate phrase.'), findsNWidgets(2));
+    final Finder headingAnalysisText = find.byKey(
+      const ValueKey<String>(
+        'registry-selected-analysis-text-'
+        'canonical-status:candidate-domain-rule-1',
+      ),
+    );
+
+    expect(headingAnalysisText, findsOneWidget);
+    expect(
+      tester.widget<SelectableText>(headingAnalysisText).data,
+      targetNode.path.segments.last,
+    );
+
     expect(find.text('Second canonical candidate phrase.'), findsNWidgets(2));
 
     expect(
@@ -326,44 +338,66 @@ void main() {
       const ValueKey<String>('registry-selected-canonical-position'),
     );
 
+    final Finder activeCanonicalHeading = find.byKey(
+      const ValueKey<String>('registry-selected-canonical-heading-active'),
+    );
+
     expect(canonicalNavigation, findsOneWidget);
     expect(tester.widget<Text>(canonicalPosition).data, '1/2');
+    expect(activeCanonicalHeading, findsOneWidget);
 
-    final Finder firstActiveCanonicalLine = find.byKey(
-      const ValueKey<String>('registry-selected-canonical-line-active-1'),
+    final Container activeHeadingContainer = tester.widget<Container>(
+      activeCanonicalHeading,
     );
 
-    expect(firstActiveCanonicalLine, findsOneWidget);
+    final BoxDecoration activeHeadingDecoration =
+        activeHeadingContainer.decoration! as BoxDecoration;
 
-    final Container firstActiveLineContainer = tester.widget<Container>(
-      firstActiveCanonicalLine,
-    );
-
-    final BoxDecoration firstActiveLineDecoration =
-        firstActiveLineContainer.decoration! as BoxDecoration;
-
-    final BuildContext firstActiveLineContext = tester.element(
-      firstActiveCanonicalLine,
+    final BuildContext activeHeadingContext = tester.element(
+      activeCanonicalHeading,
     );
 
     expect(
-      firstActiveLineDecoration.color,
-      Theme.of(firstActiveLineContext).colorScheme.tertiaryContainer,
+      activeHeadingDecoration.color,
+      Theme.of(activeHeadingContext).colorScheme.tertiaryContainer,
     );
 
     expect(
-      firstActiveLineDecoration.color,
-      isNot(Theme.of(firstActiveLineContext).colorScheme.primaryContainer),
+      activeHeadingDecoration.color,
+      isNot(Theme.of(activeHeadingContext).colorScheme.primaryContainer),
     );
 
-    await tester.tap(
-      find.byKey(
-        const ValueKey<String>(
-          'registry-selected-analysis-show-'
-          'canonical-status:candidate-domain-rule-2',
-        ),
+    final Finder headingShowButton = find.byKey(
+      const ValueKey<String>(
+        'registry-selected-analysis-show-'
+        'canonical-status:candidate-domain-rule-1',
       ),
     );
+
+    await tester.ensureVisible(headingShowButton);
+    await tester.pumpAndSettle();
+
+    expect(headingShowButton.hitTestable(), findsOneWidget);
+
+    await tester.tap(headingShowButton);
+    await tester.pumpAndSettle();
+
+    expect(activeCanonicalHeading, findsOneWidget);
+    expect(tester.widget<Text>(canonicalPosition).data, '1/2');
+
+    final Finder secondFormulationShowButton = find.byKey(
+      const ValueKey<String>(
+        'registry-selected-analysis-show-'
+        'canonical-status:candidate-domain-rule-2',
+      ),
+    );
+
+    await tester.ensureVisible(secondFormulationShowButton);
+    await tester.pumpAndSettle();
+
+    expect(secondFormulationShowButton.hitTestable(), findsOneWidget);
+
+    await tester.tap(secondFormulationShowButton);
     await tester.pumpAndSettle();
 
     expect(
@@ -382,13 +416,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(
-        const ValueKey<String>('registry-selected-canonical-line-active-1'),
-      ),
-      findsOneWidget,
-    );
-
+    expect(activeCanonicalHeading, findsOneWidget);
     expect(tester.widget<Text>(canonicalPosition).data, '1/2');
 
     await tester.tap(
@@ -841,10 +869,10 @@ CanonicalBusinessTextAnalysisResult _result({
         businessScopeOwnerId: targetNode.businessScopeOwnerId!,
         path: targetNode.path,
         sourceEvidence: targetNode.sourceEvidence,
-        kind: CanonicalBusinessTextCandidateKind.paragraph,
-        rawText: 'Canonical candidate phrase.',
-        text: 'Canonical candidate phrase.',
-        directContentLine: 1,
+        kind: CanonicalBusinessTextCandidateKind.heading,
+        rawText: targetNode.path.segments.last,
+        text: targetNode.path.segments.last,
+        directContentLine: 0,
       );
 
   final CanonicalBusinessTextCandidate secondCandidate =
