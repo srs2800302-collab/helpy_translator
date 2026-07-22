@@ -3113,6 +3113,10 @@ void main() {
       ValueKey<String>('registry-tree-toggle-${nestedBranch.id.value}'),
     );
 
+    final Finder branchOpenButton = find.byKey(
+      ValueKey<String>('registry-branch-open-${branch.id.value}'),
+    );
+
     expect(rootRow, findsOneWidget);
     expect(branchRow, findsOneWidget);
     final Finder filteredBranchNodeList = find.byKey(
@@ -3164,7 +3168,32 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(branchRow);
+    await tester.scrollUntilVisible(
+      branchOpenButton,
+      -160,
+      scrollable: filteredBranchScrollable,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(branchOpenButton, findsOneWidget);
+
+    expect(
+      tester.widget<IconButton>(branchOpenButton).tooltip,
+      'Открыть ветку Branch',
+    );
+
+    expect(
+      find.descendant(
+        of: branchOpenButton,
+        matching: find.byIcon(Icons.arrow_forward),
+      ),
+      findsOneWidget,
+    );
+
+    expect(branchOpenButton.hitTestable(), findsOneWidget);
+
+    await tester.tap(branchOpenButton);
     await tester.pumpAndSettle();
 
     expect(find.text('Ветка: Branch'), findsOneWidget);
@@ -3174,6 +3203,7 @@ void main() {
     );
 
     expect(branchScopeBack, findsOneWidget);
+    expect(branchOpenButton, findsNothing);
 
     expect(rootRow, findsNothing);
     expect(branchRow, findsOneWidget);

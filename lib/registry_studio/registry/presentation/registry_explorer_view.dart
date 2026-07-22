@@ -3679,7 +3679,18 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                         ],
                                       ),
                                 trailing: branchEntryList
-                                    ? const Icon(Icons.chevron_right)
+                                    ? IconButton(
+                                        key: ValueKey<String>(
+                                          'registry-branch-open-${node.id.value}',
+                                        ),
+                                        tooltip:
+                                            'Открыть ветку '
+                                            '${node.path.segments.last}',
+                                        onPressed: () {
+                                          _openRegistryBranchScope(node);
+                                        },
+                                        icon: const Icon(Icons.arrow_forward),
+                                      )
                                     : null,
                                 isThreeLine: true,
                                 selected: loaded.openRegistryNodeId == node.id,
