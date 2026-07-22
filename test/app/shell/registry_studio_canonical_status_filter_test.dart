@@ -259,8 +259,101 @@ void main() {
       findsNWidgets(2),
     );
 
-    expect(find.text('Canonical candidate phrase.'), findsOneWidget);
-    expect(find.text('Second canonical candidate phrase.'), findsOneWidget);
+    expect(find.text('Canonical candidate phrase.'), findsNWidgets(2));
+    expect(find.text('Second canonical candidate phrase.'), findsNWidgets(2));
+
+    expect(
+      find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is SelectableText &&
+            widget.data ==
+                'Причина: '
+                    'Точное каноническое совпадение не найдено',
+      ),
+      findsNWidgets(2),
+    );
+
+    expect(
+      find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is SelectableText &&
+            widget.data == 'Source evidence: registry.md, строки 2–5',
+      ),
+      findsNWidgets(2),
+    );
+
+    final Finder canonicalNavigation = find.byKey(
+      const ValueKey<String>('registry-selected-canonical-navigation'),
+    );
+
+    final Finder canonicalPosition = find.byKey(
+      const ValueKey<String>('registry-selected-canonical-position'),
+    );
+
+    expect(canonicalNavigation, findsOneWidget);
+    expect(tester.widget<Text>(canonicalPosition).data, '1/2');
+
+    final Finder firstActiveCanonicalLine = find.byKey(
+      const ValueKey<String>('registry-selected-canonical-line-active-1'),
+    );
+
+    expect(firstActiveCanonicalLine, findsOneWidget);
+
+    final Container firstActiveLineContainer = tester.widget<Container>(
+      firstActiveCanonicalLine,
+    );
+
+    final BoxDecoration firstActiveLineDecoration =
+        firstActiveLineContainer.decoration! as BoxDecoration;
+
+    final BuildContext firstActiveLineContext = tester.element(
+      firstActiveCanonicalLine,
+    );
+
+    expect(
+      firstActiveLineDecoration.color,
+      Theme.of(firstActiveLineContext).colorScheme.tertiaryContainer,
+    );
+
+    expect(
+      firstActiveLineDecoration.color,
+      isNot(Theme.of(firstActiveLineContext).colorScheme.primaryContainer),
+    );
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>(
+          'registry-selected-analysis-show-'
+          'canonical-status:candidate-domain-rule-2',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('registry-selected-canonical-line-active-2'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(tester.widget<Text>(canonicalPosition).data, '2/2');
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('registry-selected-canonical-previous'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('registry-selected-canonical-line-active-1'),
+      ),
+      findsOneWidget,
+    );
+
+    expect(tester.widget<Text>(canonicalPosition).data, '1/2');
 
     await tester.tap(
       find.byKey(const ValueKey<String>('registry-selected-block-back')),

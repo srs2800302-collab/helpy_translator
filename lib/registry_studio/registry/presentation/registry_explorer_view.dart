@@ -91,6 +91,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   String? _selectedRegistrySearchContextId;
   int _selectedRegistrySearchMatchIndex = 0;
   bool _selectedRegistrySearchScrollPending = false;
+
+  String? _selectedCanonicalContextId;
+  int _selectedCanonicalMatchIndex = 0;
+  bool _selectedCanonicalScrollPending = false;
+
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey _selectedProblemKey = GlobalKey();
   final GlobalKey _selectedRegistryBlockKey = GlobalKey();
@@ -1862,7 +1867,21 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                   (loaded.canonicalStatusFilter == 'all' ||
                       entry.statusId == loaded.canonicalStatusFilter),
             )
-            .toList(growable: false);
+            .toList()
+          ..sort((
+            RegistryAnalysisStatusEntry first,
+            RegistryAnalysisStatusEntry second,
+          ) {
+            final int lineComparison = first.directContentLine.compareTo(
+              second.directContentLine,
+            );
+
+            if (lineComparison != 0) {
+              return lineComparison;
+            }
+
+            return first.identity.compareTo(second.identity);
+          });
 
     final String searchQuery = loaded.searchQuery.trim();
 
@@ -1994,6 +2013,92 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
     if (contentOffset < node.content.length) {
       contentSpans.add(TextSpan(text: node.content.substring(contentOffset)));
+    }
+
+    final List<String> contentLines = node.content.split('\n');
+
+    final Map<int, List<RegistryAnalysisStatusEntry>> canonicalEntriesByLine =
+        <int, List<RegistryAnalysisStatusEntry>>{};
+
+    for (final RegistryAnalysisStatusEntry entry
+        in selectedAnalysisStatusEntries) {
+      if (entry.directContentLine < 1 ||
+          entry.directContentLine > contentLines.length) {
+        continue;
+      }
+
+      canonicalEntriesByLine
+          .putIfAbsent(
+            entry.directContentLine,
+            () => <RegistryAnalysisStatusEntry>[],
+          )
+          .add(entry);
+    }
+
+    final List<GlobalKey?> canonicalLineKeys = List<GlobalKey?>.filled(
+      contentLines.length,
+      null,
+    );
+
+    for (final int lineNumber in canonicalEntriesByLine.keys) {
+      canonicalLineKeys[lineNumber - 1] = GlobalKey(
+        debugLabel: 'registry-selected-canonical-line-$lineNumber',
+      );
+    }
+
+    final String selectedCanonicalContextId =
+        '${node.id.value}\n'
+        '${loaded.canonicalStatusFilter}\n'
+        '${selectedAnalysisStatusEntries.map((RegistryAnalysisStatusEntry entry) => entry.identity).join('\n')}';
+
+    if (_selectedCanonicalContextId != selectedCanonicalContextId) {
+      _selectedCanonicalContextId = selectedCanonicalContextId;
+      _selectedCanonicalMatchIndex = 0;
+      _selectedCanonicalScrollPending =
+          searchQuery.isEmpty && selectedAnalysisStatusEntries.isNotEmpty;
+    }
+
+    if (selectedAnalysisStatusEntries.isEmpty) {
+      _selectedCanonicalMatchIndex = 0;
+      _selectedCanonicalScrollPending = false;
+    } else if (_selectedCanonicalMatchIndex >=
+        selectedAnalysisStatusEntries.length) {
+      _selectedCanonicalMatchIndex = selectedAnalysisStatusEntries.length - 1;
+    }
+
+    final RegistryAnalysisStatusEntry? selectedCanonicalEntry =
+        selectedAnalysisStatusEntries.isEmpty
+        ? null
+        : selectedAnalysisStatusEntries[_selectedCanonicalMatchIndex];
+
+    if (_selectedCanonicalScrollPending &&
+        searchQuery.isEmpty &&
+        selectedCanonicalEntry != null) {
+      _selectedCanonicalScrollPending = false;
+
+      final int targetLine = selectedCanonicalEntry.directContentLine;
+
+      if (targetLine > 0 && targetLine <= canonicalLineKeys.length) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+
+          final BuildContext? lineContext =
+              canonicalLineKeys[targetLine - 1]?.currentContext;
+
+          if (lineContext == null) {
+            return;
+          }
+
+          Scrollable.ensureVisible(
+            lineContext,
+            alignment: 0.24,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        });
+      }
     }
 
     return Material(
@@ -2200,25 +2305,56 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           ),
                                         ),
                                         const SizedBox(height: 8),
-                                        Text('Причина: ${entry.reason}'),
+                                        SelectableText(
+                                          'Причина: ${entry.reason}',
+                                        ),
                                         for (final evidence
                                             in entry.sourceEvidence)
-                                          Text(
+                                          SelectableText(
                                             'Source evidence: '
                                             '${evidence.sourceDocumentPath}, '
                                             'строки '
                                             '${evidence.startLine}–'
                                             '${evidence.endLine}',
                                           ),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: TextButton.icon(
+                                            key: ValueKey<String>(
+                                              'registry-selected-analysis-show-'
+                                              '${entry.identity}',
+                                            ),
+                                            onPressed: () {
+                                              final int targetIndex =
+                                                  selectedAnalysisStatusEntries
+                                                      .indexOf(entry);
+
+                                              if (targetIndex < 0) {
+                                                return;
+                                              }
+
+                                              setState(() {
+                                                _selectedCanonicalMatchIndex =
+                                                    targetIndex;
+                                                _selectedCanonicalScrollPending =
+                                                    true;
+                                              });
+                                            },
+                                            icon: const Icon(
+                                              Icons.my_location_outlined,
+                                            ),
+                                            label: const Text(
+                                              'Показать в тексте',
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
                                 ),
                             ],
                             const Divider(height: 24),
-                            if (searchQuery.isEmpty)
-                              SelectableText(node.content)
-                            else
+                            if (searchQuery.isNotEmpty)
                               SelectionArea(
                                 child: Text.rich(
                                   TextSpan(
@@ -2231,12 +2367,194 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                     'registry-selected-block-content-highlight',
                                   ),
                                 ),
+                              )
+                            else if (selectedAnalysisStatusEntries.isEmpty)
+                              SelectableText(node.content)
+                            else
+                              SelectionArea(
+                                child: Column(
+                                  key: const ValueKey<String>(
+                                    'registry-selected-canonical-content',
+                                  ),
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    for (
+                                      int lineIndex = 0;
+                                      lineIndex < contentLines.length;
+                                      lineIndex += 1
+                                    )
+                                      Container(
+                                        key: canonicalLineKeys[lineIndex],
+                                        child: Container(
+                                          key: ValueKey<String>(
+                                            selectedCanonicalEntry
+                                                        ?.directContentLine ==
+                                                    lineIndex + 1
+                                                ? 'registry-selected-'
+                                                      'canonical-line-active-'
+                                                      '${lineIndex + 1}'
+                                                : 'registry-selected-'
+                                                      'canonical-line-'
+                                                      '${lineIndex + 1}',
+                                          ),
+                                          margin: EdgeInsets.only(
+                                            bottom:
+                                                lineIndex ==
+                                                    contentLines.length - 1
+                                                ? 0
+                                                : 2,
+                                          ),
+                                          padding:
+                                              canonicalEntriesByLine
+                                                  .containsKey(lineIndex + 1)
+                                              ? const EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 3,
+                                                )
+                                              : EdgeInsets.zero,
+                                          decoration:
+                                              canonicalEntriesByLine
+                                                  .containsKey(lineIndex + 1)
+                                              ? BoxDecoration(
+                                                  color:
+                                                      selectedCanonicalEntry
+                                                              ?.directContentLine ==
+                                                          lineIndex + 1
+                                                      ? Theme.of(context)
+                                                            .colorScheme
+                                                            .tertiaryContainer
+                                                      : Theme.of(context)
+                                                            .colorScheme
+                                                            .tertiaryContainer
+                                                            .withValues(
+                                                              alpha: 0.42,
+                                                            ),
+                                                  border: Border(
+                                                    left: BorderSide(
+                                                      width:
+                                                          selectedCanonicalEntry
+                                                                  ?.directContentLine ==
+                                                              lineIndex + 1
+                                                          ? 4
+                                                          : 2,
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.tertiary,
+                                                    ),
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(3),
+                                                )
+                                              : null,
+                                          child: Text(
+                                            contentLines[lineIndex].isEmpty
+                                                ? ' '
+                                                : contentLines[lineIndex],
+                                            style:
+                                                canonicalEntriesByLine
+                                                    .containsKey(lineIndex + 1)
+                                                ? TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onTertiaryContainer,
+                                                    fontWeight:
+                                                        selectedCanonicalEntry
+                                                                ?.directContentLine ==
+                                                            lineIndex + 1
+                                                        ? FontWeight.w700
+                                                        : FontWeight.w600,
+                                                  )
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                           ],
                         ),
                       ),
                     ],
                   ),
+                  if (searchQuery.isEmpty &&
+                      selectedAnalysisStatusEntries.isNotEmpty)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 12,
+                      child: Center(
+                        child: Material(
+                          key: const ValueKey<String>(
+                            'registry-selected-canonical-navigation',
+                          ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surface.withAlpha(200),
+                          elevation: 2,
+                          shape: StadiumBorder(
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.tertiary,
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              IconButton(
+                                key: const ValueKey<String>(
+                                  'registry-selected-canonical-previous',
+                                ),
+                                tooltip: 'Предыдущая формулировка',
+                                onPressed: _selectedCanonicalMatchIndex > 0
+                                    ? () {
+                                        setState(() {
+                                          _selectedCanonicalMatchIndex -= 1;
+                                          _selectedCanonicalScrollPending =
+                                              true;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.arrow_upward),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: Text(
+                                  '${_selectedCanonicalMatchIndex + 1}/'
+                                  '${selectedAnalysisStatusEntries.length}',
+                                  key: const ValueKey<String>(
+                                    'registry-selected-canonical-position',
+                                  ),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                key: const ValueKey<String>(
+                                  'registry-selected-canonical-next',
+                                ),
+                                tooltip: 'Следующая формулировка',
+                                onPressed:
+                                    _selectedCanonicalMatchIndex <
+                                        selectedAnalysisStatusEntries.length - 1
+                                    ? () {
+                                        setState(() {
+                                          _selectedCanonicalMatchIndex += 1;
+                                          _selectedCanonicalScrollPending =
+                                              true;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.arrow_downward),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   if (searchQuery.isNotEmpty && contentMatchOffsets.isNotEmpty)
                     Positioned(
                       left: 0,
