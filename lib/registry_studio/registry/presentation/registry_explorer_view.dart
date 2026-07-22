@@ -3477,6 +3477,25 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               rootNode ||
                               _expandedRegistryNodeIds.contains(node.id);
 
+                          final IconData roleBasedRegistryNodeIcon =
+                              rootNode && branchScopeRoot != null
+                              ? Icons.folder_open_outlined
+                              : node.path.segments.length == 1
+                              ? Icons.home_work_outlined
+                              : node.children.isNotEmpty
+                              ? Icons.folder_outlined
+                              : Icons.description_outlined;
+
+                          final IconData registryNodeIcon = !searchActive
+                              ? switch (loaded.registryViewFilter) {
+                                  'roots' => Icons.home_work_outlined,
+                                  'all' => Icons.account_tree_outlined,
+                                  'branches' => Icons.folder_outlined,
+                                  'leaves' => Icons.description_outlined,
+                                  _ => roleBasedRegistryNodeIcon,
+                                }
+                              : roleBasedRegistryNodeIcon;
+
                           final ColorScheme colorScheme = Theme.of(
                             context,
                           ).colorScheme;
@@ -3643,21 +3662,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                               );
                                             });
                                           },
-                                          icon: Icon(
-                                            expanded
-                                                ? Icons.folder_open_outlined
-                                                : Icons.folder_outlined,
-                                          ),
+                                          icon: Icon(registryNodeIcon),
                                         )
-                                      : Icon(
-                                          rootNode && branchScopeRoot != null
-                                              ? Icons.folder_open_outlined
-                                              : node.path.segments.length == 1
-                                              ? Icons.home_work_outlined
-                                              : node.children.isNotEmpty
-                                              ? Icons.folder_outlined
-                                              : Icons.description_outlined,
-                                        ),
+                                      : Icon(registryNodeIcon),
                                 ),
                                 title: searchActive
                                     ? _highlightRegistrySearchText(

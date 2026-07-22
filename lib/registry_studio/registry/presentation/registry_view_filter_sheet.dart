@@ -119,18 +119,18 @@ final class _RegistryViewFilterSheetState
               child: ListView(
                 children: <Widget>[
                   _structuralFilterTile(
-                    keyValue: 'registry-view-filter-all',
-                    filter: 'all',
-                    icon: Icons.account_tree_outlined,
-                    title: 'Все узлы',
-                    count: allNodes.length,
-                  ),
-                  _structuralFilterTile(
                     keyValue: 'registry-view-filter-roots',
                     filter: 'roots',
                     icon: Icons.home_work_outlined,
                     title: 'Корневые узлы',
                     count: rootCount,
+                  ),
+                  _structuralFilterTile(
+                    keyValue: 'registry-view-filter-all',
+                    filter: 'all',
+                    icon: Icons.account_tree_outlined,
+                    title: 'Все узлы',
+                    count: allNodes.length,
                   ),
                   _structuralFilterTile(
                     keyValue: 'registry-view-filter-branches',

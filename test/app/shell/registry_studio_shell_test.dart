@@ -2896,14 +2896,14 @@ void main() {
     expect(
       find.descendant(
         of: rootNode,
-        matching: find.byIcon(Icons.home_work_outlined),
+        matching: find.byIcon(Icons.account_tree_outlined),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
         of: rootNode,
-        matching: find.byIcon(Icons.account_tree_outlined),
+        matching: find.byIcon(Icons.home_work_outlined),
       ),
       findsNothing,
     );
@@ -2977,14 +2977,14 @@ void main() {
     expect(
       find.descendant(
         of: rootNode,
-        matching: find.byIcon(Icons.home_work_outlined),
+        matching: find.byIcon(Icons.folder_outlined),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
         of: rootNode,
-        matching: find.byIcon(Icons.folder_outlined),
+        matching: find.byIcon(Icons.home_work_outlined),
       ),
       findsNothing,
     );
@@ -3066,7 +3066,7 @@ void main() {
     expect(
       find.descendant(
         of: rootRow,
-        matching: find.byIcon(Icons.home_work_outlined),
+        matching: find.byIcon(Icons.account_tree_outlined),
       ),
       findsOneWidget,
     );
@@ -3382,14 +3382,14 @@ void main() {
     expect(
       find.descendant(
         of: rootRow,
-        matching: find.byIcon(Icons.home_work_outlined),
+        matching: find.byIcon(Icons.folder_outlined),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
         of: rootRow,
-        matching: find.byIcon(Icons.folder_outlined),
+        matching: find.byIcon(Icons.home_work_outlined),
       ),
       findsNothing,
     );
@@ -3454,7 +3454,7 @@ void main() {
     expect(
       find.descendant(
         of: branchRow,
-        matching: find.byIcon(Icons.folder_open_outlined),
+        matching: find.byIcon(Icons.folder_outlined),
       ),
       findsOneWidget,
     );

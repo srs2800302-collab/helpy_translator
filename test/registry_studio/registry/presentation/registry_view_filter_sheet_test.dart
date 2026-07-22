@@ -240,6 +240,19 @@ void main() {
       expect(leavesFilter, findsOneWidget);
 
       expect(
+        tester.getTopLeft(rootsFilter).dy,
+        lessThan(tester.getTopLeft(allFilter).dy),
+      );
+      expect(
+        tester.getTopLeft(allFilter).dy,
+        lessThan(tester.getTopLeft(branchesFilter).dy),
+      );
+      expect(
+        tester.getTopLeft(branchesFilter).dy,
+        lessThan(tester.getTopLeft(leavesFilter).dy),
+      );
+
+      expect(
         find.descendant(
           of: allFilter,
           matching: find.byIcon(Icons.account_tree_outlined),
