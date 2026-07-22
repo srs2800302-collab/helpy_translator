@@ -3272,10 +3272,29 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             final RegistryNode? branchScopeRoot =
                                 _registryBranchScopeRoot(loaded);
 
-                            final bool branchEntryList =
-                                loaded.registryViewFilter == 'branches' &&
-                                branchScopeRoot == null &&
-                                !searchActive;
+                            final IconData structuralHeaderIcon =
+                                switch (loaded.registryViewFilter) {
+                                  'roots' => Icons.home_work_outlined,
+                                  'branches' => Icons.folder_outlined,
+                                  'leaves' => Icons.description_outlined,
+                                  _ => Icons.account_tree_outlined,
+                                };
+
+                            final String structuralHeaderTitle =
+                                switch (loaded.registryViewFilter) {
+                                  'roots' =>
+                                    'Корневые узлы Registry · '
+                                        '${visibleRegistryNodes.length}',
+                                  'branches' =>
+                                    'Ветки Registry · '
+                                        '${visibleRegistryNodes.length}',
+                                  'leaves' =>
+                                    'Конечные блоки Registry · '
+                                        '${visibleRegistryNodes.length}',
+                                  _ =>
+                                    'Все узлы Registry · '
+                                        '${loaded.index.nodes.length}',
+                                };
 
                             return ListTile(
                               key: const ValueKey<String>(
@@ -3293,9 +3312,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                   : Icon(
                                       searchActive
                                           ? Icons.manage_search
-                                          : branchEntryList
-                                          ? Icons.folder_outlined
-                                          : Icons.account_tree_outlined,
+                                          : structuralHeaderIcon,
                                     ),
                               title: Text(
                                 searchActive
@@ -3305,10 +3322,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                     : branchScopeRoot != null
                                     ? 'Раздел: '
                                           '${branchScopeRoot.path.segments.last}'
-                                    : branchEntryList
-                                    ? 'Ветки Registry · '
-                                          '${visibleRegistryNodes.length}'
-                                    : 'Дерево Registry',
+                                    : structuralHeaderTitle,
                               ),
                               subtitle: branchScopeRoot == null || searchActive
                                   ? null
@@ -3636,13 +3650,12 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           ),
                                         )
                                       : Icon(
-                                          branchEntryList
-                                              ? Icons.folder_outlined
-                                              : rootNode &&
-                                                    branchScopeRoot != null
+                                          rootNode && branchScopeRoot != null
                                               ? Icons.folder_open_outlined
+                                              : node.path.segments.length == 1
+                                              ? Icons.home_work_outlined
                                               : node.children.isNotEmpty
-                                              ? Icons.account_tree_outlined
+                                              ? Icons.folder_outlined
                                               : Icons.description_outlined,
                                         ),
                                 ),

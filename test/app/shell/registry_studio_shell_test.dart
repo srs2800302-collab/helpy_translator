@@ -2885,12 +2885,27 @@ void main() {
     expect(rootNode, findsOneWidget);
     expect(filterButton, findsOneWidget);
     expect(fullRegistryHeader, findsOneWidget);
+    expect(find.text('Все узлы Registry · 2'), findsOneWidget);
     expect(
       find.descendant(
         of: fullRegistryHeader,
         matching: find.byIcon(Icons.account_tree_outlined),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: rootNode,
+        matching: find.byIcon(Icons.home_work_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: rootNode,
+        matching: find.byIcon(Icons.account_tree_outlined),
+      ),
+      findsNothing,
     );
 
     await tester.tap(filterButton);
@@ -2914,6 +2929,21 @@ void main() {
 
     expect(rootNode, findsNothing);
     expect(childNode, findsOneWidget);
+    expect(find.text('Конечные блоки Registry · 1'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: fullRegistryHeader,
+        matching: find.byIcon(Icons.description_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: childNode,
+        matching: find.byIcon(Icons.description_outlined),
+      ),
+      findsOneWidget,
+    );
 
     expect(
       find.textContaining('Фильтр: Конечные блоки · показано:'),
@@ -2936,12 +2966,27 @@ void main() {
 
     expect(rootNode, findsOneWidget);
     expect(childNode, findsNothing);
+    expect(find.text('Ветки Registry · 1'), findsOneWidget);
     expect(
       find.descendant(
         of: fullRegistryHeader,
         matching: find.byIcon(Icons.folder_outlined),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: rootNode,
+        matching: find.byIcon(Icons.home_work_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: rootNode,
+        matching: find.byIcon(Icons.folder_outlined),
+      ),
+      findsNothing,
     );
     expect(
       find.descendant(
@@ -3019,6 +3064,13 @@ void main() {
     expect(rootRow, findsOneWidget);
     expect(rootOpenButton, findsOneWidget);
     expect(
+      find.descendant(
+        of: rootRow,
+        matching: find.byIcon(Icons.home_work_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
       tester.widget<IconButton>(rootOpenButton).tooltip,
       'Открыть раздел ${root.path.segments.last}',
     );
@@ -3063,6 +3115,33 @@ void main() {
     expect(rootRow, findsOneWidget);
     expect(childRow, findsNothing);
     expect(rootOpenButton, findsOneWidget);
+    expect(find.text('Корневые узлы Registry · 1'), findsOneWidget);
+
+    final Finder rootsHeader = find.byKey(
+      const ValueKey<String>('full-registry-header'),
+    );
+
+    expect(
+      find.descendant(
+        of: rootsHeader,
+        matching: find.byIcon(Icons.home_work_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: rootRow,
+        matching: find.byIcon(Icons.home_work_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: rootRow,
+        matching: find.byIcon(Icons.account_tree_outlined),
+      ),
+      findsNothing,
+    );
 
     await tester.tap(rootRow);
     await tester.pumpAndSettle();
@@ -3240,7 +3319,7 @@ void main() {
     await tester.tap(unfilteredBranchScopeBack);
     await tester.pumpAndSettle();
 
-    expect(find.text('Дерево Registry'), findsOneWidget);
+    expect(find.text('Все узлы Registry · 4'), findsOneWidget);
 
     await tester.tap(filterButton);
     await tester.pumpAndSettle();
@@ -3303,9 +3382,16 @@ void main() {
     expect(
       find.descendant(
         of: rootRow,
-        matching: find.byIcon(Icons.folder_outlined),
+        matching: find.byIcon(Icons.home_work_outlined),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: rootRow,
+        matching: find.byIcon(Icons.folder_outlined),
+      ),
+      findsNothing,
     );
     expect(
       find.descendant(
@@ -3631,7 +3717,7 @@ void main() {
 
     expect(selectedBlockScreen, findsNothing);
     expect(store.state?.searchQuery, isEmpty);
-    expect(find.text('Дерево Registry'), findsOneWidget);
+    expect(find.text('Все узлы Registry · 2'), findsOneWidget);
 
     final Finder clearSearchButton = find.byKey(
       const ValueKey<String>('registry-search-clear'),
@@ -3747,7 +3833,7 @@ void main() {
       findsOneWidget,
     );
 
-    expect(find.text('Дерево Registry'), findsOneWidget);
+    expect(find.text('Все узлы Registry · 2'), findsOneWidget);
     expect(find.text('Найдено: 1'), findsNothing);
 
     final TextFormField resetSearchField = tester.widget<TextFormField>(
