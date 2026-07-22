@@ -2896,16 +2896,23 @@ void main() {
     expect(
       find.descendant(
         of: rootNode,
-        matching: find.byIcon(Icons.account_tree_outlined),
+        matching: find.byIcon(Icons.home_work_outlined),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
         of: rootNode,
-        matching: find.byIcon(Icons.home_work_outlined),
+        matching: find.byIcon(Icons.account_tree_outlined),
       ),
       findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: childNode,
+        matching: find.byIcon(Icons.description_outlined),
+      ),
+      findsOneWidget,
     );
 
     await tester.tap(filterButton);
@@ -3066,7 +3073,7 @@ void main() {
     expect(
       find.descendant(
         of: rootRow,
-        matching: find.byIcon(Icons.account_tree_outlined),
+        matching: find.byIcon(Icons.home_work_outlined),
       ),
       findsOneWidget,
     );
@@ -3090,7 +3097,22 @@ void main() {
       find.byKey(const ValueKey<String>('registry-selected-block')),
       findsNothing,
     );
+    expect(rootRow, findsOneWidget);
     expect(childRow, findsOneWidget);
+    expect(
+      find.descendant(
+        of: rootRow,
+        matching: find.byIcon(Icons.account_tree_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: childRow,
+        matching: find.byIcon(Icons.description_outlined),
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(
       find.byKey(const ValueKey<String>('registry-branch-scope-back')),
@@ -3147,7 +3169,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Раздел: ${root.path.segments.last}'), findsOneWidget);
+    expect(rootRow, findsOneWidget);
     expect(childRow, findsOneWidget);
+    expect(
+      find.descendant(
+        of: rootRow,
+        matching: find.byIcon(Icons.account_tree_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: childRow,
+        matching: find.byIcon(Icons.description_outlined),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey<String>('registry-selected-block')),
       findsNothing,
@@ -3454,7 +3491,7 @@ void main() {
     expect(
       find.descendant(
         of: branchRow,
-        matching: find.byIcon(Icons.folder_outlined),
+        matching: find.byIcon(Icons.folder_open_outlined),
       ),
       findsOneWidget,
     );
@@ -3484,7 +3521,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Раздел: Nested Branch'), findsOneWidget);
+    expect(nestedBranchRow, findsOneWidget);
     expect(leafRow, findsOneWidget);
+    expect(
+      find.descendant(
+        of: nestedBranchRow,
+        matching: find.byIcon(Icons.folder_open_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: leafRow,
+        matching: find.byIcon(Icons.description_outlined),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey<String>('registry-selected-block')),
       findsNothing,

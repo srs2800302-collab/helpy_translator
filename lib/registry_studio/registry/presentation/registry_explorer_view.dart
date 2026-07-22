@@ -3477,24 +3477,32 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               rootNode ||
                               _expandedRegistryNodeIds.contains(node.id);
 
-                          final IconData roleBasedRegistryNodeIcon =
-                              rootNode && branchScopeRoot != null
-                              ? Icons.folder_open_outlined
-                              : node.path.segments.length == 1
+                          final bool branchScopeRootNode =
+                              branchScopeRoot != null &&
+                              node.id == branchScopeRoot.id;
+
+                          final IconData hierarchyRegistryNodeIcon =
+                              branchScopeRootNode &&
+                                  node.path.segments.length == 1
+                              ? Icons.account_tree_outlined
+                              : branchScopeRoot == null &&
+                                    node.path.segments.length == 1
                               ? Icons.home_work_outlined
                               : node.children.isNotEmpty
-                              ? Icons.folder_outlined
+                              ? expanded
+                                    ? Icons.folder_open_outlined
+                                    : Icons.folder_outlined
                               : Icons.description_outlined;
 
-                          final IconData registryNodeIcon = !searchActive
+                          final IconData registryNodeIcon =
+                              !searchActive && branchScopeRoot == null
                               ? switch (loaded.registryViewFilter) {
                                   'roots' => Icons.home_work_outlined,
-                                  'all' => Icons.account_tree_outlined,
                                   'branches' => Icons.folder_outlined,
                                   'leaves' => Icons.description_outlined,
-                                  _ => roleBasedRegistryNodeIcon,
+                                  _ => hierarchyRegistryNodeIcon,
                                 }
-                              : roleBasedRegistryNodeIcon;
+                              : hierarchyRegistryNodeIcon;
 
                           final ColorScheme colorScheme = Theme.of(
                             context,
