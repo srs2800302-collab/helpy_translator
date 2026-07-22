@@ -2962,6 +2962,93 @@ void main() {
     expect(loader.loadCount, 1);
   });
 
+  testWidgets('opens root Registry container as a complete subtree', (
+    WidgetTester tester,
+  ) async {
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => snapshot],
+    );
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final RegistryNode root = snapshot.roots.single;
+    final RegistryNode child = root.children.single;
+
+    final Finder rootRow = find.byKey(ValueKey<String>(root.id.value));
+    final Finder childRow = find.byKey(ValueKey<String>(child.id.value));
+    final Finder rootOpenButton = find.byKey(
+      ValueKey<String>('registry-branch-open-${root.id.value}'),
+    );
+
+    expect(rootRow, findsOneWidget);
+    expect(rootOpenButton, findsOneWidget);
+    expect(
+      tester.widget<IconButton>(rootOpenButton).tooltip,
+      'Открыть раздел ${root.path.segments.last}',
+    );
+    expect(
+      find.descendant(
+        of: rootOpenButton,
+        matching: find.byIcon(Icons.arrow_forward),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(rootRow);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Раздел: ${root.path.segments.last}'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('registry-selected-block')),
+      findsNothing,
+    );
+    expect(childRow, findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-branch-scope-back')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-button')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-roots')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-view-filter-close')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(rootRow, findsOneWidget);
+    expect(childRow, findsNothing);
+    expect(rootOpenButton, findsOneWidget);
+
+    await tester.tap(rootRow);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Раздел: ${root.path.segments.last}'), findsOneWidget);
+    expect(childRow, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('registry-selected-block')),
+      findsNothing,
+    );
+  });
+
   testWidgets('opens a filtered Registry branch as a complete local tree', (
     WidgetTester tester,
   ) async {
@@ -3088,6 +3175,47 @@ void main() {
       const ValueKey<String>('registry-view-filter-button'),
     );
 
+    final Finder unfilteredBranchRow = find.byKey(
+      ValueKey<String>(branch.id.value),
+    );
+    final Finder unfilteredNestedBranchRow = find.byKey(
+      ValueKey<String>(nestedBranch.id.value),
+    );
+    final Finder unfilteredBranchOpenButton = find.byKey(
+      ValueKey<String>('registry-branch-open-${branch.id.value}'),
+    );
+
+    await tester.ensureVisible(unfilteredBranchRow);
+    await tester.pumpAndSettle();
+
+    expect(unfilteredBranchRow, findsOneWidget);
+    expect(unfilteredBranchOpenButton, findsOneWidget);
+    expect(
+      tester.widget<IconButton>(unfilteredBranchOpenButton).tooltip,
+      'Открыть раздел Branch',
+    );
+
+    await tester.tap(unfilteredBranchRow);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Раздел: Branch'), findsOneWidget);
+    expect(unfilteredNestedBranchRow, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('registry-selected-block')),
+      findsNothing,
+    );
+
+    final Finder unfilteredBranchScopeBack = find.byKey(
+      const ValueKey<String>('registry-branch-scope-back'),
+    );
+
+    expect(unfilteredBranchScopeBack, findsOneWidget);
+
+    await tester.tap(unfilteredBranchScopeBack);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Дерево Registry'), findsOneWidget);
+
     await tester.tap(filterButton);
     await tester.pumpAndSettle();
 
@@ -3180,7 +3308,7 @@ void main() {
 
     expect(
       tester.widget<IconButton>(branchOpenButton).tooltip,
-      'Открыть ветку Branch',
+      'Открыть раздел Branch',
     );
 
     expect(
@@ -3196,7 +3324,7 @@ void main() {
     await tester.tap(branchOpenButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('Ветка: Branch'), findsOneWidget);
+    expect(find.text('Раздел: Branch'), findsOneWidget);
 
     final Finder branchScopeBack = find.byKey(
       const ValueKey<String>('registry-branch-scope-back'),
@@ -3227,6 +3355,37 @@ void main() {
       findsNothing,
     );
 
+    final Finder nestedBranchOpenButton = find.byKey(
+      ValueKey<String>('registry-branch-open-${nestedBranch.id.value}'),
+    );
+
+    await tester.ensureVisible(nestedBranchRow);
+    await tester.pumpAndSettle();
+
+    expect(nestedBranchOpenButton, findsOneWidget);
+    expect(
+      tester.widget<IconButton>(nestedBranchOpenButton).tooltip,
+      'Открыть раздел Nested Branch',
+    );
+
+    await tester.tap(nestedBranchRow);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Раздел: Nested Branch'), findsOneWidget);
+    expect(leafRow, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('registry-selected-block')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-branch-scope-back')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Раздел: Branch'), findsOneWidget);
+    expect(nestedBranchToggle, findsOneWidget);
+
     await tester.tap(nestedBranchToggle);
     await tester.pumpAndSettle();
 
@@ -3256,7 +3415,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Ветка: Branch'), findsOneWidget);
+    expect(find.text('Раздел: Branch'), findsOneWidget);
     expect(nestedBranchToggle, findsOneWidget);
     await tester.scrollUntilVisible(
       leafRow,
