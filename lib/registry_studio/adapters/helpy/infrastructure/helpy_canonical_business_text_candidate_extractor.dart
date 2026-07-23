@@ -19,6 +19,8 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
 
   static final RegExp _orderedListPattern = RegExp(r'^\d+[.)]\s+(.+)$');
 
+  static final RegExp _treeListPattern = RegExp(r'^[├└]──\s+(.+)$');
+
   static final RegExp _blockquotePattern = RegExp(r'^(?:>\s*)+(.+)$');
 
   static final RegExp _headingPattern = RegExp(r'^#{1,6}(?:\s+|$)');
@@ -26,6 +28,42 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
   static final RegExp _htmlTagPattern = RegExp(r'^</?[A-Za-z][^>]*>$');
 
   static final RegExp _tableSeparatorCellPattern = RegExp(r'^:?-{3,}:?$');
+
+  static final RegExp _sentenceEndingPattern = RegExp(r'[.!?…]$');
+
+  static final RegExp _metadataLinePattern = RegExp(
+    r'^(?:'
+    r'Status|Registry Status|Decision Summary|Evidence|'
+    r'Source|Revision|Owner|Version|'
+    r'Статус|Доказательства|Источник|Версия'
+    r'):',
+    caseSensitive: false,
+  );
+
+  static final RegExp _statusDecorationPattern = RegExp(
+    r'\s*(?:[—–-]\s*)?(?:✅\s*)?'
+    r'(?:APPROVED|CLOSED|STORED|'
+    r'DOCS(?:\s+VERIFIED)?|HISTORICAL)'
+    r'(?:[\s+/—–-]+'
+    r'(?:APPROVED|CLOSED|STORED|'
+    r'DOCS(?:\s+VERIFIED)?|HISTORICAL|✅))*'
+    r'\s*$',
+  );
+
+  static const Set<String> _excludedSectionLabels = <String>{
+    'decision summary:',
+    'evidence:',
+    'evidence notes:',
+    'примечания к доказательствам:',
+    'recovery note:',
+    'admin dependencies:',
+    'required admin capabilities:',
+    'decision:',
+    'conclusion:',
+    'electrical diagnostics:',
+    'наследуемые правила:',
+    'наследуемые правила',
+  };
 
   @override
   CanonicalBusinessTextCandidateIndex extractCandidates(
@@ -41,7 +79,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
     for (final RegistryNode node in structuralIndex.nodes) {
       final ownerId = node.businessScopeOwnerId;
 
-      if (ownerId == null) {
+      if (ownerId == null || _isExcludedNode(node)) {
         continue;
       }
 
@@ -53,12 +91,22 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
         required String text,
         required int directContentLine,
       }) {
-        final String normalizedIdentityText = text.trim().replaceAll(
-          RegExp(r'\s+'),
-          ' ',
-        );
+        final String normalizedIdentityText = _normalizedCandidateText(text);
 
-        if (normalizedIdentityText.isEmpty) {
+        if (normalizedIdentityText.isEmpty ||
+            _metadataLinePattern.hasMatch(normalizedIdentityText)) {
+          return;
+        }
+
+        final bool listItem =
+            kind == CanonicalBusinessTextCandidateKind.listItem;
+
+        final bool completedStatement =
+            (kind == CanonicalBusinessTextCandidateKind.paragraph ||
+                kind == CanonicalBusinessTextCandidateKind.blockquote) &&
+            _sentenceEndingPattern.hasMatch(normalizedIdentityText);
+
+        if (!listItem && !completedStatement) {
           return;
         }
 
@@ -86,15 +134,6 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
         );
       }
 
-      final String heading = node.path.segments.last;
-
-      addCandidate(
-        kind: CanonicalBusinessTextCandidateKind.heading,
-        rawText: heading,
-        text: heading,
-        directContentLine: 0,
-      );
-
       if (node.content.trim().isEmpty) {
         continue;
       }
@@ -106,6 +145,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
       String? activeFenceMarker;
       int activeFenceLength = 0;
       bool insideHtmlComment = false;
+      String? activeSectionLabel;
 
       for (int lineIndex = 0; lineIndex < contentLines.length; lineIndex += 1) {
         final String rawLine = contentLines[lineIndex];
@@ -154,10 +194,35 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
           continue;
         }
 
-        if (_headingPattern.hasMatch(trimmedLine) ||
-            _htmlTagPattern.hasMatch(trimmedLine) ||
-            _isHorizontalRule(trimmedLine) ||
-            _isTableSeparator(trimmedLine)) {
+        if (_headingPattern.hasMatch(trimmedLine)) {
+          activeSectionLabel = trimmedLine
+              .replaceFirst(_headingPattern, '')
+              .trim()
+              .toLowerCase();
+          continue;
+        }
+
+        if (_htmlTagPattern.hasMatch(trimmedLine)) {
+          continue;
+        }
+
+        if (_isHorizontalRule(trimmedLine)) {
+          activeSectionLabel = null;
+          continue;
+        }
+
+        if (_isTableSeparator(trimmedLine)) {
+          continue;
+        }
+
+        final String structuralText = _normalizedStructuralText(trimmedLine);
+
+        if (_isSectionLabel(structuralText)) {
+          activeSectionLabel = structuralText.toLowerCase();
+          continue;
+        }
+
+        if (_isExcludedSection(activeSectionLabel)) {
           continue;
         }
 
@@ -170,6 +235,21 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
             kind: CanonicalBusinessTextCandidateKind.blockquote,
             rawText: rawLine,
             text: blockquoteMatch.group(1)!,
+            directContentLine: directContentLine,
+          );
+
+          continue;
+        }
+
+        final RegExpMatch? treeListMatch = _treeListPattern.firstMatch(
+          trimmedLine,
+        );
+
+        if (treeListMatch != null) {
+          addCandidate(
+            kind: CanonicalBusinessTextCandidateKind.listItem,
+            rawText: rawLine,
+            text: treeListMatch.group(1)!,
             directContentLine: directContentLine,
           );
 
@@ -206,17 +286,6 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
         }
 
         if (_isTableRow(trimmedLine)) {
-          final String tableText = _tableText(trimmedLine);
-
-          if (tableText.isNotEmpty) {
-            addCandidate(
-              kind: CanonicalBusinessTextCandidateKind.tableRow,
-              rawText: rawLine,
-              text: tableText,
-              directContentLine: directContentLine,
-            );
-          }
-
           continue;
         }
 
@@ -235,6 +304,64 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
       sourceRevision: snapshot.sourceRevision,
       sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
       candidates: candidates,
+    );
+  }
+
+  String _normalizedCandidateText(String text) {
+    String value = text.trim().replaceAll(RegExp(r'\s+'), ' ');
+
+    value = value.replaceFirst(_statusDecorationPattern, '');
+
+    return value.trim();
+  }
+
+  String _normalizedStructuralText(String rawLine) {
+    String value = rawLine.trim();
+
+    final RegExpMatch? blockquoteMatch = _blockquotePattern.firstMatch(value);
+
+    if (blockquoteMatch != null) {
+      value = blockquoteMatch.group(1)!.trim();
+    }
+
+    final RegExpMatch? treeListMatch = _treeListPattern.firstMatch(value);
+
+    if (treeListMatch != null) {
+      value = treeListMatch.group(1)!.trim();
+    }
+
+    final RegExpMatch? unorderedListMatch = _unorderedListPattern.firstMatch(
+      value,
+    );
+
+    if (unorderedListMatch != null) {
+      value = unorderedListMatch.group(1)!.trim();
+    }
+
+    final RegExpMatch? orderedListMatch = _orderedListPattern.firstMatch(value);
+
+    if (orderedListMatch != null) {
+      value = orderedListMatch.group(1)!.trim();
+    }
+
+    return value;
+  }
+
+  bool _isSectionLabel(String text) {
+    return text.endsWith(':') &&
+        text.length <= 120 &&
+        !RegExp(r'[.!?…]\s*:$').hasMatch(text);
+  }
+
+  bool _isExcludedSection(String? sectionLabel) {
+    return sectionLabel != null &&
+        _excludedSectionLabels.contains(sectionLabel);
+  }
+
+  bool _isExcludedNode(RegistryNode node) {
+    return node.path.segments.any(
+      (String segment) =>
+          segment.trim().toLowerCase().endsWith('admin dependencies'),
     );
   }
 
@@ -259,10 +386,6 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
 
     return cells.isNotEmpty &&
         cells.every((String cell) => _tableSeparatorCellPattern.hasMatch(cell));
-  }
-
-  String _tableText(String line) {
-    return _tableCells(line).join(' | ').trim();
   }
 
   List<String> _tableCells(String line) {

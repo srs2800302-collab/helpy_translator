@@ -24,23 +24,52 @@ void main() {
       final CanonicalBusinessTextCandidateIndex index = extractor
           .extractCandidates(_syntheticSnapshot());
 
-      expect(index.candidateCount, 8);
+      expect(index.candidateCount, 9);
 
       expect(
         index.candidates.map(
           (CanonicalBusinessTextCandidate candidate) => candidate.text,
         ),
         containsAll(<String>[
-          '99. Service Architecture Registry '
-              '— Future Category',
           'Обычная фраза.',
           'Элемент списка.',
           'Нумерованный пункт.',
           'Подсказка клиенту.',
-          'Колонка | Значение',
-          'Client Rules',
+          'Kitchen Assembly',
+          'Кран',
+          'Фото-ТЗ должно формироваться через '
+              'approved photo requirements.',
+          'Фотография места установки.',
           'Вложенная фраза.',
         ]),
+      );
+
+      expect(
+        index.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.kind == CanonicalBusinessTextCandidateKind.heading ||
+              candidate.kind == CanonicalBusinessTextCandidateKind.tableRow,
+        ),
+        isFalse,
+      );
+
+      expect(
+        index.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text == 'Служебное резюме.' ||
+              candidate.text.contains('STORED') ||
+              candidate.text.contains('DOCS VERIFIED'),
+        ),
+        isFalse,
+      );
+
+      expect(
+        index.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text == 'Global Completion Evidence Rule.' ||
+              candidate.text == 'Chat Evidence Rules.',
+        ),
+        isFalse,
       );
 
       expect(
@@ -163,6 +192,69 @@ void main() {
       );
 
       expect(candidateIndex.candidates, isNotEmpty);
+
+      expect(
+        candidateIndex.candidates.every(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.kind != CanonicalBusinessTextCandidateKind.heading &&
+              candidate.kind != CanonicalBusinessTextCandidateKind.tableRow,
+        ),
+        isTrue,
+      );
+
+      expect(
+        candidateIndex.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text.startsWith('Status:') ||
+              candidate.text.startsWith('Registry Status:') ||
+              candidate.text.startsWith('Decision Summary:') ||
+              candidate.text.startsWith('Evidence:'),
+        ),
+        isFalse,
+      );
+
+      expect(
+        candidateIndex.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) => candidate.path.segments
+              .any((String segment) => segment.endsWith('Admin Dependencies')),
+        ),
+        isFalse,
+      );
+
+      expect(
+        candidateIndex.candidates.map(
+          (CanonicalBusinessTextCandidate candidate) => candidate.text,
+        ),
+        containsAll(<String>['Kitchen Assembly', 'Regular Cleaning', 'Кран']),
+      );
+
+      expect(
+        candidateIndex.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text.contains('STORED') ||
+              candidate.text.contains('DOCS VERIFIED'),
+        ),
+        isFalse,
+      );
+      expect(
+        candidateIndex.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text == 'Global Completion Evidence Rule.' ||
+              candidate.text == 'Chat Evidence Rules.',
+        ),
+        isFalse,
+      );
+
+      expect(
+        candidateIndex.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text ==
+              'Фото-ТЗ должно формироваться через '
+                  'approved photo requirements.',
+        ),
+        isTrue,
+      );
+
       expect(candidateIndex.candidatesByOwnerId, hasLength(7));
 
       expect(
@@ -245,10 +337,23 @@ RegistrySnapshot _syntheticSnapshot({int sourceStartLine = 1}) {
           '— Future Category',
     ],
     content:
+        'Status: APPROVED / STORED\n'
+        'Decision Summary:\n'
+        '- Служебное резюме.\n'
+        'Наследуемые правила:\n'
+        '- Global Completion Evidence Rule.\n'
+        '#### Наследуемые правила\n'
+        '- Chat Evidence Rules.\n'
+        'Business Rules:\n'
         'Обычная фраза.\n'
+        'Фото-ТЗ должно формироваться через '
+        'approved photo requirements.\n'
+        '3. Фотография места установки.\n'
         '- Элемент списка.\n'
         '1. Нумерованный пункт.\n'
         '> Подсказка клиенту.\n'
+        '- Kitchen Assembly — STORED + DOCS ✅\n'
+        '├── Кран\n'
         '| Колонка | Значение |\n'
         '| --- | --- |\n'
         '<!-- Служебный комментарий -->\n'
