@@ -43,6 +43,13 @@ void main() {
               candidate.text == 'Проверьте место выполнения работ.',
         );
 
+    final CanonicalBusinessTextCandidate combinedClientRule = index.candidates
+        .singleWhere(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text ==
+              'Подготовьте доступ к установленному оборудованию.',
+        );
+
     final CanonicalBusinessTextCandidate noScenarioQuestion = index.candidates
         .singleWhere(
           (CanonicalBusinessTextCandidate candidate) =>
@@ -66,10 +73,20 @@ void main() {
       'helpy.business-content.master-rules',
     );
 
+    expect(
+      combinedClientRule.contentBlockIdentity,
+      'helpy.business-content.client-rules',
+    );
+
     expect(question.scenarioLabel, 'Заменить');
     expect(photoQuestion.scenarioLabel, 'Заменить');
     expect(clientRule.scenarioLabel, 'Заменить');
     expect(masterRule.scenarioLabel, 'Заменить');
+    expect(combinedClientRule.scenarioLabel, 'Заменить');
+    expect(
+      combinedClientRule.scenarioIdentity,
+      startsWith('owner.context::scenario::'),
+    );
 
     expect(question.scenarioIdentity, startsWith('owner.context::scenario::'));
 
@@ -115,6 +132,7 @@ void main() {
           photoQuestion,
           clientRule,
           masterRule,
+          combinedClientRule,
           noScenarioQuestion,
           ...repeatedRules,
         ]) {
@@ -150,6 +168,8 @@ RegistrySnapshot _snapshot() {
       '#### Сценарий «Установить и подключить»\n'
       '##### Правила для клиента\n'
       '- Одинаковая формулировка.\n'
+      'Правила для клиента — Заменить:\n'
+      '- Подготовьте доступ к установленному оборудованию.\n'
       '---\n'
       '#### Вопросы\n'
       '- Какой тип уборки?';
@@ -176,7 +196,7 @@ RegistrySnapshot _snapshot() {
         sourceSnapshotFingerprint: fingerprint,
         headingPath: path.segments,
         startLine: 3,
-        endLine: 19,
+        endLine: 21,
       ),
     ],
     content: content,

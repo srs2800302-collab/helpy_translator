@@ -313,14 +313,14 @@ void main() {
       expect(
         index.classificationsByCandidateIdentity['candidate-ambiguous']?.reason,
         CanonicalBusinessTextClassificationReason
-            .ambiguousExactCanonicalTextMatch,
+            .exactTextRequiresApplicabilityReview,
       );
 
       expect(
         index
             .classificationsByCandidateIdentity['candidate-ambiguous']
             ?.matchedCanonicalEntries,
-        hasLength(2),
+        hasLength(1),
       );
 
       expect(

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_canonical_business_text_candidate_extractor.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_canonical_dictionary_document_interpreter.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_canonical_phrase_applicability_resolver.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_business_scope_resolver.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_document_interpreter.dart';
 import 'package:helpy_translator/registry_studio/canonical/application/contracts/canonical_business_text_candidate_extractor.dart';
@@ -111,7 +112,10 @@ void main() {
       final CanonicalBusinessTextAnalysisResult result =
           const RunCanonicalBusinessTextAnalysis(
             candidateExtractor: HelpyCanonicalBusinessTextCandidateExtractor(),
-            classifier: DeterministicCanonicalBusinessTextClassifier(),
+            classifier: DeterministicCanonicalBusinessTextClassifier(
+              applicabilityResolver:
+                  HelpyCanonicalPhraseApplicabilityResolver(),
+            ),
           ).call(snapshot: snapshot, dictionary: dictionary);
 
       expect(result.totalCandidateCount, greaterThan(0));
@@ -151,9 +155,62 @@ void main() {
         greaterThan(0),
       );
 
+      const String scenarioPhrase =
+          'Подготовьте доступ к установленному оборудованию.';
+
+      final replaceScenarioClassifications = result
+          .classifications
+          .classifications
+          .where(
+            (CanonicalBusinessTextClassification classification) =>
+                classification.candidate.text == scenarioPhrase &&
+                classification.candidate.scenarioLabel == 'Заменить',
+          )
+          .toList(growable: false);
+
+      expect(replaceScenarioClassifications, isNotEmpty);
+
+      for (final classification in replaceScenarioClassifications) {
+        expect(
+          classification.candidate.contentBlockIdentity,
+          'helpy.business-content.client-rules',
+        );
+        expect(
+          classification.status,
+          CanonicalBusinessTextClassificationStatus.exact,
+        );
+        expect(
+          classification.reason,
+          CanonicalBusinessTextClassificationReason.singleExactApplicableMatch,
+        );
+        expect(classification.matchedCanonicalEntries, hasLength(1));
+        expect(
+          classification.matchedCanonicalEntries.single.applicability,
+          const <String>['Используется только для сценария «Заменить».'],
+        );
+        expect(
+          classification.matchedConfirmedApplicationEvidence,
+          hasLength(1),
+        );
+
+        final evidence =
+            classification.matchedConfirmedApplicationEvidence.single;
+
+        expect(evidence.candidateIdentity, classification.candidate.identity);
+        expect(
+          evidence.canonicalEntryIdentity,
+          classification.matchedCanonicalEntries.single.identity,
+        );
+        expect(evidence.registrySourceRevision, registryRevision);
+        expect(
+          evidence.sourceEvidence,
+          classification.candidate.sourceEvidence,
+        );
+      }
+
       expect(
         result.countForStatus(CanonicalBusinessTextClassificationStatus.review),
-        greaterThan(0),
+        0,
       );
 
       expect(

@@ -103,14 +103,17 @@ final class DeterministicCanonicalBusinessTextClassifier
     required String registrySourceRevision,
   }) {
     if (exactTextMatches.isNotEmpty) {
-      final List<CanonicalPhraseEntry> applicable = <CanonicalPhraseEntry>[];
-      final List<CanonicalPhraseEntry> unresolved = <CanonicalPhraseEntry>[];
+      final List<CanonicalPhraseEntry> universal = <CanonicalPhraseEntry>[];
+      final List<CanonicalPhraseEntry> applicableConstrained =
+          <CanonicalPhraseEntry>[];
+      final List<CanonicalPhraseEntry> unresolvedConstrained =
+          <CanonicalPhraseEntry>[];
       final Map<String, CanonicalConfirmedApplicationEvidence> evidenceByEntry =
           <String, CanonicalConfirmedApplicationEvidence>{};
 
       for (final CanonicalPhraseEntry entry in exactTextMatches) {
         if (entry.applicability.isEmpty) {
-          applicable.add(entry);
+          universal.add(entry);
           continue;
         }
 
@@ -123,41 +126,34 @@ final class DeterministicCanonicalBusinessTextClassifier
 
         switch (resolution.decision) {
           case CanonicalPhraseApplicabilityDecision.applicable:
-            applicable.add(entry);
+            applicableConstrained.add(entry);
             evidenceByEntry[entry.identity] = resolution.evidence!;
           case CanonicalPhraseApplicabilityDecision.notApplicable:
             break;
           case CanonicalPhraseApplicabilityDecision.unresolved:
-            unresolved.add(entry);
+            unresolvedConstrained.add(entry);
         }
       }
 
-      final List<CanonicalPhraseEntry> review = <CanonicalPhraseEntry>[
-        ...applicable,
-        ...unresolved,
-      ];
+      final List<CanonicalPhraseEntry> constrainedReview =
+          <CanonicalPhraseEntry>[
+            ...applicableConstrained,
+            ...unresolvedConstrained,
+          ];
 
-      if (review.length > 1) {
+      if (constrainedReview.length > 1) {
         return CanonicalBusinessTextClassification(
           candidate: candidate,
           status: CanonicalBusinessTextClassificationStatus.review,
           reason: CanonicalBusinessTextClassificationReason
               .ambiguousExactCanonicalTextMatch,
-          matchedCanonicalEntries: review,
+          matchedCanonicalEntries: constrainedReview,
         );
       }
 
-      if (applicable.length == 1 && unresolved.isEmpty) {
-        final CanonicalPhraseEntry entry = applicable.single;
-        if (entry.applicability.isEmpty) {
-          return CanonicalBusinessTextClassification(
-            candidate: candidate,
-            status: CanonicalBusinessTextClassificationStatus.exact,
-            reason: CanonicalBusinessTextClassificationReason
-                .singleExactUniversalMatch,
-            matchedCanonicalEntries: <CanonicalPhraseEntry>[entry],
-          );
-        }
+      if (applicableConstrained.length == 1 && unresolvedConstrained.isEmpty) {
+        final CanonicalPhraseEntry entry = applicableConstrained.single;
+
         return CanonicalBusinessTextClassification(
           candidate: candidate,
           status: CanonicalBusinessTextClassificationStatus.exact,
@@ -171,13 +167,33 @@ final class DeterministicCanonicalBusinessTextClassifier
         );
       }
 
-      if (applicable.isEmpty && unresolved.length == 1) {
+      if (applicableConstrained.isEmpty && unresolvedConstrained.length == 1) {
         return CanonicalBusinessTextClassification(
           candidate: candidate,
           status: CanonicalBusinessTextClassificationStatus.review,
           reason: CanonicalBusinessTextClassificationReason
               .exactTextRequiresApplicabilityReview,
-          matchedCanonicalEntries: unresolved,
+          matchedCanonicalEntries: unresolvedConstrained,
+        );
+      }
+
+      if (universal.length > 1) {
+        return CanonicalBusinessTextClassification(
+          candidate: candidate,
+          status: CanonicalBusinessTextClassificationStatus.review,
+          reason: CanonicalBusinessTextClassificationReason
+              .ambiguousExactCanonicalTextMatch,
+          matchedCanonicalEntries: universal,
+        );
+      }
+
+      if (universal.length == 1) {
+        return CanonicalBusinessTextClassification(
+          candidate: candidate,
+          status: CanonicalBusinessTextClassificationStatus.exact,
+          reason: CanonicalBusinessTextClassificationReason
+              .singleExactUniversalMatch,
+          matchedCanonicalEntries: universal,
         );
       }
     }

@@ -276,14 +276,14 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
             activeScenarioHeadingLevel = null;
           }
 
-          final String? scenarioLabel = _explicitScenarioLabel(headingText);
+          final String? scenarioLabel = _scenarioLabelForText(headingText);
 
           if (scenarioLabel != null) {
             activeScenarioLabel = scenarioLabel;
             activeScenarioHeadingLevel = headingLevel;
           }
 
-          final String? contentBlockIdentity = _contentBlockIdentityForLabel(
+          final String? contentBlockIdentity = _contentBlockIdentityForText(
             headingText,
           );
 
@@ -329,28 +329,28 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
 
         final String structuralText = _normalizedStructuralText(trimmedLine);
 
-        final String? structuralScenarioLabel = _explicitScenarioLabel(
+        final String? structuralScenarioLabel = _scenarioLabelForText(
           structuralText,
         );
 
-        if (structuralScenarioLabel != null) {
-          activeScenarioLabel = structuralScenarioLabel;
-
-          activeScenarioHeadingLevel = null;
-          continue;
-        }
-
         final String? structuralContentBlockIdentity =
-            _contentBlockIdentityForLabel(structuralText);
+            _contentBlockIdentityForText(structuralText);
 
-        if (structuralContentBlockIdentity != null) {
-          activeContentBlockIdentity = structuralContentBlockIdentity;
+        if (structuralScenarioLabel != null ||
+            structuralContentBlockIdentity != null) {
+          if (structuralScenarioLabel != null) {
+            activeScenarioLabel = structuralScenarioLabel;
+            activeScenarioHeadingLevel = null;
+          }
 
-          activeContentBlockLabel = _contentBlockLabelForIdentity(
-            structuralContentBlockIdentity,
-          );
+          if (structuralContentBlockIdentity != null) {
+            activeContentBlockIdentity = structuralContentBlockIdentity;
+            activeContentBlockLabel = _contentBlockLabelForIdentity(
+              structuralContentBlockIdentity,
+            );
+            activeContentBlockHeadingLevel = null;
+          }
 
-          activeContentBlockHeadingLevel = null;
           continue;
         }
 
@@ -480,10 +480,18 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
     String? identity;
 
     for (final String segment in path) {
-      identity = _contentBlockIdentityForLabel(segment) ?? identity;
+      identity = _contentBlockIdentityForText(segment) ?? identity;
     }
 
     return identity;
+  }
+
+  String? _contentBlockIdentityForText(String text) {
+    final String normalized = text.trim().replaceAll(RegExp(r'[:\s]+$'), '');
+
+    final List<String> segments = normalized.split(RegExp(r'\s+[—–-]\s+'));
+
+    return _contentBlockIdentityForLabel(segments.first);
   }
 
   String? _contentBlockIdentityForLabel(String label) {
@@ -568,7 +576,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
 
   String? _scenarioLabelFromPath(Iterable<String> path) {
     for (final String segment in path.toList(growable: false).reversed) {
-      final String? scenarioLabel = _explicitScenarioLabel(segment);
+      final String? scenarioLabel = _scenarioLabelForText(segment);
 
       if (scenarioLabel != null) {
         return scenarioLabel;
@@ -576,6 +584,26 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
     }
 
     return null;
+  }
+
+  String? _scenarioLabelForText(String text) {
+    return _combinedContentBlockScenarioLabel(text) ??
+        _explicitScenarioLabel(text);
+  }
+
+  String? _combinedContentBlockScenarioLabel(String text) {
+    final String normalized = text.trim().replaceAll(RegExp(r'[:\s]+$'), '');
+
+    final List<String> segments = normalized.split(RegExp(r'\s+[—–-]\s+'));
+
+    if (segments.length < 2 ||
+        _contentBlockIdentityForLabel(segments.first) == null) {
+      return null;
+    }
+
+    final String scenarioLabel = segments.last.trim();
+
+    return scenarioLabel.isEmpty ? null : scenarioLabel;
   }
 
   String? _explicitScenarioLabel(String text) {

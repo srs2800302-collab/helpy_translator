@@ -2078,3 +2078,5 @@ Helpy adapter распознаёт business entity, business block, опцион
 ## 23. Разрешение применимости Canonical Dictionary
 
 Universal `canonical` не интерпретирует project-specific строки применимости. Generic resolver возвращает `applicable`, `notApplicable` или `unresolved`. Project adapter сопоставляет applicability со structured candidate context. `Exact` для constrained entry допустим только с `CanonicalConfirmedApplicationEvidence`. Неизвестная применимость остаётся `Review`; явно неприменимая entry исключается из exact matches.
+
+При одинаковом exact text применимая constrained entry имеет приоритет над universal entry. Universal entry используется как fallback только тогда, когда все constrained entries доказанно `notApplicable`. Неразрешённая constrained applicability блокирует universal fallback и остаётся `Review`.
