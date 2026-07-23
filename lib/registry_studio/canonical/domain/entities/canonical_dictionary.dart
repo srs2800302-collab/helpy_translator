@@ -1,6 +1,9 @@
 import 'package:equatable/equatable.dart';
 
+import 'canonical_approved_equivalent_evidence.dart';
 import 'canonical_dictionary_collection.dart';
+import 'canonical_dictionary_entry.dart';
+import 'canonical_phrase_entry.dart';
 
 final class CanonicalDictionary extends Equatable {
   factory CanonicalDictionary({
@@ -14,6 +17,8 @@ final class CanonicalDictionary extends Equatable {
     required int beginMarkerLine,
     required int endMarkerLine,
     required Iterable<CanonicalDictionaryCollection> collections,
+    Iterable<CanonicalApprovedEquivalentEvidence> approvedEquivalentEvidence =
+        const <CanonicalApprovedEquivalentEvidence>[],
   }) {
     final String normalizedDictionaryId = dictionaryId.trim();
     final String normalizedVersion = version.trim();
@@ -22,8 +27,14 @@ final class CanonicalDictionary extends Equatable {
     final String normalizedSourceRevision = sourceRevision.trim();
     final String normalizedSourceSnapshotFingerprint = sourceSnapshotFingerprint
         .trim();
+
     final List<CanonicalDictionaryCollection> normalizedCollections =
         collections.toList(growable: false);
+
+    final List<CanonicalApprovedEquivalentEvidence>
+    normalizedApprovedEquivalentEvidence = approvedEquivalentEvidence.toList(
+      growable: false,
+    );
 
     if (normalizedDictionaryId.isEmpty) {
       throw ArgumentError.value(
@@ -106,6 +117,8 @@ final class CanonicalDictionary extends Equatable {
     }
 
     final Set<String> collectionIds = <String>{};
+    final Map<String, CanonicalDictionaryEntry> entriesByIdentity =
+        <String, CanonicalDictionaryEntry>{};
 
     for (final CanonicalDictionaryCollection collection
         in normalizedCollections) {
@@ -117,16 +130,6 @@ final class CanonicalDictionary extends Equatable {
         );
       }
 
-      for (final entry in collection.entries) {
-        if (entry.dictionaryId != normalizedDictionaryId) {
-          throw ArgumentError.value(
-            entry,
-            'collections',
-            'Canonical Dictionary entry must belong to its dictionary.',
-          );
-        }
-      }
-
       if (collection.startLine <= beginMarkerLine ||
           collection.endLine >= endMarkerLine) {
         throw ArgumentError.value(
@@ -135,6 +138,125 @@ final class CanonicalDictionary extends Equatable {
           'Canonical Dictionary collections must be located strictly between '
               'the stable markers.',
         );
+      }
+
+      for (final CanonicalDictionaryEntry entry in collection.entries) {
+        if (entry.dictionaryId != normalizedDictionaryId) {
+          throw ArgumentError.value(
+            entry,
+            'collections',
+            'Canonical Dictionary entry must belong to its dictionary.',
+          );
+        }
+
+        if (entry.sourceDocumentPath != normalizedSourceDocumentPath ||
+            entry.sourceRevision != normalizedSourceRevision ||
+            entry.sourceSnapshotFingerprint !=
+                normalizedSourceSnapshotFingerprint) {
+          throw ArgumentError.value(
+            entry,
+            'collections',
+            'Canonical Dictionary entry must belong to the exact dictionary '
+                'source revision and fingerprint.',
+          );
+        }
+
+        if (entriesByIdentity.containsKey(entry.identity)) {
+          throw ArgumentError.value(
+            entry.identity,
+            'collections',
+            'Canonical Dictionary entry identities must be globally unique.',
+          );
+        }
+
+        entriesByIdentity[entry.identity] = entry;
+      }
+    }
+
+    final Set<String> approvedEquivalentEvidenceIdentities = <String>{};
+    final Set<String> approvedEquivalentEvidenceKeys = <String>{};
+
+    for (final CanonicalApprovedEquivalentEvidence evidence
+        in normalizedApprovedEquivalentEvidence) {
+      if (!approvedEquivalentEvidenceIdentities.add(evidence.identity)) {
+        throw ArgumentError.value(
+          evidence.identity,
+          'approvedEquivalentEvidence',
+          'Approved equivalent evidence identities must be unique.',
+        );
+      }
+
+      final CanonicalDictionaryEntry? referencedEntry =
+          entriesByIdentity[evidence.canonicalEntryIdentity];
+
+      if (referencedEntry is! CanonicalPhraseEntry) {
+        throw ArgumentError.value(
+          evidence.canonicalEntryIdentity,
+          'approvedEquivalentEvidence',
+          'Approved equivalent evidence must reference an existing canonical '
+              'phrase entry.',
+        );
+      }
+
+      final String normalizedEquivalentText = evidence.equivalentText
+          .trim()
+          .replaceAll(RegExp(r'\s+'), ' ');
+
+      final String normalizedCanonicalText = referencedEntry.phrase
+          .trim()
+          .replaceAll(RegExp(r'\s+'), ' ');
+
+      if (normalizedEquivalentText == normalizedCanonicalText) {
+        throw ArgumentError.value(
+          evidence.equivalentText,
+          'approvedEquivalentEvidence',
+          'Approved equivalent text must differ from the canonical phrase.',
+        );
+      }
+
+      final List<String> normalizedApplicability =
+          evidence.applicability
+              .map(
+                (String value) => value.trim().replaceAll(RegExp(r'\s+'), ' '),
+              )
+              .toList()
+            ..sort();
+
+      final String evidenceKey =
+          '${evidence.canonicalEntryIdentity}\u0000'
+          '$normalizedEquivalentText\u0000'
+          '${normalizedApplicability.join('\u0001')}';
+
+      if (!approvedEquivalentEvidenceKeys.add(evidenceKey)) {
+        throw ArgumentError.value(
+          evidence,
+          'approvedEquivalentEvidence',
+          'Approved equivalent evidence must not duplicate one canonical '
+              'entry and equivalent text.',
+        );
+      }
+
+      for (final sourceEvidence in evidence.sourceEvidence) {
+        if (sourceEvidence.sourceDocumentPath != normalizedSourceDocumentPath ||
+            sourceEvidence.sourceSnapshotFingerprint !=
+                normalizedSourceSnapshotFingerprint) {
+          throw ArgumentError.value(
+            sourceEvidence,
+            'approvedEquivalentEvidence',
+            'Approved equivalent evidence must belong to the exact Canonical '
+                'Dictionary source fingerprint.',
+          );
+        }
+
+        if (sourceEvidence.startLine <= beginMarkerLine ||
+            sourceEvidence.endLine >= endMarkerLine) {
+          throw ArgumentError.value(
+            sourceEvidence,
+            'approvedEquivalentEvidence',
+            'Approved equivalent evidence must remain strictly between the '
+                'Canonical Dictionary markers.',
+          );
+        }
       }
     }
 
@@ -151,6 +273,10 @@ final class CanonicalDictionary extends Equatable {
       collections: List<CanonicalDictionaryCollection>.unmodifiable(
         normalizedCollections,
       ),
+      approvedEquivalentEvidence:
+          List<CanonicalApprovedEquivalentEvidence>.unmodifiable(
+            normalizedApprovedEquivalentEvidence,
+          ),
     );
   }
 
@@ -165,6 +291,7 @@ final class CanonicalDictionary extends Equatable {
     required this.beginMarkerLine,
     required this.endMarkerLine,
     required this.collections,
+    required this.approvedEquivalentEvidence,
   });
 
   final String dictionaryId;
@@ -177,6 +304,8 @@ final class CanonicalDictionary extends Equatable {
   final int beginMarkerLine;
   final int endMarkerLine;
   final List<CanonicalDictionaryCollection> collections;
+
+  final List<CanonicalApprovedEquivalentEvidence> approvedEquivalentEvidence;
 
   CanonicalDictionaryCollection? collectionById(String collectionId) {
     final String normalizedCollectionId = collectionId.trim();
@@ -202,5 +331,6 @@ final class CanonicalDictionary extends Equatable {
     beginMarkerLine,
     endMarkerLine,
     collections,
+    approvedEquivalentEvidence,
   ];
 }
