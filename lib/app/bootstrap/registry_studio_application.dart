@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_canonical_business_text_candidate_extractor.dart';
+import '../../registry_studio/adapters/helpy/infrastructure/helpy_canonical_phrase_applicability_resolver.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_canonical_dictionary_loader.dart';
 import '../../registry_studio/canonical/application/contracts/canonical_business_text_analysis_session_runner.dart';
 import '../../registry_studio/canonical/application/deterministic_canonical_business_text_classifier.dart';
@@ -77,7 +78,10 @@ final class RegistryStudioApplication extends StatelessWidget {
             analysis: const RunCanonicalBusinessTextAnalysis(
               candidateExtractor:
                   HelpyCanonicalBusinessTextCandidateExtractor(),
-              classifier: DeterministicCanonicalBusinessTextClassifier(),
+              classifier: DeterministicCanonicalBusinessTextClassifier(
+                applicabilityResolver:
+                    HelpyCanonicalPhraseApplicabilityResolver(),
+              ),
             ),
           ),
       registrySnapshotLoader: registrySnapshotLoader,

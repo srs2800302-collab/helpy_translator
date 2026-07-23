@@ -2072,3 +2072,9 @@ Helpy adapter распознаёт business entity, business block, опцион
 Правила клиента и правила мастера могут различаться между сценариями. Canonical applicability, comparison, duplicate analysis и completeness analysis не должны смешивать формулировки разных scenario contexts.
 
 Добавление новых категорий, сущностей и сценариев не требует изменения универсального `canonical`, если project adapter передаёт тот же generic context contract.
+
+---
+
+## 23. Разрешение применимости Canonical Dictionary
+
+Universal `canonical` не интерпретирует project-specific строки применимости. Generic resolver возвращает `applicable`, `notApplicable` или `unresolved`. Project adapter сопоставляет applicability со structured candidate context. `Exact` для constrained entry допустим только с `CanonicalConfirmedApplicationEvidence`. Неизвестная применимость остаётся `Review`; явно неприменимая entry исключается из exact matches.

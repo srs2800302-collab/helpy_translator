@@ -1,6 +1,8 @@
 import 'build_canonical_phrase_vocabulary.dart';
 import 'contracts/canonical_business_text_classifier.dart';
+import 'contracts/canonical_phrase_applicability_resolver.dart';
 import '../domain/entities/canonical_approved_equivalent_evidence.dart';
+import '../domain/entities/canonical_confirmed_application_evidence.dart';
 import '../domain/entities/canonical_business_text_candidate.dart';
 import '../domain/entities/canonical_business_text_candidate_index.dart';
 import '../domain/entities/canonical_business_text_classification.dart';
@@ -12,7 +14,12 @@ import '../domain/entities/canonical_phrase_vocabulary.dart';
 
 final class DeterministicCanonicalBusinessTextClassifier
     implements CanonicalBusinessTextClassifier {
-  const DeterministicCanonicalBusinessTextClassifier();
+  const DeterministicCanonicalBusinessTextClassifier({
+    this.applicabilityResolver =
+        const _UnresolvedCanonicalPhraseApplicabilityResolver(),
+  });
+
+  final CanonicalPhraseApplicabilityResolver applicabilityResolver;
 
   @override
   CanonicalBusinessTextClassificationIndex classify({
@@ -70,6 +77,7 @@ final class DeterministicCanonicalBusinessTextClassifier
                   )] ??
                   const <CanonicalApprovedEquivalentEvidence>[],
               entriesByIdentity: entriesByIdentity,
+              registrySourceRevision: candidates.sourceRevision,
             ),
         ];
 
@@ -92,37 +100,86 @@ final class DeterministicCanonicalBusinessTextClassifier
     required List<CanonicalApprovedEquivalentEvidence>
     approvedEquivalentMatches,
     required Map<String, CanonicalPhraseEntry> entriesByIdentity,
+    required String registrySourceRevision,
   }) {
     if (exactTextMatches.isNotEmpty) {
-      if (exactTextMatches.length > 1) {
+      final List<CanonicalPhraseEntry> applicable = <CanonicalPhraseEntry>[];
+      final List<CanonicalPhraseEntry> unresolved = <CanonicalPhraseEntry>[];
+      final Map<String, CanonicalConfirmedApplicationEvidence> evidenceByEntry =
+          <String, CanonicalConfirmedApplicationEvidence>{};
+
+      for (final CanonicalPhraseEntry entry in exactTextMatches) {
+        if (entry.applicability.isEmpty) {
+          applicable.add(entry);
+          continue;
+        }
+
+        final CanonicalPhraseApplicabilityResolution resolution =
+            applicabilityResolver.resolve(
+              candidate: candidate,
+              entry: entry,
+              registrySourceRevision: registrySourceRevision,
+            );
+
+        switch (resolution.decision) {
+          case CanonicalPhraseApplicabilityDecision.applicable:
+            applicable.add(entry);
+            evidenceByEntry[entry.identity] = resolution.evidence!;
+          case CanonicalPhraseApplicabilityDecision.notApplicable:
+            break;
+          case CanonicalPhraseApplicabilityDecision.unresolved:
+            unresolved.add(entry);
+        }
+      }
+
+      final List<CanonicalPhraseEntry> review = <CanonicalPhraseEntry>[
+        ...applicable,
+        ...unresolved,
+      ];
+
+      if (review.length > 1) {
         return CanonicalBusinessTextClassification(
           candidate: candidate,
           status: CanonicalBusinessTextClassificationStatus.review,
           reason: CanonicalBusinessTextClassificationReason
               .ambiguousExactCanonicalTextMatch,
-          matchedCanonicalEntries: exactTextMatches,
+          matchedCanonicalEntries: review,
         );
       }
 
-      final CanonicalPhraseEntry exactMatch = exactTextMatches.single;
+      if (applicable.length == 1 && unresolved.isEmpty) {
+        final CanonicalPhraseEntry entry = applicable.single;
+        if (entry.applicability.isEmpty) {
+          return CanonicalBusinessTextClassification(
+            candidate: candidate,
+            status: CanonicalBusinessTextClassificationStatus.exact,
+            reason: CanonicalBusinessTextClassificationReason
+                .singleExactUniversalMatch,
+            matchedCanonicalEntries: <CanonicalPhraseEntry>[entry],
+          );
+        }
+        return CanonicalBusinessTextClassification(
+          candidate: candidate,
+          status: CanonicalBusinessTextClassificationStatus.exact,
+          reason: CanonicalBusinessTextClassificationReason
+              .singleExactApplicableMatch,
+          matchedCanonicalEntries: <CanonicalPhraseEntry>[entry],
+          matchedConfirmedApplicationEvidence:
+              <CanonicalConfirmedApplicationEvidence>[
+                evidenceByEntry[entry.identity]!,
+              ],
+        );
+      }
 
-      if (exactMatch.applicability.isNotEmpty) {
+      if (applicable.isEmpty && unresolved.length == 1) {
         return CanonicalBusinessTextClassification(
           candidate: candidate,
           status: CanonicalBusinessTextClassificationStatus.review,
           reason: CanonicalBusinessTextClassificationReason
               .exactTextRequiresApplicabilityReview,
-          matchedCanonicalEntries: <CanonicalPhraseEntry>[exactMatch],
+          matchedCanonicalEntries: unresolved,
         );
       }
-
-      return CanonicalBusinessTextClassification(
-        candidate: candidate,
-        status: CanonicalBusinessTextClassificationStatus.exact,
-        reason:
-            CanonicalBusinessTextClassificationReason.singleExactUniversalMatch,
-        matchedCanonicalEntries: <CanonicalPhraseEntry>[exactMatch],
-      );
     }
 
     final List<CanonicalApprovedEquivalentEvidence>
@@ -206,5 +263,19 @@ final class DeterministicCanonicalBusinessTextClassifier
 
   String _technicallyNormalize(String value) {
     return value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+}
+
+final class _UnresolvedCanonicalPhraseApplicabilityResolver
+    implements CanonicalPhraseApplicabilityResolver {
+  const _UnresolvedCanonicalPhraseApplicabilityResolver();
+
+  @override
+  CanonicalPhraseApplicabilityResolution resolve({
+    required CanonicalBusinessTextCandidate candidate,
+    required CanonicalPhraseEntry entry,
+    required String registrySourceRevision,
+  }) {
+    return const CanonicalPhraseApplicabilityResolution.unresolved();
   }
 }

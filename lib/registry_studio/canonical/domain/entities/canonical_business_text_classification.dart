@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'canonical_approved_equivalent_evidence.dart';
+import 'canonical_confirmed_application_evidence.dart';
 import 'canonical_business_text_candidate.dart';
 import 'canonical_business_text_classification_status.dart';
 import 'canonical_phrase_entry.dart';
@@ -15,12 +16,19 @@ final class CanonicalBusinessTextClassification extends Equatable {
     Iterable<CanonicalApprovedEquivalentEvidence>
         matchedApprovedEquivalentEvidence =
         const <CanonicalApprovedEquivalentEvidence>[],
+    Iterable<CanonicalConfirmedApplicationEvidence>
+        matchedConfirmedApplicationEvidence =
+        const <CanonicalConfirmedApplicationEvidence>[],
   }) {
     final List<CanonicalPhraseEntry> normalizedMatches = matchedCanonicalEntries
         .toList(growable: false);
 
     final List<CanonicalApprovedEquivalentEvidence>
     normalizedApprovedEquivalentMatches = matchedApprovedEquivalentEvidence
+        .toList(growable: false);
+
+    final List<CanonicalConfirmedApplicationEvidence>
+    normalizedConfirmedApplications = matchedConfirmedApplicationEvidence
         .toList(growable: false);
 
     final Set<String> matchedIdentities = <String>{};
@@ -48,6 +56,15 @@ final class CanonicalBusinessTextClassification extends Equatable {
       }
     }
 
+    if (status != CanonicalBusinessTextClassificationStatus.exact &&
+        normalizedConfirmedApplications.isNotEmpty) {
+      throw ArgumentError.value(
+        normalizedConfirmedApplications,
+        'matchedConfirmedApplicationEvidence',
+        'Only Exact classification may contain confirmed application evidence.',
+      );
+    }
+
     switch ((status, reason)) {
       case (
         CanonicalBusinessTextClassificationStatus.exact,
@@ -70,12 +87,39 @@ final class CanonicalBusinessTextClassification extends Equatable {
           );
         }
 
-        if (normalizedApprovedEquivalentMatches.isNotEmpty) {
+        if (normalizedApprovedEquivalentMatches.isNotEmpty ||
+            normalizedConfirmedApplications.isNotEmpty) {
+          throw ArgumentError(
+            'Universal Exact classification cannot contain auxiliary evidence.',
+          );
+        }
+
+      case (
+        CanonicalBusinessTextClassificationStatus.exact,
+        CanonicalBusinessTextClassificationReason.singleExactApplicableMatch,
+      ):
+        if (normalizedMatches.length != 1 ||
+            normalizedMatches.single.applicability.isEmpty ||
+            normalizedConfirmedApplications.length != 1) {
+          throw ArgumentError(
+            'Applicable Exact classification requires one constrained entry '
+            'and one confirmation evidence record.',
+          );
+        }
+        final CanonicalConfirmedApplicationEvidence confirmed =
+            normalizedConfirmedApplications.single;
+        if (confirmed.candidateIdentity != candidate.identity ||
+            confirmed.canonicalEntryIdentity !=
+                normalizedMatches.single.identity) {
           throw ArgumentError.value(
-            normalizedApprovedEquivalentMatches,
-            'matchedApprovedEquivalentEvidence',
-            'Exact classification must not contain '
-                'approved-equivalent evidence.',
+            confirmed,
+            'matchedConfirmedApplicationEvidence',
+            'Confirmed evidence must reference the candidate and entry.',
+          );
+        }
+        if (normalizedApprovedEquivalentMatches.isNotEmpty) {
+          throw ArgumentError(
+            'Applicable Exact classification cannot contain equivalent evidence.',
           );
         }
 
@@ -192,6 +236,10 @@ final class CanonicalBusinessTextClassification extends Equatable {
           List<CanonicalApprovedEquivalentEvidence>.unmodifiable(
             normalizedApprovedEquivalentMatches,
           ),
+      matchedConfirmedApplicationEvidence:
+          List<CanonicalConfirmedApplicationEvidence>.unmodifiable(
+            normalizedConfirmedApplications,
+          ),
     );
   }
 
@@ -201,6 +249,7 @@ final class CanonicalBusinessTextClassification extends Equatable {
     required this.reason,
     required this.matchedCanonicalEntries,
     required this.matchedApprovedEquivalentEvidence,
+    required this.matchedConfirmedApplicationEvidence,
   });
 
   final CanonicalBusinessTextCandidate candidate;
@@ -210,6 +259,9 @@ final class CanonicalBusinessTextClassification extends Equatable {
 
   final List<CanonicalApprovedEquivalentEvidence>
   matchedApprovedEquivalentEvidence;
+
+  final List<CanonicalConfirmedApplicationEvidence>
+  matchedConfirmedApplicationEvidence;
 
   static String _technicallyNormalize(String value) {
     return value.trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -222,5 +274,6 @@ final class CanonicalBusinessTextClassification extends Equatable {
     reason,
     matchedCanonicalEntries,
     matchedApprovedEquivalentEvidence,
+    matchedConfirmedApplicationEvidence,
   ];
 }

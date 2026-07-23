@@ -188,6 +188,7 @@ final class _CanonicalBusinessTextAnalysisViewState
                                   '${switch (classification.reason) {
                                     CanonicalBusinessTextClassificationReason.noExactCanonicalTextMatch => 'Точное совпадение не найдено',
                                     CanonicalBusinessTextClassificationReason.singleExactUniversalMatch => 'Одно точное универсальное совпадение',
+                                    CanonicalBusinessTextClassificationReason.singleExactApplicableMatch => 'Одно точное совпадение с подтверждённой применимостью',
                                     CanonicalBusinessTextClassificationReason.singleApprovedEquivalentMatch => 'Утверждённая эквивалентная формулировка',
                                     CanonicalBusinessTextClassificationReason.exactTextRequiresApplicabilityReview => 'Требуется проверка применимости',
                                     CanonicalBusinessTextClassificationReason.ambiguousExactCanonicalTextMatch => 'Несколько точных совпадений',
