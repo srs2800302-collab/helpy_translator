@@ -24,7 +24,7 @@ void main() {
       final CanonicalBusinessTextCandidateIndex index = extractor
           .extractCandidates(_syntheticSnapshot());
 
-      expect(index.candidateCount, 11);
+      expect(index.candidateCount, 13);
 
       expect(
         index.candidates.map(
@@ -33,6 +33,8 @@ void main() {
         containsAll(<String>[
           '99. Service Architecture Registry — Future Category',
           'Client Rules',
+          'Unrelated Registry Content',
+          'Future Category',
           'Обычная фраза.',
           'Элемент списка.',
           'Нумерованный пункт.',
@@ -46,6 +48,25 @@ void main() {
         ]),
       );
 
+      final CanonicalBusinessTextCandidate categoryLabel = index.candidates
+          .singleWhere(
+            (CanonicalBusinessTextCandidate candidate) =>
+                candidate.text == 'Future Category',
+          );
+
+      expect(categoryLabel.kind, CanonicalBusinessTextCandidateKind.paragraph);
+
+      expect(categoryLabel.directContentLine, greaterThan(0));
+
+      expect(
+        index.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text == 'Unrelated label' ||
+              candidate.text.startsWith('Standard Compliance:'),
+        ),
+        isFalse,
+      );
+
       final List<CanonicalBusinessTextCandidate> headingCandidates = index
           .candidates
           .where(
@@ -54,7 +75,7 @@ void main() {
           )
           .toList(growable: false);
 
-      expect(headingCandidates, hasLength(2));
+      expect(headingCandidates, hasLength(3));
 
       expect(
         headingCandidates.every(
@@ -247,6 +268,51 @@ void main() {
         isTrue,
       );
 
+      const Set<String> structuralCategoryLabels = <String>{
+        'Furniture Assembly',
+        'Cleaning',
+        'Air Conditioning',
+        'Plumbing',
+        'Locks (Замки)',
+      };
+
+      final List<CanonicalBusinessTextCandidate> categoryLabelCandidates =
+          candidateIndex.candidates
+              .where(
+                (CanonicalBusinessTextCandidate candidate) =>
+                    structuralCategoryLabels.contains(candidate.text),
+              )
+              .toList(growable: false);
+
+      expect(
+        categoryLabelCandidates,
+        hasLength(structuralCategoryLabels.length),
+      );
+
+      expect(
+        categoryLabelCandidates
+            .map((CanonicalBusinessTextCandidate candidate) => candidate.text)
+            .toSet(),
+        structuralCategoryLabels,
+      );
+
+      expect(
+        categoryLabelCandidates.every(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.kind == CanonicalBusinessTextCandidateKind.paragraph &&
+              candidate.directContentLine > 0,
+        ),
+        isTrue,
+      );
+
+      expect(
+        candidateIndex.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.text.startsWith('Standard Compliance:'),
+        ),
+        isFalse,
+      );
+
       expect(
         candidateIndex.candidates.any(
           (CanonicalBusinessTextCandidate candidate) =>
@@ -382,6 +448,20 @@ RegistrySnapshot _syntheticSnapshot({int sourceStartLine = 1}) {
     endLine: sourceStartLine + 25,
   );
 
+  final RegistryNode unrelatedRegistryContent = _node(
+    id: 'node.business.unrelated-registry-content',
+    path: const <String>[
+      'Registry',
+      '99. Service Architecture Registry '
+          '— Future Category',
+      'Unrelated Registry Content',
+    ],
+    content: 'Unrelated label',
+    ownerId: ownerId,
+    startLine: sourceStartLine + 26,
+    endLine: sourceStartLine + 27,
+  );
+
   final RegistryNode businessRoot = _node(
     id: 'node.business',
     path: const <String>[
@@ -397,6 +477,10 @@ RegistrySnapshot _syntheticSnapshot({int sourceStartLine = 1}) {
         '- Global Completion Evidence Rule.\n'
         '#### Наследуемые правила\n'
         '- Chat Evidence Rules.\n'
+        'Root Category:\n'
+        'Future Category\n'
+        'Unrelated label\n'
+        'Standard Compliance: Future Category Standard ✅\n'
         'Business Rules:\n'
         'Обычная фраза.\n'
         'Фото-ТЗ должно формироваться через '
@@ -416,7 +500,7 @@ RegistrySnapshot _syntheticSnapshot({int sourceStartLine = 1}) {
     ownerId: ownerId,
     startLine: sourceStartLine,
     endLine: sourceStartLine + 19,
-    children: <RegistryNode>[businessChild],
+    children: <RegistryNode>[businessChild, unrelatedRegistryContent],
   );
 
   final RegistryNode technicalRoot = _node(

@@ -90,6 +90,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
         required String rawText,
         required String text,
         required int directContentLine,
+        bool structuralLabel = false,
       }) {
         final String normalizedIdentityText = _normalizedCandidateText(text);
 
@@ -108,7 +109,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
                 kind == CanonicalBusinessTextCandidateKind.blockquote) &&
             _sentenceEndingPattern.hasMatch(normalizedIdentityText);
 
-        if (!heading && !listItem && !completedStatement) {
+        if (!heading && !listItem && !completedStatement && !structuralLabel) {
           return;
         }
 
@@ -155,6 +156,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
       int activeFenceLength = 0;
       bool insideHtmlComment = false;
       String? activeSectionLabel;
+      bool awaitingRootCategoryLabel = false;
 
       for (int lineIndex = 0; lineIndex < contentLines.length; lineIndex += 1) {
         final String rawLine = contentLines[lineIndex];
@@ -208,6 +210,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
               .replaceFirst(_headingPattern, '')
               .trim()
               .toLowerCase();
+          awaitingRootCategoryLabel = false;
           continue;
         }
 
@@ -217,6 +220,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
 
         if (_isHorizontalRule(trimmedLine)) {
           activeSectionLabel = null;
+          awaitingRootCategoryLabel = false;
           continue;
         }
 
@@ -228,12 +232,16 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
 
         if (_isSectionLabel(structuralText)) {
           activeSectionLabel = structuralText.toLowerCase();
+          awaitingRootCategoryLabel = activeSectionLabel == 'root category:';
           continue;
         }
 
         if (_isExcludedSection(activeSectionLabel)) {
           continue;
         }
+
+        final bool followsRootCategoryLabel = awaitingRootCategoryLabel;
+        awaitingRootCategoryLabel = false;
 
         final RegExpMatch? blockquoteMatch = _blockquotePattern.firstMatch(
           trimmedLine,
@@ -298,11 +306,23 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
           continue;
         }
 
+        final String structuralContainerHeading = node.path.segments.last
+            .trim()
+            .toLowerCase();
+
+        final bool structuralCategoryLabel =
+            followsRootCategoryLabel ||
+            (directContentLine == 1 &&
+                (structuralContainerHeading == 'root category' ||
+                    structuralContainerHeading ==
+                        '${trimmedLine.toLowerCase()} registry content'));
+
         addCandidate(
           kind: CanonicalBusinessTextCandidateKind.paragraph,
           rawText: rawLine,
           text: trimmedLine,
           directContentLine: directContentLine,
+          structuralLabel: structuralCategoryLabel,
         );
       }
     }
