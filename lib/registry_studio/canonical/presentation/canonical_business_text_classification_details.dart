@@ -67,6 +67,7 @@ final class CanonicalBusinessTextClassificationDetails extends StatelessWidget {
                     'Причина: ${switch (classification.reason) {
                       CanonicalBusinessTextClassificationReason.noExactCanonicalTextMatch => 'Точное каноническое совпадение не найдено',
                       CanonicalBusinessTextClassificationReason.singleExactUniversalMatch => 'Одно точное универсальное совпадение',
+                      CanonicalBusinessTextClassificationReason.singleApprovedEquivalentMatch => 'Утверждённая эквивалентная формулировка',
                       CanonicalBusinessTextClassificationReason.exactTextRequiresApplicabilityReview => 'Требуется проверка применимости',
                       CanonicalBusinessTextClassificationReason.ambiguousExactCanonicalTextMatch => 'Обнаружено несколько точных совпадений',
                     }}',

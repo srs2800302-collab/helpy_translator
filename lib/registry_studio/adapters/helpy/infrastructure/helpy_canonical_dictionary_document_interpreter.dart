@@ -1,9 +1,11 @@
+import '../../../canonical/domain/entities/canonical_approved_equivalent_evidence.dart';
 import '../../../canonical/domain/entities/canonical_dictionary.dart';
 import '../../../canonical/domain/entities/canonical_dictionary_collection.dart';
 import '../../../canonical/domain/entities/canonical_dictionary_entry.dart';
 import '../../../canonical/domain/entities/canonical_ordered_block_entry.dart';
 import '../../../canonical/domain/entities/canonical_ordered_block_item.dart';
 import '../../../canonical/domain/entities/canonical_phrase_entry.dart';
+import '../../../core/domain/evidence/source_evidence.dart';
 
 final class HelpyCanonicalDictionaryDocumentInterpreter {
   const HelpyCanonicalDictionaryDocumentInterpreter();
@@ -15,6 +17,12 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
       '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->';
 
   static const String approvedStoredStatus = 'APPROVED / STORED';
+
+  static const String approvedEquivalentBeginMarker =
+      '<!-- REGISTRY_STUDIO_CANONICAL_APPROVED_EQUIVALENTS:BEGIN -->';
+
+  static const String approvedEquivalentEndMarker =
+      '<!-- REGISTRY_STUDIO_CANONICAL_APPROVED_EQUIVALENTS:END -->';
 
   static const String generalPreparationCollectionId =
       'helpy.canonical.general_preparation';
@@ -51,6 +59,10 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
   );
 
   static final RegExp _bulletPattern = RegExp(r'^-\s+(.+?)\s*$');
+
+  static final RegExp _approvedEquivalentHeadingPattern = RegExp(
+    r'^### Approved equivalent:\s*`([^`]+)`\s*$',
+  );
 
   CanonicalDictionary interpret({
     required String sourceDocumentPath,
@@ -362,6 +374,16 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
       );
     }
 
+    final List<CanonicalApprovedEquivalentEvidence> approvedEquivalentEvidence =
+        _interpretApprovedEquivalentEvidence(
+          lines: lines,
+          beginMarkerIndex: beginMarkerIndex,
+          endMarkerIndex: endMarkerIndex,
+          dictionaryMetadataEndIndex: dictionaryMetadataEndIndex,
+          sourceDocumentPath: normalizedSourceDocumentPath,
+          sourceSnapshotFingerprint: normalizedSourceSnapshotFingerprint,
+        );
+
     return CanonicalDictionary(
       dictionaryId: dictionaryId,
       version: dictionaryVersion,
@@ -373,7 +395,214 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
       beginMarkerLine: beginMarkerIndex + 1,
       endMarkerLine: endMarkerIndex + 1,
       collections: collections,
+      approvedEquivalentEvidence: approvedEquivalentEvidence,
     );
+  }
+
+  List<CanonicalApprovedEquivalentEvidence>
+  _interpretApprovedEquivalentEvidence({
+    required List<String> lines,
+    required int beginMarkerIndex,
+    required int endMarkerIndex,
+    required int dictionaryMetadataEndIndex,
+    required String sourceDocumentPath,
+    required String sourceSnapshotFingerprint,
+  }) {
+    final List<int> approvedBeginIndexes = <int>[];
+    final List<int> approvedEndIndexes = <int>[];
+
+    for (
+      int index = beginMarkerIndex + 1;
+      index < dictionaryMetadataEndIndex;
+      index += 1
+    ) {
+      final String normalizedLine = lines[index].trim();
+
+      if (normalizedLine == approvedEquivalentBeginMarker) {
+        approvedBeginIndexes.add(index);
+      }
+
+      if (normalizedLine == approvedEquivalentEndMarker) {
+        approvedEndIndexes.add(index);
+      }
+    }
+
+    if (approvedBeginIndexes.isEmpty && approvedEndIndexes.isEmpty) {
+      return const <CanonicalApprovedEquivalentEvidence>[];
+    }
+
+    if (approvedBeginIndexes.length != 1 || approvedEndIndexes.length != 1) {
+      throw FormatException(
+        'Canonical Dictionary approved-equivalent evidence must '
+        'contain exactly one begin marker and one end marker.',
+      );
+    }
+
+    final int approvedBeginIndex = approvedBeginIndexes.single;
+    final int approvedEndIndex = approvedEndIndexes.single;
+
+    if (approvedEndIndex <= approvedBeginIndex ||
+        approvedEndIndex >= dictionaryMetadataEndIndex ||
+        approvedEndIndex >= endMarkerIndex) {
+      throw const FormatException(
+        'Canonical Dictionary approved-equivalent evidence '
+        'marker range is invalid.',
+      );
+    }
+
+    final List<int> evidenceHeadingIndexes = <int>[];
+
+    for (
+      int index = approvedBeginIndex + 1;
+      index < approvedEndIndex;
+      index += 1
+    ) {
+      if (_approvedEquivalentHeadingPattern.hasMatch(lines[index].trim())) {
+        evidenceHeadingIndexes.add(index);
+      }
+    }
+
+    if (evidenceHeadingIndexes.isEmpty) {
+      throw const FormatException(
+        'Canonical Dictionary approved-equivalent evidence '
+        'must contain at least one approved record.',
+      );
+    }
+
+    String readSingleBacktickedValue({
+      required String label,
+      required int startIndex,
+      required int endIndex,
+    }) {
+      final RegExp pattern = RegExp(
+        '^${RegExp.escape(label)}:\\s*`([^`]+)`\\s*\$',
+      );
+
+      final List<String> values = <String>[];
+
+      for (int index = startIndex; index <= endIndex; index += 1) {
+        final RegExpMatch? match = pattern.firstMatch(lines[index].trim());
+
+        if (match != null) {
+          values.add(match.group(1)!.trim());
+        }
+      }
+
+      if (values.length != 1 || values.single.isEmpty) {
+        throw FormatException(
+          'Approved-equivalent record must contain exactly one '
+          '$label value.',
+        );
+      }
+
+      return values.single;
+    }
+
+    final List<CanonicalApprovedEquivalentEvidence> evidence =
+        <CanonicalApprovedEquivalentEvidence>[];
+
+    for (
+      int position = 0;
+      position < evidenceHeadingIndexes.length;
+      position += 1
+    ) {
+      final int recordStartIndex = evidenceHeadingIndexes[position];
+      final int recordEndIndex = position + 1 < evidenceHeadingIndexes.length
+          ? evidenceHeadingIndexes[position + 1] - 1
+          : approvedEndIndex - 1;
+
+      final RegExpMatch headingMatch = _approvedEquivalentHeadingPattern
+          .firstMatch(lines[recordStartIndex].trim())!;
+
+      final String identity = headingMatch.group(1)!.trim();
+
+      final RegExp statusPattern = RegExp(
+        r'^Approval status:\s*\*\*([^*]+)\*\*\s*$',
+      );
+
+      final List<String> statuses = <String>[];
+      final List<String> applicability = <String>[];
+
+      final RegExp applicabilityPattern = RegExp(
+        r'^Applicability:\s*`([^`]+)`\s*$',
+      );
+
+      int lastEvidenceLineIndex = recordStartIndex;
+
+      for (int index = recordStartIndex; index <= recordEndIndex; index += 1) {
+        final String normalizedLine = lines[index].trim();
+
+        if (normalizedLine.isNotEmpty) {
+          lastEvidenceLineIndex = index;
+        }
+
+        final RegExpMatch? statusMatch = statusPattern.firstMatch(
+          normalizedLine,
+        );
+
+        if (statusMatch != null) {
+          statuses.add(statusMatch.group(1)!.trim());
+        }
+
+        final RegExpMatch? applicabilityMatch = applicabilityPattern.firstMatch(
+          normalizedLine,
+        );
+
+        if (applicabilityMatch != null) {
+          applicability.add(applicabilityMatch.group(1)!.trim());
+        }
+      }
+
+      if (statuses.length != 1 || statuses.single != approvedStoredStatus) {
+        throw FormatException(
+          'Approved-equivalent record $identity must contain '
+          'exactly one $approvedStoredStatus status.',
+        );
+      }
+
+      if (applicability.isEmpty) {
+        throw FormatException(
+          'Approved-equivalent record $identity must contain '
+          'explicit applicability.',
+        );
+      }
+
+      evidence.add(
+        CanonicalApprovedEquivalentEvidence(
+          identity: identity,
+          canonicalEntryIdentity: readSingleBacktickedValue(
+            label: 'Canonical entry identity',
+            startIndex: recordStartIndex,
+            endIndex: recordEndIndex,
+          ),
+          equivalentText: readSingleBacktickedValue(
+            label: 'Equivalent text',
+            startIndex: recordStartIndex,
+            endIndex: recordEndIndex,
+          ),
+          applicability: applicability,
+          approvalEvidenceId: readSingleBacktickedValue(
+            label: 'Approval evidence ID',
+            startIndex: recordStartIndex,
+            endIndex: recordEndIndex,
+          ),
+          sourceEvidence: <SourceEvidence>[
+            SourceEvidence(
+              sourceDocumentPath: sourceDocumentPath,
+              sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+              headingPath: const <String>[
+                'Canonical Dictionary',
+                'Approved equivalent evidence',
+              ],
+              startLine: recordStartIndex + 1,
+              endLine: lastEvidenceLineIndex + 1,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return evidence;
   }
 
   List<CanonicalDictionaryEntry> _interpretCollectionEntries({

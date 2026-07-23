@@ -264,60 +264,89 @@ void main() {
       );
     });
 
-    test(
-      'loads the exact approved dictionary from the normative contract',
-      () async {
-        final File contract = File(
-          'docs/architecture/registry_studio/'
-          'Registry_Studio_Engineering_Change_Propagation_'
-          'and_Approval_Contract_v1.md',
-        );
+    test('loads the exact approved dictionary from the normative contract', () async {
+      final File contract = File(
+        'docs/architecture/registry_studio/'
+        'Registry_Studio_Engineering_Change_Propagation_'
+        'and_Approval_Contract_v1.md',
+      );
 
-        expect(await contract.exists(), isTrue);
+      expect(await contract.exists(), isTrue);
 
-        final CanonicalDictionary dictionary = interpreter.interpret(
-          sourceDocumentPath: contract.path,
-          sourceRevision: '5863b3f78130d5e9231bde996d6620a1c0ab742e',
-          sourceSnapshotFingerprint:
-              'sha256:'
-              '73bb98686befe8885e487427537db32d54be7e3443b5d3b4aa192f9d03c976a6',
-          sourceContent: await contract.readAsString(),
-        );
+      final CanonicalDictionary dictionary = interpreter.interpret(
+        sourceDocumentPath: contract.path,
+        sourceRevision: '5863b3f78130d5e9231bde996d6620a1c0ab742e',
+        sourceSnapshotFingerprint:
+            'sha256:'
+            '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6',
+        sourceContent: await contract.readAsString(),
+      );
 
-        expect(
-          dictionary.dictionaryId,
-          'REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1',
-        );
-        expect(dictionary.version, '1');
-        expect(dictionary.status, 'APPROVED / STORED');
+      expect(
+        dictionary.dictionaryId,
+        'REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1',
+      );
+      expect(dictionary.version, '1');
+      expect(dictionary.status, 'APPROVED / STORED');
 
-        expect(
-          dictionary.collections
-              .map((collection) => collection.id)
-              .toList(growable: false),
-          <String>[
-            'helpy.canonical.general_preparation',
-            'helpy.canonical.photo_labels',
-            'helpy.canonical.client_labels',
-            'helpy.canonical.master_workflow_blocks',
-            'helpy.canonical.global_business_rules',
-          ],
-        );
+      expect(dictionary.approvedEquivalentEvidence, hasLength(1));
 
-        expect(
-          dictionary.collections
-              .map((collection) => collection.entryType)
-              .toList(growable: false),
-          <String>[
-            'phrase_with_applicability',
-            'phrase',
-            'phrase',
-            'ordered_block',
-            'ordered_rule_block',
-          ],
-        );
-      },
-    );
+      final approvedEquivalent = dictionary.approvedEquivalentEvidence.single;
+
+      expect(
+        approvedEquivalent.identity,
+        'helpy.canonical.approved-equivalent.electrical-safety-boundary.001',
+      );
+      expect(
+        approvedEquivalent.canonicalEntryIdentity,
+        'REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1::helpy.canonical.client_labels::sha256:09bad4adec8d4bc7e0995396df9af95ad197417022f64c04c2ba8301e2d85c99',
+      );
+      expect(
+        approvedEquivalent.equivalentText,
+        'Клиент не обязан выполнять опасные действия для предоставления информации.',
+      );
+      expect(approvedEquivalent.applicability, <String>[
+        'RegistryPath: Helpy Architecture Registry v1 Foundation -> 23. Service Architecture Registry — Electrical -> Electrical Point Mini-TZ Standard',
+      ]);
+      expect(
+        approvedEquivalent.approvalEvidenceId,
+        'registry-studio.engineer-approval.2026-07-23.equivalent-001',
+      );
+      expect(
+        approvedEquivalent.sourceEvidence.single.sourceDocumentPath,
+        contract.path,
+      );
+      expect(
+        approvedEquivalent.sourceEvidence.single.sourceSnapshotFingerprint,
+        'sha256:10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6',
+      );
+
+      expect(
+        dictionary.collections
+            .map((collection) => collection.id)
+            .toList(growable: false),
+        <String>[
+          'helpy.canonical.general_preparation',
+          'helpy.canonical.photo_labels',
+          'helpy.canonical.client_labels',
+          'helpy.canonical.master_workflow_blocks',
+          'helpy.canonical.global_business_rules',
+        ],
+      );
+
+      expect(
+        dictionary.collections
+            .map((collection) => collection.entryType)
+            .toList(growable: false),
+        <String>[
+          'phrase_with_applicability',
+          'phrase',
+          'phrase',
+          'ordered_block',
+          'ordered_rule_block',
+        ],
+      );
+    });
 
     test(
       'builds the complete typed phrase vocabulary from the normative contract',
@@ -335,7 +364,7 @@ void main() {
           sourceRevision: '7f3ff7f90fc8d8802f3fb8fcff851b23a224b920',
           sourceSnapshotFingerprint:
               'sha256:'
-              '73bb98686befe8885e487427537db32d54be7e3443b5d3b4aa192f9d03c976a6',
+              '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6',
           sourceContent: await contract.readAsString(),
         );
 
@@ -452,7 +481,7 @@ void main() {
                     '7f3ff7f90fc8d8802f3fb8fcff851b23a224b920' &&
                 entry.sourceSnapshotFingerprint ==
                     'sha256:'
-                        '73bb98686befe8885e487427537db32d54be7e3443b5d3b4aa192f9d03c976a6' &&
+                        '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6' &&
                 entry.sourceStartLine > 0 &&
                 entry.sourceEndLine >= entry.sourceStartLine,
           ),

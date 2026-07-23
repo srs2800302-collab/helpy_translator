@@ -91,7 +91,7 @@ void main() {
 
       const String dictionaryFingerprint =
           'sha256:'
-          '73bb98686befe8885e487427537db32d54be7e3443b5d3b4aa192f9d03c976a6';
+          '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6';
 
       final RegistrySnapshot snapshot = _resolvedFixtureSnapshot(
         sourceDocumentPath: registryFixture.path,
@@ -167,7 +167,35 @@ void main() {
         result.countForStatus(
           CanonicalBusinessTextClassificationStatus.equivalent,
         ),
-        0,
+        1,
+      );
+
+      final CanonicalBusinessTextClassification approvedEquivalent = result
+          .classifications
+          .classifications
+          .singleWhere(
+            (CanonicalBusinessTextClassification classification) =>
+                classification.status ==
+                CanonicalBusinessTextClassificationStatus.equivalent,
+          );
+
+      expect(
+        approvedEquivalent.candidate.text,
+        'Клиент не обязан выполнять опасные действия для предоставления информации.',
+      );
+
+      expect(approvedEquivalent.candidate.path.segments, <String>[
+        'Helpy Architecture Registry v1 Foundation',
+        '23. Service Architecture Registry — Electrical',
+        'Electrical Point Mini-TZ Standard',
+      ]);
+
+      expect(
+        approvedEquivalent
+            .matchedApprovedEquivalentEvidence
+            .single
+            .approvalEvidenceId,
+        'registry-studio.engineer-approval.2026-07-23.equivalent-001',
       );
 
       expect(

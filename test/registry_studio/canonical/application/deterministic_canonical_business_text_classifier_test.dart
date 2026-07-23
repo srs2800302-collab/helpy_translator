@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_canonical_dictionary_document_interpreter.dart';
 import 'package:helpy_translator/registry_studio/canonical/application/deterministic_canonical_business_text_classifier.dart';
+import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_approved_equivalent_evidence.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_business_text_candidate.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_business_text_candidate_index.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_business_text_classification.dart';
@@ -125,6 +126,71 @@ void main() {
       expect(classification.matchedCanonicalEntries, hasLength(2));
     });
 
+    test('classifies only a path-applicable approved equivalent', () {
+      final CanonicalPhraseEntry canonicalEntry = _entry(
+        collectionId: 'helpy.canonical.client_labels',
+        phrase:
+            'Вы не обязаны выполнять опасные действия для предоставления информации.',
+      );
+
+      final CanonicalDictionary dictionary = _dictionary(
+        <CanonicalPhraseEntry>[canonicalEntry],
+        approvedEquivalentEvidence: <CanonicalApprovedEquivalentEvidence>[
+          CanonicalApprovedEquivalentEvidence(
+            identity:
+                'helpy.canonical.approved-equivalent.electrical-safety-boundary.001',
+            canonicalEntryIdentity: canonicalEntry.identity,
+            equivalentText:
+                'Клиент не обязан выполнять опасные действия для предоставления информации.',
+            applicability: const <String>[
+              'RegistryPath: Registry -> Business Rules',
+            ],
+            approvalEvidenceId:
+                'registry-studio.engineer-approval.2026-07-23.equivalent-001',
+            sourceEvidence: <SourceEvidence>[
+              SourceEvidence(
+                sourceDocumentPath: 'contract.md',
+                sourceSnapshotFingerprint: 'sha256:dictionary',
+                headingPath: const <String>[
+                  'Canonical Dictionary',
+                  'Approved equivalent evidence',
+                ],
+                startLine: 4,
+                endLine: 4,
+              ),
+            ],
+          ),
+        ],
+      );
+
+      final CanonicalBusinessTextClassification classification = classifier
+          .classify(
+            candidates: _candidateIndex(<CanonicalBusinessTextCandidate>[
+              _candidate(
+                identity: 'candidate-equivalent',
+                text:
+                    'Клиент не обязан выполнять опасные действия для предоставления информации.',
+              ),
+            ]),
+            dictionary: dictionary,
+          )
+          .classifications
+          .single;
+
+      expect(
+        classification.status,
+        CanonicalBusinessTextClassificationStatus.equivalent,
+      );
+      expect(
+        classification.reason,
+        CanonicalBusinessTextClassificationReason.singleApprovedEquivalentMatch,
+      );
+      expect(classification.matchedCanonicalEntries, <CanonicalPhraseEntry>[
+        canonicalEntry,
+      ]);
+      expect(classification.matchedApprovedEquivalentEvidence, hasLength(1));
+    });
+
     test('classifies every candidate exactly once', () {
       final CanonicalBusinessTextClassificationIndex index = classifier
           .classify(
@@ -188,7 +254,7 @@ void main() {
         sourceRevision: '3ac566fc7779f997ca46325cbf2af78d391d6aac',
         sourceSnapshotFingerprint:
             'sha256:'
-            '73bb98686befe8885e487427537db32d54be7e3443b5d3b4aa192f9d03c976a6',
+            '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6',
         sourceContent: await contract.readAsString(),
       );
 
@@ -317,7 +383,11 @@ CanonicalBusinessTextCandidate _candidate({
   );
 }
 
-CanonicalDictionary _dictionary(Iterable<CanonicalPhraseEntry> entries) {
+CanonicalDictionary _dictionary(
+  Iterable<CanonicalPhraseEntry> entries, {
+  Iterable<CanonicalApprovedEquivalentEvidence> approvedEquivalentEvidence =
+      const <CanonicalApprovedEquivalentEvidence>[],
+}) {
   final Map<String, List<CanonicalPhraseEntry>> entriesByCollectionId =
       <String, List<CanonicalPhraseEntry>>{};
 
@@ -352,6 +422,7 @@ CanonicalDictionary _dictionary(Iterable<CanonicalPhraseEntry> entries) {
           entries: collection.value,
         ),
     ],
+    approvedEquivalentEvidence: approvedEquivalentEvidence,
   );
 }
 

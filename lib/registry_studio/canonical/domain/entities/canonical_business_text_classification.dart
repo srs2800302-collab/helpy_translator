@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'canonical_approved_equivalent_evidence.dart';
 import 'canonical_business_text_candidate.dart';
 import 'canonical_business_text_classification_status.dart';
 import 'canonical_phrase_entry.dart';
@@ -11,8 +12,15 @@ final class CanonicalBusinessTextClassification extends Equatable {
     required CanonicalBusinessTextClassificationReason reason,
     Iterable<CanonicalPhraseEntry> matchedCanonicalEntries =
         const <CanonicalPhraseEntry>[],
+    Iterable<CanonicalApprovedEquivalentEvidence>
+        matchedApprovedEquivalentEvidence =
+        const <CanonicalApprovedEquivalentEvidence>[],
   }) {
     final List<CanonicalPhraseEntry> normalizedMatches = matchedCanonicalEntries
+        .toList(growable: false);
+
+    final List<CanonicalApprovedEquivalentEvidence>
+    normalizedApprovedEquivalentMatches = matchedApprovedEquivalentEvidence
         .toList(growable: false);
 
     final Set<String> matchedIdentities = <String>{};
@@ -27,6 +35,19 @@ final class CanonicalBusinessTextClassification extends Equatable {
       }
     }
 
+    final Set<String> approvedEquivalentIdentities = <String>{};
+
+    for (final CanonicalApprovedEquivalentEvidence evidence
+        in normalizedApprovedEquivalentMatches) {
+      if (!approvedEquivalentIdentities.add(evidence.identity)) {
+        throw ArgumentError.value(
+          evidence.identity,
+          'matchedApprovedEquivalentEvidence',
+          'Matched approved-equivalent identities must be unique.',
+        );
+      }
+    }
+
     switch ((status, reason)) {
       case (
         CanonicalBusinessTextClassificationStatus.exact,
@@ -36,8 +57,7 @@ final class CanonicalBusinessTextClassification extends Equatable {
           throw ArgumentError.value(
             normalizedMatches,
             'matchedCanonicalEntries',
-            'Exact classification requires exactly one '
-                'canonical entry.',
+            'Exact classification requires exactly one canonical entry.',
           );
         }
 
@@ -47,6 +67,51 @@ final class CanonicalBusinessTextClassification extends Equatable {
             'matchedCanonicalEntries',
             'Exact classification cannot bypass unresolved '
                 'canonical applicability.',
+          );
+        }
+
+        if (normalizedApprovedEquivalentMatches.isNotEmpty) {
+          throw ArgumentError.value(
+            normalizedApprovedEquivalentMatches,
+            'matchedApprovedEquivalentEvidence',
+            'Exact classification must not contain '
+                'approved-equivalent evidence.',
+          );
+        }
+
+      case (
+        CanonicalBusinessTextClassificationStatus.equivalent,
+        CanonicalBusinessTextClassificationReason.singleApprovedEquivalentMatch,
+      ):
+        if (normalizedMatches.length != 1 ||
+            normalizedApprovedEquivalentMatches.length != 1) {
+          throw ArgumentError(
+            'Equivalent classification requires exactly one canonical entry '
+            'and one approved-equivalent evidence record.',
+          );
+        }
+
+        final CanonicalApprovedEquivalentEvidence approvedEquivalent =
+            normalizedApprovedEquivalentMatches.single;
+
+        if (approvedEquivalent.canonicalEntryIdentity !=
+            normalizedMatches.single.identity) {
+          throw ArgumentError.value(
+            approvedEquivalent,
+            'matchedApprovedEquivalentEvidence',
+            'Approved-equivalent evidence must reference the matched '
+                'canonical entry.',
+          );
+        }
+
+        if (_technicallyNormalize(candidate.text) !=
+            _technicallyNormalize(approvedEquivalent.equivalentText)) {
+          throw ArgumentError.value(
+            candidate.text,
+            'candidate',
+            'Equivalent classification candidate text must exactly match '
+                'the approved equivalent after technical whitespace '
+                'normalization.',
           );
         }
 
@@ -65,6 +130,15 @@ final class CanonicalBusinessTextClassification extends Equatable {
           );
         }
 
+        if (normalizedApprovedEquivalentMatches.isNotEmpty) {
+          throw ArgumentError.value(
+            normalizedApprovedEquivalentMatches,
+            'matchedApprovedEquivalentEvidence',
+            'Exact-text review must not contain '
+                'approved-equivalent evidence.',
+          );
+        }
+
       case (
         CanonicalBusinessTextClassificationStatus.review,
         CanonicalBusinessTextClassificationReason
@@ -79,16 +153,24 @@ final class CanonicalBusinessTextClassification extends Equatable {
           );
         }
 
+        if (normalizedApprovedEquivalentMatches.isNotEmpty) {
+          throw ArgumentError.value(
+            normalizedApprovedEquivalentMatches,
+            'matchedApprovedEquivalentEvidence',
+            'Ambiguous exact-text review must not contain '
+                'approved-equivalent evidence.',
+          );
+        }
+
       case (
         CanonicalBusinessTextClassificationStatus.unclassifiedNeutral,
         CanonicalBusinessTextClassificationReason.noExactCanonicalTextMatch,
       ):
-        if (normalizedMatches.isNotEmpty) {
-          throw ArgumentError.value(
-            normalizedMatches,
-            'matchedCanonicalEntries',
-            'Unclassified or neutral candidate must not '
-                'contain a proven exact canonical match.',
+        if (normalizedMatches.isNotEmpty ||
+            normalizedApprovedEquivalentMatches.isNotEmpty) {
+          throw ArgumentError(
+            'Unclassified or neutral candidate must not contain a proven '
+            'canonical or approved-equivalent match.',
           );
         }
 
@@ -106,6 +188,10 @@ final class CanonicalBusinessTextClassification extends Equatable {
       matchedCanonicalEntries: List<CanonicalPhraseEntry>.unmodifiable(
         normalizedMatches,
       ),
+      matchedApprovedEquivalentEvidence:
+          List<CanonicalApprovedEquivalentEvidence>.unmodifiable(
+            normalizedApprovedEquivalentMatches,
+          ),
     );
   }
 
@@ -114,13 +200,20 @@ final class CanonicalBusinessTextClassification extends Equatable {
     required this.status,
     required this.reason,
     required this.matchedCanonicalEntries,
+    required this.matchedApprovedEquivalentEvidence,
   });
 
   final CanonicalBusinessTextCandidate candidate;
   final CanonicalBusinessTextClassificationStatus status;
   final CanonicalBusinessTextClassificationReason reason;
-
   final List<CanonicalPhraseEntry> matchedCanonicalEntries;
+
+  final List<CanonicalApprovedEquivalentEvidence>
+  matchedApprovedEquivalentEvidence;
+
+  static String _technicallyNormalize(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
 
   @override
   List<Object?> get props => <Object?>[
@@ -128,5 +221,6 @@ final class CanonicalBusinessTextClassification extends Equatable {
     status,
     reason,
     matchedCanonicalEntries,
+    matchedApprovedEquivalentEvidence,
   ];
 }

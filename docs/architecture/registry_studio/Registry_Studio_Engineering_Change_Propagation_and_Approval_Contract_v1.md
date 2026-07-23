@@ -1751,6 +1751,28 @@ Dictionary ID: `REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1`
 
 Тексты утверждённых фраз и блоков ниже перенесены из текущего источника Registry и не переписываются этим контрактом. Стабильные legacy titles и отдельные source evidence fragments могут оставаться на английском языке как дословные identifiers или доказательства.
 
+### Утверждённые эквивалентные формулировки
+
+Эквивалентная формулировка не становится новой canonical entry и не разрешает автоматическую классификацию других похожих текстов.
+
+Эквивалентность действует только в явно зафиксированной applicability. Наличие похожего текста вне этой applicability не является доказательством эквивалентности.
+
+<!-- REGISTRY_STUDIO_CANONICAL_APPROVED_EQUIVALENTS:BEGIN -->
+
+### Approved equivalent: `helpy.canonical.approved-equivalent.electrical-safety-boundary.001`
+
+Approval status: **APPROVED / STORED**
+Canonical entry identity: `REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1::helpy.canonical.client_labels::sha256:09bad4adec8d4bc7e0995396df9af95ad197417022f64c04c2ba8301e2d85c99`
+Equivalent text: `Клиент не обязан выполнять опасные действия для предоставления информации.`
+Applicability: `RegistryPath: Helpy Architecture Registry v1 Foundation -> 23. Service Architecture Registry — Electrical -> Electrical Point Mini-TZ Standard`
+Approval evidence ID: `registry-studio.engineer-approval.2026-07-23.equivalent-001`
+Registry source path: `docs/architecture/Helpy_Architecture_Registry_v1.md`
+Registry source revision: `64f45059c6043f2e65165a4a8da053cf3a73c107`
+Registry source fingerprint: `git-blob:c69a0f5812e00f99ecc3eb3235d5a2c8fc3271a9`
+Registry source line: `9366`
+
+<!-- REGISTRY_STUDIO_CANONICAL_APPROVED_EQUIVALENTS:END -->
+
 ### Collection: `helpy.canonical.general_preparation`
 
 Тип записи: `phrase_with_applicability`

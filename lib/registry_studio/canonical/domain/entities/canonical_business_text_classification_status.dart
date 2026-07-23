@@ -10,6 +10,7 @@ enum CanonicalBusinessTextClassificationStatus {
 enum CanonicalBusinessTextClassificationReason {
   noExactCanonicalTextMatch,
   singleExactUniversalMatch,
+  singleApprovedEquivalentMatch,
   exactTextRequiresApplicabilityReview,
   ambiguousExactCanonicalTextMatch,
 }

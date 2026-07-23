@@ -310,6 +310,8 @@ final class _RegistryStudioShellViewState
         'Точное каноническое совпадение не найдено',
       'singleExactUniversalMatch' =>
         'Найдено одно точное универсальное совпадение',
+      'singleApprovedEquivalentMatch' =>
+        'Найдена утверждённая эквивалентная формулировка',
       'exactTextRequiresApplicabilityReview' =>
         'Требуется проверка применимости',
       'ambiguousExactCanonicalTextMatch' =>
