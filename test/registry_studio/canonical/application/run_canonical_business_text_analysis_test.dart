@@ -91,7 +91,7 @@ void main() {
 
       const String dictionaryFingerprint =
           'sha256:'
-          '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6';
+          '61ffd614b9d04e83aeeaf89e720dd58ed7788fe44a3e5f27e657a5430c8b329c';
 
       final RegistrySnapshot snapshot = _resolvedFixtureSnapshot(
         sourceDocumentPath: registryFixture.path,

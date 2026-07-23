@@ -278,7 +278,7 @@ void main() {
         sourceRevision: '5863b3f78130d5e9231bde996d6620a1c0ab742e',
         sourceSnapshotFingerprint:
             'sha256:'
-            '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6',
+            '61ffd614b9d04e83aeeaf89e720dd58ed7788fe44a3e5f27e657a5430c8b329c',
         sourceContent: await contract.readAsString(),
       );
 
@@ -318,7 +318,7 @@ void main() {
       );
       expect(
         approvedEquivalent.sourceEvidence.single.sourceSnapshotFingerprint,
-        'sha256:10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6',
+        'sha256:61ffd614b9d04e83aeeaf89e720dd58ed7788fe44a3e5f27e657a5430c8b329c',
       );
 
       expect(
@@ -364,7 +364,7 @@ void main() {
           sourceRevision: '7f3ff7f90fc8d8802f3fb8fcff851b23a224b920',
           sourceSnapshotFingerprint:
               'sha256:'
-              '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6',
+              '61ffd614b9d04e83aeeaf89e720dd58ed7788fe44a3e5f27e657a5430c8b329c',
           sourceContent: await contract.readAsString(),
         );
 
@@ -409,10 +409,7 @@ void main() {
               .where((entry) => entry.applicability.isNotEmpty)
               .single
               .applicability,
-          <String>[
-            'Используется только для сценариев '
-                '«Заменить» и «Перенести».',
-          ],
+          <String>['Используется только для сценария «Заменить».'],
         );
 
         final masterWorkflowBlocks = dictionary.collectionById(
@@ -481,7 +478,7 @@ void main() {
                     '7f3ff7f90fc8d8802f3fb8fcff851b23a224b920' &&
                 entry.sourceSnapshotFingerprint ==
                     'sha256:'
-                        '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6' &&
+                        '61ffd614b9d04e83aeeaf89e720dd58ed7788fe44a3e5f27e657a5430c8b329c' &&
                 entry.sourceStartLine > 0 &&
                 entry.sourceEndLine >= entry.sourceStartLine,
           ),

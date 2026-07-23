@@ -254,7 +254,7 @@ void main() {
         sourceRevision: '3ac566fc7779f997ca46325cbf2af78d391d6aac',
         sourceSnapshotFingerprint:
             'sha256:'
-            '10a8d6fd58007804280f8d7b93af4a2fd9d4d1ab0399fdf1b410953eb9c88af6',
+            '61ffd614b9d04e83aeeaf89e720dd58ed7788fe44a3e5f27e657a5430c8b329c',
         sourceContent: await contract.readAsString(),
       );
 
