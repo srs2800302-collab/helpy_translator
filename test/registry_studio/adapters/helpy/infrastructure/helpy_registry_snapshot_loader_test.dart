@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/application/contracts/helpy_registry_node_identity_store.dart';
+import 'package:helpy_translator/registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
+import 'package:helpy_translator/registry_studio/maintenance/analysis/domain/entities/registry_node_change.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_registry_snapshot_loader.dart';
@@ -46,6 +48,9 @@ void main() {
         const String renamedCommitSha =
             '5555555555555555555555555555555555555555';
 
+        const String reoccupiedCommitSha =
+            '6666666666666666666666666666666666666666';
+
         const String successBlobSha =
             'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
         const String missingBlobSha =
@@ -54,6 +59,9 @@ void main() {
         const String movedBlobSha = 'abababababababababababababababababababab';
         const String renamedBlobSha =
             'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd';
+
+        const String reoccupiedBlobSha =
+            '5656565656565656565656565656565656565656';
 
         const String successContent =
             '# Registry\n'
@@ -78,12 +86,18 @@ void main() {
             '# Registry\n'
             '## Renamed Other\n';
 
+        const String reoccupiedContent =
+            '# Registry\n'
+            '## Other\n'
+            'Replacement content.\n';
+
         final Map<String, String> commitByRequestedRef = <String, String>{
           'success': successCommitSha,
           'missing': missingCommitSha,
           'extra': extraCommitSha,
           'moved': movedCommitSha,
           'renamed': renamedCommitSha,
+          'reoccupied': reoccupiedCommitSha,
         };
 
         final Map<String, String> blobByCommit = <String, String>{
@@ -92,6 +106,7 @@ void main() {
           extraCommitSha: extraBlobSha,
           movedCommitSha: movedBlobSha,
           renamedCommitSha: renamedBlobSha,
+          reoccupiedCommitSha: reoccupiedBlobSha,
         };
 
         final Map<String, String> contentByCommit = <String, String>{
@@ -100,6 +115,7 @@ void main() {
           extraCommitSha: extraContent,
           movedCommitSha: movedContent,
           renamedCommitSha: renamedContent,
+          reoccupiedCommitSha: reoccupiedContent,
         };
 
         final Map<String, String> ledgerBlobByCommit = <String, String>{
@@ -108,6 +124,7 @@ void main() {
           extraCommitSha: 'ffffffffffffffffffffffffffffffffffffffff',
           movedCommitSha: '1212121212121212121212121212121212121212',
           renamedCommitSha: '3434343434343434343434343434343434343434',
+          reoccupiedCommitSha: '7878787878787878787878787878787878787878',
         };
 
         final Map<String, String> ledgerContentByCommit = <String, String>{
@@ -116,6 +133,7 @@ void main() {
           extraCommitSha: _completeLedger,
           movedCommitSha: _movedOtherLedger,
           renamedCommitSha: _rootOnlyLedger,
+          reoccupiedCommitSha: _rootOnlyLedger,
         };
 
         final HttpServer server = await HttpServer.bind(
@@ -538,11 +556,127 @@ void main() {
 
         expect(
           missingIdentityStore.savedIdentitiesByRevision[extraCommitSha],
+          isEmpty,
+        );
+
+        expect(
+          missingIdentityStore.savedRetiredNodeIdsByRevision[extraCommitSha],
+          <RegistryNodeId>{
+            RegistryNodeId('helpy.registry.node.000002'),
+            RegistryNodeId('helpy.registry.node.000003'),
+          },
+        );
+
+        final HelpyRegistrySnapshotLoader reoccupiedIdentityLoader =
+            HelpyRegistrySnapshotLoader(
+              identityStore: missingIdentityStore,
+              documentSource: GitHubRegistryDocumentSource(
+                owner: 'owner',
+                repository: 'repository',
+                documentPath: _registryDocumentPath,
+                ref: 'reoccupied',
+                apiBaseUri: apiBaseUri,
+              ),
+              identityLedgerSource: HelpyRegistryNodeIdentityLedgerSource(
+                documentSource: GitHubRegistryDocumentSource(
+                  owner: 'owner',
+                  repository: 'repository',
+                  documentPath: _ledgerDocumentPath,
+                  ref: 'main',
+                  apiBaseUri: apiBaseUri,
+                ),
+              ),
+            );
+
+        final RegistrySnapshot reoccupiedIdentitySnapshot =
+            await reoccupiedIdentityLoader.loadSnapshotAfterRevision(
+              extraCommitSha,
+            );
+
+        final reoccupiedOther =
+            reoccupiedIdentitySnapshot.roots.single.children.single;
+
+        expect(
+          reoccupiedOther.path,
+          RegistryPath(const <String>['Registry', 'Other']),
+        );
+
+        expect(
+          reoccupiedOther.id,
+          RegistryNodeId('helpy.registry.node.000004'),
+        );
+
+        expect(
+          reoccupiedOther.id,
+          isNot(RegistryNodeId('helpy.registry.node.000003')),
+        );
+
+        expect(
+          missingIdentityStore.savedIdentitiesByRevision[reoccupiedCommitSha],
           <RegistryPath, RegistryNodeId>{
             RegistryPath(const <String>['Registry', 'Other']): RegistryNodeId(
-              'helpy.registry.node.000003',
+              'helpy.registry.node.000004',
             ),
           },
+        );
+
+        expect(
+          missingIdentityStore
+              .savedRetiredNodeIdsByRevision[reoccupiedCommitSha],
+          <RegistryNodeId>{
+            RegistryNodeId('helpy.registry.node.000002'),
+            RegistryNodeId('helpy.registry.node.000003'),
+          },
+        );
+
+        final reoccupationComparison = const RegistrySnapshotComparator()
+            .compare(
+              previousIndex: RegistryStructuralIndex(missingIdentitySnapshot),
+              currentIndex: RegistryStructuralIndex(reoccupiedIdentitySnapshot),
+            );
+
+        final RegistryPath reoccupiedPath = RegistryPath(const <String>[
+          'Registry',
+          'Other',
+        ]);
+
+        final reoccupationChanges = reoccupationComparison.changes
+            .where(
+              (change) =>
+                  change.previousNode?.path == reoccupiedPath ||
+                  change.currentNode?.path == reoccupiedPath,
+            )
+            .toList(growable: false);
+
+        expect(reoccupationChanges, hasLength(2));
+
+        final removedReoccupiedNode = reoccupationChanges.singleWhere(
+          (change) => change.kind == RegistryNodeChangeKind.removed,
+        );
+
+        final addedReoccupiedNode = reoccupationChanges.singleWhere(
+          (change) => change.kind == RegistryNodeChangeKind.added,
+        );
+
+        expect(
+          removedReoccupiedNode.previousNode?.id,
+          RegistryNodeId('helpy.registry.node.000003'),
+        );
+
+        expect(removedReoccupiedNode.currentNode, isNull);
+
+        expect(
+          addedReoccupiedNode.currentNode?.id,
+          RegistryNodeId('helpy.registry.node.000004'),
+        );
+
+        expect(addedReoccupiedNode.previousNode, isNull);
+
+        expect(
+          reoccupationChanges.any(
+            (change) => change.kind == RegistryNodeChangeKind.changed,
+          ),
+          isFalse,
         );
 
         final HelpyRegistrySnapshotLoader movedIdentityLoader =
@@ -582,11 +716,12 @@ void main() {
 
         expect(
           missingIdentityStore.savedIdentitiesByRevision[movedCommitSha],
-          <RegistryPath, RegistryNodeId>{
-            RegistryPath(const <String>['Registry', 'Domain']): RegistryNodeId(
-              'helpy.registry.node.000002',
-            ),
-          },
+          isEmpty,
+        );
+
+        expect(
+          missingIdentityStore.savedRetiredNodeIdsByRevision[movedCommitSha],
+          <RegistryNodeId>{RegistryNodeId('helpy.registry.node.000002')},
         );
 
         final HelpyRegistrySnapshotLoader unconfirmedRenameLoader =
@@ -630,14 +765,16 @@ void main() {
         expect(
           missingIdentityStore.savedIdentitiesByRevision[renamedCommitSha],
           <RegistryPath, RegistryNodeId>{
-            RegistryPath(const <String>['Registry', 'Domain']): RegistryNodeId(
-              'helpy.registry.node.000002',
-            ),
-            RegistryPath(const <String>['Registry', 'Other']): RegistryNodeId(
-              'helpy.registry.node.000003',
-            ),
             RegistryPath(const <String>['Registry', 'Renamed Other']):
                 RegistryNodeId('helpy.registry.node.000004'),
+          },
+        );
+
+        expect(
+          missingIdentityStore.savedRetiredNodeIdsByRevision[renamedCommitSha],
+          <RegistryNodeId>{
+            RegistryNodeId('helpy.registry.node.000002'),
+            RegistryNodeId('helpy.registry.node.000003'),
           },
         );
 
@@ -699,30 +836,41 @@ final class _MemoryHelpyRegistryNodeIdentityStore
   final Map<String, Map<RegistryPath, RegistryNodeId>>
   savedIdentitiesByRevision = <String, Map<RegistryPath, RegistryNodeId>>{};
 
+  final Map<String, Set<RegistryNodeId>> savedRetiredNodeIdsByRevision =
+      <String, Set<RegistryNodeId>>{};
+
   final List<String> loadedRevisions = <String>[];
   final List<String> savedRevisions = <String>[];
 
   @override
-  Future<Map<RegistryPath, RegistryNodeId>> loadIdentities(
+  Future<HelpyRegistryNodeIdentityState> loadState(
     String sourceRevision,
   ) async {
     loadedRevisions.add(sourceRevision);
 
-    return Map<RegistryPath, RegistryNodeId>.unmodifiable(
-      savedIdentitiesByRevision[sourceRevision] ??
+    return HelpyRegistryNodeIdentityState(
+      localIdentitiesByPath:
+          savedIdentitiesByRevision[sourceRevision] ??
           const <RegistryPath, RegistryNodeId>{},
+      retiredNodeIds:
+          savedRetiredNodeIdsByRevision[sourceRevision] ??
+          const <RegistryNodeId>{},
     );
   }
 
   @override
-  Future<void> saveIdentities(
+  Future<void> saveState(
     String sourceRevision,
-    Map<RegistryPath, RegistryNodeId> identities,
+    HelpyRegistryNodeIdentityState state,
   ) async {
     savedRevisions.add(sourceRevision);
 
     savedIdentitiesByRevision[sourceRevision] =
-        Map<RegistryPath, RegistryNodeId>.of(identities);
+        Map<RegistryPath, RegistryNodeId>.of(state.localIdentitiesByPath);
+
+    savedRetiredNodeIdsByRevision[sourceRevision] = Set<RegistryNodeId>.of(
+      state.retiredNodeIds,
+    );
   }
 }
 
