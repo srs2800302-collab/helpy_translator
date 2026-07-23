@@ -24,13 +24,15 @@ void main() {
       final CanonicalBusinessTextCandidateIndex index = extractor
           .extractCandidates(_syntheticSnapshot());
 
-      expect(index.candidateCount, 9);
+      expect(index.candidateCount, 11);
 
       expect(
         index.candidates.map(
           (CanonicalBusinessTextCandidate candidate) => candidate.text,
         ),
         containsAll(<String>[
+          '99. Service Architecture Registry — Future Category',
+          'Client Rules',
           'Обычная фраза.',
           'Элемент списка.',
           'Нумерованный пункт.',
@@ -44,10 +46,27 @@ void main() {
         ]),
       );
 
+      final List<CanonicalBusinessTextCandidate> headingCandidates = index
+          .candidates
+          .where(
+            (CanonicalBusinessTextCandidate candidate) =>
+                candidate.kind == CanonicalBusinessTextCandidateKind.heading,
+          )
+          .toList(growable: false);
+
+      expect(headingCandidates, hasLength(2));
+
+      expect(
+        headingCandidates.every(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.directContentLine == 0,
+        ),
+        isTrue,
+      );
+
       expect(
         index.candidates.any(
           (CanonicalBusinessTextCandidate candidate) =>
-              candidate.kind == CanonicalBusinessTextCandidateKind.heading ||
               candidate.kind == CanonicalBusinessTextCandidateKind.tableRow,
         ),
         isFalse,
@@ -193,13 +212,47 @@ void main() {
 
       expect(candidateIndex.candidates, isNotEmpty);
 
+      final List<RegistryNode> analyzedBusinessNodes = structuralIndex.nodes
+          .where(
+            (RegistryNode node) =>
+                node.businessScopeOwnerId != null &&
+                !node.path.segments.any(
+                  (String segment) => segment.trim().toLowerCase().endsWith(
+                    'admin dependencies',
+                  ),
+                ),
+          )
+          .toList(growable: false);
+
+      final List<CanonicalBusinessTextCandidate> headingCandidates =
+          candidateIndex.candidates
+              .where(
+                (CanonicalBusinessTextCandidate candidate) =>
+                    candidate.kind ==
+                    CanonicalBusinessTextCandidateKind.heading,
+              )
+              .toList(growable: false);
+
+      expect(headingCandidates, hasLength(analyzedBusinessNodes.length));
+
       expect(
-        candidateIndex.candidates.every(
-          (CanonicalBusinessTextCandidate candidate) =>
-              candidate.kind != CanonicalBusinessTextCandidateKind.heading &&
-              candidate.kind != CanonicalBusinessTextCandidateKind.tableRow,
-        ),
+        headingCandidates.every((CanonicalBusinessTextCandidate candidate) {
+          final RegistryNode node =
+              structuralIndex.nodesById[candidate.nodeId]!;
+
+          return candidate.directContentLine == 0 &&
+              candidate.rawText == node.path.segments.last &&
+              candidate.text.isNotEmpty;
+        }),
         isTrue,
+      );
+
+      expect(
+        candidateIndex.candidates.any(
+          (CanonicalBusinessTextCandidate candidate) =>
+              candidate.kind == CanonicalBusinessTextCandidateKind.tableRow,
+        ),
+        isFalse,
       );
 
       expect(

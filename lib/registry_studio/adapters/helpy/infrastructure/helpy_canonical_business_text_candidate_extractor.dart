@@ -98,6 +98,8 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
           return;
         }
 
+        final bool heading = kind == CanonicalBusinessTextCandidateKind.heading;
+
         final bool listItem =
             kind == CanonicalBusinessTextCandidateKind.listItem;
 
@@ -106,7 +108,7 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
                 kind == CanonicalBusinessTextCandidateKind.blockquote) &&
             _sentenceEndingPattern.hasMatch(normalizedIdentityText);
 
-        if (!listItem && !completedStatement) {
+        if (!heading && !listItem && !completedStatement) {
           return;
         }
 
@@ -133,6 +135,13 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
           ),
         );
       }
+
+      addCandidate(
+        kind: CanonicalBusinessTextCandidateKind.heading,
+        rawText: node.path.segments.last,
+        text: node.path.segments.last,
+        directContentLine: 0,
+      );
 
       if (node.content.trim().isEmpty) {
         continue;
