@@ -1,6 +1,8 @@
 import '../../../canonical/domain/entities/canonical_dictionary.dart';
 import '../../../canonical/domain/entities/canonical_dictionary_collection.dart';
 import '../../../canonical/domain/entities/canonical_dictionary_entry.dart';
+import '../../../canonical/domain/entities/canonical_ordered_block_entry.dart';
+import '../../../canonical/domain/entities/canonical_ordered_block_item.dart';
 import '../../../canonical/domain/entities/canonical_phrase_entry.dart';
 
 final class HelpyCanonicalDictionaryDocumentInterpreter {
@@ -40,6 +42,12 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
   static final RegExp _entryTypePattern = RegExp(
     r'^(?:Тип записи|Entry type):\s*`([^`]+)`\s*$',
+  );
+
+  static final RegExp _headingPattern = RegExp(r'^(#{1,6})\s+(.+?)\s*$');
+
+  static final RegExp _stableBlockHeadingPattern = RegExp(
+    r'^(.+?)\s*\(`([^`]+)`\)\s*$',
   );
 
   static final RegExp _bulletPattern = RegExp(r'^-\s+(.+?)\s*$');
@@ -400,7 +408,30 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
         sourceRevision: sourceRevision,
         sourceSnapshotFingerprint: sourceSnapshotFingerprint,
       ),
-      _ => const <CanonicalDictionaryEntry>[],
+      'ordered_block' => _interpretOrderedBlockCollection(
+        lines: lines,
+        dictionaryId: dictionaryId,
+        collectionId: collectionId,
+        collectionStartIndex: collectionStartIndex,
+        collectionEndIndex: collectionEndIndex,
+        sourceDocumentPath: sourceDocumentPath,
+        sourceRevision: sourceRevision,
+        sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+      ),
+      'ordered_rule_block' => _interpretOrderedBlockCollection(
+        lines: lines,
+        dictionaryId: dictionaryId,
+        collectionId: collectionId,
+        collectionStartIndex: collectionStartIndex,
+        collectionEndIndex: collectionEndIndex,
+        sourceDocumentPath: sourceDocumentPath,
+        sourceRevision: sourceRevision,
+        sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+      ),
+      _ => throw FormatException(
+        'Canonical Dictionary collection $collectionId '
+        'has unsupported entry type $entryType.',
+      ),
     };
   }
 
@@ -619,6 +650,218 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
       throw FormatException(
         'Canonical phrase collection $collectionId '
         'must contain at least one approved phrase.',
+      );
+    }
+
+    return entries;
+  }
+
+  List<CanonicalDictionaryEntry> _interpretOrderedBlockCollection({
+    required List<String> lines,
+    required String dictionaryId,
+    required String collectionId,
+    required int collectionStartIndex,
+    required int collectionEndIndex,
+    required String sourceDocumentPath,
+    required String sourceRevision,
+    required String sourceSnapshotFingerprint,
+  }) {
+    final List<({int index, int level})> headings =
+        <({int index, int level})>[];
+
+    final List<({int index, int level, String text, String stableBlockKey})>
+    keyedHeadings =
+        <({int index, int level, String text, String stableBlockKey})>[];
+
+    for (
+      int index = collectionStartIndex + 1;
+      index <= collectionEndIndex;
+      index += 1
+    ) {
+      final RegExpMatch? headingMatch = _headingPattern.firstMatch(
+        lines[index].trim(),
+      );
+
+      if (headingMatch == null) {
+        continue;
+      }
+
+      final int headingLevel = headingMatch.group(1)!.length;
+      final String headingText = headingMatch.group(2)!.trim();
+
+      headings.add((index: index, level: headingLevel));
+
+      final RegExpMatch? stableBlockHeadingMatch = _stableBlockHeadingPattern
+          .firstMatch(headingText);
+
+      if (stableBlockHeadingMatch == null) {
+        continue;
+      }
+
+      final String approvedHeading = stableBlockHeadingMatch.group(1)!.trim();
+
+      final String stableBlockKey = stableBlockHeadingMatch.group(2)!.trim();
+
+      if (approvedHeading.isEmpty) {
+        throw FormatException(
+          'Canonical ordered collection $collectionId '
+          'contains an empty approved heading '
+          'at line ${index + 1}.',
+        );
+      }
+
+      if (stableBlockKey.isEmpty) {
+        throw FormatException(
+          'Canonical ordered collection $collectionId '
+          'contains an empty stable block key '
+          'at line ${index + 1}.',
+        );
+      }
+
+      keyedHeadings.add((
+        index: index,
+        level: headingLevel,
+        text: approvedHeading,
+        stableBlockKey: stableBlockKey,
+      ));
+    }
+
+    if (keyedHeadings.isEmpty) {
+      throw FormatException(
+        'Canonical ordered collection $collectionId '
+        'must contain stable-key headings.',
+      );
+    }
+
+    final List<({int index, int level, String text, String stableBlockKey})>
+    terminalHeadings =
+        <({int index, int level, String text, String stableBlockKey})>[];
+
+    for (final heading in keyedHeadings) {
+      int subtreeBoundaryIndex = collectionEndIndex + 1;
+
+      for (final candidate in headings) {
+        if (candidate.index <= heading.index) {
+          continue;
+        }
+
+        if (candidate.level <= heading.level) {
+          subtreeBoundaryIndex = candidate.index;
+          break;
+        }
+      }
+
+      final bool hasKeyedDescendant = keyedHeadings.any(
+        (candidate) =>
+            candidate.index > heading.index &&
+            candidate.index < subtreeBoundaryIndex &&
+            candidate.level > heading.level,
+      );
+
+      if (!hasKeyedDescendant) {
+        terminalHeadings.add(heading);
+      }
+    }
+
+    if (terminalHeadings.isEmpty) {
+      throw FormatException(
+        'Canonical ordered collection $collectionId '
+        'contains no terminal ordered blocks.',
+      );
+    }
+
+    final Set<String> stableBlockKeys = <String>{};
+    final List<CanonicalDictionaryEntry> entries = <CanonicalDictionaryEntry>[];
+
+    for (final heading in terminalHeadings) {
+      if (!stableBlockKeys.add(heading.stableBlockKey)) {
+        throw FormatException(
+          'Canonical ordered collection $collectionId '
+          'contains duplicate stable block key '
+          '${heading.stableBlockKey}.',
+        );
+      }
+
+      int terminalBoundaryIndex = collectionEndIndex + 1;
+
+      for (final candidate in headings) {
+        if (candidate.index <= heading.index) {
+          continue;
+        }
+
+        if (candidate.level <= heading.level) {
+          terminalBoundaryIndex = candidate.index;
+          break;
+        }
+      }
+
+      final List<CanonicalOrderedBlockItem> items =
+          <CanonicalOrderedBlockItem>[];
+
+      for (
+        int index = heading.index + 1;
+        index < terminalBoundaryIndex;
+        index += 1
+      ) {
+        final String normalizedLine = lines[index].trim();
+
+        if (normalizedLine.isEmpty) {
+          continue;
+        }
+
+        final RegExpMatch? bulletMatch = _bulletPattern.firstMatch(
+          normalizedLine,
+        );
+
+        final String itemText = (bulletMatch?.group(1) ?? normalizedLine)
+            .trim();
+
+        if (itemText.isEmpty) {
+          continue;
+        }
+
+        items.add(
+          CanonicalOrderedBlockItem(
+            approvedOrder: items.length + 1,
+            text: itemText,
+            sourceStartLine: index + 1,
+            sourceEndLine: index + 1,
+          ),
+        );
+      }
+
+      if (items.isEmpty) {
+        throw FormatException(
+          'Canonical ordered block ${heading.stableBlockKey} '
+          'in collection $collectionId '
+          'must contain at least one ordered item.',
+        );
+      }
+
+      final String approvedHeading = heading.text;
+
+      if (approvedHeading.isEmpty) {
+        throw FormatException(
+          'Canonical ordered block ${heading.stableBlockKey} '
+          'in collection $collectionId '
+          'must contain an approved heading.',
+        );
+      }
+
+      entries.add(
+        CanonicalOrderedBlockEntry(
+          dictionaryId: dictionaryId,
+          collectionId: collectionId,
+          stableBlockKey: heading.stableBlockKey,
+          approvedOrder: entries.length + 1,
+          heading: approvedHeading,
+          items: items,
+          sourceDocumentPath: sourceDocumentPath,
+          sourceRevision: sourceRevision,
+          sourceSnapshotFingerprint: sourceSnapshotFingerprint,
+          sourceStartLine: heading.index + 1,
+          sourceEndLine: items.last.sourceEndLine,
+        ),
       );
     }
 

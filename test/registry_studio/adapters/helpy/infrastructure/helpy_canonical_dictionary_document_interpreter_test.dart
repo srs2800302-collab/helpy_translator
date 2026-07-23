@@ -5,6 +5,7 @@ import 'package:helpy_translator/registry_studio/canonical/application/build_can
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_canonical_dictionary_document_interpreter.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_dictionary.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_dictionary_entry.dart';
+import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_ordered_block_entry.dart';
 
 void main() {
   const HelpyCanonicalDictionaryDocumentInterpreter interpreter =
@@ -28,7 +29,7 @@ void main() {
       expect(dictionary.version, '1');
       expect(dictionary.status, 'APPROVED / STORED');
       expect(dictionary.beginMarkerLine, 4);
-      expect(dictionary.endMarkerLine, 27);
+      expect(dictionary.endMarkerLine, 28);
       expect(dictionary.collections, hasLength(2));
 
       expect(
@@ -65,6 +66,132 @@ void main() {
         'helpy.canonical.global_business_rules',
       );
       expect(dictionary.collections[1].entryType, 'ordered_rule_block');
+      expect(dictionary.collections[1].entries, hasLength(1));
+
+      final CanonicalOrderedBlockEntry orderedRule =
+          dictionary.collections[1].entries.single
+              as CanonicalOrderedBlockEntry;
+
+      expect(orderedRule.stableBlockKey, 'Client-Safe Scope Rule');
+      expect(orderedRule.approvedOrder, 1);
+      expect(
+        orderedRule.heading,
+        'Правило № 1 — Безопасная область действий клиента',
+      );
+      expect(orderedRule.items, hasLength(1));
+      expect(orderedRule.items.single.text, 'Client-safe statement.');
+    });
+
+    test('rejects an unsupported canonical entry type', () {
+      const String source =
+          '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:BEGIN -->\n'
+          'Dictionary ID: `DICTIONARY`\n'
+          'Версия словаря: `1`\n'
+          'Статус: **APPROVED / STORED**\n'
+          '### Collection: `unsupported.collection`\n'
+          'Тип записи: `unsupported_type`\n'
+          'Статус: **APPROVED / STORED**\n'
+          'Unsupported content.\n'
+          '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->';
+
+      expect(
+        () => interpreter.interpret(
+          sourceDocumentPath: 'docs/contract.md',
+          sourceRevision: 'revision-1',
+          sourceSnapshotFingerprint: 'git-blob:source',
+          sourceContent: source,
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (FormatException error) => error.message,
+            'message',
+            contains('unsupported entry type'),
+          ),
+        ),
+      );
+    });
+
+    test('does not treat arbitrary inline code as a stable block key', () {
+      const String source =
+          '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:BEGIN -->\n'
+          'Dictionary ID: `DICTIONARY`\n'
+          'Версия словаря: `1`\n'
+          'Статус: **APPROVED / STORED**\n'
+          '### Collection: `ordered.collection`\n'
+          'Тип записи: `ordered_block`\n'
+          'Статус: **APPROVED / STORED**\n'
+          '### Metadata `not-a-stable-key`\n'
+          'Metadata text.\n'
+          '### Rule (`Rule Key`)\n'
+          'Approved statement.\n'
+          '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->';
+
+      final CanonicalDictionary dictionary = interpreter.interpret(
+        sourceDocumentPath: 'docs/contract.md',
+        sourceRevision: 'revision-1',
+        sourceSnapshotFingerprint: 'git-blob:source',
+        sourceContent: source,
+      );
+
+      final entries = dictionary.collections.single.entries;
+
+      expect(entries, hasLength(1));
+
+      final CanonicalOrderedBlockEntry entry =
+          entries.single as CanonicalOrderedBlockEntry;
+
+      expect(entry.stableBlockKey, 'Rule Key');
+      expect(entry.heading, 'Rule');
+      expect(entry.items.single.text, 'Approved statement.');
+    });
+
+    test('respects non-keyed heading boundaries for terminal blocks', () {
+      const String source =
+          '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:BEGIN -->\n'
+          'Dictionary ID: `DICTIONARY`\n'
+          'Версия словаря: `1`\n'
+          'Статус: **APPROVED / STORED**\n'
+          '### Collection: `ordered.collection`\n'
+          'Тип записи: `ordered_block`\n'
+          'Статус: **APPROVED / STORED**\n'
+          '### First (`First Key`)\n'
+          'First statement.\n'
+          '### Wrapper\n'
+          '#### Second (`Second Key`)\n'
+          'Second statement.\n'
+          '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->';
+
+      final CanonicalDictionary dictionary = interpreter.interpret(
+        sourceDocumentPath: 'docs/contract.md',
+        sourceRevision: 'revision-1',
+        sourceSnapshotFingerprint: 'git-blob:source',
+        sourceContent: source,
+      );
+
+      final List<CanonicalOrderedBlockEntry> entries = dictionary
+          .collections
+          .single
+          .entries
+          .cast<CanonicalOrderedBlockEntry>();
+
+      expect(entries, hasLength(2));
+
+      expect(
+        entries.map((CanonicalOrderedBlockEntry entry) => entry.stableBlockKey),
+        <String>['First Key', 'Second Key'],
+      );
+
+      expect(
+        entries.map((CanonicalOrderedBlockEntry entry) => entry.approvedOrder),
+        <int>[1, 2],
+      );
+
+      expect(
+        entries.map(
+          (CanonicalOrderedBlockEntry entry) => entry.items.single.text,
+        ),
+        <String>['First statement.', 'Second statement.'],
+      );
     });
 
     test('rejects duplicate stable markers', () {
@@ -259,18 +386,62 @@ void main() {
           ],
         );
 
+        final masterWorkflowBlocks = dictionary.collectionById(
+          'helpy.canonical.master_workflow_blocks',
+        )!;
+
+        expect(masterWorkflowBlocks.entries, hasLength(5));
+
+        final CanonicalOrderedBlockEntry firstMasterWorkflowBlock =
+            masterWorkflowBlocks.entries.first as CanonicalOrderedBlockEntry;
+
         expect(
-          dictionary
-              .collectionById('helpy.canonical.master_workflow_blocks')
-              ?.entries,
-          isEmpty,
+          firstMasterWorkflowBlock.stableBlockKey,
+          'Compatibility Check Before Work',
+        );
+        expect(firstMasterWorkflowBlock.approvedOrder, 1);
+        expect(firstMasterWorkflowBlock.items, hasLength(2));
+        expect(
+          firstMasterWorkflowBlock.approvedTextHash,
+          'sha256:'
+          '540753683707c9a42d6a6caf784e9ee79aac45df7836b031cfc5ef4140f5e9bb',
         );
 
         expect(
-          dictionary
-              .collectionById('helpy.canonical.global_business_rules')
-              ?.entries,
-          isEmpty,
+          masterWorkflowBlocks.entries
+              .cast<CanonicalOrderedBlockEntry>()
+              .map((entry) => entry.approvedOrder)
+              .toList(growable: false),
+          <int>[1, 2, 3, 4, 5],
+        );
+
+        final globalBusinessRules = dictionary.collectionById(
+          'helpy.canonical.global_business_rules',
+        )!;
+
+        expect(globalBusinessRules.entries, hasLength(7));
+
+        final CanonicalOrderedBlockEntry firstGlobalBusinessRule =
+            globalBusinessRules.entries.first as CanonicalOrderedBlockEntry;
+
+        expect(
+          firstGlobalBusinessRule.stableBlockKey,
+          'Client-Safe Scope Rule',
+        );
+        expect(firstGlobalBusinessRule.approvedOrder, 1);
+        expect(firstGlobalBusinessRule.items, hasLength(6));
+        expect(
+          firstGlobalBusinessRule.approvedTextHash,
+          'sha256:'
+          '5444b70293b7bb754f330d8a1b9e6f591fea0be2098c918eb134648e5808a0f4',
+        );
+
+        expect(
+          globalBusinessRules.entries
+              .cast<CanonicalOrderedBlockEntry>()
+              .map((entry) => entry.approvedOrder)
+              .toList(growable: false),
+          <int>[1, 2, 3, 4, 5, 6, 7],
         );
 
         expect(
@@ -319,5 +490,7 @@ const String _validDictionaryDocument =
     '\n'
     'Статус: **APPROVED / STORED**\n'
     '\n'
-    '1. Client-Safe Scope Rule.\n'
+    '### Правило № 1 — Безопасная область действий клиента '
+    '(`Client-Safe Scope Rule`)\n'
+    'Client-safe statement.\n'
     '<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->';

@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'canonical_dictionary_entry.dart';
+import 'canonical_ordered_block_entry.dart';
 
 final class CanonicalDictionaryCollection extends Equatable {
   factory CanonicalDictionaryCollection({
@@ -97,6 +98,67 @@ final class CanonicalDictionaryCollection extends Equatable {
           'entries',
           'Canonical Dictionary entry identities must be unique '
               'inside one collection.',
+        );
+      }
+    }
+
+    final bool isOrderedCollection =
+        normalizedEntryType == 'ordered_block' ||
+        normalizedEntryType == 'ordered_rule_block';
+
+    if (isOrderedCollection && normalizedEntries.isEmpty) {
+      throw ArgumentError.value(
+        entries,
+        'entries',
+        'Canonical ordered collection must contain at least '
+            'one typed ordered block entry.',
+      );
+    }
+
+    final Set<String> orderedStableBlockKeys = <String>{};
+
+    for (int index = 0; index < normalizedEntries.length; index += 1) {
+      final CanonicalDictionaryEntry entry = normalizedEntries[index];
+
+      if (!isOrderedCollection) {
+        if (entry is CanonicalOrderedBlockEntry) {
+          throw ArgumentError.value(
+            entry,
+            'entries',
+            'Canonical ordered block entry must belong to an '
+                'ordered collection.',
+          );
+        }
+
+        continue;
+      }
+
+      if (entry is! CanonicalOrderedBlockEntry) {
+        throw ArgumentError.value(
+          entry,
+          'entries',
+          'Canonical ordered collection must contain only '
+              'typed ordered block entries.',
+        );
+      }
+
+      if (!orderedStableBlockKeys.add(entry.stableBlockKey)) {
+        throw ArgumentError.value(
+          entry.stableBlockKey,
+          'entries',
+          'Canonical ordered collection stable block keys '
+              'must be unique.',
+        );
+      }
+
+      final int expectedOrder = index + 1;
+
+      if (entry.approvedOrder != expectedOrder) {
+        throw ArgumentError.value(
+          entry.approvedOrder,
+          'entries',
+          'Canonical ordered collection entries must be contiguous '
+              'and preserve their approved order.',
         );
       }
     }

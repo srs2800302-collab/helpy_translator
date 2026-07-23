@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../application/build_canonical_phrase_vocabulary.dart';
 import '../domain/entities/canonical_dictionary.dart';
+import '../domain/entities/canonical_ordered_block_entry.dart';
 import 'canonical_dictionary_cubit.dart';
 
 final class CanonicalDictionaryStatusAction extends StatelessWidget {
@@ -102,6 +103,11 @@ final class _CanonicalDictionaryDialog extends StatelessWidget {
         .entries
         .length;
 
+    final int canonicalOrderedBlockCount = dictionary.collections
+        .expand((collection) => collection.entries)
+        .whereType<CanonicalOrderedBlockEntry>()
+        .length;
+
     return AlertDialog(
       key: CanonicalDictionaryStatusAction.dialogKey,
       title: const Text('Состояние Canonical Dictionary'),
@@ -150,13 +156,22 @@ final class _CanonicalDictionaryDialog extends StatelessWidget {
             Text('Статус: ${dictionary.status}'),
             Text('Collections: ${dictionary.collections.length}'),
             Text('Канонические фразы: $canonicalPhraseCount'),
+            Text(
+              'Упорядоченные блоки: $canonicalOrderedBlockCount',
+              key: const ValueKey<String>(
+                'canonical-dictionary-ordered-block-count',
+              ),
+            ),
             const SizedBox(height: 12),
             for (final collection in dictionary.collections)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 dense: true,
                 title: SelectableText(collection.id),
-                subtitle: Text(collection.entryType),
+                subtitle: Text(
+                  '${collection.entryType} · '
+                  'entries: ${collection.entries.length}',
+                ),
               ),
           ],
         ),

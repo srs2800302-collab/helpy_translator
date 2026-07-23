@@ -5,6 +5,8 @@ import 'package:helpy_translator/registry_studio/canonical/application/contracts
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_dictionary.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_dictionary_collection.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_phrase_entry.dart';
+import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_ordered_block_entry.dart';
+import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_ordered_block_item.dart';
 import 'package:helpy_translator/registry_studio/canonical/presentation/canonical_dictionary_cubit.dart';
 import 'package:helpy_translator/registry_studio/canonical/presentation/canonical_dictionary_status_action.dart';
 
@@ -23,7 +25,7 @@ void main() {
             'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         sourceContent: 'source content',
         beginMarkerLine: 5,
-        endMarkerLine: 20,
+        endMarkerLine: 30,
         collections: <CanonicalDictionaryCollection>[
           CanonicalDictionaryCollection(
             id: 'helpy.canonical.phrases',
@@ -45,6 +47,41 @@ void main() {
                     'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
                 sourceStartLine: 13,
                 sourceEndLine: 13,
+              ),
+            ],
+          ),
+          CanonicalDictionaryCollection(
+            id: 'helpy.canonical.ordered_blocks',
+            entryType: 'ordered_block',
+            status: 'APPROVED / STORED',
+            content:
+                '#### Rule (`Rule Key`)\n'
+                '- Ordered statement.',
+            startLine: 16,
+            endLine: 25,
+            entries: <CanonicalOrderedBlockEntry>[
+              CanonicalOrderedBlockEntry(
+                dictionaryId:
+                    'REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1',
+                collectionId: 'helpy.canonical.ordered_blocks',
+                stableBlockKey: 'Rule Key',
+                approvedOrder: 1,
+                heading: 'Rule',
+                items: <CanonicalOrderedBlockItem>[
+                  CanonicalOrderedBlockItem(
+                    approvedOrder: 1,
+                    text: 'Ordered statement.',
+                    sourceStartLine: 18,
+                    sourceEndLine: 18,
+                  ),
+                ],
+                sourceDocumentPath: 'docs/contract.md',
+                sourceRevision: '1111111111111111111111111111111111111111',
+                sourceSnapshotFingerprint:
+                    'git-blob:'
+                    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                sourceStartLine: 17,
+                sourceEndLine: 18,
               ),
             ],
           ),
@@ -153,7 +190,7 @@ void main() {
 
       expect(
         tester.widget<Text>(canonicalDictionarySourceRange).data,
-        'Границы словаря: строки 5–20',
+        'Границы словаря: строки 5–30',
       );
 
       expect(
@@ -175,14 +212,26 @@ void main() {
         matching: find.byType(ListView),
       );
 
-      final Finder canonicalDictionaryCollections = find.text('Collections: 1');
+      final Finder canonicalDictionaryCollections = find.text('Collections: 2');
 
       final Finder canonicalDictionaryPhraseCount = find.text(
         'Канонические фразы: 1',
       );
 
+      final Finder canonicalDictionaryOrderedBlockCount = find.byKey(
+        const ValueKey<String>('canonical-dictionary-ordered-block-count'),
+      );
+
       final Finder canonicalDictionaryCollectionId = find.text(
         'helpy.canonical.phrases',
+      );
+
+      final Finder canonicalDictionaryOrderedCollectionId = find.text(
+        'helpy.canonical.ordered_blocks',
+      );
+
+      final Finder canonicalDictionaryOrderedCollectionDetails = find.text(
+        'ordered_block · entries: 1',
       );
 
       expect(canonicalDictionaryList, findsOneWidget);
@@ -196,6 +245,12 @@ void main() {
 
       expect(canonicalDictionaryCollections, findsOneWidget);
       expect(canonicalDictionaryPhraseCount, findsOneWidget);
+      expect(canonicalDictionaryOrderedBlockCount, findsOneWidget);
+
+      expect(
+        tester.widget<Text>(canonicalDictionaryOrderedBlockCount).data,
+        'Упорядоченные блоки: 1',
+      );
 
       await tester.dragUntilVisible(
         canonicalDictionaryCollectionId,
@@ -205,6 +260,16 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(canonicalDictionaryCollectionId, findsOneWidget);
+
+      await tester.dragUntilVisible(
+        canonicalDictionaryOrderedCollectionId,
+        canonicalDictionaryList,
+        const Offset(0, -120),
+      );
+      await tester.pumpAndSettle();
+
+      expect(canonicalDictionaryOrderedCollectionId, findsOneWidget);
+      expect(canonicalDictionaryOrderedCollectionDetails, findsOneWidget);
     },
   );
 }
