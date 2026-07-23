@@ -221,6 +221,53 @@ final class CanonicalBusinessTextClassificationDetails extends StatelessWidget {
                           ),
                         ),
                       ),
+                  if (classification
+                      .matchedConfirmedApplicationEvidence
+                      .isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Подтверждённая применимость',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final evidence
+                        in classification.matchedConfirmedApplicationEvidence)
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              SelectableText(
+                                'Confirmation evidence ID: '
+                                '${evidence.confirmationEvidenceId}',
+                              ),
+                              SelectableText(
+                                'Candidate identity: '
+                                '${evidence.candidateIdentity}',
+                              ),
+                              SelectableText(
+                                'Canonical entry identity: '
+                                '${evidence.canonicalEntryIdentity}',
+                              ),
+                              SelectableText(
+                                'Registry revision: '
+                                '${evidence.registrySourceRevision}',
+                              ),
+                              for (final sourceEvidence
+                                  in evidence.sourceEvidence)
+                                SelectableText(
+                                  'Confirmation source evidence: '
+                                  '${sourceEvidence.sourceDocumentPath}, '
+                                  'строки '
+                                  '${sourceEvidence.startLine}–'
+                                  '${sourceEvidence.endLine}',
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
