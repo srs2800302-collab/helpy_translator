@@ -182,9 +182,7 @@ CanonicalDictionary _dictionary() {
         endLine: 19,
         entries: <CanonicalPhraseEntry>[
           CanonicalPhraseEntry(
-            identity:
-                'canonical.phrases::'
-                'canonical-phrase',
+            dictionaryId: 'REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1',
             collectionId: 'canonical.phrases',
             phrase: 'Canonical phrase.',
             sourceDocumentPath: 'contract.md',

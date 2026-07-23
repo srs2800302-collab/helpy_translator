@@ -194,9 +194,7 @@ CanonicalBusinessTextAnalysisResult _result() {
         endLine: 19,
         entries: <CanonicalPhraseEntry>[
           CanonicalPhraseEntry(
-            identity:
-                'canonical.phrases::'
-                'canonical-phrase',
+            dictionaryId: 'DICTIONARY',
             collectionId: 'canonical.phrases',
             phrase: 'Canonical phrase.',
             sourceDocumentPath: 'contract.md',

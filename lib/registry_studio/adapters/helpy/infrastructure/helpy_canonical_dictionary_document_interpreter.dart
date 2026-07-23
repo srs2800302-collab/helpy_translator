@@ -331,6 +331,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
       final List<CanonicalDictionaryEntry> entries =
           _interpretCollectionEntries(
             lines: lines,
+            dictionaryId: dictionaryId,
             collectionId: collectionId,
             entryType: entryType,
             collectionStartIndex: collectionStartIndex,
@@ -369,6 +370,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
   List<CanonicalDictionaryEntry> _interpretCollectionEntries({
     required List<String> lines,
+    required String dictionaryId,
     required String collectionId,
     required String entryType,
     required int collectionStartIndex,
@@ -380,6 +382,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
     return switch (entryType) {
       'phrase_with_applicability' => _interpretPhrasesWithApplicability(
         lines: lines,
+        dictionaryId: dictionaryId,
         collectionId: collectionId,
         collectionStartIndex: collectionStartIndex,
         collectionEndIndex: collectionEndIndex,
@@ -389,6 +392,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
       ),
       'phrase' => _interpretPhraseCollection(
         lines: lines,
+        dictionaryId: dictionaryId,
         collectionId: collectionId,
         collectionStartIndex: collectionStartIndex,
         collectionEndIndex: collectionEndIndex,
@@ -402,6 +406,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
   List<CanonicalDictionaryEntry> _interpretPhrasesWithApplicability({
     required List<String> lines,
+    required String dictionaryId,
     required String collectionId,
     required int collectionStartIndex,
     required int collectionEndIndex,
@@ -497,7 +502,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
       entries.add(
         CanonicalPhraseEntry(
-          identity: _phraseIdentity(collectionId, phrase),
+          dictionaryId: dictionaryId,
           collectionId: collectionId,
           phrase: phrase,
           applicability: applicability,
@@ -522,6 +527,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
   List<CanonicalDictionaryEntry> _interpretPhraseCollection({
     required List<String> lines,
+    required String dictionaryId,
     required String collectionId,
     required int collectionStartIndex,
     required int collectionEndIndex,
@@ -597,7 +603,7 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
 
       entries.add(
         CanonicalPhraseEntry(
-          identity: _phraseIdentity(collectionId, phrase),
+          dictionaryId: dictionaryId,
           collectionId: collectionId,
           phrase: phrase,
           sourceDocumentPath: sourceDocumentPath,
@@ -617,14 +623,5 @@ final class HelpyCanonicalDictionaryDocumentInterpreter {
     }
 
     return entries;
-  }
-
-  String _phraseIdentity(String collectionId, String phrase) {
-    final String normalizedPhrase = phrase
-        .trim()
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .toLowerCase();
-
-    return '$collectionId::phrase::$normalizedPhrase';
   }
 }

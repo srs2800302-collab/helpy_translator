@@ -8,7 +8,7 @@ import 'package:helpy_translator/registry_studio/canonical/domain/entities/canon
 void main() {
   test('BuildCanonicalPhraseVocabulary collects only typed phrase entries', () {
     final CanonicalPhraseEntry phraseEntry = CanonicalPhraseEntry(
-      identity: 'collection::phrase::entry',
+      dictionaryId: 'DICTIONARY',
       collectionId: 'collection',
       phrase: 'Canonical phrase.',
       sourceDocumentPath: 'docs/contract.md',

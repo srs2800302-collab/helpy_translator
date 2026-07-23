@@ -12,7 +12,6 @@ void main() {
   group('CanonicalBusinessTextClassification', () {
     test('accepts one universal canonical entry as exact', () {
       final CanonicalPhraseEntry entry = _entry(
-        identity: 'dictionary::photo',
         phrase: 'Фотография места установки.',
       );
 
@@ -50,7 +49,6 @@ void main() {
               .singleExactUniversalMatch,
           matchedCanonicalEntries: <CanonicalPhraseEntry>[
             _entry(
-              identity: 'dictionary::preparation',
               phrase: 'Подготовьте доступ.',
               applicability: const <String>['Только для установки.'],
             ),
@@ -105,12 +103,11 @@ CanonicalBusinessTextCandidate _candidate({
 }
 
 CanonicalPhraseEntry _entry({
-  required String identity,
   required String phrase,
   Iterable<String> applicability = const <String>[],
 }) {
   return CanonicalPhraseEntry(
-    identity: identity,
+    dictionaryId: 'DICTIONARY',
     collectionId: 'collection',
     phrase: phrase,
     applicability: applicability,

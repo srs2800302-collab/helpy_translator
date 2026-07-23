@@ -34,9 +34,8 @@ void main() {
             endLine: 15,
             entries: <CanonicalPhraseEntry>[
               CanonicalPhraseEntry(
-                identity:
-                    'helpy.canonical.phrases::'
-                    'phrase::canonical phrase.',
+                dictionaryId:
+                    'REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1',
                 collectionId: 'helpy.canonical.phrases',
                 phrase: 'Canonical phrase.',
                 sourceDocumentPath: 'docs/contract.md',

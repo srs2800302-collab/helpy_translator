@@ -287,7 +287,7 @@ CanonicalDictionary _dictionary(CanonicalPhraseEntry phrase) {
 
 CanonicalPhraseEntry _phrase() {
   return CanonicalPhraseEntry(
-    identity: 'collection::canonical-phrase',
+    dictionaryId: 'DICTIONARY',
     collectionId: 'collection',
     phrase: 'Canonical phrase.',
     sourceDocumentPath: 'contract.md',

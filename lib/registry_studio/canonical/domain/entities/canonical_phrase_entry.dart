@@ -1,8 +1,12 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+
 import 'canonical_dictionary_entry.dart';
 
 final class CanonicalPhraseEntry extends CanonicalDictionaryEntry {
   factory CanonicalPhraseEntry({
-    required String identity,
+    required String dictionaryId,
     required String collectionId,
     required String phrase,
     Iterable<String> applicability = const <String>[],
@@ -12,9 +16,13 @@ final class CanonicalPhraseEntry extends CanonicalDictionaryEntry {
     required int sourceStartLine,
     required int sourceEndLine,
   }) {
-    final String normalizedIdentity = identity.trim();
+    final String normalizedDictionaryId = dictionaryId.trim();
     final String normalizedCollectionId = collectionId.trim();
     final String normalizedPhrase = phrase.trim();
+    final String technicallyNormalizedPhrase = normalizedPhrase.replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
     final String normalizedSourceDocumentPath = sourceDocumentPath.trim();
     final String normalizedSourceRevision = sourceRevision.trim();
     final String normalizedSourceSnapshotFingerprint = sourceSnapshotFingerprint
@@ -24,11 +32,11 @@ final class CanonicalPhraseEntry extends CanonicalDictionaryEntry {
         .map((String value) => value.trim())
         .toList(growable: false);
 
-    if (normalizedIdentity.isEmpty) {
+    if (normalizedDictionaryId.isEmpty) {
       throw ArgumentError.value(
-        identity,
-        'identity',
-        'Canonical phrase identity must not be empty.',
+        dictionaryId,
+        'dictionaryId',
+        'Canonical phrase dictionary identity must not be empty.',
       );
     }
 
@@ -106,9 +114,19 @@ final class CanonicalPhraseEntry extends CanonicalDictionaryEntry {
       );
     }
 
+    final String approvedTextHash =
+        'sha256:${sha256.convert(utf8.encode(technicallyNormalizedPhrase))}';
+
+    final String identity =
+        '$normalizedDictionaryId::'
+        '$normalizedCollectionId::'
+        '$approvedTextHash';
+
     return CanonicalPhraseEntry._(
-      identity: normalizedIdentity,
+      identity: identity,
+      dictionaryId: normalizedDictionaryId,
       collectionId: normalizedCollectionId,
+      approvedTextHash: approvedTextHash,
       phrase: normalizedPhrase,
       applicability: List<String>.unmodifiable(normalizedApplicability),
       sourceDocumentPath: normalizedSourceDocumentPath,
@@ -121,7 +139,9 @@ final class CanonicalPhraseEntry extends CanonicalDictionaryEntry {
 
   const CanonicalPhraseEntry._({
     required super.identity,
+    required super.dictionaryId,
     required super.collectionId,
+    required super.approvedTextHash,
     required this.phrase,
     required this.applicability,
     required super.sourceDocumentPath,
@@ -137,7 +157,9 @@ final class CanonicalPhraseEntry extends CanonicalDictionaryEntry {
   @override
   List<Object?> get props => <Object?>[
     identity,
+    dictionaryId,
     collectionId,
+    approvedTextHash,
     phrase,
     applicability,
     sourceDocumentPath,

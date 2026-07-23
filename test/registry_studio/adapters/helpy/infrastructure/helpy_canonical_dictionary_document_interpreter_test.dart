@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/canonical/application/build_canonical_phrase_vocabulary.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/infrastructure/helpy_canonical_dictionary_document_interpreter.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_dictionary.dart';
+import 'package:helpy_translator/registry_studio/canonical/domain/entities/canonical_dictionary_entry.dart';
 
 void main() {
   const HelpyCanonicalDictionaryDocumentInterpreter interpreter =
@@ -38,6 +39,25 @@ void main() {
       expect(
         dictionary.collections[0].content,
         contains('Подготовьте доступ к месту выполнения работ.'),
+      );
+
+      final CanonicalDictionaryEntry firstPhrase =
+          dictionary.collections[0].entries.first;
+
+      expect(firstPhrase.dictionaryId, dictionary.dictionaryId);
+
+      expect(
+        firstPhrase.approvedTextHash,
+        'sha256:'
+        'cb29f69838be9b811715cb5b0dff96c72ed203e0b9cbc4f1bfbee449faa877a3',
+      );
+
+      expect(
+        firstPhrase.identity,
+        'REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1::'
+        'helpy.canonical.general_preparation::'
+        'sha256:'
+        'cb29f69838be9b811715cb5b0dff96c72ed203e0b9cbc4f1bfbee449faa877a3',
       );
 
       expect(

@@ -41,10 +41,7 @@ void main() {
               ),
             ]),
             dictionary: _dictionary(<CanonicalPhraseEntry>[
-              _entry(
-                identity: 'dictionary::photo',
-                phrase: 'Фотография места установки.',
-              ),
+              _entry(phrase: 'Фотография места установки.'),
             ]),
           );
 
@@ -74,7 +71,6 @@ void main() {
             ]),
             dictionary: _dictionary(<CanonicalPhraseEntry>[
               _entry(
-                identity: 'dictionary::preparation',
                 phrase: 'Подготовьте доступ.',
                 applicability: const <String>['Только для установки.'],
               ),
@@ -102,8 +98,14 @@ void main() {
               _candidate(identity: 'candidate-1', text: 'Подготовьте доступ.'),
             ]),
             dictionary: _dictionary(<CanonicalPhraseEntry>[
-              _entry(identity: 'dictionary::a', phrase: 'Подготовьте доступ.'),
-              _entry(identity: 'dictionary::b', phrase: 'Подготовьте доступ.'),
+              _entry(
+                collectionId: 'collection.a',
+                phrase: 'Подготовьте доступ.',
+              ),
+              _entry(
+                collectionId: 'collection.b',
+                phrase: 'Подготовьте доступ.',
+              ),
             ]),
           )
           .classifications
@@ -134,7 +136,7 @@ void main() {
               ),
             ]),
             dictionary: _dictionary(<CanonicalPhraseEntry>[
-              _entry(identity: 'dictionary::exact', phrase: 'Exact phrase.'),
+              _entry(phrase: 'Exact phrase.'),
             ]),
           );
 
@@ -316,6 +318,15 @@ CanonicalBusinessTextCandidate _candidate({
 }
 
 CanonicalDictionary _dictionary(Iterable<CanonicalPhraseEntry> entries) {
+  final Map<String, List<CanonicalPhraseEntry>> entriesByCollectionId =
+      <String, List<CanonicalPhraseEntry>>{};
+
+  for (final CanonicalPhraseEntry entry in entries) {
+    entriesByCollectionId
+        .putIfAbsent(entry.collectionId, () => <CanonicalPhraseEntry>[])
+        .add(entry);
+  }
+
   return CanonicalDictionary(
     dictionaryId: 'DICTIONARY',
     version: '1',
@@ -325,29 +336,33 @@ CanonicalDictionary _dictionary(Iterable<CanonicalPhraseEntry> entries) {
     sourceSnapshotFingerprint: 'sha256:dictionary',
     sourceContent: 'dictionary source',
     beginMarkerLine: 1,
-    endMarkerLine: 20,
+    endMarkerLine: 1000,
     collections: <CanonicalDictionaryCollection>[
-      CanonicalDictionaryCollection(
-        id: 'collection',
-        entryType: 'phrase',
-        status: 'APPROVED / STORED',
-        content: 'approved phrases',
-        startLine: 2,
-        endLine: 19,
-        entries: entries,
-      ),
+      for (final MapEntry<String, List<CanonicalPhraseEntry>> collection
+          in entriesByCollectionId.entries)
+        CanonicalDictionaryCollection(
+          id: collection.key,
+          entryType: 'phrase',
+          status: 'APPROVED / STORED',
+          content: collection.value
+              .map((CanonicalPhraseEntry entry) => '- ${entry.phrase}')
+              .join('\n'),
+          startLine: 2,
+          endLine: 999,
+          entries: collection.value,
+        ),
     ],
   );
 }
 
 CanonicalPhraseEntry _entry({
-  required String identity,
   required String phrase,
+  String collectionId = 'collection',
   Iterable<String> applicability = const <String>[],
 }) {
   return CanonicalPhraseEntry(
-    identity: identity,
-    collectionId: 'collection',
+    dictionaryId: 'DICTIONARY',
+    collectionId: collectionId,
     phrase: phrase,
     applicability: applicability,
     sourceDocumentPath: 'contract.md',

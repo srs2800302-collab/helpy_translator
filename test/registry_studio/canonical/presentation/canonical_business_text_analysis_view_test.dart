@@ -202,7 +202,7 @@ void main() {
 
 CanonicalBusinessTextAnalysisResult _result() {
   final CanonicalPhraseEntry phrase = CanonicalPhraseEntry(
-    identity: 'canonical.phrases::canonical-phrase',
+    dictionaryId: 'DICTIONARY',
     collectionId: 'canonical.phrases',
     phrase: 'Canonical phrase.',
     sourceDocumentPath: 'contract.md',

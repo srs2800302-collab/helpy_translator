@@ -117,6 +117,16 @@ final class CanonicalDictionary extends Equatable {
         );
       }
 
+      for (final entry in collection.entries) {
+        if (entry.dictionaryId != normalizedDictionaryId) {
+          throw ArgumentError.value(
+            entry,
+            'collections',
+            'Canonical Dictionary entry must belong to its dictionary.',
+          );
+        }
+      }
+
       if (collection.startLine <= beginMarkerLine ||
           collection.endLine >= endMarkerLine) {
         throw ArgumentError.value(

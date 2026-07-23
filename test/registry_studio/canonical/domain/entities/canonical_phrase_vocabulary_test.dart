@@ -7,21 +7,9 @@ void main() {
     test('preserves duplicate phrase text from distinct collections', () {
       final CanonicalPhraseVocabulary vocabulary = CanonicalPhraseVocabulary(
         entries: <CanonicalPhraseEntry>[
-          _entry(
-            identity: 'collection-a::phrase::shared',
-            collectionId: 'collection-a',
-            phrase: 'Shared phrase.',
-          ),
-          _entry(
-            identity: 'collection-b::phrase::shared',
-            collectionId: 'collection-b',
-            phrase: 'Shared phrase.',
-          ),
-          _entry(
-            identity: 'collection-b::phrase::other',
-            collectionId: 'collection-b',
-            phrase: 'Other phrase.',
-          ),
+          _entry(collectionId: 'collection-a', phrase: 'Shared phrase.'),
+          _entry(collectionId: 'collection-b', phrase: 'Shared phrase.'),
+          _entry(collectionId: 'collection-b', phrase: 'Other phrase.'),
         ],
       );
 
@@ -34,11 +22,7 @@ void main() {
 
       expect(
         () => vocabulary.entries.add(
-          _entry(
-            identity: 'collection-c::phrase::entry',
-            collectionId: 'collection-c',
-            phrase: 'Another phrase.',
-          ),
+          _entry(collectionId: 'collection-c', phrase: 'Another phrase.'),
         ),
         throwsUnsupportedError,
       );
@@ -46,7 +30,6 @@ void main() {
 
     test('rejects duplicate stable identities', () {
       final CanonicalPhraseEntry entry = _entry(
-        identity: 'collection::phrase::entry',
         collectionId: 'collection',
         phrase: 'Canonical phrase.',
       );
@@ -62,12 +45,11 @@ void main() {
 }
 
 CanonicalPhraseEntry _entry({
-  required String identity,
   required String collectionId,
   required String phrase,
 }) {
   return CanonicalPhraseEntry(
-    identity: identity,
+    dictionaryId: 'DICTIONARY',
     collectionId: collectionId,
     phrase: phrase,
     sourceDocumentPath: 'docs/contract.md',

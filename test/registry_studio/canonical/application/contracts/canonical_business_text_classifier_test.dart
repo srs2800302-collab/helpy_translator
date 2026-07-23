@@ -39,9 +39,7 @@ void main() {
             endLine: 9,
             entries: <CanonicalPhraseEntry>[
               CanonicalPhraseEntry(
-                identity:
-                    'canonical.phrases::'
-                    'phrase::canonical-phrase',
+                dictionaryId: 'DICTIONARY',
                 collectionId: 'canonical.phrases',
                 phrase: 'Canonical phrase.',
                 sourceDocumentPath: 'contract.md',

@@ -277,7 +277,7 @@ CanonicalBusinessTextAnalysisResult _result({
   required RegistryNode targetNode,
 }) {
   final CanonicalPhraseEntry phrase = CanonicalPhraseEntry(
-    identity: 'canonical.phrases::canonical-phrase',
+    dictionaryId: 'DICTIONARY',
     collectionId: 'canonical.phrases',
     phrase: 'Canonical phrase.',
     sourceDocumentPath: 'contract.md',

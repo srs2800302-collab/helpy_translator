@@ -32,16 +32,16 @@ void main() {
         text: 'Review phrase.',
       );
 
-      final CanonicalBusinessTextClassification
-      exact = CanonicalBusinessTextClassification(
-        candidate: exactCandidate,
-        status: CanonicalBusinessTextClassificationStatus.exact,
-        reason:
-            CanonicalBusinessTextClassificationReason.singleExactUniversalMatch,
-        matchedCanonicalEntries: <CanonicalPhraseEntry>[
-          _entry(identity: 'dictionary::exact', phrase: exactCandidate.text),
-        ],
-      );
+      final CanonicalBusinessTextClassification exact =
+          CanonicalBusinessTextClassification(
+            candidate: exactCandidate,
+            status: CanonicalBusinessTextClassificationStatus.exact,
+            reason: CanonicalBusinessTextClassificationReason
+                .singleExactUniversalMatch,
+            matchedCanonicalEntries: <CanonicalPhraseEntry>[
+              _entry(phrase: exactCandidate.text),
+            ],
+          );
 
       final CanonicalBusinessTextClassification
       neutral = CanonicalBusinessTextClassification(
@@ -59,7 +59,6 @@ void main() {
                 .exactTextRequiresApplicabilityReview,
             matchedCanonicalEntries: <CanonicalPhraseEntry>[
               _entry(
-                identity: 'dictionary::review',
                 phrase: reviewCandidate.text,
                 applicability: 'install scenario',
               ),
@@ -165,12 +164,11 @@ CanonicalBusinessTextCandidate _candidate({
 }
 
 CanonicalPhraseEntry _entry({
-  required String identity,
   required String phrase,
   String applicability = '',
 }) {
   return CanonicalPhraseEntry(
-    identity: identity,
+    dictionaryId: 'DICTIONARY',
     collectionId: 'canonical.phrases',
     phrase: phrase,
     applicability: applicability.isEmpty

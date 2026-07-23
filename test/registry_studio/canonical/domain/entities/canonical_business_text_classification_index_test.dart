@@ -88,7 +88,7 @@ CanonicalBusinessTextClassification _exactClassification({
   required String candidateIdentity,
 }) {
   final CanonicalPhraseEntry entry = CanonicalPhraseEntry(
-    identity: 'dictionary::photo',
+    dictionaryId: 'DICTIONARY',
     collectionId: 'collection',
     phrase: 'Фотография места установки.',
     sourceDocumentPath: 'contract.md',
