@@ -2049,3 +2049,26 @@ Helpy не включает в услугу действия, которые н�
 | `1` | `2026-07-17` | Первичный импорт текущих утверждённых общих подготовительных фраз, `Canonical Photo Labels`, `Canonical Client Labels`, `Canonical Master Workflow Blocks` и подтверждённых Global Platform Rules в контракт новой ветки. | Путь источника, source hashes и точный импортированный текст зафиксированы выше. |
 
 <!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->
+
+---
+
+## 22. Контекст канонического анализа бизнес-формулировок
+
+Единицей канонического анализа является бизнес-формулировка вместе с полным контекстом:
+
+`business entity + content block + optional scenario context + exact source evidence`.
+
+Каждая бизнес-сущность может иметь сценарии или не иметь их. Количество сценариев и уровень их выбора не кодируются фиксированным списком категорий, названий сценариев или глубины Registry.
+
+Каждая бизнес-сущность Helpy предоставляет стабильные типы бизнес-блоков:
+
+- вопросы;
+- фото-вопросы;
+- правила клиента;
+- правила мастера.
+
+Helpy adapter распознаёт business entity, business block, опциональный scenario context и точную строку источника. Универсальный модуль `canonical` получает generic identities и labels и не распознаёт Helpy-specific категории, сценарии или Markdown headings.
+
+Правила клиента и правила мастера могут различаться между сценариями. Canonical applicability, comparison, duplicate analysis и completeness analysis не должны смешивать формулировки разных scenario contexts.
+
+Добавление новых категорий, сущностей и сценариев не требует изменения универсального `canonical`, если project adapter передаёт тот же generic context contract.

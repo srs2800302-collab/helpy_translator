@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../canonical/application/contracts/canonical_business_text_candidate_extractor.dart';
 import '../../../canonical/domain/entities/canonical_business_text_candidate.dart';
 import '../../../canonical/domain/entities/canonical_business_text_candidate_index.dart';
+import '../../../core/domain/evidence/source_evidence.dart';
 import '../../../registry/domain/entities/registry_node.dart';
 import '../../../registry/domain/entities/registry_snapshot.dart';
 import '../../../registry/domain/entities/registry_structural_index.dart';
@@ -83,7 +84,28 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
         continue;
       }
 
-      final Map<String, int> occurrencesByIdentityText = <String, int>{};
+      final Map<String, int> occurrencesByContextAndText = <String, int>{};
+
+      final String? pathContentBlockIdentity = _contentBlockIdentityFromPath(
+        node.path.segments,
+      );
+
+      final String? pathContentBlockLabel = pathContentBlockIdentity == null
+          ? null
+          : _contentBlockLabelForIdentity(pathContentBlockIdentity);
+
+      final String? pathScenarioLabel = _scenarioLabelFromPath(
+        node.path.segments,
+      );
+
+      String? activeContentBlockIdentity = pathContentBlockIdentity;
+
+      String? activeContentBlockLabel = pathContentBlockLabel;
+
+      String? activeScenarioLabel = pathScenarioLabel;
+
+      int? activeContentBlockHeadingLevel;
+      int? activeScenarioHeadingLevel;
 
       void addCandidate({
         required CanonicalBusinessTextCandidateKind kind,
@@ -113,10 +135,23 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
           return;
         }
 
-        final int occurrence =
-            (occurrencesByIdentityText[normalizedIdentityText] ?? 0) + 1;
+        final String? scenarioIdentity = activeScenarioLabel == null
+            ? null
+            : _scenarioIdentity(ownerId.value, activeScenarioLabel);
 
-        occurrencesByIdentityText[normalizedIdentityText] = occurrence;
+        final String contextIdentity =
+            '${activeContentBlockIdentity ?? 'content-block:none'}::'
+            '${scenarioIdentity ?? 'scenario:none'}';
+
+        final String occurrenceKey =
+            '$contextIdentity::$normalizedIdentityText';
+
+        final int occurrence =
+            (occurrencesByContextAndText[occurrenceKey] ?? 0) + 1;
+
+        occurrencesByContextAndText[occurrenceKey] = occurrence;
+
+        final String encodedContext = Uri.encodeComponent(contextIdentity);
 
         final String encodedText = Uri.encodeComponent(normalizedIdentityText);
 
@@ -124,15 +159,22 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
           CanonicalBusinessTextCandidate(
             identity:
                 '${node.id.value}::canonical-business-text::'
-                '$encodedText::$occurrence',
+                '$encodedContext::$encodedText::$occurrence',
             nodeId: node.id,
             businessScopeOwnerId: ownerId,
             path: node.path,
-            sourceEvidence: node.sourceEvidence,
+            sourceEvidence: _candidateSourceEvidence(
+              node: node,
+              directContentLine: directContentLine,
+            ),
             kind: kind,
             rawText: rawText,
             text: normalizedIdentityText,
             directContentLine: directContentLine,
+            contentBlockIdentity: activeContentBlockIdentity,
+            contentBlockLabel: activeContentBlockLabel,
+            scenarioIdentity: scenarioIdentity,
+            scenarioLabel: activeScenarioLabel,
           ),
         );
       }
@@ -206,10 +248,57 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
         }
 
         if (_headingPattern.hasMatch(trimmedLine)) {
-          activeSectionLabel = trimmedLine
+          final int headingLevel = RegExp(
+            r'^#+',
+          ).firstMatch(trimmedLine)!.group(0)!.length;
+
+          final String headingText = trimmedLine
               .replaceFirst(_headingPattern, '')
-              .trim()
-              .toLowerCase();
+              .trim();
+
+          final int? currentContentBlockHeadingLevel =
+              activeContentBlockHeadingLevel;
+
+          if (currentContentBlockHeadingLevel != null &&
+              headingLevel <= currentContentBlockHeadingLevel) {
+            activeContentBlockIdentity = pathContentBlockIdentity;
+
+            activeContentBlockLabel = pathContentBlockLabel;
+
+            activeContentBlockHeadingLevel = null;
+          }
+
+          final int? currentScenarioHeadingLevel = activeScenarioHeadingLevel;
+
+          if (currentScenarioHeadingLevel != null &&
+              headingLevel <= currentScenarioHeadingLevel) {
+            activeScenarioLabel = pathScenarioLabel;
+            activeScenarioHeadingLevel = null;
+          }
+
+          final String? scenarioLabel = _explicitScenarioLabel(headingText);
+
+          if (scenarioLabel != null) {
+            activeScenarioLabel = scenarioLabel;
+            activeScenarioHeadingLevel = headingLevel;
+          }
+
+          final String? contentBlockIdentity = _contentBlockIdentityForLabel(
+            headingText,
+          );
+
+          if (contentBlockIdentity != null) {
+            activeContentBlockIdentity = contentBlockIdentity;
+
+            activeContentBlockLabel = _contentBlockLabelForIdentity(
+              contentBlockIdentity,
+            );
+
+            activeContentBlockHeadingLevel = headingLevel;
+          }
+
+          activeSectionLabel = headingText.toLowerCase();
+
           awaitingRootCategoryLabel = false;
           continue;
         }
@@ -220,6 +309,16 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
 
         if (_isHorizontalRule(trimmedLine)) {
           activeSectionLabel = null;
+
+          activeContentBlockIdentity = pathContentBlockIdentity;
+
+          activeContentBlockLabel = pathContentBlockLabel;
+
+          activeContentBlockHeadingLevel = null;
+
+          activeScenarioLabel = pathScenarioLabel;
+          activeScenarioHeadingLevel = null;
+
           awaitingRootCategoryLabel = false;
           continue;
         }
@@ -229,6 +328,31 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
         }
 
         final String structuralText = _normalizedStructuralText(trimmedLine);
+
+        final String? structuralScenarioLabel = _explicitScenarioLabel(
+          structuralText,
+        );
+
+        if (structuralScenarioLabel != null) {
+          activeScenarioLabel = structuralScenarioLabel;
+
+          activeScenarioHeadingLevel = null;
+          continue;
+        }
+
+        final String? structuralContentBlockIdentity =
+            _contentBlockIdentityForLabel(structuralText);
+
+        if (structuralContentBlockIdentity != null) {
+          activeContentBlockIdentity = structuralContentBlockIdentity;
+
+          activeContentBlockLabel = _contentBlockLabelForIdentity(
+            structuralContentBlockIdentity,
+          );
+
+          activeContentBlockHeadingLevel = null;
+          continue;
+        }
 
         if (_isSectionLabel(structuralText)) {
           activeSectionLabel = structuralText.toLowerCase();
@@ -334,6 +458,179 @@ final class HelpyCanonicalBusinessTextCandidateExtractor
       sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
       candidates: candidates,
     );
+  }
+
+  List<SourceEvidence> _candidateSourceEvidence({
+    required RegistryNode node,
+    required int directContentLine,
+  }) {
+    return <SourceEvidence>[
+      for (final SourceEvidence evidence in node.sourceEvidence)
+        SourceEvidence(
+          sourceDocumentPath: evidence.sourceDocumentPath,
+          sourceSnapshotFingerprint: evidence.sourceSnapshotFingerprint,
+          headingPath: evidence.headingPath,
+          startLine: evidence.startLine + directContentLine,
+          endLine: evidence.startLine + directContentLine,
+        ),
+    ];
+  }
+
+  String? _contentBlockIdentityFromPath(Iterable<String> path) {
+    String? identity;
+
+    for (final String segment in path) {
+      identity = _contentBlockIdentityForLabel(segment) ?? identity;
+    }
+
+    return identity;
+  }
+
+  String? _contentBlockIdentityForLabel(String label) {
+    final String normalized = label
+        .trim()
+        .toLowerCase()
+        .replaceAll('ё', 'е')
+        .replaceAll(RegExp(r'[:—–-]+$'), '')
+        .replaceAll(RegExp(r'\s+'), ' ');
+
+    const Set<String> photoQuestions = <String>{
+      'фото-вопросы',
+      'фото вопросы',
+      'обязательные фото-вопросы',
+      'обязательные фото вопросы',
+      'дополнительные фото-вопросы',
+      'дополнительные фото вопросы',
+      'photo questions',
+      'required photo questions',
+      'additional photo questions',
+      'photo requirements',
+    };
+
+    if (photoQuestions.contains(normalized)) {
+      return 'helpy.business-content.photo-questions';
+    }
+
+    const Set<String> questions = <String>{
+      'вопросы',
+      'вопросы клиенту',
+      'вопросы к клиенту',
+      'questions',
+      'client questions',
+      'customer questions',
+    };
+
+    if (questions.contains(normalized)) {
+      return 'helpy.business-content.questions';
+    }
+
+    const Set<String> clientRules = <String>{
+      'правила клиента',
+      'правила для клиента',
+      'правила клиенту',
+      'client rules',
+      'customer rules',
+    };
+
+    if (clientRules.contains(normalized)) {
+      return 'helpy.business-content.client-rules';
+    }
+
+    const Set<String> masterRules = <String>{
+      'правила мастера',
+      'правила для мастера',
+      'правила исполнителя',
+      'правила для исполнителя',
+      'master rules',
+      'contractor rules',
+      'master workflow',
+    };
+
+    if (masterRules.contains(normalized)) {
+      return 'helpy.business-content.master-rules';
+    }
+
+    return null;
+  }
+
+  String _contentBlockLabelForIdentity(String identity) {
+    return switch (identity) {
+      'helpy.business-content.questions' => 'Вопросы',
+      'helpy.business-content.photo-questions' => 'Фото-вопросы',
+      'helpy.business-content.client-rules' => 'Правила клиента',
+      'helpy.business-content.master-rules' => 'Правила мастера',
+      _ => throw StateError(
+        'Unsupported Helpy business content block: '
+        '$identity',
+      ),
+    };
+  }
+
+  String? _scenarioLabelFromPath(Iterable<String> path) {
+    for (final String segment in path.toList(growable: false).reversed) {
+      final String? scenarioLabel = _explicitScenarioLabel(segment);
+
+      if (scenarioLabel != null) {
+        return scenarioLabel;
+      }
+    }
+
+    return null;
+  }
+
+  String? _explicitScenarioLabel(String text) {
+    final String normalized = text.trim().replaceAll(RegExp(r'[:\s]+$'), '');
+
+    final List<RegExp> patterns = <RegExp>[
+      RegExp(
+        r'^(?:сценарий|scenario)'
+        r'(?:\s+\d+)?\s*'
+        r'(?:[:—–-]\s*)?'
+        r'[«"]?(.+?)[»"]?$',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'^(?:если\s+выбрано|if\s+selected)'
+        r'\s*[«"]?(.+?)[»"]?$',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'^(?:для\s+сценария|for\s+scenario)'
+        r'\s*[«"]?(.+?)[»"]?$',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'^(?:тип\s+работ|work\s+type)'
+        r'\s*[:—–-]\s*(.+)$',
+        caseSensitive: false,
+      ),
+    ];
+
+    for (final RegExp pattern in patterns) {
+      final RegExpMatch? match = pattern.firstMatch(normalized);
+
+      if (match == null) {
+        continue;
+      }
+
+      final String scenarioLabel = match.group(1)!.trim();
+
+      if (scenarioLabel.isNotEmpty) {
+        return scenarioLabel;
+      }
+    }
+
+    return null;
+  }
+
+  String _scenarioIdentity(String ownerId, String scenarioLabel) {
+    final String normalizedLabel = scenarioLabel
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), ' ');
+
+    return '$ownerId::scenario::'
+        '${Uri.encodeComponent(normalizedLabel)}';
   }
 
   String _normalizedCandidateText(String text) {

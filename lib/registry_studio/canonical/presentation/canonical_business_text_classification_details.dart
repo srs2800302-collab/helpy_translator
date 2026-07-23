@@ -98,6 +98,24 @@ final class CanonicalBusinessTextClassificationDetails extends StatelessWidget {
                     'Direct content line: '
                     '${candidate.directContentLine}',
                   ),
+                  Text(
+                    'Бизнес-блок: '
+                    '${candidate.contentBlockLabel ?? 'не определён'}',
+                  ),
+                  if (candidate.contentBlockIdentity != null)
+                    SelectableText(
+                      'Content block identity: '
+                      '${candidate.contentBlockIdentity}',
+                    ),
+                  Text(
+                    'Сценарий: '
+                    '${candidate.scenarioLabel ?? 'отсутствует'}',
+                  ),
+                  if (candidate.scenarioIdentity != null)
+                    SelectableText(
+                      'Scenario identity: '
+                      '${candidate.scenarioIdentity}',
+                    ),
                   if (onOpenRegistryCandidate != null) ...<Widget>[
                     const SizedBox(height: 16),
                     FilledButton.icon(

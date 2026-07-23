@@ -24,12 +24,24 @@ final class CanonicalBusinessTextCandidate extends Equatable {
     required String rawText,
     required String text,
     required int directContentLine,
+    String? contentBlockIdentity,
+    String? contentBlockLabel,
+    String? scenarioIdentity,
+    String? scenarioLabel,
   }) {
     final String normalizedIdentity = identity.trim();
     final List<SourceEvidence> normalizedSourceEvidence = sourceEvidence.toList(
       growable: false,
     );
     final String normalizedText = text.trim();
+
+    final String? normalizedContentBlockIdentity = contentBlockIdentity?.trim();
+
+    final String? normalizedContentBlockLabel = contentBlockLabel?.trim();
+
+    final String? normalizedScenarioIdentity = scenarioIdentity?.trim();
+
+    final String? normalizedScenarioLabel = scenarioLabel?.trim();
 
     if (normalizedIdentity.isEmpty) {
       throw ArgumentError.value(
@@ -86,6 +98,57 @@ final class CanonicalBusinessTextCandidate extends Equatable {
       );
     }
 
+    if (normalizedContentBlockIdentity != null &&
+        normalizedContentBlockIdentity.isEmpty) {
+      throw ArgumentError.value(
+        contentBlockIdentity,
+        'contentBlockIdentity',
+        'Content-block identity must not be empty.',
+      );
+    }
+
+    if (normalizedContentBlockLabel != null &&
+        normalizedContentBlockLabel.isEmpty) {
+      throw ArgumentError.value(
+        contentBlockLabel,
+        'contentBlockLabel',
+        'Content-block label must not be empty.',
+      );
+    }
+
+    if ((normalizedContentBlockIdentity == null) !=
+        (normalizedContentBlockLabel == null)) {
+      throw ArgumentError(
+        'Content-block identity and label must both be present '
+        'or both be absent.',
+      );
+    }
+
+    if (normalizedScenarioIdentity != null &&
+        normalizedScenarioIdentity.isEmpty) {
+      throw ArgumentError.value(
+        scenarioIdentity,
+        'scenarioIdentity',
+        'Scenario identity must not be empty.',
+      );
+    }
+
+    if (normalizedScenarioLabel != null && normalizedScenarioLabel.isEmpty) {
+      throw ArgumentError.value(
+        scenarioLabel,
+        'scenarioLabel',
+        'Scenario label must not be empty.',
+      );
+    }
+
+    if ((normalizedScenarioIdentity == null) !=
+        (normalizedScenarioLabel == null)) {
+      throw ArgumentError(
+        'Scenario identity and label must both be present '
+        'or both be absent.',
+      );
+    }
+
     return CanonicalBusinessTextCandidate._(
       identity: normalizedIdentity,
       nodeId: nodeId,
@@ -98,6 +161,10 @@ final class CanonicalBusinessTextCandidate extends Equatable {
       rawText: rawText,
       text: normalizedText,
       directContentLine: directContentLine,
+      contentBlockIdentity: normalizedContentBlockIdentity,
+      contentBlockLabel: normalizedContentBlockLabel,
+      scenarioIdentity: normalizedScenarioIdentity,
+      scenarioLabel: normalizedScenarioLabel,
     );
   }
 
@@ -111,6 +178,10 @@ final class CanonicalBusinessTextCandidate extends Equatable {
     required this.rawText,
     required this.text,
     required this.directContentLine,
+    required this.contentBlockIdentity,
+    required this.contentBlockLabel,
+    required this.scenarioIdentity,
+    required this.scenarioLabel,
   });
 
   final String identity;
@@ -121,6 +192,16 @@ final class CanonicalBusinessTextCandidate extends Equatable {
   final CanonicalBusinessTextCandidateKind kind;
   final String rawText;
   final String text;
+
+  final String? contentBlockIdentity;
+  final String? contentBlockLabel;
+
+  final String? scenarioIdentity;
+  final String? scenarioLabel;
+
+  bool get hasContentBlockContext => contentBlockIdentity != null;
+
+  bool get hasScenarioContext => scenarioIdentity != null;
 
   /// Zero identifies the structural heading.
   ///
@@ -140,5 +221,9 @@ final class CanonicalBusinessTextCandidate extends Equatable {
     rawText,
     text,
     directContentLine,
+    contentBlockIdentity,
+    contentBlockLabel,
+    scenarioIdentity,
+    scenarioLabel,
   ];
 }
