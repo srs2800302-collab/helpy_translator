@@ -1751,6 +1751,28 @@ Dictionary ID: `REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1`
 
 Тексты утверждённых фраз и блоков ниже перенесены из текущего источника Registry и не переписываются этим контрактом. Стабильные legacy titles и отдельные source evidence fragments могут оставаться на английском языке как дословные identifiers или доказательства.
 
+### Утверждённые эквивалентные формулировки
+
+Эквивалентная формулировка не становится новой canonical entry и не разрешает автоматическую классификацию других похожих текстов.
+
+Эквивалентность действует только в явно зафиксированной applicability. Наличие похожего текста вне этой applicability не является доказательством эквивалентности.
+
+<!-- REGISTRY_STUDIO_CANONICAL_APPROVED_EQUIVALENTS:BEGIN -->
+
+### Approved equivalent: `helpy.canonical.approved-equivalent.electrical-safety-boundary.001`
+
+Approval status: **APPROVED / STORED**
+Canonical entry identity: `REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1::helpy.canonical.client_labels::sha256:09bad4adec8d4bc7e0995396df9af95ad197417022f64c04c2ba8301e2d85c99`
+Equivalent text: `Клиент не обязан выполнять опасные действия для предоставления информации.`
+Applicability: `RegistryPath: Helpy Architecture Registry v1 Foundation -> 23. Service Architecture Registry — Electrical -> Electrical Point Mini-TZ Standard`
+Approval evidence ID: `registry-studio.engineer-approval.2026-07-23.equivalent-001`
+Registry source path: `docs/architecture/Helpy_Architecture_Registry_v1.md`
+Registry source revision: `64f45059c6043f2e65165a4a8da053cf3a73c107`
+Registry source fingerprint: `git-blob:c69a0f5812e00f99ecc3eb3235d5a2c8fc3271a9`
+Registry source line: `9366`
+
+<!-- REGISTRY_STUDIO_CANONICAL_APPROVED_EQUIVALENTS:END -->
+
 ### Collection: `helpy.canonical.general_preparation`
 
 Тип записи: `phrase_with_applicability`
@@ -1763,7 +1785,7 @@ Dictionary ID: `REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1`
 - Используется только для сценария «Установить и подключить».
 
 Подготовьте доступ к установленному оборудованию.
-- Используется только для сценариев «Заменить» и «Перенести».
+- Используется только для сценария «Заменить».
 
 ### Collection: `helpy.canonical.photo_labels`
 
@@ -2027,3 +2049,34 @@ Helpy не включает в услугу действия, которые н�
 | `1` | `2026-07-17` | Первичный импорт текущих утверждённых общих подготовительных фраз, `Canonical Photo Labels`, `Canonical Client Labels`, `Canonical Master Workflow Blocks` и подтверждённых Global Platform Rules в контракт новой ветки. | Путь источника, source hashes и точный импортированный текст зафиксированы выше. |
 
 <!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->
+
+---
+
+## 22. Контекст канонического анализа бизнес-формулировок
+
+Единицей канонического анализа является бизнес-формулировка вместе с полным контекстом:
+
+`business entity + content block + optional scenario context + exact source evidence`.
+
+Каждая бизнес-сущность может иметь сценарии или не иметь их. Количество сценариев и уровень их выбора не кодируются фиксированным списком категорий, названий сценариев или глубины Registry.
+
+Каждая бизнес-сущность Helpy предоставляет стабильные типы бизнес-блоков:
+
+- вопросы;
+- фото-вопросы;
+- правила клиента;
+- правила мастера.
+
+Helpy adapter распознаёт business entity, business block, опциональный scenario context и точную строку источника. Универсальный модуль `canonical` получает generic identities и labels и не распознаёт Helpy-specific категории, сценарии или Markdown headings.
+
+Правила клиента и правила мастера могут различаться между сценариями. Canonical applicability, comparison, duplicate analysis и completeness analysis не должны смешивать формулировки разных scenario contexts.
+
+Добавление новых категорий, сущностей и сценариев не требует изменения универсального `canonical`, если project adapter передаёт тот же generic context contract.
+
+---
+
+## 23. Разрешение применимости Canonical Dictionary
+
+Universal `canonical` не интерпретирует project-specific строки применимости. Generic resolver возвращает `applicable`, `notApplicable` или `unresolved`. Project adapter сопоставляет applicability со structured candidate context. `Exact` для constrained entry допустим только с `CanonicalConfirmedApplicationEvidence`. Неизвестная применимость остаётся `Review`; явно неприменимая entry исключается из exact matches.
+
+При одинаковом exact text применимая constrained entry имеет приоритет над universal entry. Universal entry используется как fallback только тогда, когда все constrained entries доказанно `notApplicable`. Неразрешённая constrained applicability блокирует universal fallback и остаётся `Review`.
