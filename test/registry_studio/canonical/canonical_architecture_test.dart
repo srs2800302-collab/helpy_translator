@@ -450,15 +450,19 @@ void main() {
       ]);
     });
 
-    test('dictionary reader uses stable markers and metadata', () {
+    test('dictionary reader accepts normative metadata and fails closed', () {
       const String source = '''
 # Registry Studio Contract
 
 <!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:BEGIN -->
 
 Dictionary ID: `REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1`
-Dictionary version: `1`
-Status: **APPROVED / STORED**
+Версия словаря: `1`
+Статус: **APPROVED / STORED**
+
+### Collection: `helpy.canonical.photo_labels`
+
+- Фотография места установки.
 
 <!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->
 ''';
@@ -470,16 +474,17 @@ Status: **APPROVED / STORED**
         sourceSnapshotFingerprint: 'contract-fingerprint',
       );
 
-      expect(result.failures, isEmpty);
-      expect(result.dictionary, isNotNull);
+      expect(result.dictionary, isNull);
+      expect(result.failures, hasLength(1));
       expect(
-        result.dictionary!.dictionaryId,
-        HelpyCanonicalDictionaryReader.expectedDictionaryId,
+        result.failures.single.code,
+        'dictionary_content_parsing_not_implemented',
       );
       expect(
-        result.dictionary!.version,
-        HelpyCanonicalDictionaryReader.expectedVersion,
+        result.failures.single.severity,
+        CanonicalAdapterFailureSeverity.fatal,
       );
+      expect(result.failures.single.sourceEvidence, hasLength(1));
     });
 
     test('dictionary reader rejects duplicate stable markers', () {

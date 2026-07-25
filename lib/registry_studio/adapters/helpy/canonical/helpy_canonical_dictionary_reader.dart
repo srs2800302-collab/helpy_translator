@@ -89,13 +89,13 @@ final class HelpyCanonicalDictionaryReader {
       lines,
       beginLine: beginLine,
       endLine: endLine,
-      key: 'Dictionary version',
+      key: 'Версия словаря',
     );
     final String? status = _metadataValue(
       lines,
       beginLine: beginLine,
       endLine: endLine,
-      key: 'Status',
+      key: 'Статус',
     );
 
     final List<CanonicalAdapterFailure> failures = <CanonicalAdapterFailure>[];
@@ -144,20 +144,16 @@ final class HelpyCanonicalDictionaryReader {
     }
 
     return (
-      dictionary: CanonicalDictionary(
-        dictionaryId: dictionaryId!,
-        version: version!,
-        status: status!,
-        sourceDocumentPath: sourceDocumentPath,
-        sourceRevision: sourceRevision,
-        sourceSnapshotFingerprint: sourceSnapshotFingerprint,
-        beginMarkerLine: beginLine,
-        endMarkerLine: endLine,
-        phrases: const <CanonicalPhraseEntry>[],
-        approvedEquivalents: const <CanonicalApprovedEquivalent>[],
-        orderedBlocks: const <CanonicalOrderedBlock>[],
-      ),
-      failures: const <CanonicalAdapterFailure>[],
+      dictionary: null,
+      failures: <CanonicalAdapterFailure>[
+        _fatalFailure(
+          code: 'dictionary_content_parsing_not_implemented',
+          explanation:
+              'Canonical Dictionary metadata подтверждены, но содержимое '
+              'словаря ещё не преобразовано в canonical entries.',
+          sourceEvidence: <SourceEvidence>[dictionaryEvidence],
+        ),
+      ],
     );
   }
 
