@@ -69,8 +69,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   bool _searchControllerInitialized = false;
   bool _showProblemQueue = false;
   bool _showProblemQueueFullScreen = false;
-  RegistryNodeId? _registryBranchScopeNodeId;
-  double _registryBranchFilterScrollOffset = 0;
+  final List<RegistryNodeId> _registryBranchScopeNodeIds = <RegistryNodeId>[];
+  final List<double> _registryBranchScopeScrollOffsets = <double>[];
 
   final Set<RegistryNodeId> _expandedRegistryNodeIds = <RegistryNodeId>{};
 
@@ -178,8 +178,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
 
     setState(() {
       _expandedRegistryNodeIds.clear();
-      _registryBranchScopeNodeId = null;
-      _registryBranchFilterScrollOffset = 0;
+      _registryBranchScopeNodeIds.clear();
+      _registryBranchScopeScrollOffsets.clear();
       _showProblemQueue = false;
       _showProblemQueueFullScreen = false;
       _selectedRegistrySearchContextId = null;
@@ -244,8 +244,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     }
 
     setState(() {
-      _registryBranchScopeNodeId = null;
-      _registryBranchFilterScrollOffset = 0;
+      _registryBranchScopeNodeIds.clear();
+      _registryBranchScopeScrollOffsets.clear();
       _expandedRegistryNodeIds.clear();
     });
 
@@ -1336,18 +1336,18 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                   child: ListView(
                     children: <Widget>[
                       option(
-                        keyValue: 'registry-view-filter-all',
-                        filter: 'all',
-                        icon: Icons.view_list_outlined,
-                        title: 'Все узлы',
-                        count: allNodes.length,
-                      ),
-                      option(
                         keyValue: 'registry-view-filter-roots',
                         filter: 'roots',
-                        icon: Icons.account_tree_outlined,
+                        icon: Icons.home_work_outlined,
                         title: 'Корневые узлы',
                         count: rootCount,
+                      ),
+                      option(
+                        keyValue: 'registry-view-filter-all',
+                        filter: 'all',
+                        icon: Icons.account_tree_outlined,
+                        title: 'Все узлы',
+                        count: allNodes.length,
                       ),
                       option(
                         keyValue: 'registry-view-filter-branches',
@@ -1388,12 +1388,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   }
 
   RegistryNode? _registryBranchScopeRoot(RegistryExplorerLoaded loaded) {
-    if (loaded.registryViewFilter != 'branches' ||
-        _registryBranchScopeNodeId == null) {
+    if (_registryBranchScopeNodeIds.isEmpty) {
       return null;
     }
 
-    return loaded.index.nodesById[_registryBranchScopeNodeId];
+    return loaded.index.nodesById[_registryBranchScopeNodeIds.last];
   }
 
   void _openRegistryBranchScope(RegistryNode node) {
@@ -1402,8 +1401,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
         : 0;
 
     setState(() {
-      _registryBranchFilterScrollOffset = currentOffset;
-      _registryBranchScopeNodeId = node.id;
+      _registryBranchScopeNodeIds.add(node.id);
+      _registryBranchScopeScrollOffsets.add(currentOffset);
       _expandedRegistryNodeIds.clear();
     });
 
@@ -1417,10 +1416,16 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
   }
 
   void _closeRegistryBranchScope() {
-    final double restoreOffset = _registryBranchFilterScrollOffset;
+    if (_registryBranchScopeNodeIds.isEmpty ||
+        _registryBranchScopeScrollOffsets.isEmpty) {
+      return;
+    }
+
+    final double restoreOffset = _registryBranchScopeScrollOffsets.last;
 
     setState(() {
-      _registryBranchScopeNodeId = null;
+      _registryBranchScopeNodeIds.removeLast();
+      _registryBranchScopeScrollOffsets.removeLast();
       _expandedRegistryNodeIds.clear();
     });
 
@@ -1447,46 +1452,19 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       return false;
     }
 
-    if (registryViewFilter == 'all') {
+    if (branchScopeActive) {
       return node.children.isNotEmpty;
     }
 
-    if (registryViewFilter == 'branches' && branchScopeActive) {
-      return node.children.isNotEmpty;
-    }
-
-    return false;
+    return registryViewFilter == 'all' && node.children.isNotEmpty;
   }
 
   List<RegistryNode> _visibleRegistryNodes(RegistryExplorerLoaded loaded) {
     final String registryViewFilter = loaded.registryViewFilter;
     final bool searchActive = loaded.searchQuery.trim().isNotEmpty;
+    final RegistryNode? branchScopeRoot = _registryBranchScopeRoot(loaded);
 
-    if (searchActive) {
-      if (registryViewFilter == 'all') {
-        return loaded.searchResults;
-      }
-
-      return loaded.searchResults
-          .where(
-            (RegistryNode node) =>
-                _matchesRegistryViewFilter(node, registryViewFilter),
-          )
-          .toList(growable: false);
-    }
-
-    if (registryViewFilter == 'branches') {
-      final RegistryNode? branchScopeRoot = _registryBranchScopeRoot(loaded);
-
-      if (branchScopeRoot == null) {
-        return _allRegistryNodes(loaded.snapshot.roots)
-            .where(
-              (RegistryNode node) =>
-                  _matchesRegistryViewFilter(node, registryViewFilter),
-            )
-            .toList(growable: false);
-      }
-
+    if (!searchActive && branchScopeRoot != null) {
       final List<RegistryNode> visibleNodes = <RegistryNode>[];
 
       void appendNodes(RegistryNode node, int depth) {
@@ -1507,6 +1485,19 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
       appendNodes(branchScopeRoot, 0);
 
       return visibleNodes;
+    }
+
+    if (searchActive) {
+      if (registryViewFilter == 'all') {
+        return loaded.searchResults;
+      }
+
+      return loaded.searchResults
+          .where(
+            (RegistryNode node) =>
+                _matchesRegistryViewFilter(node, registryViewFilter),
+          )
+          .toList(growable: false);
     }
 
     if (registryViewFilter != 'all') {
@@ -1717,7 +1708,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                     ),
                     tooltip: 'Сбросить контекст Registry Studio',
                     onPressed: _resetRegistryStudio,
-                    icon: const Icon(Icons.restart_alt),
+                    icon: const Icon(Icons.layers_clear_outlined),
                   ),
                   if (searchQuery.isNotEmpty)
                     IconButton(
@@ -2127,7 +2118,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               ),
                               tooltip: 'Сбросить контекст Registry Studio',
                               onPressed: _resetRegistryStudio,
-                              icon: const Icon(Icons.restart_alt),
+                              icon: const Icon(Icons.layers_clear_outlined),
                             ),
                             IconButton(
                               key: const ValueKey<String>(
@@ -2588,10 +2579,29 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                             final RegistryNode? branchScopeRoot =
                                 _registryBranchScopeRoot(loaded);
 
-                            final bool branchEntryList =
-                                loaded.registryViewFilter == 'branches' &&
-                                branchScopeRoot == null &&
-                                !searchActive;
+                            final IconData structuralHeaderIcon =
+                                switch (loaded.registryViewFilter) {
+                                  'roots' => Icons.home_work_outlined,
+                                  'branches' => Icons.folder_outlined,
+                                  'leaves' => Icons.description_outlined,
+                                  _ => Icons.account_tree_outlined,
+                                };
+
+                            final String structuralHeaderTitle =
+                                switch (loaded.registryViewFilter) {
+                                  'roots' =>
+                                    'Корневые узлы Registry · '
+                                        '${visibleRegistryNodes.length}',
+                                  'branches' =>
+                                    'Ветки Registry · '
+                                        '${visibleRegistryNodes.length}',
+                                  'leaves' =>
+                                    'Конечные блоки Registry · '
+                                        '${visibleRegistryNodes.length}',
+                                  _ =>
+                                    'Все узлы Registry · '
+                                        '${loaded.index.nodes.length}',
+                                };
 
                             return ListTile(
                               key: const ValueKey<String>(
@@ -2602,16 +2612,14 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                       key: const ValueKey<String>(
                                         'registry-branch-scope-back',
                                       ),
-                                      tooltip: 'Вернуться к списку веток',
+                                      tooltip: 'Вернуться к предыдущему уровню',
                                       onPressed: _closeRegistryBranchScope,
                                       icon: const Icon(Icons.arrow_back),
                                     )
                                   : Icon(
                                       searchActive
                                           ? Icons.manage_search
-                                          : branchEntryList
-                                          ? Icons.folder_copy_outlined
-                                          : Icons.account_tree_outlined,
+                                          : structuralHeaderIcon,
                                     ),
                               title: Text(
                                 searchActive
@@ -2619,12 +2627,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                           '${loaded.searchResults.length} '
                                           'из ${loaded.index.nodes.length}'
                                     : branchScopeRoot != null
-                                    ? 'Ветка: '
+                                    ? 'Раздел: '
                                           '${branchScopeRoot.path.segments.last}'
-                                    : branchEntryList
-                                    ? 'Ветки Registry · '
-                                          '${visibleRegistryNodes.length}'
-                                    : 'Дерево Registry',
+                                    : structuralHeaderTitle,
                               ),
                               subtitle: branchScopeRoot == null || searchActive
                                   ? null
@@ -2636,6 +2641,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               minVerticalPadding: 0,
                             );
                           }
+
                           final int nodeIndex =
                               itemIndex - fullRegistryHeaderIndex - 1;
 
@@ -2661,6 +2667,11 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               branchScopeRoot == null &&
                               !searchActive;
 
+                          final bool containerEntryAvailable =
+                              node.children.isNotEmpty &&
+                              !searchActive &&
+                              node.id != branchScopeRoot?.id;
+
                           final int absoluteDepth =
                               node.path.segments.length - 1;
 
@@ -2684,6 +2695,33 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                           final bool expanded =
                               rootNode ||
                               _expandedRegistryNodeIds.contains(node.id);
+
+                          final bool branchScopeRootNode =
+                              branchScopeRoot != null &&
+                              node.id == branchScopeRoot.id;
+
+                          final IconData hierarchyRegistryNodeIcon =
+                              branchScopeRootNode &&
+                                  node.path.segments.length == 1
+                              ? Icons.account_tree_outlined
+                              : branchScopeRoot == null &&
+                                    node.path.segments.length == 1
+                              ? Icons.home_work_outlined
+                              : node.children.isNotEmpty
+                              ? expanded
+                                    ? Icons.folder_open_outlined
+                                    : Icons.folder_outlined
+                              : Icons.description_outlined;
+
+                          final IconData registryNodeIcon =
+                              !searchActive && branchScopeRoot == null
+                              ? switch (loaded.registryViewFilter) {
+                                  'roots' => Icons.home_work_outlined,
+                                  'branches' => Icons.folder_outlined,
+                                  'leaves' => Icons.description_outlined,
+                                  _ => hierarchyRegistryNodeIcon,
+                                }
+                              : hierarchyRegistryNodeIcon;
 
                           final ColorScheme colorScheme = Theme.of(
                             context,
@@ -2851,22 +2889,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                               );
                                             });
                                           },
-                                          icon: Icon(
-                                            expanded
-                                                ? Icons.folder_open_outlined
-                                                : Icons.folder_outlined,
-                                          ),
+                                          icon: Icon(registryNodeIcon),
                                         )
-                                      : Icon(
-                                          branchEntryList
-                                              ? Icons.folder_outlined
-                                              : rootNode &&
-                                                    branchScopeRoot != null
-                                              ? Icons.folder_open_outlined
-                                              : expandable
-                                              ? Icons.account_tree_outlined
-                                              : Icons.description_outlined,
-                                        ),
+                                      : Icon(registryNodeIcon),
                                 ),
                                 title: searchActive
                                     ? _highlightRegistrySearchText(
@@ -2938,13 +2963,24 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                                         '${evidence.startLine}–'
                                         '${evidence.endLine}',
                                       ),
-                                trailing: branchEntryList
-                                    ? const Icon(Icons.chevron_right)
+                                trailing: containerEntryAvailable
+                                    ? IconButton(
+                                        key: ValueKey<String>(
+                                          'registry-branch-open-${node.id.value}',
+                                        ),
+                                        tooltip:
+                                            'Открыть раздел '
+                                            '${node.path.segments.last}',
+                                        onPressed: () {
+                                          _openRegistryBranchScope(node);
+                                        },
+                                        icon: const Icon(Icons.arrow_forward),
+                                      )
                                     : null,
                                 isThreeLine: true,
                                 selected: loaded.openRegistryNodeId == node.id,
                                 onTap: () async {
-                                  if (branchEntryList) {
+                                  if (containerEntryAvailable) {
                                     _openRegistryBranchScope(node);
                                     return;
                                   }

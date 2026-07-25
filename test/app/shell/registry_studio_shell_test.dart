@@ -2856,6 +2856,181 @@ void main() {
     expect(loader.loadCount, 1);
   });
 
+  testWidgets(
+    'opens root Registry container as subtree and preserves hierarchy icons',
+    (WidgetTester tester) async {
+      final _QueuedRegistrySnapshotLoader loader =
+          _QueuedRegistrySnapshotLoader(<Future<RegistrySnapshot> Function()>[
+            () async => snapshot,
+          ]);
+
+      await tester.pumpWidget(
+        RegistryStudioApplication(
+          registrySnapshotLoader: loader,
+          registrySnapshotRefreshLoader: loader,
+          registrySnapshotRevisionLoader: loader,
+          registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+          registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final RegistryNode root = snapshot.roots.single;
+      final RegistryNode child = root.children.single;
+
+      final Finder rootRow = find.byKey(ValueKey<String>(root.id.value));
+      final Finder childRow = find.byKey(ValueKey<String>(child.id.value));
+      final Finder rootOpenButton = find.byKey(
+        ValueKey<String>('registry-branch-open-${root.id.value}'),
+      );
+      final Finder fullRegistryHeader = find.byKey(
+        const ValueKey<String>('full-registry-header'),
+      );
+
+      expect(rootRow, findsOneWidget);
+      expect(childRow, findsOneWidget);
+      expect(rootOpenButton, findsOneWidget);
+      expect(find.text('Все узлы Registry · 2'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: fullRegistryHeader,
+          matching: find.byIcon(Icons.account_tree_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: rootRow,
+          matching: find.byIcon(Icons.home_work_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: childRow,
+          matching: find.byIcon(Icons.description_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<IconButton>(rootOpenButton).tooltip,
+        'Открыть раздел ${root.path.segments.last}',
+      );
+
+      await tester.tap(rootRow);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Раздел: ${root.path.segments.last}'), findsOneWidget);
+      expect(rootRow, findsOneWidget);
+      expect(childRow, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('registry-selected-block')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: rootRow,
+          matching: find.byIcon(Icons.account_tree_outlined),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('registry-branch-scope-back')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('registry-view-filter-button')),
+      );
+      await tester.pumpAndSettle();
+
+      final Finder rootsFilter = find.byKey(
+        const ValueKey<String>('registry-view-filter-roots'),
+      );
+      final Finder allFilter = find.byKey(
+        const ValueKey<String>('registry-view-filter-all'),
+      );
+      final Finder branchesFilter = find.byKey(
+        const ValueKey<String>('registry-view-filter-branches'),
+      );
+      final Finder leavesFilter = find.byKey(
+        const ValueKey<String>('registry-view-filter-leaves'),
+      );
+
+      expect(
+        tester.getTopLeft(rootsFilter).dy,
+        lessThan(tester.getTopLeft(allFilter).dy),
+      );
+      expect(
+        tester.getTopLeft(allFilter).dy,
+        lessThan(tester.getTopLeft(branchesFilter).dy),
+      );
+      expect(
+        tester.getTopLeft(branchesFilter).dy,
+        lessThan(tester.getTopLeft(leavesFilter).dy),
+      );
+      expect(
+        find.descendant(
+          of: rootsFilter,
+          matching: find.byIcon(Icons.home_work_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: allFilter,
+          matching: find.byIcon(Icons.account_tree_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: branchesFilter,
+          matching: find.byIcon(Icons.folder_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: leavesFilter,
+          matching: find.byIcon(Icons.description_outlined),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(rootsFilter);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Корневые узлы Registry · 1'), findsOneWidget);
+      expect(rootRow, findsOneWidget);
+      expect(childRow, findsNothing);
+      expect(rootOpenButton, findsOneWidget);
+      expect(
+        find.descendant(
+          of: rootRow,
+          matching: find.byIcon(Icons.home_work_outlined),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(rootRow);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Раздел: ${root.path.segments.last}'), findsOneWidget);
+      expect(rootRow, findsOneWidget);
+      expect(childRow, findsOneWidget);
+      expect(
+        find.descendant(
+          of: rootRow,
+          matching: find.byIcon(Icons.account_tree_outlined),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('opens a filtered Registry branch as a complete local tree', (
     WidgetTester tester,
   ) async {
@@ -3033,7 +3208,7 @@ void main() {
     await tester.tap(branchRow);
     await tester.pumpAndSettle();
 
-    expect(find.text('Ветка: Branch'), findsOneWidget);
+    expect(find.text('Раздел: Branch'), findsOneWidget);
 
     expect(
       find.byKey(const ValueKey<String>('registry-branch-scope-back')),
@@ -3062,6 +3237,34 @@ void main() {
       findsNothing,
     );
 
+    final Finder nestedBranchOpenButton = find.byKey(
+      ValueKey<String>('registry-branch-open-${nestedBranch.id.value}'),
+    );
+
+    expect(nestedBranchOpenButton, findsOneWidget);
+    expect(
+      tester.widget<IconButton>(nestedBranchOpenButton).tooltip,
+      'Открыть раздел Nested Branch',
+    );
+
+    await tester.tap(nestedBranchRow);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Раздел: Nested Branch'), findsOneWidget);
+    expect(leafRow, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('registry-selected-block')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-branch-scope-back')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Раздел: Branch'), findsOneWidget);
+    expect(nestedBranchToggle, findsOneWidget);
+
     await tester.tap(nestedBranchToggle);
     await tester.pumpAndSettle();
 
@@ -3083,7 +3286,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Ветка: Branch'), findsOneWidget);
+    expect(find.text('Раздел: Branch'), findsOneWidget);
     expect(nestedBranchToggle, findsOneWidget);
     expect(leafRow, findsOneWidget);
 
@@ -3257,7 +3460,7 @@ void main() {
 
     expect(selectedBlockScreen, findsNothing);
     expect(store.state?.searchQuery, isEmpty);
-    expect(find.text('Дерево Registry'), findsOneWidget);
+    expect(find.text('Все узлы Registry · 2'), findsOneWidget);
 
     final Finder clearSearchButton = find.byKey(
       const ValueKey<String>('registry-search-clear'),
@@ -3294,6 +3497,26 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    final Finder headerResetButton = find.byKey(
+      const ValueKey<String>('registry-studio-reset'),
+    );
+
+    expect(headerResetButton, findsOneWidget);
+    expect(
+      find.descendant(
+        of: headerResetButton,
+        matching: find.byIcon(Icons.layers_clear_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: headerResetButton,
+        matching: find.byIcon(Icons.restart_alt),
+      ),
+      findsNothing,
+    );
+
     final RegistryNode child = snapshot.roots.single.children.single;
 
     final Finder searchField = find.byKey(
@@ -3319,6 +3542,20 @@ void main() {
     );
 
     expect(selectedResetButton, findsOneWidget);
+    expect(
+      find.descendant(
+        of: selectedResetButton,
+        matching: find.byIcon(Icons.layers_clear_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: selectedResetButton,
+        matching: find.byIcon(Icons.restart_alt),
+      ),
+      findsNothing,
+    );
 
     await tester.tap(selectedResetButton);
     await tester.pumpAndSettle();
@@ -3359,7 +3596,7 @@ void main() {
       findsOneWidget,
     );
 
-    expect(find.text('Дерево Registry'), findsOneWidget);
+    expect(find.text('Все узлы Registry · 2'), findsOneWidget);
     expect(find.text('Найдено: 1'), findsNothing);
 
     final TextFormField resetSearchField = tester.widget<TextFormField>(

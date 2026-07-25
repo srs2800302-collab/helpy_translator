@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:path_provider_android/path_provider_android.dart';
 
-import '../application/contracts/helpy_registry_node_identity_store.dart';
 import '../../../core/domain/value_objects/registry_path.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
+import '../application/contracts/helpy_registry_node_identity_store.dart';
 
 final class JsonFileHelpyRegistryNodeIdentityStore
     implements HelpyRegistryNodeIdentityStore {
@@ -16,11 +16,15 @@ final class JsonFileHelpyRegistryNodeIdentityStore
   static const String directoryName = 'registry_studio';
 
   static const String revisionDirectoryName =
+      'helpy_registry_node_identity_states_v3';
+
+  static const String legacyRevisionDirectoryName =
       'helpy_registry_node_identities_v2';
 
   static const String legacyFileName = 'helpy_registry_node_identities_v1.json';
 
-  static const String _formatVersion = 'v2';
+  static const String _formatVersion = 'v3';
+  static const String _legacyRevisionFormatVersion = 'v2';
   static const String _legacyFormatVersion = 'v1';
   static const String _projectId = 'helpy';
 
@@ -33,7 +37,7 @@ final class JsonFileHelpyRegistryNodeIdentityStore
   final Directory? applicationSupportDirectory;
 
   @override
-  Future<Map<RegistryPath, RegistryNodeId>> loadIdentities(
+  Future<HelpyRegistryNodeIdentityState> loadState(
     String sourceRevision,
   ) async {
     final String normalizedSourceRevision = sourceRevision.trim();
@@ -75,9 +79,30 @@ final class JsonFileHelpyRegistryNodeIdentityStore
       '$normalizedSourceRevision.json',
     );
 
+    final File legacyRevisionFile = File(
+      '${supportDirectory.path}'
+      '${Platform.pathSeparator}'
+      '$directoryName'
+      '${Platform.pathSeparator}'
+      '$legacyRevisionDirectoryName'
+      '${Platform.pathSeparator}'
+      '$normalizedSourceRevision.json',
+    );
+
+    File? discoveredRevisionFile;
+    String? discoveredFormatVersion;
+
     if (await revisionFile.exists()) {
+      discoveredRevisionFile = revisionFile;
+      discoveredFormatVersion = _formatVersion;
+    } else if (await legacyRevisionFile.exists()) {
+      discoveredRevisionFile = legacyRevisionFile;
+      discoveredFormatVersion = _legacyRevisionFormatVersion;
+    }
+
+    if (discoveredRevisionFile != null && discoveredFormatVersion != null) {
       final Object? decodedState = jsonDecode(
-        await revisionFile.readAsString(),
+        await discoveredRevisionFile.readAsString(),
       );
 
       if (decodedState is! Map<Object?, Object?> ||
@@ -90,16 +115,19 @@ final class JsonFileHelpyRegistryNodeIdentityStore
 
       final Map<String, Object?> state = decodedState.cast<String, Object?>();
 
-      const Set<String> expectedKeys = <String>{
-        'version',
-        'projectId',
-        'sourceRevision',
-        'entries',
-      };
+      final Set<String> expectedKeys = discoveredFormatVersion == _formatVersion
+          ? const <String>{
+              'version',
+              'projectId',
+              'sourceRevision',
+              'entries',
+              'retiredNodeIds',
+            }
+          : const <String>{'version', 'projectId', 'sourceRevision', 'entries'};
 
       if (state.keys.length != expectedKeys.length ||
           !state.keys.toSet().containsAll(expectedKeys) ||
-          state['version'] != _formatVersion ||
+          state['version'] != discoveredFormatVersion ||
           state['projectId'] != _projectId ||
           state['sourceRevision'] != normalizedSourceRevision) {
         throw const FormatException(
@@ -164,7 +192,6 @@ final class JsonFileHelpyRegistryNodeIdentityStore
         }
 
         final RegistryNodeId nodeId = RegistryNodeId(nodeIdValue);
-
         final RegistryPath path = RegistryPath(headingPathValue.cast<String>());
 
         if (!discoveredIds.add(nodeId)) {
@@ -185,7 +212,57 @@ final class JsonFileHelpyRegistryNodeIdentityStore
         identities[path] = nodeId;
       }
 
-      return Map<RegistryPath, RegistryNodeId>.unmodifiable(identities);
+      final Set<RegistryNodeId> retiredNodeIds = <RegistryNodeId>{};
+
+      if (discoveredFormatVersion == _formatVersion) {
+        final Object? retiredNodeIdsValue = state['retiredNodeIds'];
+
+        if (retiredNodeIdsValue is! List<Object?>) {
+          throw const FormatException(
+            'Helpy Registry retired identity IDs must be '
+            'a JSON array.',
+          );
+        }
+
+        for (int index = 0; index < retiredNodeIdsValue.length; index += 1) {
+          final Object? retiredNodeIdValue = retiredNodeIdsValue[index];
+
+          if (retiredNodeIdValue is! String ||
+              !_nodeIdPattern.hasMatch(retiredNodeIdValue)) {
+            throw FormatException(
+              'Helpy Registry retired identity ID '
+              'at index $index is invalid.',
+            );
+          }
+
+          final RegistryNodeId retiredNodeId = RegistryNodeId(
+            retiredNodeIdValue,
+          );
+
+          if (!retiredNodeIds.add(retiredNodeId)) {
+            throw FormatException(
+              'Helpy Registry revision identity state contains '
+              'duplicate retired nodeId ${retiredNodeId.value}.',
+            );
+          }
+
+          if (discoveredIds.contains(retiredNodeId)) {
+            throw FormatException(
+              'Helpy Registry revision identity state contains '
+              'active and retired nodeId ${retiredNodeId.value}.',
+            );
+          }
+        }
+      }
+
+      if (discoveredFormatVersion == _legacyRevisionFormatVersion) {
+        return HelpyRegistryNodeIdentityState(retiredNodeIds: discoveredIds);
+      }
+
+      return HelpyRegistryNodeIdentityState(
+        localIdentitiesByPath: identities,
+        retiredNodeIds: retiredNodeIds,
+      );
     }
 
     final File legacyFile = File(
@@ -197,7 +274,7 @@ final class JsonFileHelpyRegistryNodeIdentityStore
     );
 
     if (!await legacyFile.exists()) {
-      return <RegistryPath, RegistryNodeId>{};
+      return HelpyRegistryNodeIdentityState();
     }
 
     final Object? decodedLegacyState = jsonDecode(
@@ -287,7 +364,6 @@ final class JsonFileHelpyRegistryNodeIdentityStore
       }
 
       final RegistryNodeId nodeId = RegistryNodeId(nodeIdValue);
-
       final RegistryPath path = RegistryPath(headingPathValue.cast<String>());
 
       if (!legacyDiscoveredIds.add(nodeId)) {
@@ -308,13 +384,13 @@ final class JsonFileHelpyRegistryNodeIdentityStore
       legacyIdentities[path] = nodeId;
     }
 
-    return Map<RegistryPath, RegistryNodeId>.unmodifiable(legacyIdentities);
+    return HelpyRegistryNodeIdentityState(retiredNodeIds: legacyDiscoveredIds);
   }
 
   @override
-  Future<void> saveIdentities(
+  Future<void> saveState(
     String sourceRevision,
-    Map<RegistryPath, RegistryNodeId> identities,
+    HelpyRegistryNodeIdentityState state,
   ) async {
     final String normalizedSourceRevision = sourceRevision.trim();
 
@@ -327,24 +403,42 @@ final class JsonFileHelpyRegistryNodeIdentityStore
       );
     }
 
-    final Set<RegistryNodeId> discoveredIds = <RegistryNodeId>{};
+    final Set<RegistryNodeId> activeNodeIds = <RegistryNodeId>{};
 
     for (final MapEntry<RegistryPath, RegistryNodeId> entry
-        in identities.entries) {
+        in state.localIdentitiesByPath.entries) {
       if (!_nodeIdPattern.hasMatch(entry.value.value)) {
         throw ArgumentError.value(
           entry.value.value,
-          'identities',
+          'state',
           'Helpy Registry local identity has an invalid nodeId.',
         );
       }
 
-      if (!discoveredIds.add(entry.value)) {
+      if (!activeNodeIds.add(entry.value)) {
         throw ArgumentError.value(
           entry.value.value,
-          'identities',
+          'state',
           'Helpy Registry local identities contain '
               'a duplicate nodeId.',
+        );
+      }
+    }
+
+    for (final RegistryNodeId retiredNodeId in state.retiredNodeIds) {
+      if (!_nodeIdPattern.hasMatch(retiredNodeId.value)) {
+        throw ArgumentError.value(
+          retiredNodeId.value,
+          'state',
+          'Helpy Registry retired identity has an invalid nodeId.',
+        );
+      }
+
+      if (activeNodeIds.contains(retiredNodeId)) {
+        throw ArgumentError.value(
+          retiredNodeId.value,
+          'state',
+          'Helpy Registry identity cannot be active and retired.',
         );
       }
     }
@@ -390,13 +484,19 @@ final class JsonFileHelpyRegistryNodeIdentityStore
     }
 
     final List<MapEntry<RegistryPath, RegistryNodeId>> orderedEntries =
-        identities.entries.toList(growable: false)..sort(
+        state.localIdentitiesByPath.entries.toList(growable: false)..sort(
           (
             MapEntry<RegistryPath, RegistryNodeId> left,
             MapEntry<RegistryPath, RegistryNodeId> right,
           ) => left.key.segments
               .join('\u0000')
               .compareTo(right.key.segments.join('\u0000')),
+        );
+
+    final List<RegistryNodeId> orderedRetiredNodeIds =
+        state.retiredNodeIds.toList(growable: false)..sort(
+          (RegistryNodeId left, RegistryNodeId right) =>
+              left.value.compareTo(right.value),
         );
 
     try {
@@ -408,11 +508,26 @@ final class JsonFileHelpyRegistryNodeIdentityStore
           'entries': <Map<String, Object?>>[
             for (final MapEntry<RegistryPath, RegistryNodeId> entry in orderedEntries) <String, Object?>{'nodeId': entry.value.value, 'headingPath': entry.key.segments},
           ],
+          'retiredNodeIds': <String>[for (final RegistryNodeId nodeId in orderedRetiredNodeIds) nodeId.value],
         })}\n',
         flush: true,
       );
 
       await temporaryFile.rename(revisionFile.path);
+
+      final File legacyRevisionFile = File(
+        '${supportDirectory.path}'
+        '${Platform.pathSeparator}'
+        '$directoryName'
+        '${Platform.pathSeparator}'
+        '$legacyRevisionDirectoryName'
+        '${Platform.pathSeparator}'
+        '$normalizedSourceRevision.json',
+      );
+
+      if (await legacyRevisionFile.exists()) {
+        await legacyRevisionFile.delete();
+      }
 
       final File legacyFile = File(
         '${supportDirectory.path}'

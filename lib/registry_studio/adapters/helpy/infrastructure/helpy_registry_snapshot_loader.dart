@@ -90,18 +90,29 @@ final class HelpyRegistrySnapshotLoader
     final Map<RegistryPath, RegistryNodeId> ledgerIdentities =
         identityLedger.identitiesByPath;
 
-    final Map<RegistryPath, RegistryNodeId> inheritedIdentities =
+    final HelpyRegistryNodeIdentityState inheritedIdentityState =
         inheritedRevision != null &&
             inheritedRevision != sourceDocument.sourceRevision
-        ? Map<RegistryPath, RegistryNodeId>.of(
-            await identityStore.loadIdentities(inheritedRevision),
-          )
-        : <RegistryPath, RegistryNodeId>{};
+        ? await identityStore.loadState(inheritedRevision)
+        : HelpyRegistryNodeIdentityState();
 
-    final Map<RegistryPath, RegistryNodeId> localIdentities =
+    final HelpyRegistryNodeIdentityState currentIdentityState =
+        await identityStore.loadState(sourceDocument.sourceRevision);
+
+    final Map<RegistryPath, RegistryNodeId> inheritedIdentities =
         Map<RegistryPath, RegistryNodeId>.of(
-          await identityStore.loadIdentities(sourceDocument.sourceRevision),
+          inheritedIdentityState.localIdentitiesByPath,
         );
+
+    final Map<RegistryPath, RegistryNodeId> storedLocalIdentities =
+        Map<RegistryPath, RegistryNodeId>.of(
+          currentIdentityState.localIdentitiesByPath,
+        );
+
+    final Set<RegistryNodeId> retiredNodeIds = <RegistryNodeId>{
+      ...inheritedIdentityState.retiredNodeIds,
+      ...currentIdentityState.retiredNodeIds,
+    };
 
     final Map<RegistryNodeId, RegistryPath> ledgerPathsById =
         <RegistryNodeId, RegistryPath>{
@@ -112,7 +123,7 @@ final class HelpyRegistrySnapshotLoader
 
     for (final MapEntry<RegistryPath, RegistryNodeId> entry
         in ledgerIdentities.entries) {
-      final RegistryNodeId? localId = localIdentities[entry.key];
+      final RegistryNodeId? localId = storedLocalIdentities[entry.key];
 
       if (localId == null) {
         continue;
@@ -126,16 +137,59 @@ final class HelpyRegistrySnapshotLoader
         );
       }
 
-      localIdentities.remove(entry.key);
+      storedLocalIdentities.remove(entry.key);
     }
+
+    final List<HelpyRegistryDocumentNode> interpretedRoots = documentInterpreter
+        .interpret(sourceDocument.content);
+
+    final List<HelpyRegistryDocumentNode> interpretedNodes =
+        <HelpyRegistryDocumentNode>[];
+
+    final List<HelpyRegistryDocumentNode> remainingNodes =
+        <HelpyRegistryDocumentNode>[...interpretedRoots.reversed];
+
+    while (remainingNodes.isNotEmpty) {
+      final HelpyRegistryDocumentNode node = remainingNodes.removeLast();
+
+      interpretedNodes.add(node);
+
+      for (final HelpyRegistryDocumentNode child in node.children.reversed) {
+        remainingNodes.add(child);
+      }
+    }
+
+    final Set<RegistryPath> interpretedPaths = <RegistryPath>{
+      for (final HelpyRegistryDocumentNode node in interpretedNodes) node.path,
+    };
+
+    int maximumAssignedSequence = identityLedger.maximumAssignedSequence;
+
+    for (final RegistryNodeId retiredNodeId in retiredNodeIds) {
+      final RegExpMatch? match = _nodeIdPattern.firstMatch(retiredNodeId.value);
+
+      if (match == null) {
+        throw StateError(
+          'Helpy Registry retired identity '
+          '${retiredNodeId.value} is invalid.',
+        );
+      }
+
+      final int assignedSequence = int.parse(match.group(1)!);
+
+      if (assignedSequence > maximumAssignedSequence) {
+        maximumAssignedSequence = assignedSequence;
+      }
+    }
+
+    final Map<RegistryPath, RegistryNodeId> localIdentities =
+        <RegistryPath, RegistryNodeId>{};
 
     final Map<RegistryNodeId, RegistryPath> localPathsById =
         <RegistryNodeId, RegistryPath>{};
 
-    int maximumAssignedSequence = identityLedger.maximumAssignedSequence;
-
     for (final MapEntry<RegistryPath, RegistryNodeId> entry
-        in localIdentities.entries) {
+        in storedLocalIdentities.entries) {
       final RegExpMatch? match = _nodeIdPattern.firstMatch(entry.value.value);
 
       if (match == null) {
@@ -145,14 +199,26 @@ final class HelpyRegistrySnapshotLoader
         );
       }
 
+      final int assignedSequence = int.parse(match.group(1)!);
+
+      if (assignedSequence > maximumAssignedSequence) {
+        maximumAssignedSequence = assignedSequence;
+      }
+
       final RegistryPath? ledgerPath = ledgerPathsById[entry.value];
 
       if (ledgerPath != null) {
-        throw StateError(
-          'Helpy Registry local identity '
-          '${entry.value.value} conflicts with ledger path '
-          '${ledgerPath.segments.join(' → ')}.',
-        );
+        continue;
+      }
+
+      if (inheritedIdentityState.retiredNodeIds.contains(entry.value)) {
+        retiredNodeIds.add(entry.value);
+        continue;
+      }
+
+      if (!interpretedPaths.contains(entry.key)) {
+        retiredNodeIds.add(entry.value);
+        continue;
       }
 
       final RegistryPath? duplicateLocalPath = localPathsById[entry.value];
@@ -167,12 +233,7 @@ final class HelpyRegistrySnapshotLoader
       }
 
       localPathsById[entry.value] = entry.key;
-
-      final int assignedSequence = int.parse(match.group(1)!);
-
-      if (assignedSequence > maximumAssignedSequence) {
-        maximumAssignedSequence = assignedSequence;
-      }
+      localIdentities[entry.key] = entry.value;
     }
 
     final Map<RegistryNodeId, RegistryPath> inheritedPathsById =
@@ -219,33 +280,27 @@ final class HelpyRegistrySnapshotLoader
         continue;
       }
 
-      localIdentities[entry.key] = entry.value;
-    }
-
-    final List<HelpyRegistryDocumentNode> interpretedRoots = documentInterpreter
-        .interpret(sourceDocument.content);
-
-    final List<HelpyRegistryDocumentNode> interpretedNodes =
-        <HelpyRegistryDocumentNode>[];
-
-    final List<HelpyRegistryDocumentNode> remainingNodes =
-        <HelpyRegistryDocumentNode>[...interpretedRoots.reversed];
-
-    while (remainingNodes.isNotEmpty) {
-      final HelpyRegistryDocumentNode node = remainingNodes.removeLast();
-
-      interpretedNodes.add(node);
-
-      for (final HelpyRegistryDocumentNode child in node.children.reversed) {
-        remainingNodes.add(child);
+      if (retiredNodeIds.contains(entry.value)) {
+        continue;
       }
+
+      if (!interpretedPaths.contains(entry.key)) {
+        retiredNodeIds.add(entry.value);
+        continue;
+      }
+
+      localIdentities[entry.key] = entry.value;
+      localPathsById[entry.value] = entry.key;
     }
 
-    final Set<RegistryNodeId> usedIds = <RegistryNodeId>{
+    final Set<RegistryNodeId> knownNodeIds = <RegistryNodeId>{
       ...ledgerPathsById.keys,
-      ...localPathsById.keys,
+      ...storedLocalIdentities.values,
       ...inheritedPathsById.keys,
+      ...retiredNodeIds,
     };
+
+    final Set<RegistryNodeId> usedIds = Set<RegistryNodeId>.of(knownNodeIds);
 
     final Map<RegistryPath, RegistryNodeId> resolvedIdentities =
         Map<RegistryPath, RegistryNodeId>.of(ledgerIdentities);
@@ -278,6 +333,27 @@ final class HelpyRegistrySnapshotLoader
       localIdentities[interpretedNode.path] = allocatedId;
       resolvedIdentities[interpretedNode.path] = allocatedId;
     }
+
+    final Set<RegistryNodeId> activeNodeIds = <RegistryNodeId>{
+      for (final HelpyRegistryDocumentNode interpretedNode in interpretedNodes)
+        resolvedIdentities[interpretedNode.path]!,
+    };
+
+    retiredNodeIds.addAll(
+      knownNodeIds.where(
+        (RegistryNodeId nodeId) => !activeNodeIds.contains(nodeId),
+      ),
+    );
+
+    retiredNodeIds.removeAll(activeNodeIds);
+
+    final Map<RegistryPath, RegistryNodeId> persistedLocalIdentities =
+        <RegistryPath, RegistryNodeId>{
+          for (final HelpyRegistryDocumentNode interpretedNode
+              in interpretedNodes)
+            if (!ledgerIdentities.containsKey(interpretedNode.path))
+              interpretedNode.path: resolvedIdentities[interpretedNode.path]!,
+        };
 
     final Map<RegistryPath, RegistryNode> nodesByPath =
         <RegistryPath, RegistryNode>{};
@@ -338,9 +414,12 @@ final class HelpyRegistrySnapshotLoader
       roots.add(root);
     }
 
-    await identityStore.saveIdentities(
+    await identityStore.saveState(
       sourceDocument.sourceRevision,
-      Map<RegistryPath, RegistryNodeId>.unmodifiable(localIdentities),
+      HelpyRegistryNodeIdentityState(
+        localIdentitiesByPath: persistedLocalIdentities,
+        retiredNodeIds: retiredNodeIds,
+      ),
     );
 
     return RegistrySnapshot(
