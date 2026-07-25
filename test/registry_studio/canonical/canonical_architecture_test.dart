@@ -2,10 +2,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/canonical/helpy_canonical_dictionary_reader.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/canonical/helpy_canonical_registry_projector.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/canonical_analysis_package.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/canonical_dictionary.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_node.dart';
+import 'package:helpy_translator/registry_studio/registry/domain/entities/registry_snapshot.dart';
 import 'package:helpy_translator/registry_studio/registry/domain/value_objects/registry_node_id.dart';
 
 void main() {
@@ -447,6 +450,59 @@ void main() {
       expect(applicability.registryPathPrefixes, <RegistryPath>[prefix]);
       expect(applicability.contentBlockRoles, const <CanonicalContentRole>[
         CanonicalContentRole.questions,
+      ]);
+    });
+
+    test('registry projector fails closed before semantic projection', () {
+      final RegistryPath rootPath = RegistryPath(const <String>['Registry']);
+      final SourceEvidence rootEvidence = SourceEvidence(
+        sourceDocumentPath: 'registry.md',
+        sourceSnapshotFingerprint: 'registry-fingerprint',
+        headingPath: rootPath.segments,
+        startLine: 1,
+        endLine: 1,
+      );
+      final RegistryNode root = RegistryNode(
+        id: RegistryNodeId('helpy.registry.node.root'),
+        kindId: 'registry-root',
+        path: rootPath,
+        sourceEvidence: <SourceEvidence>[rootEvidence],
+        content: 'Registry',
+        businessScopeOwnerId: null,
+        children: const <RegistryNode>[],
+      );
+      final RegistrySnapshot snapshot = RegistrySnapshot(
+        projectId: 'helpy',
+        projectAdapterId: 'helpy.registry.adapter.v1',
+        sourceDocumentPath: 'registry.md',
+        sourceRevision: 'registry-revision',
+        sourceSnapshotFingerprint: 'registry-fingerprint',
+        sourceContent: '# Registry\n',
+        roots: <RegistryNode>[root],
+      );
+
+      final result = const HelpyCanonicalRegistryProjector().project(
+        snapshot: snapshot,
+      );
+
+      expect(result.businessEntities, isEmpty);
+      expect(result.orderedBusinessBlocks, isEmpty);
+      expect(result.failures, hasLength(1));
+      expect(
+        result.failures.single.code,
+        'registry_projection_not_implemented',
+      );
+      expect(
+        result.failures.single.severity,
+        CanonicalAdapterFailureSeverity.fatal,
+      );
+      expect(
+        result.failures.single.source,
+        CanonicalAdapterFailureSource.registry,
+      );
+      expect(result.failures.single.relatedIdentity, snapshot.sourceRevision);
+      expect(result.failures.single.sourceEvidence, <SourceEvidence>[
+        rootEvidence,
       ]);
     });
 

@@ -39,6 +39,25 @@ final class HelpyCanonicalRegistryProjector {
       }
     }
 
+    failures.add(
+      CanonicalAdapterFailure(
+        identity:
+            'helpy.canonical.registry.failure.'
+            'projection-not-implemented',
+        source: CanonicalAdapterFailureSource.registry,
+        severity: CanonicalAdapterFailureSeverity.fatal,
+        code: 'registry_projection_not_implemented',
+        explanation:
+            'Registry snapshot подтверждён, но project-specific canonical '
+            'projection ещё не реализована.',
+        relatedIdentity: snapshot.sourceRevision,
+        path: null,
+        sourceEvidence: nodes.expand(
+          (RegistryNode node) => node.sourceEvidence,
+        ),
+      ),
+    );
+
     return (
       businessEntities: const <CanonicalBusinessEntity>[],
       orderedBusinessBlocks: const <CanonicalOrderedBusinessBlock>[],
