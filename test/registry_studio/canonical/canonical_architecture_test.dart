@@ -68,8 +68,7 @@ void main() {
         () => CanonicalBusinessScenario(
           identity: 'scenario.invalid.missing',
           label: 'Missing block',
-          path: RegistryPath(<String>['Root', 'Entity', 'Missing']),
-          sourceNodeId: RegistryNodeId('node.scenario.missing'),
+          selectorBinding: null,
           blocks: <CanonicalBusinessBlock>[
             _block(CanonicalContentRole.questions, 'missing.questions'),
             _block(
@@ -92,8 +91,7 @@ void main() {
         () => CanonicalBusinessScenario(
           identity: 'scenario.invalid.duplicate',
           label: 'Duplicate block',
-          path: RegistryPath(<String>['Root', 'Entity', 'Duplicate']),
-          sourceNodeId: RegistryNodeId('node.scenario.duplicate'),
+          selectorBinding: null,
           blocks: <CanonicalBusinessBlock>[
             _block(CanonicalContentRole.questions, 'duplicate.questions.1'),
             _block(CanonicalContentRole.questions, 'duplicate.questions.2'),
@@ -164,7 +162,230 @@ void main() {
             .map((CanonicalBusinessScopeReference scope) => scope.identity),
         everyElement('scope.electrical'),
       );
+
+      final CanonicalScenarioSelectorReference selectorReference =
+          _selectorReference();
+
+      final CanonicalBusinessEntity explicitScenarioEntity = _entity(
+        identity: 'entity.explicit',
+        label: 'Explicit',
+        scope: sharedScope,
+        scenarioSuffix: 'unused',
+        scenarios: <CanonicalBusinessScenario>[
+          _scenario(
+            'install',
+            selectorBinding: _selectorBinding(selectorReference, 'install', 61),
+          ),
+          _scenario(
+            'replace',
+            selectorBinding: _selectorBinding(selectorReference, 'replace', 62),
+          ),
+        ],
+        line: 40,
+      );
+
+      expect(
+        explicitScenarioEntity.scenarios.map(
+          (CanonicalBusinessScenario scenario) =>
+              scenario.selectorBinding?.optionIdentity,
+        ),
+        <String?>['install', 'replace'],
+      );
+
+      expect(
+        () => _entity(
+          identity: 'entity.invalid.multiple',
+          label: 'Invalid multiple',
+          scope: sharedScope,
+          scenarioSuffix: 'unused',
+          scenarios: <CanonicalBusinessScenario>[
+            _scenario('invalid.install'),
+            _scenario('invalid.replace'),
+          ],
+          line: 50,
+        ),
+        throwsArgumentError,
+      );
     });
+
+    test(
+      'package validates shared selector identity and selector evidence',
+      () {
+        final CanonicalBusinessScopeReference sharedScope =
+            CanonicalBusinessScopeReference(
+              identity: 'scope.selector-validation',
+              kindId: 'mini-scope',
+              label: 'Selector validation scope',
+              path: RegistryPath(<String>['Root', 'Selector validation']),
+              sourceNodeId: RegistryNodeId('node.scope.selector-validation'),
+              sourceEvidence: <SourceEvidence>[
+                _registryEvidence(
+                  RegistryPath(<String>['Root', 'Selector validation']),
+                  70,
+                ),
+              ],
+            );
+
+        final CanonicalScenarioSelectorReference selectorReference =
+            _selectorReference();
+
+        CanonicalBusinessEntity entityWithReference(
+          String suffix,
+          CanonicalScenarioSelectorReference reference,
+          int line,
+        ) {
+          return _entity(
+            identity: 'entity.$suffix',
+            label: suffix,
+            scope: sharedScope,
+            scenarioSuffix: 'unused.$suffix',
+            scenarios: <CanonicalBusinessScenario>[
+              _scenario(
+                '$suffix.install',
+                selectorBinding: _selectorBinding(
+                  reference,
+                  'install',
+                  line + 1,
+                ),
+              ),
+              _scenario(
+                '$suffix.replace',
+                selectorBinding: _selectorBinding(
+                  reference,
+                  'replace',
+                  line + 2,
+                ),
+              ),
+            ],
+            line: line,
+          );
+        }
+
+        CanonicalAnalysisPackage packageFor(
+          List<CanonicalBusinessEntity> entities,
+        ) {
+          return CanonicalAnalysisPackage(
+            projectId: 'helpy',
+            projectAdapterId: 'helpy.canonical.adapter.v1',
+            registrySourceDocumentPath: 'registry.md',
+            registryRevision: 'registry-revision',
+            registrySourceSnapshotFingerprint: 'registry-fingerprint',
+            dictionary: _dictionary(),
+            businessEntities: entities,
+            orderedBusinessBlocks: const <CanonicalOrderedBusinessBlock>[],
+            adapterFailures: const <CanonicalAdapterFailure>[],
+          );
+        }
+
+        final CanonicalAnalysisPackage validPackage =
+            packageFor(<CanonicalBusinessEntity>[
+              entityWithReference('selector.first', selectorReference, 80),
+              entityWithReference('selector.second', selectorReference, 90),
+            ]);
+
+        expect(validPackage.businessEntities, hasLength(2));
+
+        final RegistryPath conflictingPath = RegistryPath(<String>[
+          'Root',
+          'Electrical',
+          'Conflicting Work Type',
+        ]);
+        final CanonicalScenarioSelectorReference conflictingReference =
+            CanonicalScenarioSelectorReference(
+              identity: selectorReference.identity,
+              kindId: selectorReference.kindId,
+              label: selectorReference.label,
+              path: conflictingPath,
+              sourceNodeId: RegistryNodeId(
+                'node.selector.electrical.conflicting-work-type',
+              ),
+              sourceEvidence: <SourceEvidence>[
+                _registryEvidence(conflictingPath, 100),
+              ],
+            );
+
+        expect(
+          () => packageFor(<CanonicalBusinessEntity>[
+            entityWithReference('selector.original', selectorReference, 110),
+            entityWithReference(
+              'selector.conflicting',
+              conflictingReference,
+              120,
+            ),
+          ]),
+          throwsArgumentError,
+        );
+
+        final RegistryPath invalidReferencePath = RegistryPath(<String>[
+          'Root',
+          'Electrical',
+          'Invalid reference',
+        ]);
+        final CanonicalScenarioSelectorReference invalidReference =
+            CanonicalScenarioSelectorReference(
+              identity: 'selector.invalid.reference',
+              kindId: 'work-type',
+              label: 'Invalid reference',
+              path: invalidReferencePath,
+              sourceNodeId: RegistryNodeId('node.selector.invalid.reference'),
+              sourceEvidence: <SourceEvidence>[
+                SourceEvidence(
+                  sourceDocumentPath: 'other-registry.md',
+                  sourceSnapshotFingerprint: 'registry-fingerprint',
+                  headingPath: invalidReferencePath.segments,
+                  startLine: 130,
+                  endLine: 130,
+                ),
+              ],
+            );
+
+        expect(
+          () => packageFor(<CanonicalBusinessEntity>[
+            entityWithReference(
+              'selector.invalid-reference',
+              invalidReference,
+              131,
+            ),
+          ]),
+          throwsArgumentError,
+        );
+
+        final CanonicalScenarioSelectorBinding invalidBinding =
+            CanonicalScenarioSelectorBinding(
+              selectorReference: selectorReference,
+              optionIdentity: 'invalid-binding',
+              optionLabel: 'Invalid binding',
+              sourceEvidence: <SourceEvidence>[
+                SourceEvidence(
+                  sourceDocumentPath: 'registry.md',
+                  sourceSnapshotFingerprint: 'other-fingerprint',
+                  headingPath: selectorReference.path.segments,
+                  startLine: 140,
+                  endLine: 140,
+                ),
+              ],
+            );
+
+        expect(
+          () => packageFor(<CanonicalBusinessEntity>[
+            _entity(
+              identity: 'entity.selector.invalid-binding',
+              label: 'Invalid binding',
+              scope: sharedScope,
+              scenarioSuffix: 'unused.invalid-binding',
+              scenarios: <CanonicalBusinessScenario>[
+                _scenario(
+                  'selector.invalid-binding',
+                  selectorBinding: invalidBinding,
+                ),
+              ],
+              line: 141,
+            ),
+          ]),
+          throwsArgumentError,
+        );
+      },
+    );
 
     test('missing dictionary requires a fatal structured failure', () {
       expect(
@@ -304,11 +525,44 @@ CanonicalDictionary _dictionary() {
   );
 }
 
+CanonicalScenarioSelectorReference _selectorReference() {
+  final RegistryPath path = RegistryPath(<String>[
+    'Root',
+    'Electrical',
+    'Work Type',
+  ]);
+
+  return CanonicalScenarioSelectorReference(
+    identity: 'selector.electrical.work-type',
+    kindId: 'work-type',
+    label: 'Work Type',
+    path: path,
+    sourceNodeId: RegistryNodeId('node.selector.electrical.work-type'),
+    sourceEvidence: <SourceEvidence>[_registryEvidence(path, 60)],
+  );
+}
+
+CanonicalScenarioSelectorBinding _selectorBinding(
+  CanonicalScenarioSelectorReference selectorReference,
+  String optionIdentity,
+  int line,
+) {
+  return CanonicalScenarioSelectorBinding(
+    selectorReference: selectorReference,
+    optionIdentity: optionIdentity,
+    optionLabel: optionIdentity,
+    sourceEvidence: <SourceEvidence>[
+      _registryEvidence(selectorReference.path, line),
+    ],
+  );
+}
+
 CanonicalBusinessEntity _entity({
   required String identity,
   required String label,
   required CanonicalBusinessScopeReference scope,
   required String scenarioSuffix,
+  List<CanonicalBusinessScenario>? scenarios,
   required int line,
 }) {
   final RegistryPath path = RegistryPath(<String>['Root', 'Electrical', label]);
@@ -320,12 +574,16 @@ CanonicalBusinessEntity _entity({
     sourceNodeId: RegistryNodeId('node.$identity'),
     businessScopeOwnerId: null,
     scopeLineage: <CanonicalBusinessScopeReference>[scope],
-    scenarios: <CanonicalBusinessScenario>[_scenario(scenarioSuffix)],
+    scenarios:
+        scenarios ?? <CanonicalBusinessScenario>[_scenario(scenarioSuffix)],
     sourceEvidence: <SourceEvidence>[_registryEvidence(path, line)],
   );
 }
 
-CanonicalBusinessScenario _scenario(String suffix) {
+CanonicalBusinessScenario _scenario(
+  String suffix, {
+  CanonicalScenarioSelectorBinding? selectorBinding,
+}) {
   final RegistryPath path = RegistryPath(<String>[
     'Root',
     'Entity',
@@ -335,8 +593,7 @@ CanonicalBusinessScenario _scenario(String suffix) {
   return CanonicalBusinessScenario(
     identity: 'scenario.$suffix',
     label: 'Scenario $suffix',
-    path: path,
-    sourceNodeId: RegistryNodeId('node.scenario.$suffix'),
+    selectorBinding: selectorBinding,
     blocks: <CanonicalBusinessBlock>[
       _block(CanonicalContentRole.questions, '$suffix.questions'),
       _block(CanonicalContentRole.photoQuestions, '$suffix.photoQuestions'),
@@ -360,8 +617,6 @@ CanonicalBusinessBlock _block(CanonicalContentRole role, String suffix) {
     identity: 'block.$suffix',
     role: role,
     label: role.name,
-    path: path,
-    sourceNodeId: RegistryNodeId('node.block.$suffix'),
     items: <CanonicalBusinessText>[
       CanonicalBusinessText(
         identity: 'text.$suffix',

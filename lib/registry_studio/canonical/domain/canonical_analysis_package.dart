@@ -102,6 +102,9 @@ final class CanonicalAnalysisPackage extends Equatable {
     final Map<String, CanonicalBusinessScopeReference> scopesByIdentity =
         <String, CanonicalBusinessScopeReference>{};
     final Set<String> scenarioIdentities = <String>{};
+    final Map<String, CanonicalScenarioSelectorReference>
+    selectorReferencesByIdentity =
+        <String, CanonicalScenarioSelectorReference>{};
     final Set<String> blockIdentities = <String>{};
     final Set<String> textIdentities = <String>{};
     final Set<String> orderedBlockIdentities = <String>{};
@@ -152,6 +155,40 @@ final class CanonicalAnalysisPackage extends Equatable {
           sourceDocumentPath: normalizedRegistryPath,
           sourceSnapshotFingerprint: normalizedRegistryFingerprint,
         );
+
+        final CanonicalScenarioSelectorBinding? selectorBinding =
+            scenario.selectorBinding;
+
+        if (selectorBinding != null) {
+          final CanonicalScenarioSelectorReference selectorReference =
+              selectorBinding.selectorReference;
+          final CanonicalScenarioSelectorReference? existingReference =
+              selectorReferencesByIdentity[selectorReference.identity];
+
+          if (existingReference != null &&
+              existingReference != selectorReference) {
+            throw ArgumentError.value(
+              selectorReference.identity,
+              'selectorReference',
+              'Repeated scenario-selector identity must preserve the same '
+                  'structural reference and evidence.',
+            );
+          }
+
+          selectorReferencesByIdentity[selectorReference.identity] =
+              selectorReference;
+
+          _validateRegistryEvidence(
+            selectorReference.sourceEvidence,
+            sourceDocumentPath: normalizedRegistryPath,
+            sourceSnapshotFingerprint: normalizedRegistryFingerprint,
+          );
+          _validateRegistryEvidence(
+            selectorBinding.sourceEvidence,
+            sourceDocumentPath: normalizedRegistryPath,
+            sourceSnapshotFingerprint: normalizedRegistryFingerprint,
+          );
+        }
 
         for (final CanonicalBusinessBlock block in scenario.blocks) {
           _requireUniqueIdentity(blockIdentities, block.identity, 'blocks');
@@ -335,6 +372,88 @@ final class CanonicalBusinessScopeReference extends Equatable {
   ];
 }
 
+final class CanonicalScenarioSelectorReference extends Equatable {
+  factory CanonicalScenarioSelectorReference({
+    required String identity,
+    required String kindId,
+    required String label,
+    required RegistryPath path,
+    required RegistryNodeId sourceNodeId,
+    required Iterable<SourceEvidence> sourceEvidence,
+  }) {
+    return CanonicalScenarioSelectorReference._(
+      identity: _requiredText(identity, 'identity'),
+      kindId: _requiredText(kindId, 'kindId'),
+      label: _requiredText(label, 'label'),
+      path: path,
+      sourceNodeId: sourceNodeId,
+      sourceEvidence: _requiredEvidence(sourceEvidence, 'sourceEvidence'),
+    );
+  }
+
+  const CanonicalScenarioSelectorReference._({
+    required this.identity,
+    required this.kindId,
+    required this.label,
+    required this.path,
+    required this.sourceNodeId,
+    required this.sourceEvidence,
+  });
+
+  final String identity;
+  final String kindId;
+  final String label;
+  final RegistryPath path;
+  final RegistryNodeId sourceNodeId;
+  final List<SourceEvidence> sourceEvidence;
+
+  @override
+  List<Object?> get props => <Object?>[
+    identity,
+    kindId,
+    label,
+    path,
+    sourceNodeId,
+    sourceEvidence,
+  ];
+}
+
+final class CanonicalScenarioSelectorBinding extends Equatable {
+  factory CanonicalScenarioSelectorBinding({
+    required CanonicalScenarioSelectorReference selectorReference,
+    required String optionIdentity,
+    required String optionLabel,
+    required Iterable<SourceEvidence> sourceEvidence,
+  }) {
+    return CanonicalScenarioSelectorBinding._(
+      selectorReference: selectorReference,
+      optionIdentity: _requiredText(optionIdentity, 'optionIdentity'),
+      optionLabel: _requiredText(optionLabel, 'optionLabel'),
+      sourceEvidence: _requiredEvidence(sourceEvidence, 'sourceEvidence'),
+    );
+  }
+
+  const CanonicalScenarioSelectorBinding._({
+    required this.selectorReference,
+    required this.optionIdentity,
+    required this.optionLabel,
+    required this.sourceEvidence,
+  });
+
+  final CanonicalScenarioSelectorReference selectorReference;
+  final String optionIdentity;
+  final String optionLabel;
+  final List<SourceEvidence> sourceEvidence;
+
+  @override
+  List<Object?> get props => <Object?>[
+    selectorReference,
+    optionIdentity,
+    optionLabel,
+    sourceEvidence,
+  ];
+}
+
 final class CanonicalBusinessEntity extends Equatable {
   factory CanonicalBusinessEntity({
     required String identity,
@@ -369,6 +488,19 @@ final class CanonicalBusinessEntity extends Equatable {
           'Scenario identity must be unique inside its entity.',
         );
       }
+    }
+
+    if (normalizedScenarios.length > 1 &&
+        normalizedScenarios.any(
+          (CanonicalBusinessScenario scenario) =>
+              scenario.selectorBinding == null,
+        )) {
+      throw ArgumentError.value(
+        scenarios,
+        'scenarios',
+        'Every scenario of a multi-scenario entity must have a selector '
+            'binding.',
+      );
     }
 
     return CanonicalBusinessEntity._(
@@ -424,8 +556,7 @@ final class CanonicalBusinessScenario extends Equatable {
   factory CanonicalBusinessScenario({
     required String identity,
     required String label,
-    required RegistryPath path,
-    required RegistryNodeId sourceNodeId,
+    required CanonicalScenarioSelectorBinding? selectorBinding,
     required Iterable<CanonicalBusinessBlock> blocks,
     required Iterable<SourceEvidence> sourceEvidence,
   }) {
@@ -451,8 +582,7 @@ final class CanonicalBusinessScenario extends Equatable {
     return CanonicalBusinessScenario._(
       identity: _requiredText(identity, 'identity'),
       label: _requiredText(label, 'label'),
-      path: path,
-      sourceNodeId: sourceNodeId,
+      selectorBinding: selectorBinding,
       blocks: List<CanonicalBusinessBlock>.unmodifiable(normalizedBlocks),
       sourceEvidence: _requiredEvidence(sourceEvidence, 'sourceEvidence'),
     );
@@ -461,16 +591,14 @@ final class CanonicalBusinessScenario extends Equatable {
   const CanonicalBusinessScenario._({
     required this.identity,
     required this.label,
-    required this.path,
-    required this.sourceNodeId,
+    required this.selectorBinding,
     required this.blocks,
     required this.sourceEvidence,
   });
 
   final String identity;
   final String label;
-  final RegistryPath path;
-  final RegistryNodeId sourceNodeId;
+  final CanonicalScenarioSelectorBinding? selectorBinding;
   final List<CanonicalBusinessBlock> blocks;
   final List<SourceEvidence> sourceEvidence;
 
@@ -484,8 +612,7 @@ final class CanonicalBusinessScenario extends Equatable {
   List<Object?> get props => <Object?>[
     identity,
     label,
-    path,
-    sourceNodeId,
+    selectorBinding,
     blocks,
     sourceEvidence,
   ];
@@ -496,8 +623,6 @@ final class CanonicalBusinessBlock extends Equatable {
     required String identity,
     required CanonicalContentRole role,
     required String label,
-    required RegistryPath path,
-    required RegistryNodeId sourceNodeId,
     required Iterable<CanonicalBusinessText> items,
     required Iterable<SourceEvidence> sourceEvidence,
   }) {
@@ -525,8 +650,6 @@ final class CanonicalBusinessBlock extends Equatable {
       identity: _requiredText(identity, 'identity'),
       role: role,
       label: _requiredText(label, 'label'),
-      path: path,
-      sourceNodeId: sourceNodeId,
       items: List<CanonicalBusinessText>.unmodifiable(normalizedItems),
       sourceEvidence: _requiredEvidence(sourceEvidence, 'sourceEvidence'),
     );
@@ -536,8 +659,6 @@ final class CanonicalBusinessBlock extends Equatable {
     required this.identity,
     required this.role,
     required this.label,
-    required this.path,
-    required this.sourceNodeId,
     required this.items,
     required this.sourceEvidence,
   });
@@ -545,8 +666,6 @@ final class CanonicalBusinessBlock extends Equatable {
   final String identity;
   final CanonicalContentRole role;
   final String label;
-  final RegistryPath path;
-  final RegistryNodeId sourceNodeId;
   final List<CanonicalBusinessText> items;
   final List<SourceEvidence> sourceEvidence;
 
@@ -555,8 +674,6 @@ final class CanonicalBusinessBlock extends Equatable {
     identity,
     role,
     label,
-    path,
-    sourceNodeId,
     items,
     sourceEvidence,
   ];
