@@ -1,13 +1,15 @@
+import 'dart:io';
+
 import '../../../canonical/application/project_canonical_adapter.dart';
 import '../../../canonical/domain/canonical_analysis_package.dart';
 import '../../../registry/domain/entities/registry_snapshot.dart';
-import '../infrastructure/github_registry_document_source.dart';
+import '../application/contracts/helpy_canonical_dictionary_source.dart';
 import 'helpy_canonical_dictionary_reader.dart';
 import 'helpy_canonical_registry_projector.dart';
 
 final class HelpyCanonicalAdapter implements ProjectCanonicalAdapter {
   factory HelpyCanonicalAdapter({
-    required GitHubRegistryDocumentSource dictionarySource,
+    required HelpyCanonicalDictionarySource dictionarySource,
     HelpyCanonicalDictionaryReader dictionaryReader =
         const HelpyCanonicalDictionaryReader(),
     HelpyCanonicalRegistryProjector registryProjector =
@@ -42,7 +44,7 @@ final class HelpyCanonicalAdapter implements ProjectCanonicalAdapter {
       'Registry_Studio_Engineering_Change_Propagation_and_Approval_'
       'Contract_v1.md';
 
-  final GitHubRegistryDocumentSource dictionarySource;
+  final HelpyCanonicalDictionarySource dictionarySource;
   final HelpyCanonicalDictionaryReader dictionaryReader;
   final HelpyCanonicalRegistryProjector registryProjector;
 
@@ -50,8 +52,6 @@ final class HelpyCanonicalAdapter implements ProjectCanonicalAdapter {
   Future<CanonicalAnalysisPackage> prepareAnalysis({
     required RegistrySnapshot snapshot,
   }) async {
-    final projection = registryProjector.project(snapshot: snapshot);
-
     if (snapshot.projectId != projectId) {
       return CanonicalAnalysisPackage(
         projectId: snapshot.projectId,
@@ -60,10 +60,9 @@ final class HelpyCanonicalAdapter implements ProjectCanonicalAdapter {
         registryRevision: snapshot.sourceRevision,
         registrySourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
         dictionary: null,
-        businessEntities: projection.businessEntities,
-        orderedBusinessBlocks: projection.orderedBusinessBlocks,
+        businessEntities: const <CanonicalBusinessEntity>[],
+        orderedBusinessBlocks: const <CanonicalOrderedBusinessBlock>[],
         adapterFailures: <CanonicalAdapterFailure>[
-          ...projection.failures,
           CanonicalAdapterFailure(
             identity: 'helpy.canonical.adapter.failure.project',
             source: CanonicalAdapterFailureSource.adapter,
@@ -80,40 +79,14 @@ final class HelpyCanonicalAdapter implements ProjectCanonicalAdapter {
       );
     }
 
-    try {
-      final contractSource = await dictionarySource.load(
-        exactRevision: snapshot.sourceRevision,
-      );
+    final projection = registryProjector.project(snapshot: snapshot);
 
-      if (contractSource.documentPath != contractDocumentPath) {
-        throw FormatException(
-          'Canonical Dictionary source path does not match the '
-          'approved contract path: ${contractSource.documentPath}.',
-        );
-      }
-
-      final dictionaryResult = dictionaryReader.read(
-        sourceContent: contractSource.content,
-        sourceDocumentPath: contractSource.documentPath,
-        sourceRevision: contractSource.sourceRevision,
-        sourceSnapshotFingerprint: contractSource.sourceSnapshotFingerprint,
-      );
-
-      return CanonicalAnalysisPackage(
-        projectId: snapshot.projectId,
-        projectAdapterId: projectAdapterId,
-        registrySourceDocumentPath: snapshot.sourceDocumentPath,
-        registryRevision: snapshot.sourceRevision,
-        registrySourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
-        dictionary: dictionaryResult.dictionary,
-        businessEntities: projection.businessEntities,
-        orderedBusinessBlocks: projection.orderedBusinessBlocks,
-        adapterFailures: <CanonicalAdapterFailure>[
-          ...dictionaryResult.failures,
-          ...projection.failures,
-        ],
-      );
-    } on Object catch (error) {
+    CanonicalAnalysisPackage failurePackage({
+      required String identity,
+      required String code,
+      required String explanation,
+      required String? relatedIdentity,
+    }) {
       return CanonicalAnalysisPackage(
         projectId: snapshot.projectId,
         projectAdapterId: projectAdapterId,
@@ -126,19 +99,84 @@ final class HelpyCanonicalAdapter implements ProjectCanonicalAdapter {
         adapterFailures: <CanonicalAdapterFailure>[
           ...projection.failures,
           CanonicalAdapterFailure(
-            identity: 'helpy.canonical.adapter.failure.dictionary-load',
+            identity: identity,
             source: CanonicalAdapterFailureSource.adapter,
             severity: CanonicalAdapterFailureSeverity.fatal,
-            code: 'dictionary_source_load_failed',
-            explanation:
-                'Не удалось загрузить exact Canonical Dictionary source: '
-                '$error',
-            relatedIdentity: snapshot.sourceRevision,
+            code: code,
+            explanation: explanation,
+            relatedIdentity: relatedIdentity,
             path: null,
             sourceEvidence: const [],
           ),
         ],
       );
     }
+
+    CanonicalAnalysisPackage sourceLoadFailure(Object error) {
+      return failurePackage(
+        identity: 'helpy.canonical.adapter.failure.dictionary-load',
+        code: 'dictionary_source_load_failed',
+        explanation:
+            'Не удалось загрузить exact Canonical Dictionary source: '
+            '$error',
+        relatedIdentity: snapshot.sourceRevision,
+      );
+    }
+
+    late final HelpyCanonicalDictionaryDocument contractSource;
+
+    try {
+      contractSource = await dictionarySource.loadExactRevision(
+        snapshot.sourceRevision,
+      );
+    } on IOException catch (error) {
+      return sourceLoadFailure(error);
+    } on FormatException catch (error) {
+      return sourceLoadFailure(error);
+    }
+
+    if (contractSource.documentPath != contractDocumentPath) {
+      return failurePackage(
+        identity: 'helpy.canonical.adapter.failure.dictionary-source-path',
+        code: 'dictionary_source_path_mismatch',
+        explanation:
+            'Загруженный Canonical Dictionary source имеет другой '
+            'document path: ${contractSource.documentPath}.',
+        relatedIdentity: contractSource.documentPath,
+      );
+    }
+
+    if (contractSource.sourceRevision != snapshot.sourceRevision) {
+      return failurePackage(
+        identity: 'helpy.canonical.adapter.failure.dictionary-source-revision',
+        code: 'dictionary_source_revision_mismatch',
+        explanation:
+            'Загруженный Canonical Dictionary source не соответствует '
+            'запрошенной Registry revision.',
+        relatedIdentity: contractSource.sourceRevision,
+      );
+    }
+
+    final dictionaryResult = dictionaryReader.read(
+      sourceContent: contractSource.content,
+      sourceDocumentPath: contractSource.documentPath,
+      sourceRevision: contractSource.sourceRevision,
+      sourceSnapshotFingerprint: contractSource.sourceSnapshotFingerprint,
+    );
+
+    return CanonicalAnalysisPackage(
+      projectId: snapshot.projectId,
+      projectAdapterId: projectAdapterId,
+      registrySourceDocumentPath: snapshot.sourceDocumentPath,
+      registryRevision: snapshot.sourceRevision,
+      registrySourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+      dictionary: dictionaryResult.dictionary,
+      businessEntities: projection.businessEntities,
+      orderedBusinessBlocks: projection.orderedBusinessBlocks,
+      adapterFailures: <CanonicalAdapterFailure>[
+        ...dictionaryResult.failures,
+        ...projection.failures,
+      ],
+    );
   }
 }

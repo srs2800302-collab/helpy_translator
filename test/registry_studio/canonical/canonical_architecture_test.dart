@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/application/contracts/helpy_canonical_dictionary_source.dart';
+import 'package:helpy_translator/registry_studio/adapters/helpy/canonical/helpy_canonical_adapter.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/canonical/helpy_canonical_dictionary_reader.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/canonical/helpy_canonical_registry_projector.dart';
 import 'package:helpy_translator/registry_studio/canonical/domain/canonical_analysis_package.dart';
@@ -13,7 +15,7 @@ import 'package:helpy_translator/registry_studio/registry/domain/value_objects/r
 
 void main() {
   group('frozen canonical adapter architecture', () {
-    test('contains exactly six approved production files', () {
+    test('contains exactly six frozen canonical production files', () {
       final List<String> actualFiles = <String>[];
 
       for (final String root in <String>[
@@ -453,6 +455,117 @@ void main() {
       ]);
     });
 
+    test(
+      'adapter rejects foreign project before projection and source load',
+      () async {
+        final _FakeHelpyCanonicalDictionarySource source =
+            _FakeHelpyCanonicalDictionarySource();
+
+        final CanonicalAnalysisPackage result =
+            await HelpyCanonicalAdapter(
+              dictionarySource: source,
+            ).prepareAnalysis(
+              snapshot: _adapterSnapshot(projectId: 'other-project'),
+            );
+
+        expect(source.loadCount, 0);
+        expect(result.businessEntities, isEmpty);
+        expect(result.orderedBusinessBlocks, isEmpty);
+        expect(_failureCodes(result), <String>{'project_id_mismatch'});
+      },
+    );
+
+    test('adapter rejects incoherent dictionary source', () async {
+      final RegistrySnapshot snapshot = _adapterSnapshot();
+      final List<
+        ({HelpyCanonicalDictionaryDocument document, String failureCode})
+      >
+      cases =
+          <({HelpyCanonicalDictionaryDocument document, String failureCode})>[
+            (
+              document: _dictionaryDocument(
+                documentPath: 'other-contract.md',
+                sourceRevision: snapshot.sourceRevision,
+              ),
+              failureCode: 'dictionary_source_path_mismatch',
+            ),
+            (
+              document: _dictionaryDocument(
+                sourceRevision: '2222222222222222222222222222222222222222',
+              ),
+              failureCode: 'dictionary_source_revision_mismatch',
+            ),
+          ];
+
+      for (final item in cases) {
+        final _FakeHelpyCanonicalDictionarySource source =
+            _FakeHelpyCanonicalDictionarySource(result: item.document);
+
+        final CanonicalAnalysisPackage result = await HelpyCanonicalAdapter(
+          dictionarySource: source,
+        ).prepareAnalysis(snapshot: snapshot);
+
+        expect(source.requestedRevision, snapshot.sourceRevision);
+        expect(_failureCodes(result), <String>{
+          'registry_projection_not_implemented',
+          item.failureCode,
+        });
+      }
+    });
+
+    test(
+      'adapter catches source failures but exposes programming errors',
+      () async {
+        final RegistrySnapshot snapshot = _adapterSnapshot();
+        final _FakeHelpyCanonicalDictionarySource operationalSource =
+            _FakeHelpyCanonicalDictionarySource(
+              error: const HttpException('source unavailable'),
+            );
+
+        final CanonicalAnalysisPackage operationalResult =
+            await HelpyCanonicalAdapter(
+              dictionarySource: operationalSource,
+            ).prepareAnalysis(snapshot: snapshot);
+
+        expect(_failureCodes(operationalResult), <String>{
+          'registry_projection_not_implemented',
+          'dictionary_source_load_failed',
+        });
+
+        final _FakeHelpyCanonicalDictionarySource programmingSource =
+            _FakeHelpyCanonicalDictionarySource(
+              error: ArgumentError('invalid exact source request'),
+            );
+
+        await expectLater(
+          HelpyCanonicalAdapter(
+            dictionarySource: programmingSource,
+          ).prepareAnalysis(snapshot: snapshot),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test('adapter composes coherent source results', () async {
+      final RegistrySnapshot snapshot = _adapterSnapshot();
+      final _FakeHelpyCanonicalDictionarySource source =
+          _FakeHelpyCanonicalDictionarySource(
+            result: _dictionaryDocument(
+              sourceRevision: snapshot.sourceRevision,
+            ),
+          );
+
+      final CanonicalAnalysisPackage result = await HelpyCanonicalAdapter(
+        dictionarySource: source,
+      ).prepareAnalysis(snapshot: snapshot);
+
+      expect(source.requestedRevision, snapshot.sourceRevision);
+      expect(_failureCodes(result), <String>{
+        'registry_projection_not_implemented',
+        'dictionary_content_parsing_not_implemented',
+      });
+    });
+
     test('registry projector fails closed before semantic projection', () {
       final RegistryPath rootPath = RegistryPath(const <String>['Registry']);
       final SourceEvidence rootEvidence = SourceEvidence(
@@ -700,4 +813,108 @@ SourceEvidence _registryEvidence(RegistryPath path, int line) {
     startLine: line,
     endLine: line,
   );
+}
+
+const String _adapterRevision = '1111111111111111111111111111111111111111';
+
+const String _adapterDictionaryContent = '''
+# Registry Studio Contract
+
+<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:BEGIN -->
+
+Dictionary ID: `REGISTRY_STUDIO_CANONICAL_BUSINESS_DICTIONARY_V1`
+Версия словаря: `1`
+Статус: **APPROVED / STORED**
+
+### Collection: `helpy.canonical.photo_labels`
+
+- Фотография места установки.
+
+<!-- REGISTRY_STUDIO_CANONICAL_DICTIONARY:END -->
+''';
+
+Set<String> _failureCodes(CanonicalAnalysisPackage package) {
+  return package.adapterFailures
+      .map((CanonicalAdapterFailure failure) => failure.code)
+      .toSet();
+}
+
+RegistrySnapshot _adapterSnapshot({
+  String projectId = HelpyCanonicalAdapter.projectId,
+}) {
+  final RegistryPath path = RegistryPath(const <String>['Registry']);
+  final SourceEvidence evidence = SourceEvidence(
+    sourceDocumentPath: 'registry.md',
+    sourceSnapshotFingerprint: 'registry-fingerprint',
+    headingPath: path.segments,
+    startLine: 1,
+    endLine: 1,
+  );
+  final RegistryNode root = RegistryNode(
+    id: RegistryNodeId('helpy.registry.node.adapter-test'),
+    kindId: 'registry-root',
+    path: path,
+    sourceEvidence: <SourceEvidence>[evidence],
+    content: 'Registry',
+    businessScopeOwnerId: null,
+    children: const <RegistryNode>[],
+  );
+
+  return RegistrySnapshot(
+    projectId: projectId,
+    projectAdapterId: HelpyCanonicalAdapter.projectAdapterId,
+    sourceDocumentPath: 'registry.md',
+    sourceRevision: _adapterRevision,
+    sourceSnapshotFingerprint: 'registry-fingerprint',
+    sourceContent: '# Registry\n',
+    roots: <RegistryNode>[root],
+  );
+}
+
+HelpyCanonicalDictionaryDocument _dictionaryDocument({
+  required String sourceRevision,
+  String documentPath = HelpyCanonicalAdapter.contractDocumentPath,
+}) {
+  return (
+    content: _adapterDictionaryContent,
+    documentPath: documentPath,
+    sourceRevision: sourceRevision,
+    sourceSnapshotFingerprint: 'contract-fingerprint',
+  );
+}
+
+final class _FakeHelpyCanonicalDictionarySource
+    implements HelpyCanonicalDictionarySource {
+  _FakeHelpyCanonicalDictionarySource({this.result, this.error});
+
+  final HelpyCanonicalDictionaryDocument? result;
+  final Object? error;
+
+  @override
+  String get documentPath => HelpyCanonicalAdapter.contractDocumentPath;
+
+  int loadCount = 0;
+  String? requestedRevision;
+
+  @override
+  Future<HelpyCanonicalDictionaryDocument> loadExactRevision(
+    String sourceRevision,
+  ) async {
+    loadCount += 1;
+    requestedRevision = sourceRevision;
+
+    final Object? configuredError = error;
+
+    if (configuredError != null) {
+      throw configuredError;
+    }
+
+    final HelpyCanonicalDictionaryDocument? configuredResult = result;
+
+    if (configuredResult == null) {
+      throw StateError('Fake dictionary source result is not configured.');
+    }
+
+    return configuredResult;
+  }
 }

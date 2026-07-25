@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-final class GitHubRegistryDocumentSource {
+import '../application/contracts/helpy_canonical_dictionary_source.dart';
+
+final class GitHubRegistryDocumentSource
+    implements HelpyCanonicalDictionarySource {
   factory GitHubRegistryDocumentSource({
     required String owner,
     required String repository,
@@ -87,20 +90,20 @@ final class GitHubRegistryDocumentSource {
 
   final String owner;
   final String repository;
+  @override
   final String documentPath;
   final String ref;
   final String token;
   final Uri apiBaseUri;
 
-  Future<
-    ({
-      String content,
-      String documentPath,
-      String sourceRevision,
-      String sourceSnapshotFingerprint,
-    })
-  >
-  load({String? exactRevision}) async {
+  @override
+  Future<HelpyCanonicalDictionaryDocument> loadExactRevision(
+    String sourceRevision,
+  ) {
+    return load(exactRevision: sourceRevision);
+  }
+
+  Future<HelpyCanonicalDictionaryDocument> load({String? exactRevision}) async {
     final HttpClient client = HttpClient();
 
     try {
