@@ -33,6 +33,7 @@ final class RegistryStudioShell extends StatelessWidget {
     required this.registryRevisionStateStore,
     required this.registryAnalysisHistoryStore,
     required this.registrySnapshotComparator,
+    this.translatorWorkspace,
     super.key,
   });
 
@@ -42,6 +43,7 @@ final class RegistryStudioShell extends StatelessWidget {
   final RegistryRevisionStateStore registryRevisionStateStore;
   final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
   final RegistrySnapshotComparator registrySnapshotComparator;
+  final Widget? translatorWorkspace;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +56,7 @@ final class RegistryStudioShell extends StatelessWidget {
         registryRevisionStateStore: registryRevisionStateStore,
         registryAnalysisHistoryStore: registryAnalysisHistoryStore,
         registrySnapshotComparator: registrySnapshotComparator,
+        translatorWorkspace: translatorWorkspace,
       ),
     );
   }
@@ -67,6 +70,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
     required this.registryRevisionStateStore,
     required this.registryAnalysisHistoryStore,
     required this.registrySnapshotComparator,
+    required this.translatorWorkspace,
   });
 
   final RegistrySnapshotLoader registrySnapshotLoader;
@@ -75,6 +79,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
   final RegistryRevisionStateStore registryRevisionStateStore;
   final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
   final RegistrySnapshotComparator registrySnapshotComparator;
+  final Widget? translatorWorkspace;
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +102,7 @@ final class _RegistryStudioShellView extends StatelessWidget {
                 analysisHistoryStore: registryAnalysisHistoryStore,
                 snapshotComparator: registrySnapshotComparator,
               ),
-              const _TranslatorWorkspaceView(),
+              translatorWorkspace ?? const _TranslatorWorkspaceView(),
             ],
           ),
           bottomNavigationBar: NavigationBar(

@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/github_registry_document_source.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_node_identity_ledger_source.dart';
 import '../../registry_studio/adapters/helpy/infrastructure/helpy_registry_snapshot_loader.dart';
+import '../../registry_studio/adapters/helpy/infrastructure/json_file_helpy_registry_node_identity_store.dart';
+import '../../registry_studio/adapters/helpy/translator/helpy_translator_policy.dart';
 import '../../registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
 import '../../registry_studio/maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
-import '../../registry_studio/adapters/helpy/infrastructure/json_file_helpy_registry_node_identity_store.dart';
 import '../../registry_studio/technical/storage/json_file_registry_revision_state_store.dart';
 import '../../registry_studio/technical/storage/json_lines_registry_analysis_history_store.dart';
+import '../../registry_studio/translator/infrastructure/json_file_translator_draft_store.dart';
+import '../../registry_studio/translator/infrastructure/typhoon/typhoon_translator_provider.dart';
+import '../../registry_studio/translator/presentation/translator_workspace_view.dart';
 import '../shell/registry_studio_shell.dart';
 
 final class RegistryStudioApplication extends StatelessWidget {
@@ -21,6 +25,7 @@ final class RegistryStudioApplication extends StatelessWidget {
     required this.registrySnapshotRevisionLoader,
     required this.registryRevisionStateStore,
     required this.registryAnalysisHistoryStore,
+    this.translatorWorkspace,
     super.key,
   });
 
@@ -54,6 +59,12 @@ final class RegistryStudioApplication extends StatelessWidget {
       registryRevisionStateStore: const JsonFileRegistryRevisionStateStore(),
       registryAnalysisHistoryStore:
           const JsonLinesRegistryAnalysisHistoryStore(),
+      translatorWorkspace: TranslatorWorkspaceView(
+        provider: const TyphoonTranslatorProvider(
+          policy: HelpyTranslatorPolicy(),
+        ),
+        draftStore: const JsonFileTranslatorDraftStore(),
+      ),
     );
   }
 
@@ -62,6 +73,7 @@ final class RegistryStudioApplication extends StatelessWidget {
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
   final RegistryRevisionStateStore registryRevisionStateStore;
   final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
+  final Widget? translatorWorkspace;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +88,7 @@ final class RegistryStudioApplication extends StatelessWidget {
         registryRevisionStateStore: registryRevisionStateStore,
         registryAnalysisHistoryStore: registryAnalysisHistoryStore,
         registrySnapshotComparator: const RegistrySnapshotComparator(),
+        translatorWorkspace: translatorWorkspace,
       ),
     );
   }
