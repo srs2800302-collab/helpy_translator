@@ -1,9 +1,67 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
 import 'package:helpy_translator/registry_studio/translator/infrastructure/typhoon/typhoon_translator_provider.dart';
 
 void main() {
+  group('DartIoTyphoonChatTransport', () {
+    test('writes multilingual JSON as UTF-8', () async {
+      final HttpServer server = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        0,
+      );
+      final DartIoTyphoonChatTransport transport = DartIoTyphoonChatTransport();
+
+      try {
+        final Map<String, Object?> body = <String, Object?>{
+          'model': 'test-model',
+          'messages': <Map<String, String>>[
+            <String, String>{
+              'role': 'user',
+              'content':
+                  'Мастер подтверждает прибытие. ผู้เชี่ยวชาญยืนยันการมาถึง',
+            },
+          ],
+        };
+
+        final Future<String> responseFuture = transport.complete(
+          endpoint: Uri.parse(
+            'http://${server.address.address}:${server.port}/v1/chat/completions',
+          ),
+          accessKey: 'test-key',
+          body: body,
+        );
+
+        final HttpRequest request = await server.first;
+        expect(request.headers.contentType?.mimeType, 'application/json');
+        expect(request.headers.contentType?.charset, 'utf-8');
+
+        final String encodedBody = await utf8.decoder.bind(request).join();
+        expect(jsonDecode(encodedBody), body);
+
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode(<String, Object?>{
+            'choices': <Object?>[
+              <String, Object?>{
+                'message': <String, Object?>{'content': 'transport-ok'},
+              },
+            ],
+          }),
+        );
+        await request.response.close();
+
+        expect(await responseFuture, 'transport-ok');
+      } finally {
+        transport.close();
+        await server.close(force: true);
+      }
+    });
+  });
+
   group('TyphoonTranslatorProvider', () {
     test(
       'runs direct, independent reverse and findings audit in order',

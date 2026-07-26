@@ -72,9 +72,9 @@ final class DartIoTyphoonChatTransport implements TyphoonChatTransport {
       final HttpClientRequest request = await _client.postUrl(endpoint);
       request.headers
         ..set(HttpHeaders.authorizationHeader, 'Bearer $accessKey')
-        ..set(HttpHeaders.contentTypeHeader, 'application/json');
+        ..contentType = ContentType.json;
 
-      request.write(jsonEncode(body));
+      request.add(utf8.encode(jsonEncode(body)));
 
       final HttpClientResponse response = await request.close().timeout(
         const Duration(seconds: 60),
