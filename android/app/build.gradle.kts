@@ -1,8 +1,34 @@
+import org.gradle.api.GradleException
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val registryStudioReleaseSigning =
+    mapOf(
+        "storeFile" to System.getenv("REGISTRY_STUDIO_ANDROID_KEYSTORE_PATH"),
+        "storePassword" to System.getenv("REGISTRY_STUDIO_ANDROID_STORE_PASSWORD"),
+        "keyAlias" to System.getenv("REGISTRY_STUDIO_ANDROID_KEY_ALIAS"),
+        "keyPassword" to System.getenv("REGISTRY_STUDIO_ANDROID_KEY_PASSWORD"),
+    )
+
+val registryStudioReleaseSigningConfigured =
+    registryStudioReleaseSigning.values.all { value ->
+        !value.isNullOrBlank()
+    }
+
+val registryStudioReleaseTaskRequested =
+    gradle.startParameter.taskNames.any { taskName ->
+        taskName.contains("Release", ignoreCase = true)
+    }
+
+if (registryStudioReleaseTaskRequested && !registryStudioReleaseSigningConfigured) {
+    throw GradleException(
+        "Registry Studio release signing environment variables are missing.",
+    )
 }
 
 android {
@@ -20,21 +46,44 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.registry_studio"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (registryStudioReleaseSigningConfigured) {
+            create("registryStudioRelease") {
+                storeFile =
+                    file(
+                        requireNotNull(
+                            registryStudioReleaseSigning["storeFile"],
+                        ),
+                    )
+                storePassword =
+                    requireNotNull(
+                        registryStudioReleaseSigning["storePassword"],
+                    )
+                keyAlias =
+                    requireNotNull(
+                        registryStudioReleaseSigning["keyAlias"],
+                    )
+                keyPassword =
+                    requireNotNull(
+                        registryStudioReleaseSigning["keyPassword"],
+                    )
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (registryStudioReleaseSigningConfigured) {
+                signingConfig =
+                    signingConfigs.getByName("registryStudioRelease")
+            }
         }
     }
 }

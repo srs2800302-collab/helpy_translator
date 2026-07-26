@@ -6,10 +6,19 @@ on:
     branches:
       - main
       - registry-studio/modular-rebuild
+      - registry-studio/translator-first-rebuild
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -18,7 +27,86 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.41.4"
           channel: stable
+          cache: true
+
+      - name: Validate signing secrets
+        shell: bash
+        env:
+          REGISTRY_STUDIO_ANDROID_KEYSTORE_BASE64: ${{ secrets.REGISTRY_STUDIO_ANDROID_KEYSTORE_BASE64 }}
+          REGISTRY_STUDIO_ANDROID_STORE_PASSWORD: ${{ secrets.REGISTRY_STUDIO_ANDROID_STORE_PASSWORD }}
+          REGISTRY_STUDIO_ANDROID_KEY_ALIAS: ${{ secrets.REGISTRY_STUDIO_ANDROID_KEY_ALIAS }}
+          REGISTRY_STUDIO_ANDROID_KEY_PASSWORD: ${{ secrets.REGISTRY_STUDIO_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          required_variables=(
+            REGISTRY_STUDIO_ANDROID_KEYSTORE_BASE64
+            REGISTRY_STUDIO_ANDROID_STORE_PASSWORD
+            REGISTRY_STUDIO_ANDROID_KEY_ALIAS
+            REGISTRY_STUDIO_ANDROID_KEY_PASSWORD
+          )
+
+          for variable_name in "${required_variables[@]}"; do
+            if [[ -z "${!variable_name:-}" ]]; then
+              echo "::error::Required signing secret is missing: ${variable_name}"
+              exit 1
+            fi
+          done
+
+      - name: Restore and verify signing keystore
+        shell: bash
+        env:
+          REGISTRY_STUDIO_ANDROID_KEYSTORE_BASE64: ${{ secrets.REGISTRY_STUDIO_ANDROID_KEYSTORE_BASE64 }}
+          REGISTRY_STUDIO_ANDROID_STORE_PASSWORD: ${{ secrets.REGISTRY_STUDIO_ANDROID_STORE_PASSWORD }}
+          REGISTRY_STUDIO_ANDROID_KEY_ALIAS: ${{ secrets.REGISTRY_STUDIO_ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          expected_certificate_sha256='C25B835A7F66647E95D774C8A6A5ACE71D0EF8B79DDABB6B216BC453090D7AEE'
+          signing_directory="${RUNNER_TEMP}/registry-studio-signing"
+          keystore_path="${signing_directory}/registry-studio-release.jks"
+          certificate_path="${signing_directory}/registry-studio-release.der"
+
+          mkdir -p "${signing_directory}"
+
+          printf '%s' "${REGISTRY_STUDIO_ANDROID_KEYSTORE_BASE64}" |
+            base64 --decode > "${keystore_path}"
+
+          chmod 600 "${keystore_path}"
+          test -s "${keystore_path}"
+
+          keytool \
+            -list \
+            -keystore "${keystore_path}" \
+            -storepass "${REGISTRY_STUDIO_ANDROID_STORE_PASSWORD}" \
+            -alias "${REGISTRY_STUDIO_ANDROID_KEY_ALIAS}" \
+            >/dev/null
+
+          keytool \
+            -exportcert \
+            -keystore "${keystore_path}" \
+            -storepass "${REGISTRY_STUDIO_ANDROID_STORE_PASSWORD}" \
+            -alias "${REGISTRY_STUDIO_ANDROID_KEY_ALIAS}" \
+            -file "${certificate_path}" \
+            >/dev/null
+
+          actual_certificate_sha256="$(
+            sha256sum "${certificate_path}" |
+              awk '{print toupper($1)}'
+          )"
+
+          if [[ "${actual_certificate_sha256}" != "${expected_certificate_sha256}" ]]; then
+            echo "::error::Signing certificate fingerprint mismatch."
+            exit 1
+          fi
+
+          echo "REGISTRY_STUDIO_ANDROID_KEYSTORE_PATH=${keystore_path}" \
+            >> "${GITHUB_ENV}"
+          echo "REGISTRY_STUDIO_EXPECTED_CERT_SHA256=${expected_certificate_sha256}" \
+            >> "${GITHUB_ENV}"
 
       - name: Install dependencies
         run: flutter pub get
@@ -27,13 +115,85 @@ jobs:
         run: flutter analyze
 
       - name: Test
-        run: flutter test
+        run: flutter test --concurrency=1
 
-      - name: Build debug APK
-        run: flutter build apk --debug
+      - name: Build signed release APK
+        env:
+          REGISTRY_STUDIO_ANDROID_STORE_PASSWORD: ${{ secrets.REGISTRY_STUDIO_ANDROID_STORE_PASSWORD }}
+          REGISTRY_STUDIO_ANDROID_KEY_ALIAS: ${{ secrets.REGISTRY_STUDIO_ANDROID_KEY_ALIAS }}
+          REGISTRY_STUDIO_ANDROID_KEY_PASSWORD: ${{ secrets.REGISTRY_STUDIO_ANDROID_KEY_PASSWORD }}
+        run: flutter build apk --release
 
-      - name: Upload APK
+      - name: Verify APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apk_path='build/app/outputs/flutter-apk/app-release.apk'
+          apk_directory="$(dirname "${apk_path}")"
+          signing_report="${apk_directory}/app-release-signing.txt"
+          checksum_file="${apk_path}.sha256"
+
+          test -s "${apk_path}"
+
+          apksigner_path="$(
+            find "${ANDROID_HOME}/build-tools" \
+              -type f \
+              -name apksigner \
+              -print |
+              sort -V |
+              tail -n 1
+          )"
+
+          if [[ -z "${apksigner_path}" ]]; then
+            echo '::error::apksigner was not found.'
+            exit 1
+          fi
+
+          "${apksigner_path}" \
+            verify \
+            --verbose \
+            --print-certs \
+            "${apk_path}" |
+            tee "${signing_report}"
+
+          actual_certificate_sha256="$(
+            sed -n \
+              's/^Signer #1 certificate SHA-256 digest: //p' \
+              "${signing_report}" |
+              head -n 1 |
+              tr -d '[:space:]:' |
+              tr '[:lower:]' '[:upper:]'
+          )"
+
+          if [[ "${actual_certificate_sha256}" != "${REGISTRY_STUDIO_EXPECTED_CERT_SHA256}" ]]; then
+            echo '::error::APK certificate fingerprint mismatch.'
+            exit 1
+          fi
+
+          sha256sum "${apk_path}" > "${checksum_file}"
+
+          {
+            echo
+            echo "Git commit: ${GITHUB_SHA}"
+            echo "GitHub run: ${GITHUB_RUN_NUMBER}"
+            echo "Certificate SHA-256: ${actual_certificate_sha256}"
+            echo "APK SHA-256: $(awk '{print $1}' "${checksum_file}")"
+          } >> "${signing_report}"
+
+      - name: Upload signed APK
         uses: actions/upload-artifact@v6
         with:
-          name: registry-studio-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: registry-studio-signed-release-apk-${{ github.run_number }}
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/app-release.apk.sha256
+            build/app/outputs/flutter-apk/app-release-signing.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- "${RUNNER_TEMP}/registry-studio-signing"
