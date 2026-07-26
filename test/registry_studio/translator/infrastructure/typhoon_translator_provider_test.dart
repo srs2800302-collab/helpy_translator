@@ -197,6 +197,106 @@ NONE
       },
     );
 
+    test(
+      'rejects API key with invisible characters before transport',
+      () async {
+        final _QueueTransport transport = _QueueTransport(<Object>[
+          _directResponse(),
+        ]);
+
+        final Future<TranslatorRunReport> result =
+            TyphoonTranslatorProvider(
+                  policy: const _TestPolicy(),
+                  transportFactory: () => transport,
+                )
+                .start(
+                  request: TranslatorWorkRequest(sourceText: 'Текст.'),
+                  accessKey: 'test\u200B-key',
+                )
+                .result;
+
+        await expectLater(
+          result,
+          throwsA(
+            isA<TranslatorProviderException>()
+                .having(
+                  (TranslatorProviderException error) => error.failure.stage,
+                  'stage',
+                  TranslatorFailureStage.validation,
+                )
+                .having(
+                  (TranslatorProviderException error) => error.failure.code,
+                  'code',
+                  TranslatorFailureCode.accessKeyInvalidCharacters,
+                )
+                .having(
+                  (TranslatorProviderException error) =>
+                      error.failure.completeness,
+                  'completeness',
+                  isNull,
+                ),
+          ),
+        );
+
+        expect(transport.callCount, 0);
+      },
+    );
+
+    test('keeps invalid source language as technical failure', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        '''
+SOURCE LANGUAGE:
+XX
+
+SOURCE TEXT:
+Текст.
+
+RU:
+Текст.
+
+EN:
+Text.
+
+TH:
+ข้อความ
+''',
+      ]);
+
+      final Future<TranslatorRunReport> result =
+          TyphoonTranslatorProvider(
+                policy: const _TestPolicy(),
+                transportFactory: () => transport,
+              )
+              .start(
+                request: TranslatorWorkRequest(sourceText: 'Текст.'),
+                accessKey: 'test-key',
+              )
+              .result;
+
+      await expectLater(
+        result,
+        throwsA(
+          isA<TranslatorProviderException>()
+              .having(
+                (TranslatorProviderException error) => error.failure.stage,
+                'stage',
+                TranslatorFailureStage.directTranslation,
+              )
+              .having(
+                (TranslatorProviderException error) => error.failure.code,
+                'code',
+                TranslatorFailureCode.invalidSourceLanguage,
+              )
+              .having(
+                (TranslatorProviderException error) =>
+                    error.failure.completeness,
+                'completeness',
+                isNull,
+              ),
+        ),
+      );
+    });
+
     test('keeps provider authorization error technical', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         const TyphoonTransportException.http(

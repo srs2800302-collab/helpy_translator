@@ -147,6 +147,10 @@ final class DartIoTyphoonChatTransport implements TyphoonChatTransport {
         throw const TyphoonTransportException.cancelled();
       }
       throw TyphoonTransportException.network(error.message);
+    } on ArgumentError catch (error) {
+      throw TyphoonTransportException.malformed(
+        error.message?.toString() ?? 'Invalid Typhoon request.',
+      );
     } on FormatException catch (error) {
       throw TyphoonTransportException.malformed(error.message);
     }
@@ -219,6 +223,19 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
       );
     }
 
+    if (!_accessKeyPattern.hasMatch(normalizedAccessKey)) {
+      await _close();
+      throw TranslatorProviderException(
+        TranslatorFailure(
+          stage: TranslatorFailureStage.validation,
+          code: TranslatorFailureCode.accessKeyInvalidCharacters,
+          message:
+              'API key Typhoon содержит пробелы, переносы строк '
+              'или невидимые символы. Вставьте только сам ключ.',
+        ),
+      );
+    }
+
     TranslationBundle? partialBundle;
 
     try {
@@ -237,9 +254,21 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         responseName: 'Прямой перевод',
       );
 
-      final TranslationLanguage sourceLanguage = TranslationLanguage.fromCode(
-        direct['SOURCE LANGUAGE']!,
-      );
+      final TranslationLanguage sourceLanguage;
+
+      try {
+        sourceLanguage = TranslationLanguage.fromCode(
+          direct['SOURCE LANGUAGE']!,
+        );
+      } on ArgumentError catch (error) {
+        throw TranslatorProviderException(
+          TranslatorFailure(
+            stage: TranslatorFailureStage.directTranslation,
+            code: TranslatorFailureCode.invalidSourceLanguage,
+            message: error.message?.toString() ?? 'Invalid source language.',
+          ),
+        );
+      }
 
       if (direct['SOURCE TEXT'] != request.sourceText) {
         throw const _PayloadFailure(
@@ -328,15 +357,6 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     } on TyphoonTransportException catch (error) {
       throw TranslatorProviderException(
         _mapTransportFailure(error, partialBundle: partialBundle),
-      );
-    } on ArgumentError catch (error) {
-      throw TranslatorProviderException(
-        TranslatorFailure(
-          stage: TranslatorFailureStage.directTranslation,
-          code: TranslatorFailureCode.invalidSourceLanguage,
-          message: error.message?.toString() ?? 'Invalid source language.',
-          partialBundle: partialBundle,
-        ),
       );
     } finally {
       await _close();
@@ -590,6 +610,8 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
       partialBundle: partialBundle,
     );
   }
+
+  static final RegExp _accessKeyPattern = RegExp(r'^[\x21-\x7E]+$');
 
   static const List<String> _directLabels = <String>[
     'SOURCE LANGUAGE',

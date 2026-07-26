@@ -43,6 +43,7 @@ enum TranslatorFailureStage {
 enum TranslatorFailureCode {
   sourceTextEmpty,
   accessKeyEmpty,
+  accessKeyInvalidCharacters,
   missingRequiredSection,
   emptyRequiredSection,
   placeholderValue,
