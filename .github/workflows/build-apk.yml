@@ -158,10 +158,9 @@ jobs:
             tee "${signing_report}"
 
           actual_certificate_sha256="$(
-            sed -n \
-              's/^Signer #1 certificate SHA-256 digest: //p' \
+            awk -F': ' \
+              '/certificate SHA-256 digest:/ {print $NF; exit}' \
               "${signing_report}" |
-              head -n 1 |
               tr -d '[:space:]:' |
               tr '[:lower:]' '[:upper:]'
           )"
