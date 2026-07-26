@@ -13,6 +13,7 @@ import '../../registry_studio/registry/application/contracts/registry_snapshot_r
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../registry_studio/technical/storage/json_file_registry_revision_state_store.dart';
 import '../../registry_studio/technical/storage/json_lines_registry_analysis_history_store.dart';
+import '../../registry_studio/translator/infrastructure/flutter_secure_translator_access_key_store.dart';
 import '../../registry_studio/translator/infrastructure/json_file_translator_draft_store.dart';
 import '../../registry_studio/translator/infrastructure/typhoon/typhoon_translator_provider.dart';
 import '../../registry_studio/translator/presentation/translator_workspace_view.dart';
@@ -64,6 +65,9 @@ final class RegistryStudioApplication extends StatelessWidget {
           policy: HelpyTranslatorPolicy(),
         ),
         draftStore: const JsonFileTranslatorDraftStore(),
+        accessKeyStore: FlutterSecureTranslatorAccessKeyStore(
+          storageKey: 'registry_studio.translator.typhoon.api_key.v1',
+        ),
       ),
     );
   }

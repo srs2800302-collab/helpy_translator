@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/registry_studio/translator/application/translator_access_key_store.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_draft_store.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
@@ -17,6 +18,7 @@ void main() {
           body: TranslatorWorkspaceView(
             provider: _SuccessProvider(report),
             draftStore: _MemoryDraftStore(),
+            accessKeyStore: _MemoryAccessKeyStore(),
           ),
         ),
       ),
@@ -46,6 +48,9 @@ void main() {
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
+    final _MemoryAccessKeyStore accessKeyStore = _MemoryAccessKeyStore(
+      value: 'saved-key',
+    );
     final _MemoryDraftStore store = _MemoryDraftStore(
       draft: TranslatorDraft(
         sourceText: report.request.sourceText,
@@ -60,6 +65,7 @@ void main() {
           body: TranslatorWorkspaceView(
             provider: _SuccessProvider(report),
             draftStore: store,
+            accessKeyStore: accessKeyStore,
           ),
         ),
       ),
@@ -74,6 +80,73 @@ void main() {
 
     expect(find.text('EXACT'), findsNothing);
     expect(store.clearCount, 1);
+    expect(accessKeyStore.value, 'saved-key');
+    expect(accessKeyStore.clearCount, 0);
+  });
+
+  testWidgets('restores and persists API key securely', (
+    WidgetTester tester,
+  ) async {
+    final _MemoryAccessKeyStore accessKeyStore = _MemoryAccessKeyStore(
+      value: 'saved-key',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TranslatorWorkspaceView(
+            provider: _SuccessProvider(_report()),
+            draftStore: _MemoryDraftStore(),
+            accessKeyStore: accessKeyStore,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final TextField keyField = tester.widget<TextField>(
+      find.byType(TextField).at(0),
+    );
+
+    expect(keyField.controller?.text, 'saved-key');
+
+    await tester.enterText(find.byType(TextField).at(0), 'updated-key');
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(accessKeyStore.value, 'updated-key');
+  });
+
+  testWidgets('deletes API key only through explicit key action', (
+    WidgetTester tester,
+  ) async {
+    final _MemoryAccessKeyStore accessKeyStore = _MemoryAccessKeyStore(
+      value: 'saved-key',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TranslatorWorkspaceView(
+            provider: _SuccessProvider(_report()),
+            draftStore: _MemoryDraftStore(),
+            accessKeyStore: accessKeyStore,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Удалить сохранённый ключ'));
+    await tester.pumpAndSettle();
+
+    final TextField keyField = tester.widget<TextField>(
+      find.byType(TextField).at(0),
+    );
+
+    expect(keyField.controller?.text, isEmpty);
+    expect(accessKeyStore.value, isNull);
+    expect(accessKeyStore.clearCount, 1);
   });
 }
 
@@ -150,4 +223,25 @@ final class _SuccessOperation implements TranslatorOperation {
 
   @override
   void cancel() {}
+}
+
+final class _MemoryAccessKeyStore implements TranslatorAccessKeyStore {
+  _MemoryAccessKeyStore({this.value});
+
+  String? value;
+  int clearCount = 0;
+
+  @override
+  Future<String?> load() async => value;
+
+  @override
+  Future<void> save(String accessKey) async {
+    value = accessKey;
+  }
+
+  @override
+  Future<void> clear() async {
+    clearCount += 1;
+    value = null;
+  }
 }

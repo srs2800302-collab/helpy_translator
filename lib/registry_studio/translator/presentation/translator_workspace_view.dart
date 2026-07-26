@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../application/translator_access_key_store.dart';
 import '../application/translator_draft_store.dart';
 import '../application/translator_provider.dart';
 import '../domain/translator_models.dart';
@@ -10,11 +13,13 @@ final class TranslatorWorkspaceView extends StatelessWidget {
   const TranslatorWorkspaceView({
     required this.provider,
     required this.draftStore,
+    required this.accessKeyStore,
     super.key,
   });
 
   final TranslatorProvider provider;
   final TranslatorDraftStore draftStore;
+  final TranslatorAccessKeyStore accessKeyStore;
 
   @override
   Widget build(BuildContext context) {
@@ -22,13 +27,15 @@ final class TranslatorWorkspaceView extends StatelessWidget {
       create: (_) =>
           TranslatorCubit(provider: provider, draftStore: draftStore)
             ..restore(),
-      child: const _TranslatorWorkspaceBody(),
+      child: _TranslatorWorkspaceBody(accessKeyStore: accessKeyStore),
     );
   }
 }
 
 final class _TranslatorWorkspaceBody extends StatefulWidget {
-  const _TranslatorWorkspaceBody();
+  const _TranslatorWorkspaceBody({required this.accessKeyStore});
+
+  final TranslatorAccessKeyStore accessKeyStore;
 
   @override
   State<_TranslatorWorkspaceBody> createState() =>
@@ -36,20 +43,140 @@ final class _TranslatorWorkspaceBody extends StatefulWidget {
 }
 
 final class _TranslatorWorkspaceBodyState
-    extends State<_TranslatorWorkspaceBody> {
+    extends State<_TranslatorWorkspaceBody>
+    with WidgetsBindingObserver {
   late final TextEditingController _sourceController;
   late final TextEditingController _apiKeyController;
+  Timer? _accessKeySaveTimer;
   bool _showApiKey = false;
+  bool _accessKeyRestoring = true;
+  String? _accessKeyStorageWarning;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _sourceController = TextEditingController();
     _apiKeyController = TextEditingController();
+    unawaited(_restoreAccessKey());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      unawaited(_flushAccessKeySave());
+    }
+  }
+
+  Future<void> _restoreAccessKey() async {
+    try {
+      final String? accessKey = await widget.accessKeyStore.load();
+
+      if (!mounted) {
+        return;
+      }
+
+      final String restoredAccessKey = accessKey ?? '';
+
+      _apiKeyController.value = TextEditingValue(
+        text: restoredAccessKey,
+        selection: TextSelection.collapsed(offset: restoredAccessKey.length),
+      );
+
+      setState(() {
+        _accessKeyRestoring = false;
+        _accessKeyStorageWarning = null;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _accessKeyRestoring = false;
+        _accessKeyStorageWarning =
+            'Не удалось восстановить сохранённый API key. '
+            'Ключ не был удалён автоматически.';
+      });
+    }
+  }
+
+  void _scheduleAccessKeySave(String accessKey) {
+    _accessKeySaveTimer?.cancel();
+    _accessKeySaveTimer = Timer(const Duration(milliseconds: 300), () {
+      _accessKeySaveTimer = null;
+      unawaited(_persistAccessKey(accessKey));
+    });
+  }
+
+  Future<void> _flushAccessKeySave() async {
+    _accessKeySaveTimer?.cancel();
+    _accessKeySaveTimer = null;
+    await _persistAccessKey(_apiKeyController.text);
+  }
+
+  Future<void> _persistAccessKey(
+    String accessKey, {
+    bool reportFailure = true,
+  }) async {
+    try {
+      if (accessKey.isEmpty) {
+        await widget.accessKeyStore.clear();
+      } else {
+        await widget.accessKeyStore.save(accessKey);
+      }
+
+      if (mounted && _accessKeyStorageWarning != null) {
+        setState(() {
+          _accessKeyStorageWarning = null;
+        });
+      }
+    } catch (_) {
+      if (reportFailure && mounted) {
+        setState(() {
+          _accessKeyStorageWarning =
+              'Не удалось сохранить API key в защищённом хранилище.';
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteSavedAccessKey() async {
+    _accessKeySaveTimer?.cancel();
+    _accessKeySaveTimer = null;
+
+    try {
+      await widget.accessKeyStore.clear();
+      _apiKeyController.clear();
+
+      if (mounted) {
+        setState(() {
+          _showApiKey = false;
+          _accessKeyStorageWarning = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _accessKeyStorageWarning =
+              'Не удалось удалить API key из защищённого хранилища.';
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _accessKeySaveTimer?.cancel();
+    _accessKeySaveTimer = null;
+
+    final String accessKey = _apiKeyController.text;
+    unawaited(_persistAccessKey(accessKey, reportFailure: false));
+
     _sourceController.dispose();
     _apiKeyController.dispose();
     super.dispose();
@@ -113,27 +240,51 @@ final class _TranslatorWorkspaceBodyState
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: TextField(
-          controller: _apiKeyController,
-          enabled: !state.isRunning,
-          obscureText: !_showApiKey,
-          autocorrect: false,
-          enableSuggestions: false,
-          decoration: InputDecoration(
-            labelText: 'Typhoon API key',
-            helperText: 'Ключ хранится только в памяти текущего запуска.',
-            prefixIcon: const Icon(Icons.key_outlined),
-            suffixIcon: IconButton(
-              tooltip: _showApiKey ? 'Скрыть ключ' : 'Показать ключ',
-              onPressed: () {
-                setState(() {
-                  _showApiKey = !_showApiKey;
-                });
-              },
-              icon: Icon(_showApiKey ? Icons.visibility_off : Icons.visibility),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            TextField(
+              controller: _apiKeyController,
+              enabled: !state.isRunning && !_accessKeyRestoring,
+              obscureText: !_showApiKey,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: 'Typhoon API key',
+                helperText: _accessKeyRestoring
+                    ? 'Восстановление сохранённого ключа...'
+                    : 'Ключ зашифрованно хранится на этом устройстве.',
+                errorText: _accessKeyStorageWarning,
+                prefixIcon: const Icon(Icons.key_outlined),
+                suffixIcon: IconButton(
+                  tooltip: _showApiKey ? 'Скрыть ключ' : 'Показать ключ',
+                  onPressed: _accessKeyRestoring
+                      ? null
+                      : () {
+                          setState(() {
+                            _showApiKey = !_showApiKey;
+                          });
+                        },
+                  icon: Icon(
+                    _showApiKey ? Icons.visibility_off : Icons.visibility,
+                  ),
+                ),
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: _scheduleAccessKeySave,
             ),
-            border: const OutlineInputBorder(),
-          ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: state.isRunning || _accessKeyRestoring
+                    ? null
+                    : _deleteSavedAccessKey,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Удалить сохранённый ключ'),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -211,11 +362,17 @@ final class _TranslatorWorkspaceBodyState
       runSpacing: 12,
       children: <Widget>[
         FilledButton.icon(
-          onPressed: state.isRunning
+          onPressed: state.isRunning || _accessKeyRestoring
               ? null
-              : () {
+              : () async {
                   FocusScope.of(context).unfocus();
-                  context.read<TranslatorCubit>().translate(
+                  await _flushAccessKeySave();
+
+                  if (!context.mounted) {
+                    return;
+                  }
+
+                  await context.read<TranslatorCubit>().translate(
                     accessKey: _apiKeyController.text,
                   );
                 },
@@ -238,7 +395,6 @@ final class _TranslatorWorkspaceBodyState
           onPressed: state.isRunning
               ? null
               : () {
-                  _apiKeyController.clear();
                   context.read<TranslatorCubit>().clear();
                 },
           icon: const Icon(Icons.clear),
