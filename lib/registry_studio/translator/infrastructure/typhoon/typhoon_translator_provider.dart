@@ -318,13 +318,36 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 
       _emit(TranslatorRunStage.audit);
 
-      final String auditContent = await _request(
-        systemPrompt: policy.buildAuditSystemPrompt(),
-        userPrompt: policy.buildAuditUserPrompt(partialBundle),
-        maxTokens: 1024,
-      );
+      final String auditUserPrompt = policy.buildAuditUserPrompt(partialBundle);
 
-      final TranslationAudit audit = _parseAudit(auditContent);
+      TranslationAudit audit;
+
+      try {
+        final String auditContent = await _request(
+          systemPrompt: policy.buildAuditSystemPrompt(),
+          userPrompt: auditUserPrompt,
+          maxTokens: 1024,
+        );
+
+        audit = _parseAudit(auditContent);
+      } on _AuditFailure {
+        final String repairedAuditContent = await _request(
+          systemPrompt: _buildStrictAuditRetryPrompt(
+            policy.buildAuditSystemPrompt(),
+          ),
+          userPrompt: auditUserPrompt,
+          maxTokens: 1024,
+        );
+
+        try {
+          audit = _parseAudit(repairedAuditContent);
+        } on _AuditFailure catch (error) {
+          throw _AuditFailure(
+            'Ответ аудита остался некорректным после повторной попытки: '
+            '${error.message}',
+          );
+        }
+      }
 
       return TranslatorRunReport(
         request: request,
@@ -361,6 +384,23 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     } finally {
       await _close();
     }
+  }
+
+  static String _buildStrictAuditRetryPrompt(String basePrompt) {
+    return '''
+$basePrompt
+
+The previous audit response violated the required output protocol.
+Run the semantic audit again from the supplied nine-section bundle.
+
+This is the final format attempt:
+- output exactly four labels;
+- preserve the exact label spelling and order;
+- put a colon after every label;
+- use only NONE or Russian "- " bullet points as values;
+- output no preamble, Markdown, verdict, summary or commentary.
+'''
+        .trim();
   }
 
   Future<String> _request({

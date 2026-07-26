@@ -201,12 +201,50 @@ Photo of the installed cooktop.
       );
     });
 
+    test('retries malformed audit once and succeeds', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _directResponse(),
+        _reverseResponse(),
+        '''
+MEANING_FINDINGS:
+NONE
+
+TERMINOLOGY_FINDINGS:
+NONE
+''',
+        _auditResponse(),
+      ]);
+
+      final TranslatorRunReport report =
+          await TyphoonTranslatorProvider(
+                policy: const _TestPolicy(),
+                transportFactory: () => transport,
+              )
+              .start(
+                request: TranslatorWorkRequest(
+                  sourceText: 'Фотография установленной варочной панели.',
+                ),
+                accessKey: 'test-key',
+              )
+              .result;
+
+      expect(report.audit.verdict, TranslationVerdict.exact);
+      expect(transport.callCount, 4);
+    });
+
     test(
-      'keeps invalid audit as technical failure with complete bundle',
+      'keeps second invalid audit as technical failure with complete bundle',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
           _directResponse(),
           _reverseResponse(),
+          '''
+MEANING_FINDINGS:
+NONE
+
+TERMINOLOGY_FINDINGS:
+NONE
+''',
           '''
 MEANING_FINDINGS:
 NONE
@@ -249,9 +287,16 @@ NONE
                       error.failure.partialBundle,
                   'partialBundle',
                   isNotNull,
+                )
+                .having(
+                  (TranslatorProviderException error) => error.failure.message,
+                  'message',
+                  contains('после повторной попытки'),
                 ),
           ),
         );
+
+        expect(transport.callCount, 4);
       },
     );
 
