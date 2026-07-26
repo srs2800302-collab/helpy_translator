@@ -174,11 +174,11 @@ final class TranslationAudit extends Equatable {
   bool get ambiguousWording => ambiguityFindings.isNotEmpty;
 
   TranslationVerdict get verdict {
-    if (meaningFindings.isNotEmpty) {
-      return TranslationVerdict.canonicalDrift;
-    }
-    if (terminologyFindings.isNotEmpty || ambiguityFindings.isNotEmpty) {
+    if (meaningFindings.isNotEmpty || ambiguityFindings.isNotEmpty) {
       return TranslationVerdict.needsReview;
+    }
+    if (terminologyFindings.isNotEmpty) {
+      return TranslationVerdict.canonicalDrift;
     }
     if (styleFindings.isNotEmpty) {
       return TranslationVerdict.equivalent;

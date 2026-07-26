@@ -129,13 +129,12 @@ void main() {
       expect(report.audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('maps meaning finding to canonical drift', () async {
+    test('maps meaning finding to needs review', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _directResponse(),
         _reverseResponse(),
         _auditResponse(meaning: '- В EN изменено обязательство.'),
       ]);
-
       final TranslatorRunReport report =
           await TyphoonTranslatorProvider(
                 policy: const _TestPolicy(),
@@ -148,8 +147,31 @@ void main() {
                 accessKey: 'test-key',
               )
               .result;
+      expect(report.audit.verdict, TranslationVerdict.needsReview);
+    });
 
+    test('maps terminology finding to canonical drift', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _directResponse(),
+        _reverseResponse(),
+        _auditResponse(
+          terminology: '- Общая роль заменена конкретной профессией.',
+        ),
+      ]);
+      final TranslatorRunReport report =
+          await TyphoonTranslatorProvider(
+                policy: const _TestPolicy(),
+                transportFactory: () => transport,
+              )
+              .start(
+                request: TranslatorWorkRequest(
+                  sourceText: 'Фотография установленной варочной панели.',
+                ),
+                accessKey: 'test-key',
+              )
+              .result;
       expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(report.audit.meaningPreserved, isTrue);
     });
 
     test('classifies missing translation section as incomplete', () async {

@@ -21,29 +21,41 @@ void main() {
       expect(audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('derives needsReview from terminology or ambiguity findings', () {
+    test('derives canonical drift from terminology findings', () {
+      final TranslationAudit audit = TranslationAudit(
+        terminologyFindings: const <String>[
+          'Термин исполнителя стал слишком узким.',
+        ],
+      );
+
+      expect(audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(audit.meaningPreserved, isTrue);
+    });
+
+    test('derives needsReview from meaning or ambiguity findings', () {
       expect(
         TranslationAudit(
-          terminologyFindings: const <String>['Термин master заменён.'],
+          meaningFindings: const <String>['Изменено обязательство.'],
         ).verdict,
         TranslationVerdict.needsReview,
       );
-
       expect(
         TranslationAudit(
-          ambiguityFindings: const <String>['Неясен исполнитель действия.'],
+          ambiguityFindings: const <String>[
+            'Фраза допускает два материально разных прочтения.',
+          ],
         ).verdict,
         TranslationVerdict.needsReview,
       );
     });
 
-    test('meaning finding always produces canonical drift', () {
+    test('meaning risk has priority over terminology drift', () {
       final TranslationAudit audit = TranslationAudit(
         meaningFindings: const <String>['Изменено обязательство.'],
         terminologyFindings: const <String>['Изменён термин.'],
       );
 
-      expect(audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(audit.verdict, TranslationVerdict.needsReview);
     });
   });
 
