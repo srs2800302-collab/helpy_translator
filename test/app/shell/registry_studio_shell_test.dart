@@ -221,17 +221,8 @@ void main() {
       expect(store.state?.currentRevision, updatedSnapshot.sourceRevision);
       expect(store.state?.previousRevision, snapshot.sourceRevision);
 
-      expect(historyStore.entries, hasLength(3));
-      final RegistryAnalysisHistoryEntry sameRevisionHistoryEntry =
-          historyStore.entries[2];
-      expect(
-        sameRevisionHistoryEntry.sourceRevision,
-        updatedSnapshot.sourceRevision,
-      );
-      expect(
-        sameRevisionHistoryEntry.previousRevision,
-        snapshot.sourceRevision,
-      );
+      expect(historyStore.entries, hasLength(2));
+      expect(historyStore.entries.last, same(firstRefreshHistoryEntry));
       expect(loaded.analysisHistory, historyStore.entries);
     },
   );
@@ -952,20 +943,20 @@ void main() {
 
     await cubit.refresh();
 
-    final RegistryExplorerFailure failure =
-        cubit.state as RegistryExplorerFailure;
-
-    expect(failure.openRegistryNodeBeforeRefresh, same(currentChild));
+    loaded = cubit.state as RegistryExplorerLoaded;
+    expect(loaded.snapshot, same(snapshot));
+    expect(loaded.openRegistryNode, same(currentChild));
+    expect(loaded.refreshWarning, isNotNull);
+    expect(loaded.isRefreshing, isFalse);
     expect(loader.loadCount, 2);
     expect(store.loadCount, 1);
     expect(store.saveCount, 2);
     expect(store.state?.openRegistryNodeId, currentChild.id);
     expect(store.state?.openRegistryPath, currentChild.path);
-
     expect(historyStore.entries, hasLength(1));
-    expect(failure.analysisHistoryBeforeRefresh, historyStore.entries);
+    expect(loaded.analysisHistory, historyStore.entries);
 
-    await cubit.retry();
+    await cubit.refresh();
 
     loaded = cubit.state as RegistryExplorerLoaded;
 
@@ -1026,7 +1017,7 @@ void main() {
         findsNothing,
       );
 
-      await tester.tap(find.byTooltip('Перезагрузить Registry'));
+      await tester.tap(find.byTooltip('Обновить Registry вручную'));
 
       await tester.pumpAndSettle();
 
@@ -1497,7 +1488,7 @@ void main() {
 
       expect(store.state?.cleanBaselineRevision, snapshot.sourceRevision);
 
-      await tester.tap(find.byTooltip('Перезагрузить Registry'));
+      await tester.tap(find.byTooltip('Обновить Registry вручную'));
 
       await tester.pumpAndSettle();
 
@@ -1962,22 +1953,30 @@ void main() {
 
     expect(store.state?.openRegistryPath, currentChild.path);
 
-    await tester.tap(find.byTooltip('Перезагрузить Registry'));
+    final Finder selectedRefreshButton = find.byTooltip(
+      'Перезагрузить Registry',
+    );
+    expect(selectedRefreshButton, findsOneWidget);
+
+    await tester.tap(selectedRefreshButton);
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Не удалось загрузить Registry'), findsOneWidget);
-
+    expect(
+      find.byKey(const ValueKey<String>('registry-refresh-warning')),
+      findsOneWidget,
+    );
+    expect(find.text('Не удалось загрузить Registry'), findsNothing);
     expect(store.state?.openRegistryNodeId, currentChild.id);
-
     expect(store.state?.openRegistryPath, currentChild.path);
 
-    final Finder retryButton = find.byTooltip('Повторить загрузку Registry');
-
-    expect(retryButton, findsOneWidget);
-
-    await tester.tap(retryButton);
+    await tester.tap(selectedRefreshButton);
     await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('registry-refresh-warning')),
+      findsNothing,
+    );
 
     expect(
       find.text(
@@ -2180,9 +2179,9 @@ void main() {
 
       expect(domainRow, findsOneWidget);
       expect(find.text('Domain'), findsOneWidget);
-      expect(find.byTooltip('Перезагрузить Registry'), findsOneWidget);
+      expect(find.byTooltip('Обновить Registry вручную'), findsOneWidget);
 
-      await tester.tap(find.byTooltip('Перезагрузить Registry'));
+      await tester.tap(find.byTooltip('Обновить Registry вручную'));
       await tester.pumpAndSettle();
 
       expect(loader.loadCount, 2);
@@ -3804,16 +3803,20 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Не удалось загрузить Registry'), findsOneWidget);
-    expect(find.textContaining('offline'), findsOneWidget);
-    expect(find.byTooltip('Повторить загрузку Registry'), findsOneWidget);
+    expect(find.text('Registry не загружен'), findsOneWidget);
+    expect(find.textContaining('offline'), findsNothing);
 
-    await tester.tap(find.byTooltip('Повторить загрузку Registry'));
+    final Finder manualLoadButton = find.byKey(
+      const ValueKey<String>('registry-manual-load-button'),
+    );
+    expect(manualLoadButton, findsOneWidget);
+
+    await tester.tap(manualLoadButton);
     await tester.pumpAndSettle();
 
     expect(loader.loadCount, 2);
     expect(find.text('Узлов: 2'), findsOneWidget);
-    expect(find.text('Не удалось загрузить Registry'), findsNothing);
+    expect(find.text('Registry не загружен'), findsNothing);
   });
 
   test(
@@ -3974,15 +3977,15 @@ void main() {
 
       await cubit.refresh();
 
-      final RegistryExplorerFailure failure =
-          cubit.state as RegistryExplorerFailure;
-
-      expect(failure.searchQueryBeforeRefresh, exactSearchQuery);
+      loaded = cubit.state as RegistryExplorerLoaded;
+      expect(loaded.searchQuery, exactSearchQuery);
+      expect(loaded.refreshWarning, isNotNull);
       expect(store.state?.searchQuery, exactSearchQuery);
 
-      await cubit.retry();
+      await cubit.refresh();
 
       loaded = cubit.state as RegistryExplorerLoaded;
+      expect(loaded.refreshWarning, isNull);
 
       expect(loaded.searchQuery, exactSearchQuery);
       expect(store.state?.searchQuery, exactSearchQuery);

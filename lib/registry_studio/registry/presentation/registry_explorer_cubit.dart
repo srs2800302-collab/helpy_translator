@@ -310,7 +310,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         if (localSnapshotCache != null) {
           throw const _RegistrySnapshotUnavailable(
             'Registry ещё не загружен на устройство. '
-            'Нажмите кнопку обновления для первой ручной загрузки.',
+            'Нажмите кнопку обновления, чтобы загрузить Registry вручную.',
           );
         }
 
