@@ -183,125 +183,35 @@ final class _TranslatorWorkspaceBodyState
     }
 
     final RegistryStudioLocalizations l10n = context.rsL10n;
-    final TextEditingController dialogController = TextEditingController(
-      text: _apiKeyController.text,
-    );
-
-    bool obscureText = true;
-
-    final _AccessKeyDialogAction?
-    action = await showDialog<_AccessKeyDialogAction>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (BuildContext dialogContext, StateSetter setDialogState) {
-            return AlertDialog(
-              key: const ValueKey<String>('translator-access-key-dialog'),
-              title: Text(l10n.apiKeySettings),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    TextField(
-                      key: const ValueKey<String>(
-                        'translator-access-key-dialog-field',
-                      ),
-                      controller: dialogController,
-                      enabled: !_accessKeyRestoring,
-                      obscureText: obscureText,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      decoration: InputDecoration(
-                        labelText: l10n.apiKey,
-                        helperText: _accessKeyRestoring
-                            ? l10n.restoringSavedKey
-                            : l10n.apiKeyEncryptedOnDevice,
-                        errorText: _accessKeyStorageWarning,
-                        prefixIcon: const Icon(Icons.key_outlined),
-                        suffixIcon: IconButton(
-                          tooltip: obscureText ? l10n.showKey : l10n.hideKey,
-                          onPressed: _accessKeyRestoring
-                              ? null
-                              : () {
-                                  setDialogState(() {
-                                    obscureText = !obscureText;
-                                  });
-                                },
-                          icon: Icon(
-                            obscureText
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                        ),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  key: const ValueKey<String>(
-                    'translator-access-key-dialog-delete',
-                  ),
-                  onPressed: _accessKeyRestoring
-                      ? null
-                      : () {
-                          Navigator.of(
-                            dialogContext,
-                          ).pop(_AccessKeyDialogAction.delete);
-                        },
-                  child: Text(l10n.deleteSavedKey),
-                ),
-                TextButton(
-                  key: const ValueKey<String>(
-                    'translator-access-key-dialog-close',
-                  ),
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: Text(l10n.close),
-                ),
-                FilledButton(
-                  key: const ValueKey<String>(
-                    'translator-access-key-dialog-save',
-                  ),
-                  onPressed: _accessKeyRestoring
-                      ? null
-                      : () {
-                          Navigator.of(
-                            dialogContext,
-                          ).pop(_AccessKeyDialogAction.save);
-                        },
-                  child: Text(l10n.save),
-                ),
-              ],
+    final _AccessKeyDialogResult? result =
+        await showDialog<_AccessKeyDialogResult>(
+          context: context,
+          builder: (_) {
+            return _AccessKeyDialog(
+              initialAccessKey: _apiKeyController.text,
+              accessKeyRestoring: _accessKeyRestoring,
+              accessKeyStorageWarning: _accessKeyStorageWarning,
+              l10n: l10n,
             );
           },
         );
-      },
-    );
 
-    if (!mounted || action == null) {
-      dialogController.dispose();
+    if (!mounted || result == null) {
       return;
     }
 
-    if (action == _AccessKeyDialogAction.delete) {
+    if (result.action == _AccessKeyDialogAction.delete) {
       await _deleteSavedAccessKey();
-    } else {
-      final String accessKey = dialogController.text;
-
-      _apiKeyController.value = TextEditingValue(
-        text: accessKey,
-        selection: TextSelection.collapsed(offset: accessKey.length),
-      );
-
-      await _persistAccessKey(accessKey);
+      return;
     }
 
-    dialogController.dispose();
+    final String accessKey = result.accessKey ?? '';
+    _apiKeyController.value = TextEditingValue(
+      text: accessKey,
+      selection: TextSelection.collapsed(offset: accessKey.length),
+    );
+
+    await _persistAccessKey(accessKey);
   }
 
   @override
@@ -476,6 +386,131 @@ final class _TranslatorWorkspaceBodyState
 }
 
 enum _AccessKeyDialogAction { save, delete }
+
+final class _AccessKeyDialogResult {
+  const _AccessKeyDialogResult({required this.action, this.accessKey});
+
+  final _AccessKeyDialogAction action;
+  final String? accessKey;
+}
+
+final class _AccessKeyDialog extends StatefulWidget {
+  const _AccessKeyDialog({
+    required this.initialAccessKey,
+    required this.accessKeyRestoring,
+    required this.accessKeyStorageWarning,
+    required this.l10n,
+  });
+
+  final String initialAccessKey;
+  final bool accessKeyRestoring;
+  final String? accessKeyStorageWarning;
+  final RegistryStudioLocalizations l10n;
+
+  @override
+  State<_AccessKeyDialog> createState() => _AccessKeyDialogState();
+}
+
+final class _AccessKeyDialogState extends State<_AccessKeyDialog> {
+  late final TextEditingController _controller;
+  bool _obscureText = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialAccessKey);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      key: const ValueKey<String>('translator-access-key-dialog'),
+      title: Text(widget.l10n.apiKeySettings),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            TextField(
+              key: const ValueKey<String>('translator-access-key-dialog-field'),
+              controller: _controller,
+              enabled: !widget.accessKeyRestoring,
+              obscureText: _obscureText,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: widget.l10n.apiKey,
+                helperText: widget.accessKeyRestoring
+                    ? widget.l10n.restoringSavedKey
+                    : widget.l10n.apiKeyEncryptedOnDevice,
+                errorText: widget.accessKeyStorageWarning,
+                prefixIcon: const Icon(Icons.key_outlined),
+                suffixIcon: IconButton(
+                  tooltip: _obscureText
+                      ? widget.l10n.showKey
+                      : widget.l10n.hideKey,
+                  onPressed: widget.accessKeyRestoring
+                      ? null
+                      : () {
+                          setState(() {
+                            _obscureText = !_obscureText;
+                          });
+                        },
+                  icon: Icon(
+                    _obscureText ? Icons.visibility : Icons.visibility_off,
+                  ),
+                ),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          key: const ValueKey<String>('translator-access-key-dialog-delete'),
+          onPressed: widget.accessKeyRestoring
+              ? null
+              : () {
+                  Navigator.of(context).pop(
+                    const _AccessKeyDialogResult(
+                      action: _AccessKeyDialogAction.delete,
+                    ),
+                  );
+                },
+          child: Text(widget.l10n.deleteSavedKey),
+        ),
+        TextButton(
+          key: const ValueKey<String>('translator-access-key-dialog-close'),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text(widget.l10n.close),
+        ),
+        FilledButton(
+          key: const ValueKey<String>('translator-access-key-dialog-save'),
+          onPressed: widget.accessKeyRestoring
+              ? null
+              : () {
+                  Navigator.of(context).pop(
+                    _AccessKeyDialogResult(
+                      action: _AccessKeyDialogAction.save,
+                      accessKey: _controller.text,
+                    ),
+                  );
+                },
+          child: Text(widget.l10n.save),
+        ),
+      ],
+    );
+  }
+}
 
 enum _SourceLanguageSelection { automatic, ru, en, th }
 
