@@ -309,36 +309,48 @@ void main() {
     );
     await _scrollToHistory(tester);
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('translator-history-toggle-second')),
+    final Finder secondToggle = find.byKey(
+      const ValueKey<String>('translator-history-toggle-second'),
     );
+    await tester.ensureVisible(secondToggle);
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey<String>('translator-history-delete-second')),
-      300,
-      scrollable: find.byType(Scrollable).first,
+    await tester.tap(secondToggle);
+    await tester.pumpAndSettle();
+
+    final Finder deleteSecond = find.byKey(
+      const ValueKey<String>('translator-history-delete-second'),
     );
-    await tester.tap(
-      find.byKey(const ValueKey<String>('translator-history-delete-second')),
-    );
+    expect(deleteSecond, findsOneWidget);
+    await tester.ensureVisible(deleteSecond);
+    await tester.pumpAndSettle();
+    await tester.tap(deleteSecond);
     await tester.pumpAndSettle();
 
     expect(historyStore.entries, <TranslatorHistoryEntry>[first]);
-
-    await _scrollToHistory(tester);
-    expect(find.byType(TranslatorHistoryCard), findsOneWidget);
-
-    await tester.tap(
-      find.byKey(const ValueKey<String>('translator-history-clear-all')),
+    expect(
+      find.byKey(const ValueKey<String>('translator-history-card-second')),
+      findsNothing,
     );
+    expect(
+      find.byKey(const ValueKey<String>('translator-history-card-first')),
+      findsOneWidget,
+    );
+
+    final Finder clearAll = find.byKey(
+      const ValueKey<String>('translator-history-clear-all'),
+    );
+    await tester.ensureVisible(clearAll);
     await tester.pumpAndSettle();
+    await tester.tap(clearAll);
+    await tester.pumpAndSettle();
+
     expect(find.text('Удалить всю историю переводов?'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(
-        const ValueKey<String>('translator-history-clear-all-confirm'),
-      ),
+    final Finder confirmClearAll = find.byKey(
+      const ValueKey<String>('translator-history-clear-all-confirm'),
     );
+    expect(confirmClearAll, findsOneWidget);
+    await tester.tap(confirmClearAll);
     await tester.pumpAndSettle();
 
     expect(find.byType(TranslatorHistoryCard), findsNothing);
