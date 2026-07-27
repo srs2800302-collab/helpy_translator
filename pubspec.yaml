@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   flutter_bloc: ^9.1.1
   equatable: ^2.0.7

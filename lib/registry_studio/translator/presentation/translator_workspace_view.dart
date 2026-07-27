@@ -3,23 +3,42 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../app/localization/registry_studio_localizations.dart';
 import '../application/translator_access_key_store.dart';
 import '../application/translator_draft_store.dart';
 import '../application/translator_provider.dart';
 import '../domain/translator_models.dart';
 import 'translator_cubit.dart';
 
+final class TranslatorWorkspaceController {
+  VoidCallback? _openAccessKeyDialog;
+
+  void openAccessKeyDialog() {
+    _openAccessKeyDialog?.call();
+  }
+
+  void attachAccessKeyDialog(VoidCallback callback) {
+    _openAccessKeyDialog = callback;
+  }
+
+  void detachAccessKeyDialog() {
+    _openAccessKeyDialog = null;
+  }
+}
+
 final class TranslatorWorkspaceView extends StatelessWidget {
   const TranslatorWorkspaceView({
     required this.provider,
     required this.draftStore,
     required this.accessKeyStore,
+    this.controller,
     super.key,
   });
 
   final TranslatorProvider provider;
   final TranslatorDraftStore draftStore;
   final TranslatorAccessKeyStore accessKeyStore;
+  final TranslatorWorkspaceController? controller;
 
   @override
   Widget build(BuildContext context) {
@@ -27,15 +46,22 @@ final class TranslatorWorkspaceView extends StatelessWidget {
       create: (_) =>
           TranslatorCubit(provider: provider, draftStore: draftStore)
             ..restore(),
-      child: _TranslatorWorkspaceBody(accessKeyStore: accessKeyStore),
+      child: _TranslatorWorkspaceBody(
+        accessKeyStore: accessKeyStore,
+        controller: controller,
+      ),
     );
   }
 }
 
 final class _TranslatorWorkspaceBody extends StatefulWidget {
-  const _TranslatorWorkspaceBody({required this.accessKeyStore});
+  const _TranslatorWorkspaceBody({
+    required this.accessKeyStore,
+    required this.controller,
+  });
 
   final TranslatorAccessKeyStore accessKeyStore;
+  final TranslatorWorkspaceController? controller;
 
   @override
   State<_TranslatorWorkspaceBody> createState() =>
@@ -43,32 +69,32 @@ final class _TranslatorWorkspaceBody extends StatefulWidget {
 }
 
 final class _TranslatorWorkspaceBodyState
-    extends State<_TranslatorWorkspaceBody>
-    with WidgetsBindingObserver {
+    extends State<_TranslatorWorkspaceBody> {
   late final TextEditingController _sourceController;
   late final TextEditingController _apiKeyController;
-  Timer? _accessKeySaveTimer;
-  bool _showApiKey = false;
+
   bool _accessKeyRestoring = true;
   String? _accessKeyStorageWarning;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _sourceController = TextEditingController();
     _apiKeyController = TextEditingController();
+    widget.controller?.attachAccessKeyDialog(_openAccessKeyDialog);
     unawaited(_restoreAccessKey());
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached ||
-        state == AppLifecycleState.hidden) {
-      unawaited(_flushAccessKeySave());
+  void didUpdateWidget(covariant _TranslatorWorkspaceBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.controller == widget.controller) {
+      return;
     }
+
+    oldWidget.controller?.detachAccessKeyDialog();
+    widget.controller?.attachAccessKeyDialog(_openAccessKeyDialog);
   }
 
   Future<void> _restoreAccessKey() async {
@@ -97,31 +123,12 @@ final class _TranslatorWorkspaceBodyState
 
       setState(() {
         _accessKeyRestoring = false;
-        _accessKeyStorageWarning =
-            'Не удалось восстановить сохранённый API key. '
-            'Ключ не был удалён автоматически.';
+        _accessKeyStorageWarning = context.rsL10n.apiKeyRestoreFailure;
       });
     }
   }
 
-  void _scheduleAccessKeySave(String accessKey) {
-    _accessKeySaveTimer?.cancel();
-    _accessKeySaveTimer = Timer(const Duration(milliseconds: 300), () {
-      _accessKeySaveTimer = null;
-      unawaited(_persistAccessKey(accessKey));
-    });
-  }
-
-  Future<void> _flushAccessKeySave() async {
-    _accessKeySaveTimer?.cancel();
-    _accessKeySaveTimer = null;
-    await _persistAccessKey(_apiKeyController.text);
-  }
-
-  Future<void> _persistAccessKey(
-    String accessKey, {
-    bool reportFailure = true,
-  }) async {
+  Future<void> _persistAccessKey(String accessKey) async {
     try {
       if (accessKey.isEmpty) {
         await widget.accessKeyStore.clear();
@@ -135,48 +142,171 @@ final class _TranslatorWorkspaceBodyState
         });
       }
     } catch (_) {
-      if (reportFailure && mounted) {
-        setState(() {
-          _accessKeyStorageWarning =
-              'Не удалось сохранить API key в защищённом хранилище.';
-        });
+      if (!mounted) {
+        return;
       }
+
+      setState(() {
+        _accessKeyStorageWarning = context.rsL10n.apiKeySaveFailure;
+      });
     }
   }
 
   Future<void> _deleteSavedAccessKey() async {
-    _accessKeySaveTimer?.cancel();
-    _accessKeySaveTimer = null;
-
     try {
       await widget.accessKeyStore.clear();
       _apiKeyController.clear();
 
       if (mounted) {
         setState(() {
-          _showApiKey = false;
           _accessKeyStorageWarning = null;
         });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _accessKeyStorageWarning =
-              'Не удалось удалить API key из защищённого хранилища.';
-        });
+      if (!mounted) {
+        return;
       }
+
+      setState(() {
+        _accessKeyStorageWarning = context.rsL10n.apiKeyDeleteFailure;
+      });
     }
+  }
+
+  void _openAccessKeyDialog() {
+    unawaited(_showAccessKeyDialog());
+  }
+
+  Future<void> _showAccessKeyDialog() async {
+    if (!mounted) {
+      return;
+    }
+
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+    final TextEditingController dialogController = TextEditingController(
+      text: _apiKeyController.text,
+    );
+
+    bool obscureText = true;
+
+    final _AccessKeyDialogAction?
+    action = await showDialog<_AccessKeyDialogAction>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (BuildContext dialogContext, StateSetter setDialogState) {
+            return AlertDialog(
+              key: const ValueKey<String>('translator-access-key-dialog'),
+              title: Text(l10n.apiKeySettings),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    TextField(
+                      key: const ValueKey<String>(
+                        'translator-access-key-dialog-field',
+                      ),
+                      controller: dialogController,
+                      enabled: !_accessKeyRestoring,
+                      obscureText: obscureText,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      decoration: InputDecoration(
+                        labelText: l10n.apiKey,
+                        helperText: _accessKeyRestoring
+                            ? l10n.restoringSavedKey
+                            : l10n.apiKeyEncryptedOnDevice,
+                        errorText: _accessKeyStorageWarning,
+                        prefixIcon: const Icon(Icons.key_outlined),
+                        suffixIcon: IconButton(
+                          tooltip: obscureText ? l10n.showKey : l10n.hideKey,
+                          onPressed: _accessKeyRestoring
+                              ? null
+                              : () {
+                                  setDialogState(() {
+                                    obscureText = !obscureText;
+                                  });
+                                },
+                          icon: Icon(
+                            obscureText
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  key: const ValueKey<String>(
+                    'translator-access-key-dialog-delete',
+                  ),
+                  onPressed: _accessKeyRestoring
+                      ? null
+                      : () {
+                          Navigator.of(
+                            dialogContext,
+                          ).pop(_AccessKeyDialogAction.delete);
+                        },
+                  child: Text(l10n.deleteSavedKey),
+                ),
+                TextButton(
+                  key: const ValueKey<String>(
+                    'translator-access-key-dialog-close',
+                  ),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: Text(l10n.close),
+                ),
+                FilledButton(
+                  key: const ValueKey<String>(
+                    'translator-access-key-dialog-save',
+                  ),
+                  onPressed: _accessKeyRestoring
+                      ? null
+                      : () {
+                          Navigator.of(
+                            dialogContext,
+                          ).pop(_AccessKeyDialogAction.save);
+                        },
+                  child: Text(l10n.save),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted || action == null) {
+      dialogController.dispose();
+      return;
+    }
+
+    if (action == _AccessKeyDialogAction.delete) {
+      await _deleteSavedAccessKey();
+    } else {
+      final String accessKey = dialogController.text;
+
+      _apiKeyController.value = TextEditingValue(
+        text: accessKey,
+        selection: TextSelection.collapsed(offset: accessKey.length),
+      );
+
+      await _persistAccessKey(accessKey);
+    }
+
+    dialogController.dispose();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _accessKeySaveTimer?.cancel();
-    _accessKeySaveTimer = null;
-
-    final String accessKey = _apiKeyController.text;
-    unawaited(_persistAccessKey(accessKey, reportFailure: false));
-
+    widget.controller?.detachAccessKeyDialog();
     _sourceController.dispose();
     _apiKeyController.dispose();
     super.dispose();
@@ -184,6 +314,8 @@ final class _TranslatorWorkspaceBodyState
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+
     return BlocConsumer<TranslatorCubit, TranslatorState>(
       listenWhen: (TranslatorState previous, TranslatorState current) =>
           previous.sourceText != current.sourceText,
@@ -202,17 +334,23 @@ final class _TranslatorWorkspaceBodyState
 
         return SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: <Widget>[
-              _buildAccessKeyCard(state),
+              _buildSourceCard(context, state, l10n),
               const SizedBox(height: 12),
-              _buildSourceCard(context, state),
-              const SizedBox(height: 12),
-              _buildActions(context, state),
+              _buildActions(context, state, l10n),
+              if (_accessKeyStorageWarning != null) ...<Widget>[
+                const SizedBox(height: 12),
+                _MessageCard(
+                  title: l10n.apiKeySettings,
+                  message: _accessKeyStorageWarning!,
+                  icon: Icons.warning_amber_outlined,
+                ),
+              ],
               if (state.restoreWarning != null) ...<Widget>[
                 const SizedBox(height: 12),
                 _MessageCard(
-                  title: 'Предупреждение восстановления',
+                  title: l10n.restoreWarning,
                   message: state.restoreWarning!,
                   icon: Icons.warning_amber_outlined,
                 ),
@@ -236,115 +374,48 @@ final class _TranslatorWorkspaceBodyState
     );
   }
 
-  Widget _buildAccessKeyCard(TranslatorState state) {
+  Widget _buildSourceCard(
+    BuildContext context,
+    TranslatorState state,
+    RegistryStudioLocalizations l10n,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            TextField(
-              controller: _apiKeyController,
-              enabled: !state.isRunning && !_accessKeyRestoring,
-              obscureText: !_showApiKey,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: InputDecoration(
-                labelText: 'Typhoon API key',
-                helperText: _accessKeyRestoring
-                    ? 'Восстановление сохранённого ключа...'
-                    : 'Ключ зашифрованно хранится на этом устройстве.',
-                errorText: _accessKeyStorageWarning,
-                prefixIcon: const Icon(Icons.key_outlined),
-                suffixIcon: IconButton(
-                  tooltip: _showApiKey ? 'Скрыть ключ' : 'Показать ключ',
-                  onPressed: _accessKeyRestoring
-                      ? null
-                      : () {
-                          setState(() {
-                            _showApiKey = !_showApiKey;
-                          });
-                        },
-                  icon: Icon(
-                    _showApiKey ? Icons.visibility_off : Icons.visibility,
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    l10n.sourceText,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-                border: const OutlineInputBorder(),
-              ),
-              onChanged: _scheduleAccessKeySave,
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: state.isRunning || _accessKeyRestoring
-                    ? null
-                    : _deleteSavedAccessKey,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Удалить сохранённый ключ'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSourceCard(BuildContext context, TranslatorState state) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(
-              'Исходная формулировка',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Язык источника',
-                border: OutlineInputBorder(),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<TranslationLanguage?>(
-                  value: state.sourceLanguageHint,
-                  isExpanded: true,
-                  items: <DropdownMenuItem<TranslationLanguage?>>[
-                    const DropdownMenuItem<TranslationLanguage?>(
-                      value: null,
-                      child: Text('Определить автоматически'),
-                    ),
-                    ...TranslationLanguage.values.map(
-                      (TranslationLanguage language) =>
-                          DropdownMenuItem<TranslationLanguage?>(
-                            value: language,
-                            child: Text(language.code),
-                          ),
-                    ),
-                  ],
-                  onChanged: state.isRunning
-                      ? null
-                      : (TranslationLanguage? language) {
-                          context.read<TranslatorCubit>().selectSourceLanguage(
-                            language,
-                          );
-                        },
+                _SourceLanguageMenu(
+                  selectedLanguage: state.sourceLanguageHint,
+                  enabled: !state.isRunning,
+                  onSelected: (TranslationLanguage? selectedLanguage) {
+                    context.read<TranslatorCubit>().selectSourceLanguage(
+                      selectedLanguage,
+                    );
+                  },
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 12),
             TextField(
+              key: const ValueKey<String>('translator-source-text-field'),
               controller: _sourceController,
               enabled: !state.isRunning,
-              minLines: 4,
+              minLines: 3,
               maxLines: 10,
               textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(
-                labelText: 'Текст для перевода и семантического аудита',
+              decoration: InputDecoration(
+                labelText: l10n.sourceTextFieldLabel,
                 alignLabelWithHint: true,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
               onChanged: (String value) {
                 context.read<TranslatorCubit>().updateSourceText(value);
@@ -356,31 +427,30 @@ final class _TranslatorWorkspaceBodyState
     );
   }
 
-  Widget _buildActions(BuildContext context, TranslatorState state) {
+  Widget _buildActions(
+    BuildContext context,
+    TranslatorState state,
+    RegistryStudioLocalizations l10n,
+  ) {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
       children: <Widget>[
-        FilledButton.icon(
+        FilledButton(
+          key: const ValueKey<String>('translator-run-button'),
           onPressed: state.isRunning || _accessKeyRestoring
               ? null
               : () async {
                   FocusScope.of(context).unfocus();
-                  await _flushAccessKeySave();
-
-                  if (!context.mounted) {
-                    return;
-                  }
 
                   await context.read<TranslatorCubit>().translate(
                     accessKey: _apiKeyController.text,
                   );
                 },
-          icon: const Icon(Icons.translate),
-          label: Text(
+          child: Text(
             state.status == TranslatorViewStatus.failure
-                ? 'Повторить'
-                : 'Перевести и проверить',
+                ? l10n.retry
+                : l10n.translateAndCheck,
           ),
         ),
         if (state.isRunning)
@@ -389,7 +459,7 @@ final class _TranslatorWorkspaceBodyState
               context.read<TranslatorCubit>().cancel();
             },
             icon: const Icon(Icons.stop_circle_outlined),
-            label: const Text('Отменить'),
+            label: Text(l10n.cancel),
           ),
         OutlinedButton.icon(
           onPressed: state.isRunning
@@ -398,9 +468,81 @@ final class _TranslatorWorkspaceBodyState
                   context.read<TranslatorCubit>().clear();
                 },
           icon: const Icon(Icons.clear),
-          label: const Text('Очистить Translator'),
+          label: Text(l10n.clearTranslator),
         ),
       ],
+    );
+  }
+}
+
+enum _AccessKeyDialogAction { save, delete }
+
+enum _SourceLanguageSelection { automatic, ru, en, th }
+
+final class _SourceLanguageMenu extends StatelessWidget {
+  const _SourceLanguageMenu({
+    required this.selectedLanguage,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final TranslationLanguage? selectedLanguage;
+  final bool enabled;
+  final ValueChanged<TranslationLanguage?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+
+    return PopupMenuButton<_SourceLanguageSelection>(
+      key: const ValueKey<String>('translator-source-language-menu'),
+      enabled: enabled,
+      tooltip: l10n.sourceLanguage,
+      onSelected: (_SourceLanguageSelection selection) {
+        onSelected(switch (selection) {
+          _SourceLanguageSelection.automatic => null,
+          _SourceLanguageSelection.ru => TranslationLanguage.ru,
+          _SourceLanguageSelection.en => TranslationLanguage.en,
+          _SourceLanguageSelection.th => TranslationLanguage.th,
+        });
+      },
+      itemBuilder: (BuildContext context) {
+        return <PopupMenuEntry<_SourceLanguageSelection>>[
+          PopupMenuItem<_SourceLanguageSelection>(
+            value: _SourceLanguageSelection.automatic,
+            child: Text(l10n.detectAutomatically),
+          ),
+          const PopupMenuItem<_SourceLanguageSelection>(
+            value: _SourceLanguageSelection.ru,
+            child: Text('RU'),
+          ),
+          const PopupMenuItem<_SourceLanguageSelection>(
+            value: _SourceLanguageSelection.en,
+            child: Text('EN'),
+          ),
+          const PopupMenuItem<_SourceLanguageSelection>(
+            value: _SourceLanguageSelection.th,
+            child: Text('TH'),
+          ),
+        ];
+      },
+      child: Semantics(
+        button: true,
+        label: l10n.sourceLanguage,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(Icons.language_outlined),
+              const SizedBox(width: 6),
+              Text(selectedLanguage?.code ?? l10n.automaticShort),
+              const SizedBox(width: 2),
+              const Icon(Icons.arrow_drop_down),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -412,11 +554,12 @@ final class _ProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
     final String label = switch (stage) {
-      TranslatorRunStage.directTranslation => 'Прямой перевод RU / EN / TH',
-      TranslatorRunStage.reverseTranslation => 'Независимые обратные переводы',
-      TranslatorRunStage.audit => 'Семантический аудит и вердикт',
-      null => 'Подготовка перевода',
+      TranslatorRunStage.directTranslation => l10n.directTranslationStage,
+      TranslatorRunStage.reverseTranslation => l10n.reverseTranslationStage,
+      TranslatorRunStage.audit => l10n.auditStage,
+      null => l10n.preparingTranslation,
     };
 
     return Card(
@@ -445,6 +588,7 @@ final class _FailureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
     final bool incomplete =
         failure.completeness == TranslationCompleteness.translationIncomplete;
 
@@ -456,22 +600,19 @@ final class _FailureCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              _failureTitle(failure, incomplete: incomplete),
+              _failureTitle(l10n, failure, incomplete: incomplete),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(failure.message),
             const SizedBox(height: 8),
             Text(
-              'Этап: ${_failureStageLabel(failure.stage)}',
+              l10n.stageLabel(_failureStageLabel(l10n, failure.stage)),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             if (failure.partialBundle != null) ...<Widget>[
               const SizedBox(height: 8),
-              const Text(
-                'Частичный девятисекционный результат сохранён, '
-                'но автоматический вердикт не создан.',
-              ),
+              Text(l10n.partialResultSaved),
             ],
           ],
         ),
@@ -526,6 +667,7 @@ final class _TranslationReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
     final TranslationBundle bundle = report.bundle;
     final TranslationAudit audit = report.audit;
 
@@ -535,7 +677,7 @@ final class _TranslationReportView extends StatelessWidget {
         _VerdictCard(audit: audit),
         const SizedBox(height: 12),
         _SectionCard(
-          title: 'Прямой перевод',
+          title: l10n.directTranslation,
           entries: <MapEntry<String, String>>[
             MapEntry<String, String>(
               '${bundle.sourceLanguage.code} · SOURCE TEXT',
@@ -548,7 +690,7 @@ final class _TranslationReportView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _SectionCard(
-          title: 'Независимая обратная проверка',
+          title: l10n.reverseCheck,
           entries: <MapEntry<String, String>>[
             MapEntry<String, String>('EN → RU', bundle.enToRu),
             MapEntry<String, String>('TH → RU', bundle.thToRu),
@@ -570,6 +712,7 @@ final class _VerdictCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
     final TranslationVerdict verdict = audit.verdict;
     final ColorScheme colors = Theme.of(context).colorScheme;
 
@@ -587,7 +730,7 @@ final class _VerdictCard extends StatelessWidget {
         child: Column(
           children: <Widget>[
             Text(
-              'Автоматический вердикт перевода',
+              l10n.automaticVerdict,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -597,28 +740,24 @@ final class _VerdictCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _BooleanEvidenceRow(
-              label: 'Meaning preserved',
+              label: l10n.meaningPreserved,
               value: audit.meaningPreserved,
             ),
             _BooleanEvidenceRow(
-              label: 'Terminology preserved',
+              label: l10n.terminologyPreserved,
               value: audit.terminologyPreserved,
             ),
             _BooleanEvidenceRow(
-              label: 'Canonical style preserved',
+              label: l10n.canonicalStylePreserved,
               value: audit.canonicalStylePreserved,
             ),
             _BooleanEvidenceRow(
-              label: 'Ambiguous wording',
+              label: l10n.ambiguousWording,
               value: audit.ambiguousWording,
               positiveMeansGood: false,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Вердикт сформирован автоматически по findings. '
-              'Итоговое решение принимает инженер.',
-              textAlign: TextAlign.center,
-            ),
+            Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -639,6 +778,7 @@ final class _BooleanEvidenceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
     final bool good = positiveMeansGood ? value : !value;
 
     return Row(
@@ -646,7 +786,7 @@ final class _BooleanEvidenceRow extends StatelessWidget {
         Icon(good ? Icons.check_circle_outline : Icons.warning_amber, size: 20),
         const SizedBox(width: 8),
         Expanded(child: Text(label)),
-        Text(value ? 'YES' : 'NO'),
+        Text(value ? l10n.yes : l10n.no),
       ],
     );
   }
@@ -687,6 +827,8 @@ final class _AuditFindingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -694,21 +836,21 @@ final class _AuditFindingsCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Аудит и диагностика',
+              l10n.auditAndDiagnostics,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            _FindingGroup(title: 'Смысл', findings: audit.meaningFindings),
+            _FindingGroup(title: l10n.meaning, findings: audit.meaningFindings),
             _FindingGroup(
-              title: 'Терминология',
+              title: l10n.terminology,
               findings: audit.terminologyFindings,
             ),
             _FindingGroup(
-              title: 'Канонический стиль',
+              title: l10n.canonicalStyle,
               findings: audit.styleFindings,
             ),
             _FindingGroup(
-              title: 'Неоднозначность',
+              title: l10n.ambiguity,
               findings: audit.ambiguityFindings,
             ),
           ],
@@ -726,6 +868,8 @@ final class _FindingGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -734,7 +878,7 @@ final class _FindingGroup extends StatelessWidget {
           Text(title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           if (findings.isEmpty)
-            const Text('Нарушений не обнаружено.')
+            Text(l10n.noViolations)
           else
             for (final String finding in findings)
               Padding(
@@ -747,17 +891,21 @@ final class _FindingGroup extends StatelessWidget {
   }
 }
 
-String _failureTitle(TranslatorFailure failure, {required bool incomplete}) {
+String _failureTitle(
+  RegistryStudioLocalizations l10n,
+  TranslatorFailure failure, {
+  required bool incomplete,
+}) {
   if (incomplete) {
-    return 'Перевод неполный';
+    return l10n.incompleteTranslation;
   }
   if (failure.code == TranslatorFailureCode.cancelled) {
-    return 'Перевод отменён';
+    return l10n.translationCancelled;
   }
   if (failure.stage == TranslatorFailureStage.validation) {
-    return 'Проверьте ввод';
+    return l10n.checkInput;
   }
-  return 'Техническая ошибка Translator';
+  return l10n.translatorTechnicalError;
 }
 
 String _verdictLabel(TranslationVerdict verdict) {
@@ -769,12 +917,15 @@ String _verdictLabel(TranslationVerdict verdict) {
   };
 }
 
-String _failureStageLabel(TranslatorFailureStage stage) {
+String _failureStageLabel(
+  RegistryStudioLocalizations l10n,
+  TranslatorFailureStage stage,
+) {
   return switch (stage) {
-    TranslatorFailureStage.validation => 'проверка ввода',
-    TranslatorFailureStage.directTranslation => 'прямой перевод',
-    TranslatorFailureStage.reverseTranslation => 'обратный перевод',
-    TranslatorFailureStage.audit => 'семантический аудит',
-    TranslatorFailureStage.transport => 'Typhoon API',
+    TranslatorFailureStage.validation => l10n.validationStage,
+    TranslatorFailureStage.directTranslation => l10n.directStage,
+    TranslatorFailureStage.reverseTranslation => l10n.reverseStage,
+    TranslatorFailureStage.audit => l10n.semanticAuditStage,
+    TranslatorFailureStage.transport => l10n.typhoonApiStage,
   };
 }

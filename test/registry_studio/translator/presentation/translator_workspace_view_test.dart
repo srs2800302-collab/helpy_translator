@@ -11,28 +11,37 @@ void main() {
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
+    final TranslatorWorkspaceController controller =
+        TranslatorWorkspaceController();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: TranslatorWorkspaceView(
-            provider: _SuccessProvider(report),
-            draftStore: _MemoryDraftStore(),
-            accessKeyStore: _MemoryAccessKeyStore(),
-          ),
-        ),
-      ),
+    await _pumpTranslator(
+      tester,
+      controller: controller,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(),
+      accessKeyStore: _MemoryAccessKeyStore(),
     );
 
+    controller.openAccessKeyDialog();
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).at(0), 'test-key');
     await tester.enterText(
-      find.byType(TextField).at(1),
+      find.byKey(const ValueKey<String>('translator-access-key-dialog-field')),
+      'test-key',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-access-key-dialog-save')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('translator-source-text-field')),
       report.request.sourceText,
     );
 
-    await tester.tap(find.text('Перевести и проверить'));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-run-button')),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Автоматический вердикт перевода'), findsOneWidget);
@@ -59,19 +68,12 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: TranslatorWorkspaceView(
-            provider: _SuccessProvider(report),
-            draftStore: store,
-            accessKeyStore: accessKeyStore,
-          ),
-        ),
-      ),
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: store,
+      accessKeyStore: accessKeyStore,
     );
-
-    await tester.pumpAndSettle();
 
     expect(find.text('EXACT'), findsOneWidget);
 
@@ -84,70 +86,126 @@ void main() {
     expect(accessKeyStore.clearCount, 0);
   });
 
-  testWidgets('restores and persists API key securely', (
+  testWidgets('restores and persists API key through compact dialog', (
     WidgetTester tester,
   ) async {
     final _MemoryAccessKeyStore accessKeyStore = _MemoryAccessKeyStore(
       value: 'saved-key',
     );
+    final TranslatorWorkspaceController controller =
+        TranslatorWorkspaceController();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: TranslatorWorkspaceView(
-            provider: _SuccessProvider(_report()),
-            draftStore: _MemoryDraftStore(),
-            accessKeyStore: accessKeyStore,
-          ),
-        ),
-      ),
+    await _pumpTranslator(
+      tester,
+      controller: controller,
+      provider: _SuccessProvider(_report()),
+      draftStore: _MemoryDraftStore(),
+      accessKeyStore: accessKeyStore,
     );
 
+    expect(find.text('Typhoon API key'), findsNothing);
+
+    controller.openAccessKeyDialog();
     await tester.pumpAndSettle();
 
     final TextField keyField = tester.widget<TextField>(
-      find.byType(TextField).at(0),
+      find.byKey(const ValueKey<String>('translator-access-key-dialog-field')),
     );
 
     expect(keyField.controller?.text, 'saved-key');
 
-    await tester.enterText(find.byType(TextField).at(0), 'updated-key');
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('translator-access-key-dialog-field')),
+      'updated-key',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-access-key-dialog-save')),
+    );
+    await tester.pumpAndSettle();
 
     expect(accessKeyStore.value, 'updated-key');
   });
 
-  testWidgets('deletes API key only through explicit key action', (
+  testWidgets('deletes API key only through explicit dialog action', (
     WidgetTester tester,
   ) async {
     final _MemoryAccessKeyStore accessKeyStore = _MemoryAccessKeyStore(
       value: 'saved-key',
     );
+    final TranslatorWorkspaceController controller =
+        TranslatorWorkspaceController();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: TranslatorWorkspaceView(
-            provider: _SuccessProvider(_report()),
-            draftStore: _MemoryDraftStore(),
-            accessKeyStore: accessKeyStore,
-          ),
-        ),
-      ),
+    await _pumpTranslator(
+      tester,
+      controller: controller,
+      provider: _SuccessProvider(_report()),
+      draftStore: _MemoryDraftStore(),
+      accessKeyStore: accessKeyStore,
     );
 
+    controller.openAccessKeyDialog();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Удалить сохранённый ключ'));
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-access-key-dialog-delete')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(accessKeyStore.value, isNull);
+    expect(accessKeyStore.clearCount, 1);
+
+    controller.openAccessKeyDialog();
     await tester.pumpAndSettle();
 
     final TextField keyField = tester.widget<TextField>(
-      find.byType(TextField).at(0),
+      find.byKey(const ValueKey<String>('translator-access-key-dialog-field')),
     );
 
     expect(keyField.controller?.text, isEmpty);
-    expect(accessKeyStore.value, isNull);
-    expect(accessKeyStore.clearCount, 1);
   });
+
+  testWidgets('uses compact source header and text-only run button', (
+    WidgetTester tester,
+  ) async {
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(_report()),
+      draftStore: _MemoryDraftStore(),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('translator-source-language-menu')),
+      findsOneWidget,
+    );
+    expect(find.text('Исходный текст'), findsOneWidget);
+    expect(find.text('Язык источника'), findsNothing);
+    expect(find.byIcon(Icons.translate), findsNothing);
+    expect(find.text('Перевести и проверить'), findsOneWidget);
+  });
+}
+
+Future<void> _pumpTranslator(
+  WidgetTester tester, {
+  required TranslatorProvider provider,
+  required TranslatorDraftStore draftStore,
+  required TranslatorAccessKeyStore accessKeyStore,
+  TranslatorWorkspaceController? controller,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: TranslatorWorkspaceView(
+          provider: provider,
+          draftStore: draftStore,
+          accessKeyStore: accessKeyStore,
+          controller: controller,
+        ),
+      ),
+    ),
+  );
+
+  await tester.pumpAndSettle();
 }
 
 TranslatorRunReport _report() {
