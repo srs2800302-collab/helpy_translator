@@ -285,35 +285,12 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
           message: 'Секция исходного языка не совпадает с SOURCE TEXT.',
         );
       }
-
-      _emit(TranslatorRunStage.reverseTranslation);
-
-      final String reverseContent = await _request(
-        systemPrompt: policy.buildReverseSystemPrompt(),
-        userPrompt: policy.buildReverseUserPrompt(
-          en: direct['EN']!,
-          th: direct['TH']!,
-        ),
-        maxTokens: 768,
-      );
-
-      final Map<String, String> reverse = _parsePayload(
-        content: reverseContent,
-        labels: _reverseLabels,
-        stage: TranslatorFailureStage.reverseTranslation,
-        responseName: 'Независимый обратный перевод',
-      );
-
       partialBundle = TranslationBundle(
         sourceLanguage: sourceLanguage,
         sourceText: direct['SOURCE TEXT']!,
         ru: direct['RU']!,
         en: direct['EN']!,
         th: direct['TH']!,
-        enToRu: reverse['EN_TO_RU']!,
-        thToRu: reverse['TH_TO_RU']!,
-        enToTh: reverse['EN_TO_TH']!,
-        thToEn: reverse['TH_TO_EN']!,
       );
 
       _emit(TranslatorRunStage.audit);
@@ -391,7 +368,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 $basePrompt
 
 The previous audit response violated the required output protocol.
-Run the semantic audit again from the supplied nine-section bundle.
+Run the semantic audit again from the supplied five-section direct bundle.
 
 This is the final format attempt:
 - output exactly four labels;
@@ -659,13 +636,6 @@ This is the final format attempt:
     'RU',
     'EN',
     'TH',
-  ];
-
-  static const List<String> _reverseLabels = <String>[
-    'EN_TO_RU',
-    'TH_TO_RU',
-    'EN_TO_TH',
-    'TH_TO_EN',
   ];
 
   static const List<String> _auditLabels = <String>[

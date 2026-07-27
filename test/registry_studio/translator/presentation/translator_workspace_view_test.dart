@@ -7,7 +7,7 @@ import 'package:helpy_translator/registry_studio/translator/domain/translator_mo
 import 'package:helpy_translator/registry_studio/translator/presentation/translator_workspace_view.dart';
 
 void main() {
-  testWidgets('shows nine sections and automatic verdict', (
+  testWidgets('shows direct provider sections and automatic verdict', (
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
@@ -47,9 +47,6 @@ void main() {
     expect(find.text('Автоматический вердикт перевода'), findsOneWidget);
     expect(find.text('EXACT'), findsOneWidget);
     expect(find.text('Прямой перевод'), findsOneWidget);
-    expect(find.text('Независимая обратная проверка'), findsOneWidget);
-    expect(find.text('EN → RU'), findsOneWidget);
-    expect(find.text('TH → EN'), findsOneWidget);
     expect(find.text('Аудит и диагностика'), findsOneWidget);
   });
 
@@ -63,7 +60,6 @@ void main() {
     final _MemoryDraftStore store = _MemoryDraftStore(
       draft: TranslatorDraft(
         sourceText: report.request.sourceText,
-        sourceLanguageHint: TranslationLanguage.ru,
         report: report,
       ),
     );
@@ -164,7 +160,7 @@ void main() {
     expect(keyField.controller?.text, isEmpty);
   });
 
-  testWidgets('uses compact source header and text-only run button', (
+  testWidgets('uses automatic source detection and text-only run button', (
     WidgetTester tester,
   ) async {
     await _pumpTranslator(
@@ -176,12 +172,38 @@ void main() {
 
     expect(
       find.byKey(const ValueKey<String>('translator-source-language-menu')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('Исходный текст'), findsOneWidget);
     expect(find.text('Язык источника'), findsNothing);
     expect(find.byIcon(Icons.translate), findsNothing);
     expect(find.text('Перевести и проверить'), findsOneWidget);
+  });
+  testWidgets('accepts multilingual keyboard input without a selector', (
+    WidgetTester tester,
+  ) async {
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(_report()),
+      draftStore: _MemoryDraftStore(),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    const String multilingual = 'Русский English ไทย';
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('translator-source-text-field')),
+      multilingual,
+    );
+    await tester.pump();
+
+    final TextField field = tester.widget<TextField>(
+      find.byKey(const ValueKey<String>('translator-source-text-field')),
+    );
+    expect(field.controller?.text, multilingual);
+    expect(
+      find.byKey(const ValueKey<String>('translator-source-language-menu')),
+      findsNothing,
+    );
   });
 }
 
@@ -211,7 +233,6 @@ Future<void> _pumpTranslator(
 TranslatorRunReport _report() {
   final TranslatorWorkRequest request = TranslatorWorkRequest(
     sourceText: 'Фотография установленной варочной панели.',
-    sourceLanguageHint: TranslationLanguage.ru,
   );
 
   return TranslatorRunReport(
@@ -222,10 +243,6 @@ TranslatorRunReport _report() {
       ru: request.sourceText,
       en: 'Photo of the installed cooktop.',
       th: 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
-      enToRu: request.sourceText,
-      thToRu: request.sourceText,
-      enToTh: 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
-      thToEn: 'Photo of the installed cooktop.',
     ),
     audit: TranslationAudit(),
     createdAt: DateTime.utc(2026, 7, 26, 6),

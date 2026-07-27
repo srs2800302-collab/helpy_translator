@@ -9,13 +9,8 @@ abstract interface class TranslatorDraftStore {
 }
 
 final class TranslatorDraft {
-  const TranslatorDraft({
-    required this.sourceText,
-    this.sourceLanguageHint,
-    this.report,
-  });
+  const TranslatorDraft({required this.sourceText, this.report});
 
   final String sourceText;
-  final TranslationLanguage? sourceLanguageHint;
   final TranslatorRunReport? report;
 }

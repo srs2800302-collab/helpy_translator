@@ -9,7 +9,6 @@ import '../application/translator_access_key_store.dart';
 import '../application/translator_cubit.dart';
 import '../application/translator_draft_store.dart';
 import '../application/translator_provider.dart';
-import '../domain/translator_models.dart';
 import 'access_key/translator_access_key_dialog.dart';
 import 'execution/translator_run_actions.dart';
 import 'report/translator_report_view.dart';
@@ -177,19 +176,12 @@ final class _TranslatorWorkspaceBodyState
                     children: <Widget>[
                       TranslatorSourcePanel(
                         controller: _sourceController,
-                        selectedLanguage: state.sourceLanguageHint,
                         enabled: !state.isRunning,
                         onSourceTextChanged: (String value) {
                           context.read<TranslatorCubit>().updateSourceText(
                             value,
                           );
                         },
-                        onSourceLanguageSelected:
-                            (TranslationLanguage? selectedLanguage) {
-                              context
-                                  .read<TranslatorCubit>()
-                                  .selectSourceLanguage(selectedLanguage);
-                            },
                       ),
                       const SizedBox(height: 12),
                       TranslatorRunActions(

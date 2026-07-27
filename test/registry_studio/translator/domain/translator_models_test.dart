@@ -9,30 +9,30 @@ void main() {
       expect(audit.verdict, TranslationVerdict.exact);
       expect(audit.meaningPreserved, isTrue);
       expect(audit.terminologyPreserved, isTrue);
-      expect(audit.canonicalStylePreserved, isTrue);
+      expect(audit.stylePreserved, isTrue);
       expect(audit.ambiguousWording, isFalse);
     });
 
     test('derives equivalent from style-only findings', () {
       final TranslationAudit audit = TranslationAudit(
-        styleFindings: const <String>['Формулировка менее канонична.'],
+        styleFindings: const <String>['Фраза читается неестественно.'],
       );
 
       expect(audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('derives canonical drift from terminology findings', () {
+    test('derives needs review from terminology without a dictionary', () {
       final TranslationAudit audit = TranslationAudit(
         terminologyFindings: const <String>[
-          'Термин исполнителя стал слишком узким.',
+          'В EN роль необоснованно стала конкретной профессией.',
         ],
       );
 
-      expect(audit.verdict, TranslationVerdict.canonicalDrift);
-      expect(audit.meaningPreserved, isTrue);
+      expect(audit.verdict, TranslationVerdict.needsReview);
+      expect(audit.verdict, isNot(TranslationVerdict.canonicalDrift));
     });
 
-    test('derives needsReview from meaning or ambiguity findings', () {
+    test('derives needs review from meaning or ambiguity findings', () {
       expect(
         TranslationAudit(
           meaningFindings: const <String>['Изменено обязательство.'],
@@ -49,32 +49,35 @@ void main() {
       );
     });
 
-    test('meaning risk has priority over terminology drift', () {
-      final TranslationAudit audit = TranslationAudit(
-        meaningFindings: const <String>['Изменено обязательство.'],
-        terminologyFindings: const <String>['Изменён термин.'],
+    test('rejects duplicate findings', () {
+      expect(
+        () => TranslationAudit(
+          meaningFindings: const <String>['Ошибка.', 'Ошибка.'],
+        ),
+        throwsArgumentError,
       );
-
-      expect(audit.verdict, TranslationVerdict.needsReview);
     });
   });
 
   group('TranslationBundle', () {
-    test('preserves exact nine-section payload', () {
+    test('preserves exact five-section direct payload', () {
       final TranslationBundle bundle = _bundle();
 
-      expect(bundle.nineSections.keys, <String>[
+      expect(bundle.directSections.keys, <String>[
         'SOURCE LANGUAGE',
         'SOURCE TEXT',
         'RU',
         'EN',
         'TH',
-        'EN_TO_RU',
-        'TH_TO_RU',
-        'EN_TO_TH',
-        'TH_TO_EN',
       ]);
-      expect(bundle.nineSections['SOURCE TEXT'], 'Исходный текст.');
+      expect(bundle.directSections['EN'], 'Provider wording.');
+    });
+
+    test('contains no reverse translation fields', () {
+      final String keys = _bundle().directSections.keys.join(',');
+
+      expect(keys, isNot(contains('EN_TO_RU')));
+      expect(keys, isNot(contains('TH_TO_EN')));
     });
 
     test('rejects source-language section different from source text', () {
@@ -85,10 +88,6 @@ void main() {
           ru: 'Другой текст.',
           en: 'Source text.',
           th: 'ข้อความต้นฉบับ',
-          enToRu: 'Исходный текст.',
-          thToRu: 'Исходный текст.',
-          enToTh: 'ข้อความต้นฉบับ',
-          thToEn: 'Source text.',
         ),
         throwsArgumentError,
       );
@@ -101,11 +100,7 @@ TranslationBundle _bundle() {
     sourceLanguage: TranslationLanguage.ru,
     sourceText: 'Исходный текст.',
     ru: 'Исходный текст.',
-    en: 'Source text.',
-    th: 'ข้อความต้นฉบับ',
-    enToRu: 'Исходный текст.',
-    thToRu: 'Исходный текст.',
-    enToTh: 'ข้อความต้นฉบับ',
-    thToEn: 'Source text.',
+    en: 'Provider wording.',
+    th: 'ข้อความจากผู้ให้บริการ',
   );
 }

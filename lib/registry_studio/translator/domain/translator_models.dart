@@ -30,15 +30,9 @@ enum TranslationCompleteness { complete, translationIncomplete }
 
 enum TranslationVerdict { exact, equivalent, needsReview, canonicalDrift }
 
-enum TranslatorRunStage { directTranslation, reverseTranslation, audit }
+enum TranslatorRunStage { directTranslation, audit }
 
-enum TranslatorFailureStage {
-  validation,
-  directTranslation,
-  reverseTranslation,
-  audit,
-  transport,
-}
+enum TranslatorFailureStage { validation, directTranslation, audit, transport }
 
 enum TranslatorFailureCode {
   sourceTextEmpty,
@@ -62,23 +56,15 @@ enum TranslatorFailureCode {
 }
 
 final class TranslatorWorkRequest extends Equatable {
-  TranslatorWorkRequest({
-    required String sourceText,
-    this.sourceLanguageHint,
-    String? engineerContext,
-  }) : sourceText = _requiredText(sourceText, 'sourceText'),
-       engineerContext = _optionalText(engineerContext);
+  TranslatorWorkRequest({required String sourceText, String? engineerContext})
+    : sourceText = _requiredText(sourceText, 'sourceText'),
+      engineerContext = _optionalText(engineerContext);
 
   final String sourceText;
-  final TranslationLanguage? sourceLanguageHint;
   final String? engineerContext;
 
   @override
-  List<Object?> get props => <Object?>[
-    sourceText,
-    sourceLanguageHint,
-    engineerContext,
-  ];
+  List<Object?> get props => <Object?>[sourceText, engineerContext];
 }
 
 final class TranslationBundle extends Equatable {
@@ -88,18 +74,10 @@ final class TranslationBundle extends Equatable {
     required String ru,
     required String en,
     required String th,
-    required String enToRu,
-    required String thToRu,
-    required String enToTh,
-    required String thToEn,
   }) : sourceText = _requiredText(sourceText, 'sourceText'),
        ru = _requiredText(ru, 'ru'),
        en = _requiredText(en, 'en'),
-       th = _requiredText(th, 'th'),
-       enToRu = _requiredText(enToRu, 'enToRu'),
-       thToRu = _requiredText(thToRu, 'thToRu'),
-       enToTh = _requiredText(enToTh, 'enToTh'),
-       thToEn = _requiredText(thToEn, 'thToEn') {
+       th = _requiredText(th, 'th') {
     final String sourceLanguageText = switch (sourceLanguage) {
       TranslationLanguage.ru => this.ru,
       TranslationLanguage.en => this.en,
@@ -118,35 +96,17 @@ final class TranslationBundle extends Equatable {
   final String ru;
   final String en;
   final String th;
-  final String enToRu;
-  final String thToRu;
-  final String enToTh;
-  final String thToEn;
 
-  Map<String, String> get nineSections => <String, String>{
+  Map<String, String> get directSections => <String, String>{
     'SOURCE LANGUAGE': sourceLanguage.code,
     'SOURCE TEXT': sourceText,
     'RU': ru,
     'EN': en,
     'TH': th,
-    'EN_TO_RU': enToRu,
-    'TH_TO_RU': thToRu,
-    'EN_TO_TH': enToTh,
-    'TH_TO_EN': thToEn,
   };
 
   @override
-  List<Object?> get props => <Object?>[
-    sourceLanguage,
-    sourceText,
-    ru,
-    en,
-    th,
-    enToRu,
-    thToRu,
-    enToTh,
-    thToEn,
-  ];
+  List<Object?> get props => <Object?>[sourceLanguage, sourceText, ru, en, th];
 }
 
 final class TranslationAudit extends Equatable {
@@ -170,19 +130,20 @@ final class TranslationAudit extends Equatable {
 
   bool get meaningPreserved => meaningFindings.isEmpty;
   bool get terminologyPreserved => terminologyFindings.isEmpty;
-  bool get canonicalStylePreserved => styleFindings.isEmpty;
+  bool get stylePreserved => styleFindings.isEmpty;
   bool get ambiguousWording => ambiguityFindings.isNotEmpty;
 
   TranslationVerdict get verdict {
-    if (meaningFindings.isNotEmpty || ambiguityFindings.isNotEmpty) {
+    if (meaningFindings.isNotEmpty ||
+        terminologyFindings.isNotEmpty ||
+        ambiguityFindings.isNotEmpty) {
       return TranslationVerdict.needsReview;
     }
-    if (terminologyFindings.isNotEmpty) {
-      return TranslationVerdict.canonicalDrift;
-    }
+
     if (styleFindings.isNotEmpty) {
       return TranslationVerdict.equivalent;
     }
+
     return TranslationVerdict.exact;
   }
 
@@ -245,6 +206,7 @@ String _requiredText(String value, String name) {
   if (normalized.isEmpty) {
     throw ArgumentError.value(value, name, '$name must not be empty.');
   }
+
   return normalized;
 }
 

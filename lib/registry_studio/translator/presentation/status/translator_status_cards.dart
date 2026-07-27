@@ -13,7 +13,6 @@ final class TranslatorProgressCard extends StatelessWidget {
     final RegistryStudioLocalizations l10n = context.rsL10n;
     final String label = switch (stage) {
       TranslatorRunStage.directTranslation => l10n.directTranslationStage,
-      TranslatorRunStage.reverseTranslation => l10n.reverseTranslationStage,
       TranslatorRunStage.audit => l10n.auditStage,
       null => l10n.preparingTranslation,
     };
@@ -125,12 +124,15 @@ String _failureTitle(
   if (incomplete) {
     return l10n.incompleteTranslation;
   }
+
   if (failure.code == TranslatorFailureCode.cancelled) {
     return l10n.translationCancelled;
   }
+
   if (failure.stage == TranslatorFailureStage.validation) {
     return l10n.checkInput;
   }
+
   return l10n.translatorTechnicalError;
 }
 
@@ -141,7 +143,6 @@ String _failureStageLabel(
   return switch (stage) {
     TranslatorFailureStage.validation => l10n.validationStage,
     TranslatorFailureStage.directTranslation => l10n.directStage,
-    TranslatorFailureStage.reverseTranslation => l10n.reverseStage,
     TranslatorFailureStage.audit => l10n.semanticAuditStage,
     TranslatorFailureStage.transport => l10n.typhoonApiStage,
   };

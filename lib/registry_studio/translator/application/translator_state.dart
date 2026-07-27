@@ -15,7 +15,6 @@ final class TranslatorState extends Equatable {
   const TranslatorState({
     required this.status,
     required this.sourceText,
-    required this.sourceLanguageHint,
     this.stage,
     this.report,
     this.failure,
@@ -23,15 +22,10 @@ final class TranslatorState extends Equatable {
   });
 
   const TranslatorState.initial()
-    : this(
-        status: TranslatorViewStatus.restoring,
-        sourceText: '',
-        sourceLanguageHint: null,
-      );
+    : this(status: TranslatorViewStatus.restoring, sourceText: '');
 
   final TranslatorViewStatus status;
   final String sourceText;
-  final TranslationLanguage? sourceLanguageHint;
   final TranslatorRunStage? stage;
   final TranslatorRunReport? report;
   final TranslatorFailure? failure;
@@ -42,8 +36,6 @@ final class TranslatorState extends Equatable {
   TranslatorState copyWith({
     TranslatorViewStatus? status,
     String? sourceText,
-    TranslationLanguage? sourceLanguageHint,
-    bool clearSourceLanguageHint = false,
     TranslatorRunStage? stage,
     bool clearStage = false,
     TranslatorRunReport? report,
@@ -56,9 +48,6 @@ final class TranslatorState extends Equatable {
     return TranslatorState(
       status: status ?? this.status,
       sourceText: sourceText ?? this.sourceText,
-      sourceLanguageHint: clearSourceLanguageHint
-          ? null
-          : sourceLanguageHint ?? this.sourceLanguageHint,
       stage: clearStage ? null : stage ?? this.stage,
       report: clearReport ? null : report ?? this.report,
       failure: clearFailure ? null : failure ?? this.failure,
@@ -72,7 +61,6 @@ final class TranslatorState extends Equatable {
   List<Object?> get props => <Object?>[
     status,
     sourceText,
-    sourceLanguageHint,
     stage,
     report,
     failure,

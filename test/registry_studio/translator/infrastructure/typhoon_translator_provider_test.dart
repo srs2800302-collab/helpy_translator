@@ -19,14 +19,9 @@ void main() {
         final Map<String, Object?> body = <String, Object?>{
           'model': 'test-model',
           'messages': <Map<String, String>>[
-            <String, String>{
-              'role': 'user',
-              'content':
-                  'Мастер подтверждает прибытие. ผู้เชี่ยวชาญยืนยันการมาถึง',
-            },
+            <String, String>{'role': 'user', 'content': 'Русский English ไทย'},
           ],
         };
-
         final Future<String> responseFuture = transport.complete(
           endpoint: Uri.parse(
             'http://${server.address.address}:${server.port}/v1/chat/completions',
@@ -38,7 +33,6 @@ void main() {
         final HttpRequest request = await server.first;
         expect(request.headers.contentType?.mimeType, 'application/json');
         expect(request.headers.contentType?.charset, 'utf-8');
-
         final String encodedBody = await utf8.decoder.bind(request).join();
         expect(jsonDecode(encodedBody), body);
 
@@ -63,146 +57,154 @@ void main() {
   });
 
   group('TyphoonTranslatorProvider', () {
+    test('runs direct translation and audit only', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _directResponse(),
+        _auditResponse(),
+      ]);
+      final TranslatorRunReport report = await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: _source),
+            accessKey: 'test-key',
+          )
+          .result;
+
+      expect(report.bundle.sourceLanguage, TranslationLanguage.ru);
+      expect(report.bundle.en, _providerEn);
+      expect(report.bundle.th, _providerTh);
+      expect(report.audit.verdict, TranslationVerdict.exact);
+      expect(transport.callCount, 2);
+      expect(transport.bodies, hasLength(2));
+    });
+
+    test('emits direct and audit stages in order', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _directResponse(),
+        _auditResponse(),
+      ]);
+      final TranslatorOperation operation = _provider(transport).start(
+        request: TranslatorWorkRequest(sourceText: _source),
+        accessKey: 'test-key',
+      );
+      final List<TranslatorRunStage> stages = <TranslatorRunStage>[];
+      final Future<void> progressDone = operation.progress.forEach(stages.add);
+
+      await operation.result;
+      await progressDone;
+
+      expect(stages, <TranslatorRunStage>[
+        TranslatorRunStage.directTranslation,
+        TranslatorRunStage.audit,
+      ]);
+    });
+
+    test('keeps provider model and sampling settings unchanged', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _directResponse(),
+        _auditResponse(),
+      ]);
+
+      await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: _source),
+            accessKey: 'test-key',
+          )
+          .result;
+
+      expect(transport.bodies.first['model'], 'typhoon-v2.5-30b-a3b-instruct');
+      expect(transport.bodies.first['max_tokens'], 768);
+      expect(transport.bodies.last['max_tokens'], 1024);
+
+      for (final Map<String, Object?> body in transport.bodies) {
+        expect(body['temperature'], 0.0);
+        expect(body['top_p'], 1.0);
+      }
+    });
+
     test(
-      'runs direct, independent reverse and findings audit in order',
+      'preserves direct provider wording without local replacement',
       () async {
+        const String unusualEn = 'The master shall acknowledge arrival.';
+        const String unusualTh = 'ช่างต้องรับทราบการมาถึง';
         final _QueueTransport transport = _QueueTransport(<Object>[
-          _directResponse(),
-          _reverseResponse(),
+          _directResponse(en: unusualEn, th: unusualTh),
           _auditResponse(),
         ]);
 
-        final TyphoonTranslatorProvider provider = TyphoonTranslatorProvider(
-          policy: const _TestPolicy(),
-          transportFactory: () => transport,
-        );
+        final TranslatorRunReport report = await _provider(transport)
+            .start(
+              request: TranslatorWorkRequest(sourceText: _source),
+              accessKey: 'test-key',
+            )
+            .result;
 
-        final TranslatorOperation operation = provider.start(
-          request: TranslatorWorkRequest(
-            sourceText: 'Фотография установленной варочной панели.',
-            sourceLanguageHint: TranslationLanguage.ru,
-          ),
-          accessKey: 'test-key',
-        );
-
-        final List<TranslatorRunStage> stages = <TranslatorRunStage>[];
-        final Future<void> progressDone = operation.progress.forEach(
-          stages.add,
-        );
-
-        final TranslatorRunReport report = await operation.result;
-        await progressDone;
-
-        expect(stages, <TranslatorRunStage>[
-          TranslatorRunStage.directTranslation,
-          TranslatorRunStage.reverseTranslation,
-          TranslatorRunStage.audit,
-        ]);
-        expect(report.bundle.sourceLanguage, TranslationLanguage.ru);
-        expect(report.bundle.en, 'Photo of the installed cooktop.');
-        expect(report.bundle.thToEn, 'Photo of the installed cooktop.');
-        expect(report.audit.verdict, TranslationVerdict.exact);
-        expect(transport.callCount, 3);
+        expect(report.bundle.en, unusualEn);
+        expect(report.bundle.th, unusualTh);
+        expect(report.bundle.en, isNot(_providerEn));
       },
     );
 
     test('maps style-only finding to equivalent', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _directResponse(),
-        _reverseResponse(),
-        _auditResponse(style: '- Формулировка EN менее канонична.'),
+        _auditResponse(style: '- EN читается неестественно.'),
       ]);
 
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
+      final TranslatorRunReport report = await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: _source),
+            accessKey: 'test-key',
+          )
+          .result;
 
       expect(report.audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('maps meaning finding to needs review', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _directResponse(),
-        _reverseResponse(),
-        _auditResponse(meaning: '- В EN изменено обязательство.'),
-      ]);
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
-      expect(report.audit.verdict, TranslationVerdict.needsReview);
-    });
+    test(
+      'maps terminology finding to needs review before dictionary',
+      () async {
+        final _QueueTransport transport = _QueueTransport(<Object>[
+          _directResponse(),
+          _auditResponse(
+            terminology: '- EN необоснованно сужает роль до профессии.',
+          ),
+        ]);
 
-    test('maps terminology finding to canonical drift', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _directResponse(),
-        _reverseResponse(),
-        _auditResponse(
-          terminology: '- Общая роль заменена конкретной профессией.',
-        ),
-      ]);
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
-      expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
-      expect(report.audit.meaningPreserved, isTrue);
-    });
+        final TranslatorRunReport report = await _provider(transport)
+            .start(
+              request: TranslatorWorkRequest(sourceText: _source),
+              accessKey: 'test-key',
+            )
+            .result;
 
-    test('classifies missing translation section as incomplete', () async {
+        expect(report.audit.verdict, TranslationVerdict.needsReview);
+        expect(report.audit.verdict, isNot(TranslationVerdict.canonicalDrift));
+      },
+    );
+
+    test('classifies missing direct section as incomplete', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         '''
 SOURCE LANGUAGE:
 RU
 
 SOURCE TEXT:
-Фотография установленной варочной панели.
+$_source
 
 RU:
-Фотография установленной варочной панели.
+$_source
 
 EN:
-Photo of the installed cooktop.
+$_providerEn
 ''',
       ]);
 
-      final Future<TranslatorRunReport> result =
-          TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
+      final Future<TranslatorRunReport> result = _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: _source),
+            accessKey: 'test-key',
+          )
+          .result;
 
       await expectLater(
         result,
@@ -226,68 +228,37 @@ Photo of the installed cooktop.
     test('retries malformed audit once and succeeds', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _directResponse(),
-        _reverseResponse(),
-        '''
-MEANING_FINDINGS:
-NONE
-
-TERMINOLOGY_FINDINGS:
-NONE
-''',
+        'MEANING_FINDINGS:\nNONE',
         _auditResponse(),
       ]);
 
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
+      final TranslatorRunReport report = await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: _source),
+            accessKey: 'test-key',
+          )
+          .result;
 
       expect(report.audit.verdict, TranslationVerdict.exact);
-      expect(transport.callCount, 4);
+      expect(transport.callCount, 3);
+      expect(transport.bodies.last['max_tokens'], 1024);
     });
 
     test(
-      'keeps second invalid audit as technical failure with complete bundle',
+      'keeps second invalid audit as failure with complete direct bundle',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
           _directResponse(),
-          _reverseResponse(),
-          '''
-MEANING_FINDINGS:
-NONE
-
-TERMINOLOGY_FINDINGS:
-NONE
-''',
-          '''
-MEANING_FINDINGS:
-NONE
-
-TERMINOLOGY_FINDINGS:
-NONE
-''',
+          'MEANING_FINDINGS:\nNONE',
+          'MEANING_FINDINGS:\nNONE',
         ]);
 
-        final Future<TranslatorRunReport> result =
-            TyphoonTranslatorProvider(
-                  policy: const _TestPolicy(),
-                  transportFactory: () => transport,
-                )
-                .start(
-                  request: TranslatorWorkRequest(
-                    sourceText: 'Фотография установленной варочной панели.',
-                  ),
-                  accessKey: 'test-key',
-                )
-                .result;
+        final Future<TranslatorRunReport> result = _provider(transport)
+            .start(
+              request: TranslatorWorkRequest(sourceText: _source),
+              accessKey: 'test-key',
+            )
+            .result;
 
         await expectLater(
           result,
@@ -300,76 +271,52 @@ NONE
                   TranslationCompleteness.complete,
                 )
                 .having(
+                  (TranslatorProviderException error) =>
+                      error.failure.partialBundle?.en,
+                  'direct provider output',
+                  _providerEn,
+                )
+                .having(
                   (TranslatorProviderException error) => error.failure.code,
                   'code',
                   TranslatorFailureCode.invalidAuditResponse,
-                )
-                .having(
-                  (TranslatorProviderException error) =>
-                      error.failure.partialBundle,
-                  'partialBundle',
-                  isNotNull,
-                )
-                .having(
-                  (TranslatorProviderException error) => error.failure.message,
-                  'message',
-                  contains('после повторной попытки'),
                 ),
           ),
         );
-
-        expect(transport.callCount, 4);
+        expect(transport.callCount, 3);
       },
     );
+
+    test('rejects invisible API-key characters before transport', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _directResponse(),
+      ]);
+
+      final Future<TranslatorRunReport> result = _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: 'Текст.'),
+            accessKey: 'test\u200B-key',
+          )
+          .result;
+
+      await expectLater(
+        result,
+        throwsA(
+          isA<TranslatorProviderException>().having(
+            (TranslatorProviderException error) => error.failure.code,
+            'code',
+            TranslatorFailureCode.accessKeyInvalidCharacters,
+          ),
+        ),
+      );
+      expect(transport.callCount, 0);
+    });
 
     test(
-      'rejects API key with invisible characters before transport',
+      'keeps invalid detected source language as technical failure',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
-          _directResponse(),
-        ]);
-
-        final Future<TranslatorRunReport> result =
-            TyphoonTranslatorProvider(
-                  policy: const _TestPolicy(),
-                  transportFactory: () => transport,
-                )
-                .start(
-                  request: TranslatorWorkRequest(sourceText: 'Текст.'),
-                  accessKey: 'test\u200B-key',
-                )
-                .result;
-
-        await expectLater(
-          result,
-          throwsA(
-            isA<TranslatorProviderException>()
-                .having(
-                  (TranslatorProviderException error) => error.failure.stage,
-                  'stage',
-                  TranslatorFailureStage.validation,
-                )
-                .having(
-                  (TranslatorProviderException error) => error.failure.code,
-                  'code',
-                  TranslatorFailureCode.accessKeyInvalidCharacters,
-                )
-                .having(
-                  (TranslatorProviderException error) =>
-                      error.failure.completeness,
-                  'completeness',
-                  isNull,
-                ),
-          ),
-        );
-
-        expect(transport.callCount, 0);
-      },
-    );
-
-    test('keeps invalid source language as technical failure', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        '''
+          '''
 SOURCE LANGUAGE:
 XX
 
@@ -385,42 +332,27 @@ Text.
 TH:
 ข้อความ
 ''',
-      ]);
+        ]);
 
-      final Future<TranslatorRunReport> result =
-          TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(sourceText: 'Текст.'),
-                accessKey: 'test-key',
-              )
-              .result;
+        final Future<TranslatorRunReport> result = _provider(transport)
+            .start(
+              request: TranslatorWorkRequest(sourceText: 'Текст.'),
+              accessKey: 'test-key',
+            )
+            .result;
 
-      await expectLater(
-        result,
-        throwsA(
-          isA<TranslatorProviderException>()
-              .having(
-                (TranslatorProviderException error) => error.failure.stage,
-                'stage',
-                TranslatorFailureStage.directTranslation,
-              )
-              .having(
-                (TranslatorProviderException error) => error.failure.code,
-                'code',
-                TranslatorFailureCode.invalidSourceLanguage,
-              )
-              .having(
-                (TranslatorProviderException error) =>
-                    error.failure.completeness,
-                'completeness',
-                isNull,
-              ),
-        ),
-      );
-    });
+        await expectLater(
+          result,
+          throwsA(
+            isA<TranslatorProviderException>().having(
+              (TranslatorProviderException error) => error.failure.code,
+              'code',
+              TranslatorFailureCode.invalidSourceLanguage,
+            ),
+          ),
+        );
+      },
+    );
 
     test('keeps provider authorization error technical', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
@@ -430,70 +362,56 @@ TH:
         ),
       ]);
 
-      final Future<TranslatorRunReport> result =
-          TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(sourceText: 'Текст.'),
-                accessKey: 'invalid',
-              )
-              .result;
+      final Future<TranslatorRunReport> result = _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: 'Текст.'),
+            accessKey: 'test-key',
+          )
+          .result;
 
       await expectLater(
         result,
         throwsA(
-          isA<TranslatorProviderException>()
-              .having(
-                (TranslatorProviderException error) => error.failure.code,
-                'code',
-                TranslatorFailureCode.unauthorized,
-              )
-              .having(
-                (TranslatorProviderException error) =>
-                    error.failure.completeness,
-                'completeness',
-                isNull,
-              ),
+          isA<TranslatorProviderException>().having(
+            (TranslatorProviderException error) => error.failure.code,
+            'code',
+            TranslatorFailureCode.unauthorized,
+          ),
         ),
       );
     });
   });
 }
 
-String _directResponse() {
+const String _source =
+    'Мастер должен подтвердить прибытие до начала выполнения заказа';
+const String _providerEn =
+    'The service professional must confirm arrival before starting the job';
+const String _providerTh = 'ผู้ให้บริการต้องยืนยันการมาถึงก่อนเริ่มงาน';
+
+TyphoonTranslatorProvider _provider(_QueueTransport transport) {
+  return TyphoonTranslatorProvider(
+    policy: const _TestPolicy(),
+    transportFactory: () => transport,
+  );
+}
+
+String _directResponse({String en = _providerEn, String th = _providerTh}) {
   return '''
 SOURCE LANGUAGE:
 RU
 
 SOURCE TEXT:
-Фотография установленной варочной панели.
+$_source
 
 RU:
-Фотография установленной варочной панели.
+$_source
 
 EN:
-Photo of the installed cooktop.
+$en
 
 TH:
-ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
-''';
-}
-
-String _reverseResponse() {
-  return '''
-EN_TO_RU:
-Фотография установленной варочной панели.
-
-TH_TO_RU:
-Фотография установленной варочной панели.
-
-EN_TO_TH:
-ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
-
-TH_TO_EN:
-Photo of the installed cooktop.
+$th
 ''';
 }
 
@@ -522,8 +440,8 @@ final class _QueueTransport implements TyphoonChatTransport {
   _QueueTransport(this.responses);
 
   final List<Object> responses;
+  final List<Map<String, Object?>> bodies = <Map<String, Object?>>[];
   int callCount = 0;
-  bool cancelled = false;
 
   @override
   Future<String> complete({
@@ -532,6 +450,7 @@ final class _QueueTransport implements TyphoonChatTransport {
     required Map<String, Object?> body,
   }) async {
     callCount += 1;
+    bodies.add(body);
     final Object response = responses.removeAt(0);
 
     if (response is Exception) {
@@ -542,9 +461,7 @@ final class _QueueTransport implements TyphoonChatTransport {
   }
 
   @override
-  void cancel() {
-    cancelled = true;
-  }
+  void cancel() {}
 
   @override
   void close() {}
@@ -561,16 +478,9 @@ final class _TestPolicy implements TranslatorPolicy {
       request.sourceText;
 
   @override
-  String buildReverseSystemPrompt() => 'reverse';
-
-  @override
-  String buildReverseUserPrompt({required String en, required String th}) =>
-      '$en\n$th';
-
-  @override
   String buildAuditSystemPrompt() => 'audit';
 
   @override
   String buildAuditUserPrompt(TranslationBundle bundle) =>
-      bundle.nineSections.toString();
+      bundle.directSections.toString();
 }

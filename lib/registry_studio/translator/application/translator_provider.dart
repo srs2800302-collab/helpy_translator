@@ -5,10 +5,6 @@ abstract interface class TranslatorPolicy {
 
   String buildDirectUserPrompt(TranslatorWorkRequest request);
 
-  String buildReverseSystemPrompt();
-
-  String buildReverseUserPrompt({required String en, required String th});
-
   String buildAuditSystemPrompt();
 
   String buildAuditUserPrompt(TranslationBundle bundle);

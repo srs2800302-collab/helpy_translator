@@ -9,10 +9,7 @@ import 'package:helpy_translator/registry_studio/translator/application/translat
 void main() {
   test('restores persisted Translator draft independently', () async {
     final _MemoryDraftStore store = _MemoryDraftStore(
-      draft: const TranslatorDraft(
-        sourceText: 'Сохранённый текст.',
-        sourceLanguageHint: TranslationLanguage.ru,
-      ),
+      draft: const TranslatorDraft(sourceText: 'Сохранённый текст.'),
     );
 
     final TranslatorCubit cubit = TranslatorCubit(
@@ -25,7 +22,6 @@ void main() {
 
     expect(cubit.state.status, TranslatorViewStatus.idle);
     expect(cubit.state.sourceText, 'Сохранённый текст.');
-    expect(cubit.state.sourceLanguageHint, TranslationLanguage.ru);
   });
 
   test('emits visible stages and stores successful report', () async {
@@ -58,7 +54,6 @@ void main() {
           .toSet(),
       containsAll(<TranslatorRunStage>{
         TranslatorRunStage.directTranslation,
-        TranslatorRunStage.reverseTranslation,
         TranslatorRunStage.audit,
       }),
     );
@@ -142,7 +137,6 @@ void main() {
 TranslatorRunReport _report() {
   final TranslatorWorkRequest request = TranslatorWorkRequest(
     sourceText: 'Исходный текст.',
-    sourceLanguageHint: TranslationLanguage.ru,
   );
 
   return TranslatorRunReport(
@@ -153,10 +147,6 @@ TranslatorRunReport _report() {
       ru: request.sourceText,
       en: 'Source text.',
       th: 'ข้อความต้นฉบับ',
-      enToRu: request.sourceText,
-      thToRu: request.sourceText,
-      enToTh: 'ข้อความต้นฉบับ',
-      thToEn: 'Source text.',
     ),
     audit: TranslationAudit(),
     createdAt: DateTime.utc(2026, 7, 26, 6),

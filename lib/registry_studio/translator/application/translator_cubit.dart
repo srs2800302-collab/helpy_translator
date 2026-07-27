@@ -42,7 +42,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
               ? TranslatorViewStatus.idle
               : TranslatorViewStatus.success,
           sourceText: draft.sourceText,
-          sourceLanguageHint: draft.sourceLanguageHint,
           report: draft.report,
         ),
       );
@@ -51,7 +50,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
         TranslatorState(
           status: TranslatorViewStatus.idle,
           sourceText: '',
-          sourceLanguageHint: null,
           restoreWarning:
               'Сохранённый Translator draft повреждён: ${error.message}',
         ),
@@ -68,25 +66,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
       state.copyWith(
         status: TranslatorViewStatus.idle,
         sourceText: value,
-        clearReport: true,
-        clearFailure: true,
-        clearStage: true,
-      ),
-    );
-
-    _scheduleDraftSave();
-  }
-
-  Future<void> selectSourceLanguage(TranslationLanguage? language) async {
-    if (state.isRunning || language == state.sourceLanguageHint) {
-      return;
-    }
-
-    emit(
-      state.copyWith(
-        status: TranslatorViewStatus.idle,
-        sourceLanguageHint: language,
-        clearSourceLanguageHint: language == null,
         clearReport: true,
         clearFailure: true,
         clearStage: true,
@@ -120,9 +99,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     final int requestId = ++_requestId;
     final TranslatorWorkRequest request = TranslatorWorkRequest(
       sourceText: sourceText,
-      sourceLanguageHint: state.sourceLanguageHint,
     );
-
     final TranslatorOperation operation = provider.start(
       request: request,
       accessKey: accessKey,
@@ -225,11 +202,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     await draftStore.clear();
 
     emit(
-      const TranslatorState(
-        status: TranslatorViewStatus.idle,
-        sourceText: '',
-        sourceLanguageHint: null,
-      ),
+      const TranslatorState(status: TranslatorViewStatus.idle, sourceText: ''),
     );
   }
 
@@ -243,11 +216,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
 
   Future<void> _saveDraft() {
     return draftStore.save(
-      TranslatorDraft(
-        sourceText: state.sourceText,
-        sourceLanguageHint: state.sourceLanguageHint,
-        report: state.report,
-      ),
+      TranslatorDraft(sourceText: state.sourceText, report: state.report),
     );
   }
 

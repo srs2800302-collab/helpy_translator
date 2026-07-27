@@ -32,16 +32,6 @@ final class TranslatorReportView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        _SectionCard(
-          title: l10n.reverseCheck,
-          entries: <MapEntry<String, String>>[
-            MapEntry<String, String>('EN → RU', bundle.enToRu),
-            MapEntry<String, String>('TH → RU', bundle.thToRu),
-            MapEntry<String, String>('EN → TH', bundle.enToTh),
-            MapEntry<String, String>('TH → EN', bundle.thToEn),
-          ],
-        ),
-        const SizedBox(height: 12),
         _AuditFindingsCard(audit: audit),
       ],
     );
@@ -58,7 +48,6 @@ final class _VerdictCard extends StatelessWidget {
     final RegistryStudioLocalizations l10n = context.rsL10n;
     final TranslationVerdict verdict = audit.verdict;
     final ColorScheme colors = Theme.of(context).colorScheme;
-
     final Color background = switch (verdict) {
       TranslationVerdict.exact => colors.primaryContainer,
       TranslationVerdict.equivalent => colors.secondaryContainer,
@@ -91,8 +80,8 @@ final class _VerdictCard extends StatelessWidget {
               value: audit.terminologyPreserved,
             ),
             _BooleanEvidenceRow(
-              label: l10n.canonicalStylePreserved,
-              value: audit.canonicalStylePreserved,
+              label: l10n.stylePreserved,
+              value: audit.stylePreserved,
             ),
             _BooleanEvidenceRow(
               label: l10n.ambiguousWording,
@@ -188,10 +177,7 @@ final class _AuditFindingsCard extends StatelessWidget {
               title: l10n.terminology,
               findings: audit.terminologyFindings,
             ),
-            _FindingGroup(
-              title: l10n.canonicalStyle,
-              findings: audit.styleFindings,
-            ),
+            _FindingGroup(title: l10n.style, findings: audit.styleFindings),
             _FindingGroup(
               title: l10n.ambiguity,
               findings: audit.ambiguityFindings,

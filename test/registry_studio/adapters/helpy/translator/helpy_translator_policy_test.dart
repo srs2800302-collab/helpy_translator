@@ -1,68 +1,57 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/translator/helpy_translator_policy.dart';
+import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
 
 void main() {
-  test('audit prompt exposes exact parser-compatible section template', () {
-    final String prompt = const HelpyTranslatorPolicy()
-        .buildAuditSystemPrompt();
+  const HelpyTranslatorPolicy policy = HelpyTranslatorPolicy();
 
-    final List<String> expectedLabels = <String>[
-      'MEANING_FINDINGS',
-      'TERMINOLOGY_FINDINGS',
-      'STYLE_FINDINGS',
-      'AMBIGUITY_FINDINGS',
-    ];
+  test('direct prompt uses automatic detection and five direct sections', () {
+    final String prompt = policy.buildDirectSystemPrompt();
 
-    final List<String> actualLabels =
-        RegExp(
-              r'^(MEANING_FINDINGS|TERMINOLOGY_FINDINGS|STYLE_FINDINGS|AMBIGUITY_FINDINGS):$',
-              multiLine: true,
-            )
-            .allMatches(prompt)
-            .map((RegExpMatch match) => match.group(1)!)
-            .toList(growable: false);
-
-    expect(actualLabels, expectedLabels);
-
-    for (final String label in expectedLabels) {
-      expect(
-        prompt.split('\n').where((String line) => line == '$label:'),
-        hasLength(1),
-      );
-    }
-
-    expect(prompt, contains('Do not add a preamble'));
-    expect(prompt, contains('Do not choose a verdict'));
+    expect(prompt, contains('Detect exactly one source language'));
+    expect(prompt, contains('SOURCE LANGUAGE:'));
+    expect(prompt, contains('SOURCE TEXT:'));
+    expect(prompt, contains('RU:'));
+    expect(prompt, contains('EN:'));
+    expect(prompt, contains('TH:'));
+    expect(prompt, isNot(contains('SOURCE LANGUAGE HINT')));
+    expect(prompt, isNot(contains('EN_TO_RU')));
   });
 
-  test('direct prompt preserves generic service-role granularity', () {
-    final String prompt = const HelpyTranslatorPolicy()
-        .buildDirectSystemPrompt();
+  test('direct prompt has no hardcoded project terminology', () {
+    final String prompt = policy.buildDirectSystemPrompt();
 
-    expect(prompt, contains('Preserve role granularity'));
-    expect(prompt, contains('service professional'));
-    expect(prompt, contains('Do not use EN "master"'));
-    expect(prompt, contains('"ผู้ให้บริการ"'));
-    expect(prompt, contains('Never infer carpenter'));
-    expect(prompt, contains('unless SOURCE TEXT explicitly names it'));
+    expect(prompt, contains('No project glossary'));
+    expect(prompt, isNot(contains('service professional')));
+    expect(prompt, isNot(contains('ผู้ให้บริการ')));
+    expect(prompt, isNot(contains('canonical service-marketplace')));
   });
 
-  test('audit prompt separates primary and reverse evidence', () {
-    final String prompt = const HelpyTranslatorPolicy()
-        .buildAuditSystemPrompt();
-    final String normalizedPrompt = prompt.replaceAll(RegExp(r'\s+'), ' ');
+  test('audit prompt forbids rewriting and invented canon', () {
+    final String prompt = policy.buildAuditSystemPrompt();
 
-    expect(normalizedPrompt, contains('PRIMARY EVIDENCE'));
-    expect(normalizedPrompt, contains('SECONDARY DIAGNOSTIC EVIDENCE'));
-    expect(
-      normalizedPrompt,
-      contains('A finding that cites only a reverse section is forbidden'),
+    expect(prompt, contains('do not retranslate, rewrite'));
+    expect(prompt, contains('do not invent a project glossary'));
+    expect(prompt, contains('Do not use external canonical terms'));
+    expect(prompt, contains('do not choose a verdict'));
+    expect(prompt, isNot(contains('reverse section')));
+  });
+
+  test('audit user prompt contains only the direct provider bundle', () {
+    final String prompt = policy.buildAuditUserPrompt(
+      TranslationBundle(
+        sourceLanguage: TranslationLanguage.ru,
+        sourceText: 'Исходный текст.',
+        ru: 'Исходный текст.',
+        en: 'Provider wording.',
+        th: 'ข้อความจากผู้ให้บริการ',
+      ),
     );
-    expect(
-      normalizedPrompt,
-      contains('Confirm every finding directly against SOURCE TEXT'),
-    );
-    expect(normalizedPrompt, contains('state both readings explicitly'));
-    expect(normalizedPrompt, contains('job/work'));
+
+    expect(prompt, contains('SOURCE LANGUAGE:\nRU'));
+    expect(prompt, contains('EN:\nProvider wording.'));
+    expect(prompt, contains('TH:\nข้อความจากผู้ให้บริการ'));
+    expect(prompt, isNot(contains('EN_TO_RU')));
+    expect(prompt, isNot(contains('TH_TO_EN')));
   });
 }

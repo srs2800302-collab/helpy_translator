@@ -25,7 +25,6 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
 
     final Object? decoded = jsonDecode(await file.readAsString());
     final Map<String, Object?> state = _map(decoded, 'Translator draft');
-
     const Set<String> expectedKeys = <String>{
       'version',
       'sourceText',
@@ -40,20 +39,18 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     }
 
     final Object? sourceText = state['sourceText'];
-    final Object? sourceLanguageHint = state['sourceLanguageHint'];
+    final Object? legacySourceLanguageHint = state['sourceLanguageHint'];
     final Object? report = state['report'];
 
     if (sourceText is! String ||
-        (sourceLanguageHint != null && sourceLanguageHint is! String) ||
+        (legacySourceLanguageHint != null &&
+            legacySourceLanguageHint is! String) ||
         (report != null && report is! Map<Object?, Object?>)) {
       throw const FormatException('Translator draft field types are invalid.');
     }
 
     return TranslatorDraft(
       sourceText: sourceText,
-      sourceLanguageHint: sourceLanguageHint == null
-          ? null
-          : TranslationLanguage.fromCode(sourceLanguageHint as String),
       report: report == null
           ? null
           : _decodeReport(
@@ -76,7 +73,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     final Map<String, Object?> state = <String, Object?>{
       'version': _version,
       'sourceText': draft.sourceText,
-      'sourceLanguageHint': draft.sourceLanguageHint?.code,
+      'sourceLanguageHint': null,
       'report': draft.report == null ? null : _encodeReport(draft.report!),
     };
 
@@ -87,6 +84,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       if (await temporary.exists()) {
         await temporary.delete();
       }
+
       rethrow;
     }
   }
@@ -137,10 +135,10 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     return <String, Object?>{
       'request': <String, Object?>{
         'sourceText': report.request.sourceText,
-        'sourceLanguageHint': report.request.sourceLanguageHint?.code,
+        'sourceLanguageHint': null,
         'engineerContext': report.request.engineerContext,
       },
-      'bundle': report.bundle.nineSections,
+      'bundle': report.bundle.directSections,
       'audit': <String, Object?>{
         'meaningFindings': report.audit.meaningFindings,
         'terminologyFindings': report.audit.terminologyFindings,
@@ -177,6 +175,31 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       'Translator report audit',
     );
 
+    const Set<String> directBundleKeys = <String>{
+      'SOURCE LANGUAGE',
+      'SOURCE TEXT',
+      'RU',
+      'EN',
+      'TH',
+    };
+    const Set<String> legacyReverseKeys = <String>{
+      'EN_TO_RU',
+      'TH_TO_RU',
+      'EN_TO_TH',
+      'TH_TO_EN',
+    };
+    final Set<String> allowedBundleKeys = <String>{
+      ...directBundleKeys,
+      ...legacyReverseKeys,
+    };
+
+    if (!bundle.keys.toSet().containsAll(directBundleKeys) ||
+        bundle.keys.any((String key) => !allowedBundleKeys.contains(key))) {
+      throw const FormatException(
+        'Translator report bundle schema is invalid.',
+      );
+    }
+
     final Object? createdAt = value['createdAt'];
 
     if (createdAt is! String) {
@@ -187,19 +210,10 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
 
     final TranslatorWorkRequest workRequest = TranslatorWorkRequest(
       sourceText: _string(request['sourceText'], 'request.sourceText'),
-      sourceLanguageHint: request['sourceLanguageHint'] == null
-          ? null
-          : TranslationLanguage.fromCode(
-              _string(
-                request['sourceLanguageHint'],
-                'request.sourceLanguageHint',
-              ),
-            ),
       engineerContext: request['engineerContext'] == null
           ? null
           : _string(request['engineerContext'], 'request.engineerContext'),
     );
-
     final TranslationBundle translationBundle = TranslationBundle(
       sourceLanguage: TranslationLanguage.fromCode(
         _string(bundle['SOURCE LANGUAGE'], 'bundle.SOURCE LANGUAGE'),
@@ -208,12 +222,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       ru: _string(bundle['RU'], 'bundle.RU'),
       en: _string(bundle['EN'], 'bundle.EN'),
       th: _string(bundle['TH'], 'bundle.TH'),
-      enToRu: _string(bundle['EN_TO_RU'], 'bundle.EN_TO_RU'),
-      thToRu: _string(bundle['TH_TO_RU'], 'bundle.TH_TO_RU'),
-      enToTh: _string(bundle['EN_TO_TH'], 'bundle.EN_TO_TH'),
-      thToEn: _string(bundle['TH_TO_EN'], 'bundle.TH_TO_EN'),
     );
-
     final TranslationAudit translationAudit = TranslationAudit(
       meaningFindings: _strings(
         audit['meaningFindings'],

@@ -115,14 +115,6 @@ final class RegistryStudioLocalizations {
   String get sourceText =>
       _value(ru: 'Исходный текст', en: 'Source text', th: 'ข้อความต้นฉบับ');
 
-  String get sourceLanguage =>
-      _value(ru: 'Язык источника', en: 'Source language', th: 'ภาษาต้นฉบับ');
-
-  String get detectAutomatically =>
-      _value(ru: 'Автоматически', en: 'Automatic', th: 'อัตโนมัติ');
-
-  String get automaticShort => 'AUTO';
-
   String get sourceTextFieldLabel => _value(
     ru: 'Текст для перевода и семантического аудита',
     en: 'Text for translation and semantic audit',
@@ -157,12 +149,6 @@ final class RegistryStudioLocalizations {
     th: 'การแปลโดยตรง RU / EN / TH',
   );
 
-  String get reverseTranslationStage => _value(
-    ru: 'Независимые обратные переводы',
-    en: 'Independent reverse translations',
-    th: 'การแปลย้อนกลับแบบอิสระ',
-  );
-
   String get auditStage => _value(
     ru: 'Семантический аудит и вердикт',
     en: 'Semantic audit and verdict',
@@ -180,24 +166,18 @@ final class RegistryStudioLocalizations {
 
   String get partialResultSaved => _value(
     ru:
-        'Частичный девятисекционный результат сохранён, '
+        'Прямой перевод RU / EN / TH сохранён, '
         'но автоматический вердикт не создан.',
     en:
-        'The partial nine-section result was saved, '
+        'The direct RU / EN / TH translation was saved, '
         'but no automatic verdict was created.',
     th:
-        'บันทึกผลลัพธ์เก้าส่วนที่ไม่สมบูรณ์แล้ว '
+        'บันทึกคำแปลโดยตรง RU / EN / TH แล้ว '
         'แต่ยังไม่ได้สร้างคำตัดสินอัตโนมัติ',
   );
 
   String get directTranslation =>
       _value(ru: 'Прямой перевод', en: 'Direct translation', th: 'คำแปลโดยตรง');
-
-  String get reverseCheck => _value(
-    ru: 'Независимая обратная проверка',
-    en: 'Independent reverse check',
-    th: 'การตรวจสอบย้อนกลับแบบอิสระ',
-  );
 
   String get automaticVerdict => _value(
     ru: 'Автоматический вердикт перевода',
@@ -217,11 +197,8 @@ final class RegistryStudioLocalizations {
     th: 'คงคำศัพท์ไว้',
   );
 
-  String get canonicalStylePreserved => _value(
-    ru: 'Канонический стиль сохранён',
-    en: 'Canonical style preserved',
-    th: 'คงรูปแบบมาตรฐานไว้',
-  );
+  String get stylePreserved =>
+      _value(ru: 'Стиль сохранён', en: 'Style preserved', th: 'คงรูปแบบไว้');
 
   String get ambiguousWording => _value(
     ru: 'Неоднозначная формулировка',
@@ -252,11 +229,7 @@ final class RegistryStudioLocalizations {
   String get terminology =>
       _value(ru: 'Терминология', en: 'Terminology', th: 'คำศัพท์');
 
-  String get canonicalStyle => _value(
-    ru: 'Канонический стиль',
-    en: 'Canonical style',
-    th: 'รูปแบบมาตรฐาน',
-  );
+  String get style => _value(ru: 'Стиль', en: 'Style', th: 'รูปแบบ');
 
   String get ambiguity =>
       _value(ru: 'Неоднозначность', en: 'Ambiguity', th: 'ความกำกวม');
@@ -301,12 +274,6 @@ final class RegistryStudioLocalizations {
     ru: 'прямой перевод',
     en: 'direct translation',
     th: 'การแปลโดยตรง',
-  );
-
-  String get reverseStage => _value(
-    ru: 'обратный перевод',
-    en: 'reverse translation',
-    th: 'การแปลย้อนกลับ',
   );
 
   String get semanticAuditStage => _value(
