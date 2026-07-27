@@ -43,7 +43,9 @@ void main() {
     expect(restored.report, report);
 
     final Map<String, Object?> raw = await _readState(directory);
-    expect(raw['sourceLanguageHint'], isNull);
+    expect(raw['version'], 'v2');
+    expect(raw.containsKey('sourceLanguageHint'), isFalse);
+    expect(raw['partialBundle'], isNull);
     final Map<String, Object?> persistedReport =
         (raw['report']! as Map<Object?, Object?>).cast<String, Object?>();
     final Map<String, Object?> bundle =
@@ -145,6 +147,25 @@ void main() {
     );
 
     await expectLater(store.load(), throwsFormatException);
+  });
+
+  test('persists a complete bundle while semantic audit is pending', () async {
+    final TranslationBundle bundle = _report().bundle;
+
+    await store.save(
+      TranslatorDraft(sourceText: bundle.sourceText, partialBundle: bundle),
+    );
+
+    final TranslatorDraft? restored = await store.load();
+
+    expect(restored, isNotNull);
+    expect(restored?.report, isNull);
+    expect(restored?.partialBundle, bundle);
+
+    final Map<String, Object?> raw = await _readState(directory);
+    expect(raw['version'], 'v2');
+    expect(raw['report'], isNull);
+    expect(raw['partialBundle'], isA<Map<Object?, Object?>>());
   });
 
   test('clear removes only Translator draft file', () async {

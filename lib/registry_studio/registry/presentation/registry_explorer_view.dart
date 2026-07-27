@@ -6,6 +6,7 @@ import '../../maintenance/analysis/domain/entities/registry_structural_problem.d
 import '../../maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../maintenance/history/domain/entities/registry_analysis_history_entry.dart';
 import '../application/contracts/registry_revision_state_store.dart';
+import '../application/contracts/registry_snapshot_cache.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_refresh_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
@@ -18,6 +19,7 @@ final class RegistryExplorerView extends StatelessWidget {
     required this.snapshotLoader,
     required this.snapshotRefreshLoader,
     required this.snapshotRevisionLoader,
+    this.snapshotCache,
     required this.revisionStateStore,
     required this.analysisHistoryStore,
     required this.snapshotComparator,
@@ -27,6 +29,7 @@ final class RegistryExplorerView extends StatelessWidget {
   final RegistrySnapshotLoader snapshotLoader;
   final RegistrySnapshotRefreshLoader snapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
+  final RegistrySnapshotCache? snapshotCache;
   final RegistryRevisionStateStore revisionStateStore;
   final RegistryAnalysisHistoryStore analysisHistoryStore;
   final RegistrySnapshotComparator snapshotComparator;
@@ -38,6 +41,7 @@ final class RegistryExplorerView extends StatelessWidget {
         snapshotLoader: snapshotLoader,
         snapshotRefreshLoader: snapshotRefreshLoader,
         snapshotRevisionLoader: snapshotRevisionLoader,
+        snapshotCache: snapshotCache,
         revisionStateStore: revisionStateStore,
         analysisHistoryStore: analysisHistoryStore,
         snapshotComparator: snapshotComparator,
@@ -1955,7 +1959,7 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       const Icon(Icons.error_outline, size: 48),
                       const SizedBox(height: 16),
                       const Text(
-                        'Не удалось загрузить Registry',
+                        'Registry не загружен',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -1965,8 +1969,10 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       const SizedBox(height: 8),
                       SelectableText(message, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      IconButton(
-                        tooltip: 'Повторить загрузку Registry',
+                      FilledButton.icon(
+                        key: const ValueKey<String>(
+                          'registry-manual-load-button',
+                        ),
                         onPressed: () async {
                           final RegistryExplorerCubit cubit = context
                               .read<RegistryExplorerCubit>();
@@ -2050,7 +2056,8 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               SnackBar(content: Text(outcomeMessage)),
                             );
                         },
-                        icon: const Icon(Icons.refresh),
+                        icon: const Icon(Icons.cloud_download_outlined),
+                        label: const Text('Загрузить Registry вручную'),
                       ),
                     ],
                   ),
@@ -2124,18 +2131,69 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                               key: const ValueKey<String>(
                                 'registry-refresh-button',
                               ),
-                              tooltip:
-                                  loaded.selectedProblem == null &&
-                                      loaded.openRegistryNode != null
+                              tooltip: 'Обновить Registry вручную',
+                              onPressed: loaded.isRefreshing
                                   ? null
-                                  : 'Перезагрузить Registry',
-                              onPressed: _refreshRegistry,
-                              icon: const Icon(Icons.refresh),
+                                  : _refreshRegistry,
+                              icon: loaded.isRefreshing
+                                  ? const SizedBox.square(
+                                      dimension: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                      ),
+                                    )
+                                  : const Icon(Icons.refresh),
                             ),
                           ],
                         ),
                       ),
                     ),
+                    if (loaded.refreshWarning case final String warning)
+                      Container(
+                        key: const ValueKey<String>('registry-refresh-warning'),
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSecondaryContainer,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '$warning\n'
+                                'Показан последний сохранённый Registry.',
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSecondaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Закрыть предупреждение',
+                              onPressed: () {
+                                context
+                                    .read<RegistryExplorerCubit>()
+                                    .dismissRefreshWarning();
+                              },
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                      ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                       child: TextFormField(

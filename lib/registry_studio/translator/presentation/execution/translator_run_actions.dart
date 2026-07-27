@@ -8,6 +8,7 @@ final class TranslatorRunActions extends StatelessWidget {
     required this.status,
     required this.isRunning,
     required this.accessKeyRestoring,
+    required this.retryAuditOnly,
     required this.onRun,
     required this.onCancel,
     required this.onClear,
@@ -17,6 +18,7 @@ final class TranslatorRunActions extends StatelessWidget {
   final TranslatorViewStatus status;
   final bool isRunning;
   final bool accessKeyRestoring;
+  final bool retryAuditOnly;
   final Future<void> Function() onRun;
   final VoidCallback onCancel;
   final VoidCallback onClear;
@@ -38,7 +40,9 @@ final class TranslatorRunActions extends StatelessWidget {
                   await onRun();
                 },
           child: Text(
-            status == TranslatorViewStatus.failure
+            retryAuditOnly
+                ? l10n.retrySemanticAudit
+                : status == TranslatorViewStatus.failure
                 ? l10n.retry
                 : l10n.translateAndCheck,
           ),

@@ -48,9 +48,13 @@ enum TranslatorFailureCode {
   malformedProviderResponse,
   invalidAuditResponse,
   unauthorized,
+  accessForbidden,
+  requestRejected,
+  networkBlocked,
   rateLimited,
   serverFailure,
   networkFailure,
+  unexpectedFailure,
   timeout,
   cancelled,
 }

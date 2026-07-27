@@ -101,7 +101,8 @@ final class GitHubRegistryDocumentSource {
     })
   >
   load({String? exactRevision}) async {
-    final HttpClient client = HttpClient();
+    final HttpClient client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 25);
 
     try {
       late final String sourceRevision;
@@ -134,10 +135,12 @@ final class GitHubRegistryDocumentSource {
         }
 
         final HttpClientResponse revisionResponse = await revisionRequest
-            .close();
+            .close()
+            .timeout(const Duration(seconds: 90));
         final String revisionResponseBody = await utf8.decoder
             .bind(revisionResponse)
-            .join();
+            .join()
+            .timeout(const Duration(seconds: 90));
 
         if (revisionResponse.statusCode < 200 ||
             revisionResponse.statusCode >= 300) {
@@ -212,10 +215,13 @@ final class GitHubRegistryDocumentSource {
         );
       }
 
-      final HttpClientResponse metadataResponse = await metadataRequest.close();
+      final HttpClientResponse metadataResponse = await metadataRequest
+          .close()
+          .timeout(const Duration(seconds: 90));
       final String metadataResponseBody = await utf8.decoder
           .bind(metadataResponse)
-          .join();
+          .join()
+          .timeout(const Duration(seconds: 90));
 
       if (metadataResponse.statusCode < 200 ||
           metadataResponse.statusCode >= 300) {
@@ -271,8 +277,13 @@ final class GitHubRegistryDocumentSource {
         );
       }
 
-      final HttpClientResponse documentResponse = await documentRequest.close();
-      final String content = await utf8.decoder.bind(documentResponse).join();
+      final HttpClientResponse documentResponse = await documentRequest
+          .close()
+          .timeout(const Duration(seconds: 90));
+      final String content = await utf8.decoder
+          .bind(documentResponse)
+          .join()
+          .timeout(const Duration(seconds: 90));
 
       if (documentResponse.statusCode < 200 ||
           documentResponse.statusCode >= 300) {

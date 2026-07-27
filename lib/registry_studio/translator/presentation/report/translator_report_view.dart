@@ -10,10 +10,99 @@ final class TranslatorReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
-    final TranslationBundle bundle = report.bundle;
-    final TranslationAudit audit = report.audit;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _TranslationBundleSections(bundle: report.bundle),
+        const SizedBox(height: 12),
+        _VerdictCard(audit: report.audit),
+        const SizedBox(height: 12),
+        _AuditFindingsCard(audit: report.audit),
+      ],
+    );
+  }
+}
 
+final class TranslatorPartialBundleView extends StatelessWidget {
+  const TranslatorPartialBundleView({required this.bundle, super.key});
+
+  final TranslationBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _TranslationBundleSections(bundle: bundle),
+        const SizedBox(height: 12),
+        Card(
+          color: colors.tertiaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(
+                  Icons.pending_actions_outlined,
+                  color: colors.onTertiaryContainer,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        l10n.semanticAuditIncomplete,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: colors.onTertiaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.canonicalDictionary,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: colors.onTertiaryContainer),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.notConnected,
+                        key: const ValueKey<String>(
+                          'translator-canonical-dictionary-status',
+                        ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: colors.onTertiaryContainer,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.canonicalVerdictUnavailable,
+                        style: TextStyle(color: colors.onTertiaryContainer),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+final class _TranslationBundleSections extends StatelessWidget {
+  const _TranslationBundleSections({required this.bundle});
+
+  final TranslationBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
     final ReverseTranslationBundle? reverse = bundle.reverseTranslations;
 
     return Column(
@@ -43,10 +132,6 @@ final class TranslatorReportView extends StatelessWidget {
             ],
           ),
         ],
-        const SizedBox(height: 12),
-        _VerdictCard(audit: audit),
-        const SizedBox(height: 12),
-        _AuditFindingsCard(audit: audit),
       ],
     );
   }
@@ -102,7 +187,23 @@ final class _VerdictCard extends StatelessWidget {
               value: audit.ambiguousWording,
               positiveMeansGood: false,
             ),
-            const SizedBox(height: 8),
+            const Divider(height: 32),
+            Text(
+              l10n.canonicalDictionary,
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.notConnected,
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(l10n.canonicalVerdictUnavailable, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
             Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
           ],
         ),

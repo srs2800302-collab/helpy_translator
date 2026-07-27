@@ -5,7 +5,8 @@ import 'dart:io';
 import '../../application/translator_provider.dart';
 import '../../domain/translator_models.dart';
 
-final class TyphoonTranslatorProvider implements TranslatorProvider {
+final class TyphoonTranslatorProvider
+    implements TranslatorProvider, TranslatorAuditRetryProvider {
   const TyphoonTranslatorProvider({
     required this.policy,
     this.baseUrl = 'https://api.opentyphoon.ai/v1',
@@ -30,6 +31,29 @@ final class TyphoonTranslatorProvider implements TranslatorProvider {
       baseUrl: baseUrl,
       model: model,
       transport: transportFactory(),
+    );
+  }
+
+  @override
+  TranslatorOperation startAudit({
+    required TranslatorWorkRequest request,
+    required TranslationBundle bundle,
+    required String accessKey,
+  }) {
+    if (bundle.sourceText != request.sourceText) {
+      throw ArgumentError(
+        'The audit retry bundle must belong to the supplied request.',
+      );
+    }
+
+    return _TyphoonTranslatorOperation(
+      request: request,
+      accessKey: accessKey,
+      policy: policy,
+      baseUrl: baseUrl,
+      model: model,
+      transport: transportFactory(),
+      initialBundle: bundle,
     );
   }
 
@@ -93,6 +117,7 @@ final class DartIoTyphoonChatTransport implements TyphoonChatTransport {
         throw TyphoonTransportException.http(
           statusCode: response.statusCode,
           responseBody: responseBody,
+          responseContentType: response.headers.contentType?.mimeType,
         );
       }
 
@@ -119,7 +144,18 @@ final class DartIoTyphoonChatTransport implements TyphoonChatTransport {
         );
       }
 
-      final Object? message = choice.cast<String, Object?>()['message'];
+      final Map<String, Object?> choiceObject = choice.cast<String, Object?>();
+      final Object? finishReason = choiceObject['finish_reason'];
+
+      if (finishReason != null &&
+          (finishReason is! String || finishReason.toLowerCase() != 'stop')) {
+        throw TyphoonTransportException.malformed(
+          'Typhoon API returned an incomplete response '
+          '(finish_reason: $finishReason).',
+        );
+      }
+
+      final Object? message = choiceObject['message'];
       if (message is! Map<Object?, Object?> ||
           message.keys.any((Object? key) => key is! String)) {
         throw const TyphoonTransportException.malformed(
@@ -136,17 +172,18 @@ final class DartIoTyphoonChatTransport implements TyphoonChatTransport {
 
       return content.trim();
     } on TimeoutException {
+      _client.close(force: true);
       throw const TyphoonTransportException.timeout();
-    } on SocketException catch (error) {
+    } on IOException catch (error) {
       if (_cancelled) {
         throw const TyphoonTransportException.cancelled();
       }
-      throw TyphoonTransportException.network(error.message);
-    } on HttpException catch (error) {
+      throw TyphoonTransportException.network(error.toString());
+    } on StateError {
       if (_cancelled) {
         throw const TyphoonTransportException.cancelled();
       }
-      throw TyphoonTransportException.network(error.message);
+      rethrow;
     } on ArgumentError catch (error) {
       throw TyphoonTransportException.malformed(
         error.message?.toString() ?? 'Invalid Typhoon request.',
@@ -168,7 +205,8 @@ final class DartIoTyphoonChatTransport implements TyphoonChatTransport {
   }
 }
 
-final class _TyphoonTranslatorOperation implements TranslatorOperation {
+final class _TyphoonTranslatorOperation
+    implements TranslatorOperation, TranslatorPartialBundleOperation {
   _TyphoonTranslatorOperation({
     required this.request,
     required this.accessKey,
@@ -176,6 +214,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     required this.baseUrl,
     required this.model,
     required this.transport,
+    this.initialBundle,
   }) {
     _result = Future<TranslatorRunReport>.microtask(_execute);
   }
@@ -186,9 +225,12 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
   final String baseUrl;
   final String model;
   final TyphoonChatTransport transport;
+  final TranslationBundle? initialBundle;
 
   final StreamController<TranslatorRunStage> _progressController =
       StreamController<TranslatorRunStage>.broadcast(sync: true);
+  final StreamController<TranslationBundle> _partialBundleController =
+      StreamController<TranslationBundle>.broadcast(sync: true);
 
   late final Future<TranslatorRunReport> _result;
   bool _cancelled = false;
@@ -198,6 +240,10 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 
   @override
   Stream<TranslatorRunStage> get progress => _progressController.stream;
+
+  @override
+  Stream<TranslationBundle> get partialBundles =>
+      _partialBundleController.stream;
 
   @override
   void cancel() {
@@ -236,16 +282,23 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
       );
     }
 
-    TranslationBundle? partialBundle;
+    TranslationBundle? partialBundle = initialBundle;
 
     try {
-      _emit(TranslatorRunStage.directTranslation);
+      if (partialBundle == null) {
+        _emit(TranslatorRunStage.directTranslation);
 
-      partialBundle = await _requestDirectBundle();
+        partialBundle = await _requestDirectBundle();
+        _emitPartialBundle(partialBundle);
+      }
+
+      final TranslationBundle completedBundle = partialBundle;
 
       _emit(TranslatorRunStage.audit);
 
-      final String auditUserPrompt = policy.buildAuditUserPrompt(partialBundle);
+      final String auditUserPrompt = policy.buildAuditUserPrompt(
+        completedBundle,
+      );
 
       TranslationAudit audit;
 
@@ -278,7 +331,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 
       return TranslatorRunReport(
         request: request,
-        bundle: partialBundle,
+        bundle: completedBundle,
         audit: audit,
         createdAt: DateTime.now().toUtc(),
       );
@@ -466,11 +519,25 @@ This is the final format attempt:
     }
   }
 
+  void _emitPartialBundle(TranslationBundle bundle) {
+    if (_cancelled) {
+      throw const TyphoonTransportException.cancelled();
+    }
+
+    if (!_partialBundleController.isClosed) {
+      _partialBundleController.add(bundle);
+    }
+  }
+
   Future<void> _close() async {
     transport.close();
 
     if (!_progressController.isClosed) {
       await _progressController.close();
+    }
+
+    if (!_partialBundleController.isClosed) {
+      await _partialBundleController.close();
     }
   }
 
@@ -719,19 +786,46 @@ This is the final format attempt:
   }) {
     final TranslatorFailureCode code;
     final String message;
+    final bool gatewayResponse = _isGatewayResponse(error);
 
     if (error.cancelled) {
       code = TranslatorFailureCode.cancelled;
       message = 'Перевод отменён.';
     } else if (error.timeout) {
       code = TranslatorFailureCode.timeout;
-      message = 'Typhoon API не ответил вовремя.';
-    } else if (error.statusCode == 401 || error.statusCode == 403) {
+      message =
+          'Typhoon API не ответил вовремя. '
+          'Проверьте сеть или VPN и повторите незавершённый этап.';
+    } else if (error.statusCode == 401 && gatewayResponse) {
+      code = TranslatorFailureCode.networkBlocked;
+      message =
+          'Сетевой шлюз или VPN заблокировал доступ к Typhoon API. '
+          'API key не был признан недействительным. '
+          'Переключите VPN-сервер или сеть.';
+    } else if (error.statusCode == 401) {
       code = TranslatorFailureCode.unauthorized;
-      message = 'Typhoon API отклонил API key.';
+      message = 'Typhoon API сообщил, что API key недействителен или отозван.';
+    } else if (error.statusCode == 403 && gatewayResponse) {
+      code = TranslatorFailureCode.networkBlocked;
+      message =
+          'Сетевой шлюз или VPN заблокировал доступ к Typhoon API. '
+          'API key не был признан недействительным. '
+          'Переключите VPN-сервер или сеть.';
+    } else if (error.statusCode == 403) {
+      code = TranslatorFailureCode.accessForbidden;
+      message =
+          'Typhoon API распознал запрос, но запретил доступ к модели '
+          'или ресурсу.';
     } else if (error.statusCode == 429) {
       code = TranslatorFailureCode.rateLimited;
       message = 'Превышен лимит запросов Typhoon API.';
+    } else if (error.statusCode != null &&
+        error.statusCode! >= 400 &&
+        error.statusCode! < 500) {
+      code = TranslatorFailureCode.requestRejected;
+      message =
+          'Typhoon API отклонил запрос (HTTP ${error.statusCode}). '
+          'API key не был признан недействительным.';
     } else if (error.statusCode != null && error.statusCode! >= 500) {
       code = TranslatorFailureCode.serverFailure;
       message = 'Ошибка сервера Typhoon API. Повторите позже.';
@@ -740,11 +834,15 @@ This is the final format attempt:
       message = error.message;
     } else {
       code = TranslatorFailureCode.networkFailure;
-      message = 'Ошибка соединения с Typhoon API: ${error.message}';
+      message =
+          'Соединение с Typhoon API прервано. '
+          'Проверьте сеть или VPN и повторите незавершённый этап.';
     }
 
     return TranslatorFailure(
-      stage: TranslatorFailureStage.transport,
+      stage: partialBundle == null
+          ? TranslatorFailureStage.transport
+          : TranslatorFailureStage.audit,
       code: code,
       message: message,
       completeness: partialBundle == null
@@ -752,6 +850,28 @@ This is the final format attempt:
           : TranslationCompleteness.complete,
       partialBundle: partialBundle,
     );
+  }
+
+  static bool _isGatewayResponse(TyphoonTransportException error) {
+    final String contentType = error.responseContentType?.toLowerCase() ?? '';
+    final String body = error.message.trimLeft().toLowerCase();
+
+    if (contentType.contains('text/html') ||
+        body.startsWith('<!doctype html') ||
+        body.startsWith('<html')) {
+      return true;
+    }
+
+    if (contentType.contains('json') || body.startsWith('{')) {
+      try {
+        final Object? decoded = jsonDecode(error.message);
+        return decoded is! Map<Object?, Object?>;
+      } on FormatException {
+        return true;
+      }
+    }
+
+    return true;
   }
 
   static final RegExp _accessKeyPattern = RegExp(r'^[\x21-\x7E]+$');
@@ -807,6 +927,7 @@ final class TyphoonTransportException implements Exception {
   const TyphoonTransportException._({
     required this.message,
     this.statusCode,
+    this.responseContentType,
     this.cancelled = false,
     this.timeout = false,
     this.malformed = false,
@@ -815,7 +936,12 @@ final class TyphoonTransportException implements Exception {
   const TyphoonTransportException.http({
     required int statusCode,
     required String responseBody,
-  }) : this._(message: responseBody, statusCode: statusCode);
+    String? responseContentType,
+  }) : this._(
+         message: responseBody,
+         statusCode: statusCode,
+         responseContentType: responseContentType,
+       );
 
   const TyphoonTransportException.cancelled()
     : this._(message: 'Cancelled.', cancelled: true);
@@ -831,6 +957,7 @@ final class TyphoonTransportException implements Exception {
 
   final String message;
   final int? statusCode;
+  final String? responseContentType;
   final bool cancelled;
   final bool timeout;
   final bool malformed;

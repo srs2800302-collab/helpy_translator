@@ -191,6 +191,33 @@ final class RegistryStudioLocalizations {
     th: 'คำตัดสินเชิงความหมาย',
   );
 
+  String get retrySemanticAudit => _value(
+    ru: 'Повторить только семантический аудит',
+    en: 'Retry semantic audit only',
+    th: 'ลองตรวจสอบเชิงความหมายอีกครั้งเท่านั้น',
+  );
+
+  String get semanticAuditIncomplete => _value(
+    ru: 'Семантический аудит не завершён',
+    en: 'Semantic audit is incomplete',
+    th: 'การตรวจสอบเชิงความหมายยังไม่เสร็จสมบูรณ์',
+  );
+
+  String get canonicalDictionary => _value(
+    ru: 'Канонический словарь',
+    en: 'Canonical dictionary',
+    th: 'พจนานุกรมมาตรฐาน',
+  );
+
+  String get notConnected =>
+      _value(ru: 'НЕ ПОДКЛЮЧЁН', en: 'NOT CONNECTED', th: 'ยังไม่ได้เชื่อมต่อ');
+
+  String get canonicalVerdictUnavailable => _value(
+    ru: 'Канонический вердикт недоступен',
+    en: 'Canonical verdict is unavailable',
+    th: 'ยังไม่มีคำตัดสินตามพจนานุกรมมาตรฐาน',
+  );
+
   String get meaningPreserved => _value(
     ru: 'Смысл сохранён',
     en: 'Meaning preserved',

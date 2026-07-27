@@ -49,6 +49,9 @@ void main() {
     expect(find.text('Прямой перевод'), findsOneWidget);
     expect(find.text('Обратные переводы для диагностики'), findsOneWidget);
     expect(find.text('Аудит и диагностика'), findsOneWidget);
+    expect(find.text('Канонический словарь'), findsOneWidget);
+    expect(find.text('НЕ ПОДКЛЮЧЁН'), findsOneWidget);
+    expect(find.text('Канонический вердикт недоступен'), findsOneWidget);
   });
 
   testWidgets('clear removes Translator result only', (

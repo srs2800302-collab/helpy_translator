@@ -11,7 +11,8 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
 
   static const String directoryName = 'registry_studio';
   static const String fileName = 'translator_draft_v1.json';
-  static const String _version = 'v1';
+  static const String _currentVersion = 'v2';
+  static const String _legacyVersion = 'v1';
 
   final Directory? applicationSupportDirectory;
 
@@ -25,38 +26,15 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
 
     final Object? decoded = jsonDecode(await file.readAsString());
     final Map<String, Object?> state = _map(decoded, 'Translator draft');
-    const Set<String> expectedKeys = <String>{
-      'version',
-      'sourceText',
-      'sourceLanguageHint',
-      'report',
+    final Object? version = state['version'];
+
+    return switch (version) {
+      _legacyVersion => _decodeLegacyDraft(state),
+      _currentVersion => _decodeCurrentDraft(state),
+      _ => throw const FormatException(
+        'Translator draft version is unsupported.',
+      ),
     };
-
-    if (state.keys.length != expectedKeys.length ||
-        !state.keys.toSet().containsAll(expectedKeys) ||
-        state['version'] != _version) {
-      throw const FormatException('Translator draft schema is invalid.');
-    }
-
-    final Object? sourceText = state['sourceText'];
-    final Object? legacySourceLanguageHint = state['sourceLanguageHint'];
-    final Object? report = state['report'];
-
-    if (sourceText is! String ||
-        (legacySourceLanguageHint != null &&
-            legacySourceLanguageHint is! String) ||
-        (report != null && report is! Map<Object?, Object?>)) {
-      throw const FormatException('Translator draft field types are invalid.');
-    }
-
-    return TranslatorDraft(
-      sourceText: sourceText,
-      report: report == null
-          ? null
-          : _decodeReport(
-              (report as Map<Object?, Object?>).cast<String, Object?>(),
-            ),
-    );
   }
 
   @override
@@ -71,10 +49,12 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     }
 
     final Map<String, Object?> state = <String, Object?>{
-      'version': _version,
+      'version': _currentVersion,
       'sourceText': draft.sourceText,
-      'sourceLanguageHint': null,
       'report': draft.report == null ? null : _encodeReport(draft.report!),
+      'partialBundle': draft.partialBundle == null
+          ? null
+          : _encodeBundle(draft.partialBundle!),
     };
 
     try {
@@ -131,6 +111,78 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     );
   }
 
+  static TranslatorDraft _decodeLegacyDraft(Map<String, Object?> state) {
+    const Set<String> expectedKeys = <String>{
+      'version',
+      'sourceText',
+      'sourceLanguageHint',
+      'report',
+    };
+    _requireExactKeys(state, expectedKeys, 'Legacy Translator draft');
+
+    final Object? sourceText = state['sourceText'];
+    final Object? legacySourceLanguageHint = state['sourceLanguageHint'];
+    final Object? report = state['report'];
+
+    if (sourceText is! String ||
+        (legacySourceLanguageHint != null &&
+            legacySourceLanguageHint is! String) ||
+        (report != null && report is! Map<Object?, Object?>)) {
+      throw const FormatException(
+        'Legacy Translator draft field types are invalid.',
+      );
+    }
+
+    return TranslatorDraft(
+      sourceText: sourceText,
+      report: report == null
+          ? null
+          : _decodeReport(
+              (report as Map<Object?, Object?>).cast<String, Object?>(),
+            ),
+    );
+  }
+
+  static TranslatorDraft _decodeCurrentDraft(Map<String, Object?> state) {
+    const Set<String> expectedKeys = <String>{
+      'version',
+      'sourceText',
+      'report',
+      'partialBundle',
+    };
+    _requireExactKeys(state, expectedKeys, 'Translator draft');
+
+    final Object? sourceText = state['sourceText'];
+    final Object? report = state['report'];
+    final Object? partialBundle = state['partialBundle'];
+
+    if (sourceText is! String ||
+        (report != null && report is! Map<Object?, Object?>) ||
+        (partialBundle != null && partialBundle is! Map<Object?, Object?>)) {
+      throw const FormatException('Translator draft field types are invalid.');
+    }
+
+    if (report != null && partialBundle != null) {
+      throw const FormatException(
+        'Translator draft cannot contain a report and a partial bundle.',
+      );
+    }
+
+    return TranslatorDraft(
+      sourceText: sourceText,
+      report: report == null
+          ? null
+          : _decodeReport(
+              (report as Map<Object?, Object?>).cast<String, Object?>(),
+            ),
+      partialBundle: partialBundle == null
+          ? null
+          : _decodeBundle(
+              (partialBundle as Map<Object?, Object?>).cast<String, Object?>(),
+            ),
+    );
+  }
+
   static Map<String, Object?> _encodeReport(TranslatorRunReport report) {
     return <String, Object?>{
       'request': <String, Object?>{
@@ -138,7 +190,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
         'sourceLanguageHint': null,
         'engineerContext': report.request.engineerContext,
       },
-      'bundle': report.bundle.allSections,
+      'bundle': _encodeBundle(report.bundle),
       'audit': <String, Object?>{
         'meaningFindings': report.audit.meaningFindings,
         'terminologyFindings': report.audit.terminologyFindings,
@@ -149,6 +201,10 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     };
   }
 
+  static Map<String, Object?> _encodeBundle(TranslationBundle bundle) {
+    return <String, Object?>{...bundle.allSections};
+  }
+
   static TranslatorRunReport _decodeReport(Map<String, Object?> value) {
     const Set<String> expectedKeys = <String>{
       'request',
@@ -156,11 +212,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       'audit',
       'createdAt',
     };
-
-    if (value.keys.length != expectedKeys.length ||
-        !value.keys.toSet().containsAll(expectedKeys)) {
-      throw const FormatException('Translator report schema is invalid.');
-    }
+    _requireExactKeys(value, expectedKeys, 'Translator report');
 
     final Map<String, Object?> request = _map(
       value['request'],
@@ -174,7 +226,44 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       value['audit'],
       'Translator report audit',
     );
+    final Object? createdAt = value['createdAt'];
 
+    if (createdAt is! String) {
+      throw const FormatException(
+        'Translator report createdAt must be a string.',
+      );
+    }
+
+    final TranslatorWorkRequest workRequest = TranslatorWorkRequest(
+      sourceText: _string(request['sourceText'], 'request.sourceText'),
+      engineerContext: request['engineerContext'] == null
+          ? null
+          : _string(request['engineerContext'], 'request.engineerContext'),
+    );
+
+    return TranslatorRunReport(
+      request: workRequest,
+      bundle: _decodeBundle(bundle),
+      audit: TranslationAudit(
+        meaningFindings: _strings(
+          audit['meaningFindings'],
+          'audit.meaningFindings',
+        ),
+        terminologyFindings: _strings(
+          audit['terminologyFindings'],
+          'audit.terminologyFindings',
+        ),
+        styleFindings: _strings(audit['styleFindings'], 'audit.styleFindings'),
+        ambiguityFindings: _strings(
+          audit['ambiguityFindings'],
+          'audit.ambiguityFindings',
+        ),
+      ),
+      createdAt: DateTime.parse(createdAt).toUtc(),
+    );
+  }
+
+  static TranslationBundle _decodeBundle(Map<String, Object?> bundle) {
     const Set<String> directBundleKeys = <String>{
       'SOURCE LANGUAGE',
       'SOURCE TEXT',
@@ -200,25 +289,9 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
         bundle.keys.any((String key) => !allowedBundleKeys.contains(key)) ||
         (presentReverseKeys.isNotEmpty &&
             presentReverseKeys.length != reverseBundleKeys.length)) {
-      throw const FormatException(
-        'Translator report bundle schema is invalid.',
-      );
+      throw const FormatException('Translator bundle schema is invalid.');
     }
 
-    final Object? createdAt = value['createdAt'];
-
-    if (createdAt is! String) {
-      throw const FormatException(
-        'Translator report createdAt must be a string.',
-      );
-    }
-
-    final TranslatorWorkRequest workRequest = TranslatorWorkRequest(
-      sourceText: _string(request['sourceText'], 'request.sourceText'),
-      engineerContext: request['engineerContext'] == null
-          ? null
-          : _string(request['engineerContext'], 'request.engineerContext'),
-    );
     final ReverseTranslationBundle? reverseTranslations =
         presentReverseKeys.isEmpty
         ? null
@@ -228,7 +301,8 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
             enToTh: _string(bundle['EN_TO_TH'], 'bundle.EN_TO_TH'),
             thToEn: _string(bundle['TH_TO_EN'], 'bundle.TH_TO_EN'),
           );
-    final TranslationBundle translationBundle = TranslationBundle(
+
+    return TranslationBundle(
       sourceLanguage: TranslationLanguage.fromCode(
         _string(bundle['SOURCE LANGUAGE'], 'bundle.SOURCE LANGUAGE'),
       ),
@@ -237,28 +311,6 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       en: _string(bundle['EN'], 'bundle.EN'),
       th: _string(bundle['TH'], 'bundle.TH'),
       reverseTranslations: reverseTranslations,
-    );
-    final TranslationAudit translationAudit = TranslationAudit(
-      meaningFindings: _strings(
-        audit['meaningFindings'],
-        'audit.meaningFindings',
-      ),
-      terminologyFindings: _strings(
-        audit['terminologyFindings'],
-        'audit.terminologyFindings',
-      ),
-      styleFindings: _strings(audit['styleFindings'], 'audit.styleFindings'),
-      ambiguityFindings: _strings(
-        audit['ambiguityFindings'],
-        'audit.ambiguityFindings',
-      ),
-    );
-
-    return TranslatorRunReport(
-      request: workRequest,
-      bundle: translationBundle,
-      audit: translationAudit,
-      createdAt: DateTime.parse(createdAt).toUtc(),
     );
   }
 
@@ -286,5 +338,17 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     }
 
     return value.cast<String>();
+  }
+
+  static void _requireExactKeys(
+    Map<String, Object?> value,
+    Set<String> expected,
+    String name,
+  ) {
+    final Set<String> actual = value.keys.toSet();
+
+    if (actual.length != expected.length || !actual.containsAll(expected)) {
+      throw FormatException('$name schema is invalid.');
+    }
   }
 }

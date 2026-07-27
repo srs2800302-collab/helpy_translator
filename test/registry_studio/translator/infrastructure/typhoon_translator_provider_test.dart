@@ -101,6 +101,33 @@ void main() {
     });
 
     test(
+      'publishes the complete translation bundle before audit ends',
+      () async {
+        final _QueueTransport transport = _QueueTransport(<Object>[
+          _directResponse(),
+          _auditResponse(),
+        ]);
+        final TranslatorOperation operation = _provider(transport).start(
+          request: TranslatorWorkRequest(sourceText: _source),
+          accessKey: 'test-key',
+        );
+        expect(operation, isA<TranslatorPartialBundleOperation>());
+        final TranslatorPartialBundleOperation partialOperation =
+            operation as TranslatorPartialBundleOperation;
+        final List<TranslationBundle> partialBundles = <TranslationBundle>[];
+        final Future<void> partialDone = partialOperation.partialBundles
+            .forEach(partialBundles.add);
+
+        await operation.result;
+        await partialDone;
+
+        expect(partialBundles, hasLength(1));
+        expect(partialBundles.single.en, _providerEn);
+        expect(partialBundles.single.reverseTranslations, isNotNull);
+      },
+    );
+
+    test(
       'accepts inline sections and keeps Thai source locally exact',
       () async {
         const String thaiSource =
@@ -490,7 +517,8 @@ Text.
       final _QueueTransport transport = _QueueTransport(<Object>[
         const TyphoonTransportException.http(
           statusCode: 401,
-          responseBody: 'unauthorized',
+          responseBody: '{"error":{"message":"unauthorized"}}',
+          responseContentType: 'application/json',
         ),
       ]);
 
@@ -512,6 +540,100 @@ Text.
         ),
       );
     });
+
+    test('classifies an HTML 403 as a blocked VPN route', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        const TyphoonTransportException.http(
+          statusCode: 403,
+          responseBody: '<!DOCTYPE html><title>Error 403</title>',
+          responseContentType: 'text/html',
+        ),
+      ]);
+
+      final Future<TranslatorRunReport> result = _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: 'Текст.'),
+            accessKey: 'test-key',
+          )
+          .result;
+
+      await expectLater(
+        result,
+        throwsA(
+          isA<TranslatorProviderException>()
+              .having(
+                (TranslatorProviderException error) => error.failure.code,
+                'code',
+                TranslatorFailureCode.networkBlocked,
+              )
+              .having(
+                (TranslatorProviderException error) => error.failure.message,
+                'message',
+                contains('VPN'),
+              ),
+        ),
+      );
+    });
+
+    test('keeps a JSON 403 distinct from an invalid API key', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        const TyphoonTransportException.http(
+          statusCode: 403,
+          responseBody: '{"error":{"message":"forbidden"}}',
+          responseContentType: 'application/json',
+        ),
+      ]);
+
+      final Future<TranslatorRunReport> result = _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: 'Текст.'),
+            accessKey: 'test-key',
+          )
+          .result;
+
+      await expectLater(
+        result,
+        throwsA(
+          isA<TranslatorProviderException>().having(
+            (TranslatorProviderException error) => error.failure.code,
+            'code',
+            TranslatorFailureCode.accessForbidden,
+          ),
+        ),
+      );
+    });
+
+    test(
+      'retries semantic audit without repeating direct translation',
+      () async {
+        final TranslatorWorkRequest request = TranslatorWorkRequest(
+          sourceText: _source,
+        );
+        final _QueueTransport directTransport = _QueueTransport(<Object>[
+          _directResponse(),
+          _auditResponse(),
+        ]);
+        final TranslatorRunReport initialReport = await _provider(
+          directTransport,
+        ).start(request: request, accessKey: 'test-key').result;
+
+        final _QueueTransport auditTransport = _QueueTransport(<Object>[
+          _auditResponse(style: '- Требуется инженерная проверка стиля.'),
+        ]);
+        final TranslatorRunReport retried = await _provider(auditTransport)
+            .startAudit(
+              request: request,
+              bundle: initialReport.bundle,
+              accessKey: 'test-key',
+            )
+            .result;
+
+        expect(auditTransport.callCount, 1);
+        expect(auditTransport.bodies.single['max_tokens'], 1024);
+        expect(retried.bundle, initialReport.bundle);
+        expect(retried.audit.verdict, TranslationVerdict.equivalent);
+      },
+    );
   });
 }
 

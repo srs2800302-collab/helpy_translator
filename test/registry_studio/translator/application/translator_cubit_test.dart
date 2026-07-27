@@ -131,6 +131,38 @@ void main() {
     expect(cubit.state.sourceText, 'Текст.');
   });
 
+  test('persists a partial bundle and retries only semantic audit', () async {
+    final TranslatorRunReport report = _report();
+    final _MemoryDraftStore store = _MemoryDraftStore();
+    final _RetryCapableProvider provider = _RetryCapableProvider(report);
+    final TranslatorCubit cubit = TranslatorCubit(
+      provider: provider,
+      draftStore: store,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+    await cubit.updateSourceText(report.request.sourceText);
+    await cubit.translate(accessKey: 'key');
+
+    expect(cubit.state.status, TranslatorViewStatus.failure);
+    expect(cubit.state.partialBundle, report.bundle);
+    expect(cubit.state.canRetryAudit, isTrue);
+    expect(store.draft?.partialBundle, report.bundle);
+    expect(provider.fullRunCount, 1);
+    expect(provider.auditOnlyRunCount, 0);
+
+    await cubit.retryAudit(accessKey: 'key');
+
+    expect(cubit.state.status, TranslatorViewStatus.success);
+    expect(cubit.state.report, report);
+    expect(cubit.state.partialBundle, isNull);
+    expect(store.draft?.report, report);
+    expect(store.draft?.partialBundle, isNull);
+    expect(provider.fullRunCount, 1);
+    expect(provider.auditOnlyRunCount, 1);
+  });
+
   test('clear affects only Translator state and store', () async {
     final _MemoryDraftStore store = _MemoryDraftStore(
       draft: const TranslatorDraft(sourceText: 'Черновик.'),
@@ -252,6 +284,78 @@ final class _CompletedOperation implements TranslatorOperation {
 
   @override
   Stream<TranslatorRunStage> get progress => _progressController.stream;
+
+  @override
+  void cancel() {}
+}
+
+final class _RetryCapableProvider
+    implements TranslatorProvider, TranslatorAuditRetryProvider {
+  _RetryCapableProvider(this.report);
+
+  final TranslatorRunReport report;
+  int fullRunCount = 0;
+  int auditOnlyRunCount = 0;
+
+  @override
+  TranslatorOperation start({
+    required TranslatorWorkRequest request,
+    required String accessKey,
+  }) {
+    fullRunCount += 1;
+    return _PartialThenFailureOperation(report.bundle);
+  }
+
+  @override
+  TranslatorOperation startAudit({
+    required TranslatorWorkRequest request,
+    required TranslationBundle bundle,
+    required String accessKey,
+  }) {
+    auditOnlyRunCount += 1;
+    expect(bundle, report.bundle);
+    expect(request, report.request);
+    return _CompletedOperation.success(report);
+  }
+}
+
+final class _PartialThenFailureOperation
+    implements TranslatorOperation, TranslatorPartialBundleOperation {
+  _PartialThenFailureOperation(this.bundle);
+
+  final TranslationBundle bundle;
+  final StreamController<TranslatorRunStage> _progressController =
+      StreamController<TranslatorRunStage>(sync: true);
+  final StreamController<TranslationBundle> _partialController =
+      StreamController<TranslationBundle>(sync: true);
+
+  @override
+  Stream<TranslatorRunStage> get progress => _progressController.stream;
+
+  @override
+  Stream<TranslationBundle> get partialBundles => _partialController.stream;
+
+  @override
+  Future<TranslatorRunReport> get result async {
+    _progressController.add(TranslatorRunStage.directTranslation);
+    await Future<void>.delayed(Duration.zero);
+    _partialController.add(bundle);
+    await Future<void>.delayed(Duration.zero);
+    _progressController.add(TranslatorRunStage.audit);
+    await Future<void>.delayed(Duration.zero);
+    await _progressController.close();
+    await _partialController.close();
+
+    throw TranslatorProviderException(
+      TranslatorFailure(
+        stage: TranslatorFailureStage.transport,
+        code: TranslatorFailureCode.networkFailure,
+        message: 'Network interrupted.',
+        completeness: TranslationCompleteness.complete,
+        partialBundle: bundle,
+      ),
+    );
+  }
 
   @override
   void cancel() {}

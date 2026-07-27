@@ -10,10 +10,12 @@ import '../../registry_studio/adapters/helpy/translator/helpy_translator_policy.
 import '../../registry_studio/maintenance/analysis/application/registry_snapshot_comparator.dart';
 import '../../registry_studio/maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../registry_studio/registry/application/contracts/registry_revision_state_store.dart';
+import '../../registry_studio/registry/application/contracts/registry_snapshot_cache.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_refresh_loader.dart';
 import '../../registry_studio/registry/application/contracts/registry_snapshot_revision_loader.dart';
 import '../../registry_studio/technical/storage/json_file_registry_revision_state_store.dart';
+import '../../registry_studio/technical/storage/json_file_registry_snapshot_cache.dart';
 import '../../registry_studio/technical/storage/json_lines_registry_analysis_history_store.dart';
 import '../../registry_studio/translator/infrastructure/flutter_secure_translator_access_key_store.dart';
 import '../../registry_studio/translator/infrastructure/json_file_translator_draft_store.dart';
@@ -30,6 +32,7 @@ final class RegistryStudioApplication extends StatelessWidget {
     required this.registrySnapshotLoader,
     required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
+    this.registrySnapshotCache,
     required this.registryRevisionStateStore,
     required this.registryAnalysisHistoryStore,
     this.translatorWorkspace,
@@ -68,6 +71,7 @@ final class RegistryStudioApplication extends StatelessWidget {
       registrySnapshotLoader: registrySnapshotLoader,
       registrySnapshotRefreshLoader: registrySnapshotLoader,
       registrySnapshotRevisionLoader: registrySnapshotLoader,
+      registrySnapshotCache: const JsonFileRegistrySnapshotCache(),
       registryRevisionStateStore: const JsonFileRegistryRevisionStateStore(),
       registryAnalysisHistoryStore:
           const JsonLinesRegistryAnalysisHistoryStore(),
@@ -88,6 +92,7 @@ final class RegistryStudioApplication extends StatelessWidget {
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
+  final RegistrySnapshotCache? registrySnapshotCache;
   final RegistryRevisionStateStore registryRevisionStateStore;
   final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
   final Widget? translatorWorkspace;
@@ -102,6 +107,7 @@ final class RegistryStudioApplication extends StatelessWidget {
         registrySnapshotLoader: registrySnapshotLoader,
         registrySnapshotRefreshLoader: registrySnapshotRefreshLoader,
         registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
+        registrySnapshotCache: registrySnapshotCache,
         registryRevisionStateStore: registryRevisionStateStore,
         registryAnalysisHistoryStore: registryAnalysisHistoryStore,
         translatorWorkspace: translatorWorkspace,
@@ -116,6 +122,7 @@ final class _RegistryStudioMaterialApplication extends StatelessWidget {
     required this.registrySnapshotLoader,
     required this.registrySnapshotRefreshLoader,
     required this.registrySnapshotRevisionLoader,
+    this.registrySnapshotCache,
     required this.registryRevisionStateStore,
     required this.registryAnalysisHistoryStore,
     required this.translatorWorkspace,
@@ -125,6 +132,7 @@ final class _RegistryStudioMaterialApplication extends StatelessWidget {
   final RegistrySnapshotLoader registrySnapshotLoader;
   final RegistrySnapshotRefreshLoader registrySnapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader registrySnapshotRevisionLoader;
+  final RegistrySnapshotCache? registrySnapshotCache;
   final RegistryRevisionStateStore registryRevisionStateStore;
   final RegistryAnalysisHistoryStore registryAnalysisHistoryStore;
   final Widget? translatorWorkspace;
@@ -148,6 +156,7 @@ final class _RegistryStudioMaterialApplication extends StatelessWidget {
             registrySnapshotLoader: registrySnapshotLoader,
             registrySnapshotRefreshLoader: registrySnapshotRefreshLoader,
             registrySnapshotRevisionLoader: registrySnapshotRevisionLoader,
+            registrySnapshotCache: registrySnapshotCache,
             registryRevisionStateStore: registryRevisionStateStore,
             registryAnalysisHistoryStore: registryAnalysisHistoryStore,
             registrySnapshotComparator: const RegistrySnapshotComparator(),

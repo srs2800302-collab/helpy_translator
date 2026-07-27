@@ -18,6 +18,18 @@ abstract interface class TranslatorOperation {
   void cancel();
 }
 
+abstract interface class TranslatorPartialBundleOperation {
+  Stream<TranslationBundle> get partialBundles;
+}
+
+abstract interface class TranslatorAuditRetryProvider {
+  TranslatorOperation startAudit({
+    required TranslatorWorkRequest request,
+    required TranslationBundle bundle,
+    required String accessKey,
+  });
+}
+
 abstract interface class TranslatorProvider {
   TranslatorOperation start({
     required TranslatorWorkRequest request,

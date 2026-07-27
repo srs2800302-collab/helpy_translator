@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/domain/evidence/source_evidence.dart';
@@ -8,6 +11,7 @@ import '../../maintenance/analysis/domain/entities/registry_structural_problem.d
 import '../../maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../maintenance/history/domain/entities/registry_analysis_history_entry.dart';
 import '../application/contracts/registry_revision_state_store.dart';
+import '../application/contracts/registry_snapshot_cache.dart';
 import '../application/contracts/registry_snapshot_loader.dart';
 import '../application/contracts/registry_snapshot_refresh_loader.dart';
 import '../application/contracts/registry_snapshot_revision_loader.dart';
@@ -38,6 +42,8 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
     required this.registryViewFilter,
     this.analysisHistory = const <RegistryAnalysisHistoryEntry>[],
     this.searchQuery = '',
+    this.isRefreshing = false,
+    this.refreshWarning,
   });
 
   final RegistrySnapshot snapshot;
@@ -52,6 +58,66 @@ final class RegistryExplorerLoaded extends RegistryExplorerState {
   final String registryViewFilter;
   final List<RegistryAnalysisHistoryEntry> analysisHistory;
   final String searchQuery;
+  final bool isRefreshing;
+  final String? refreshWarning;
+
+  RegistryExplorerLoaded copyWith({
+    RegistrySnapshot? snapshot,
+    RegistryStructuralIndex? index,
+    RegistrySnapshot? previousSnapshot,
+    bool clearPreviousSnapshot = false,
+    RegistrySnapshotComparison? previousComparison,
+    bool clearPreviousComparison = false,
+    RegistrySnapshot? cleanBaselineSnapshot,
+    bool clearCleanBaselineSnapshot = false,
+    RegistrySnapshotComparison? cleanBaselineComparison,
+    bool clearCleanBaselineComparison = false,
+    RegistryNodeId? openRegistryNodeId,
+    bool clearOpenRegistryNodeId = false,
+    RegistryPath? openRegistryPath,
+    bool clearOpenRegistryPath = false,
+    int? selectedProblemIndex,
+    bool clearSelectedProblemIndex = false,
+    String? registryViewFilter,
+    List<RegistryAnalysisHistoryEntry>? analysisHistory,
+    String? searchQuery,
+    bool? isRefreshing,
+    String? refreshWarning,
+    bool clearRefreshWarning = false,
+  }) {
+    return RegistryExplorerLoaded(
+      snapshot: snapshot ?? this.snapshot,
+      index: index ?? this.index,
+      previousSnapshot: clearPreviousSnapshot
+          ? null
+          : previousSnapshot ?? this.previousSnapshot,
+      previousComparison: clearPreviousComparison
+          ? null
+          : previousComparison ?? this.previousComparison,
+      cleanBaselineSnapshot: clearCleanBaselineSnapshot
+          ? null
+          : cleanBaselineSnapshot ?? this.cleanBaselineSnapshot,
+      cleanBaselineComparison: clearCleanBaselineComparison
+          ? null
+          : cleanBaselineComparison ?? this.cleanBaselineComparison,
+      openRegistryNodeId: clearOpenRegistryNodeId
+          ? null
+          : openRegistryNodeId ?? this.openRegistryNodeId,
+      openRegistryPath: clearOpenRegistryPath
+          ? null
+          : openRegistryPath ?? this.openRegistryPath,
+      selectedProblemIndex: clearSelectedProblemIndex
+          ? null
+          : selectedProblemIndex ?? this.selectedProblemIndex,
+      registryViewFilter: registryViewFilter ?? this.registryViewFilter,
+      analysisHistory: analysisHistory ?? this.analysisHistory,
+      searchQuery: searchQuery ?? this.searchQuery,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      refreshWarning: clearRefreshWarning
+          ? null
+          : refreshWarning ?? this.refreshWarning,
+    );
+  }
 
   RegistrySnapshotComparison? get problemComparison =>
       cleanBaselineComparison ?? previousComparison;
@@ -186,6 +252,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     required this.snapshotLoader,
     required this.snapshotRefreshLoader,
     required this.snapshotRevisionLoader,
+    this.snapshotCache,
     required this.revisionStateStore,
     required this.analysisHistoryStore,
     required this.snapshotComparator,
@@ -194,6 +261,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   final RegistrySnapshotLoader snapshotLoader;
   final RegistrySnapshotRefreshLoader snapshotRefreshLoader;
   final RegistrySnapshotRevisionLoader snapshotRevisionLoader;
+  final RegistrySnapshotCache? snapshotCache;
   final RegistryRevisionStateStore revisionStateStore;
   final RegistryAnalysisHistoryStore analysisHistoryStore;
   final RegistrySnapshotComparator snapshotComparator;
@@ -224,77 +292,129 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     try {
       final RegistryRevisionState? persistedState = await revisionStateStore
           .loadRevisionState();
-      final List<RegistryAnalysisHistoryEntry> storedAnalysisHistory =
-          await analysisHistoryStore.loadHistory();
+      List<RegistryAnalysisHistoryEntry> storedAnalysisHistory =
+          const <RegistryAnalysisHistoryEntry>[];
 
-      searchQuery = persistedState?.searchQuery ?? '';
-      registryViewFilter = persistedState?.registryViewFilter ?? 'all';
+      try {
+        storedAnalysisHistory = await analysisHistoryStore.loadHistory();
+      } catch (_) {
+        // Analysis history is secondary. A damaged history file must not make
+        // the locally cached Registry unavailable.
+      }
 
+      final RegistrySnapshotCache? localSnapshotCache = snapshotCache;
+      late final RegistryRevisionState effectiveState;
       late final RegistrySnapshot snapshot;
-      RegistrySnapshot? previousSnapshot;
-      RegistrySnapshot? cleanBaselineSnapshot;
 
       if (persistedState == null) {
-        snapshot = await snapshotLoader.loadSnapshot();
-      } else {
-        snapshot = await snapshotRevisionLoader.loadSnapshotAtRevision(
-          persistedState.currentRevision,
-        );
-
-        if (snapshot.projectId != persistedState.projectId ||
-            snapshot.projectAdapterId != persistedState.projectAdapterId ||
-            snapshot.sourceDocumentPath != persistedState.sourceDocumentPath ||
-            snapshot.sourceRevision != persistedState.currentRevision) {
-          throw StateError(
-            'Restored current Registry snapshot does not match '
-            'the persisted revision coordinates.',
+        if (localSnapshotCache != null) {
+          throw const _RegistrySnapshotUnavailable(
+            'Registry ещё не загружен на устройство. '
+            'Нажмите кнопку обновления для первой ручной загрузки.',
           );
         }
 
-        final String? previousRevision = persistedState.previousRevision;
+        // Backward-compatible path for tests and custom integrations that do
+        // not inject the production file cache. The production Helpy factory
+        // always injects JsonFileRegistrySnapshotCache and never enters here.
+        snapshot = await snapshotLoader.loadSnapshot();
+        effectiveState = RegistryRevisionState(
+          projectId: snapshot.projectId,
+          projectAdapterId: snapshot.projectAdapterId,
+          sourceDocumentPath: snapshot.sourceDocumentPath,
+          currentRevision: snapshot.sourceRevision,
+          previousRevision: null,
+          cleanBaselineRevision: null,
+          searchQuery: '',
+          registryViewFilter: 'all',
+        );
+        await revisionStateStore.saveRevisionState(effectiveState);
+      } else {
+        effectiveState = persistedState;
 
-        if (previousRevision != null) {
-          previousSnapshot = await snapshotRevisionLoader
-              .loadSnapshotAtRevision(previousRevision);
+        if (localSnapshotCache == null) {
+          snapshot = await snapshotRevisionLoader.loadSnapshotAtRevision(
+            effectiveState.currentRevision,
+          );
+        } else {
+          final RegistrySnapshot? cachedCurrent = await localSnapshotCache
+              .loadSnapshot(effectiveState.currentRevision);
 
-          if (previousSnapshot.projectId != persistedState.projectId ||
-              previousSnapshot.projectAdapterId !=
-                  persistedState.projectAdapterId ||
-              previousSnapshot.sourceDocumentPath !=
-                  persistedState.sourceDocumentPath ||
-              previousSnapshot.sourceRevision != previousRevision) {
-            throw StateError(
-              'Restored previous Registry snapshot does not match '
-              'the persisted revision coordinates.',
+          if (cachedCurrent == null) {
+            throw const _RegistrySnapshotUnavailable(
+              'Локальный snapshot Registry отсутствует. '
+              'Нажмите кнопку обновления, чтобы загрузить его вручную.',
             );
           }
+
+          snapshot = cachedCurrent;
+        }
+      }
+
+      searchQuery = effectiveState.searchQuery;
+      registryViewFilter = effectiveState.registryViewFilter;
+
+      if (snapshot.projectId != effectiveState.projectId ||
+          snapshot.projectAdapterId != effectiveState.projectAdapterId ||
+          snapshot.sourceDocumentPath != effectiveState.sourceDocumentPath ||
+          snapshot.sourceRevision != effectiveState.currentRevision) {
+        throw const FormatException(
+          'Локальный snapshot Registry не соответствует сохранённой revision.',
+        );
+      }
+
+      RegistrySnapshot? previousSnapshot;
+      final String? previousRevision = effectiveState.previousRevision;
+
+      if (previousRevision != null) {
+        previousSnapshot = localSnapshotCache == null
+            ? await snapshotRevisionLoader.loadSnapshotAtRevision(
+                previousRevision,
+              )
+            : await localSnapshotCache.loadSnapshot(previousRevision);
+
+        if (previousSnapshot != null &&
+            (previousSnapshot.projectId != effectiveState.projectId ||
+                previousSnapshot.projectAdapterId !=
+                    effectiveState.projectAdapterId ||
+                previousSnapshot.sourceDocumentPath !=
+                    effectiveState.sourceDocumentPath ||
+                previousSnapshot.sourceRevision != previousRevision)) {
+          throw const FormatException(
+            'Локальный previous snapshot Registry повреждён.',
+          );
+        }
+      }
+
+      RegistrySnapshot? cleanBaselineSnapshot;
+      final String? cleanBaselineRevision =
+          effectiveState.cleanBaselineRevision;
+
+      if (cleanBaselineRevision != null) {
+        if (cleanBaselineRevision == snapshot.sourceRevision) {
+          cleanBaselineSnapshot = snapshot;
+        } else if (previousSnapshot != null &&
+            cleanBaselineRevision == previousSnapshot.sourceRevision) {
+          cleanBaselineSnapshot = previousSnapshot;
+        } else {
+          cleanBaselineSnapshot = localSnapshotCache == null
+              ? await snapshotRevisionLoader.loadSnapshotAtRevision(
+                  cleanBaselineRevision,
+                )
+              : await localSnapshotCache.loadSnapshot(cleanBaselineRevision);
         }
 
-        final String? cleanBaselineRevision =
-            persistedState.cleanBaselineRevision;
-
-        if (cleanBaselineRevision != null) {
-          if (cleanBaselineRevision == snapshot.sourceRevision) {
-            cleanBaselineSnapshot = snapshot;
-          } else if (previousSnapshot != null &&
-              cleanBaselineRevision == previousSnapshot.sourceRevision) {
-            cleanBaselineSnapshot = previousSnapshot;
-          } else {
-            cleanBaselineSnapshot = await snapshotRevisionLoader
-                .loadSnapshotAtRevision(cleanBaselineRevision);
-          }
-
-          if (cleanBaselineSnapshot.projectId != persistedState.projectId ||
-              cleanBaselineSnapshot.projectAdapterId !=
-                  persistedState.projectAdapterId ||
-              cleanBaselineSnapshot.sourceDocumentPath !=
-                  persistedState.sourceDocumentPath ||
-              cleanBaselineSnapshot.sourceRevision != cleanBaselineRevision) {
-            throw StateError(
-              'Restored clean baseline Registry snapshot '
-              'does not match the persisted revision coordinates.',
-            );
-          }
+        if (cleanBaselineSnapshot != null &&
+            (cleanBaselineSnapshot.projectId != effectiveState.projectId ||
+                cleanBaselineSnapshot.projectAdapterId !=
+                    effectiveState.projectAdapterId ||
+                cleanBaselineSnapshot.sourceDocumentPath !=
+                    effectiveState.sourceDocumentPath ||
+                cleanBaselineSnapshot.sourceRevision !=
+                    cleanBaselineRevision)) {
+          throw const FormatException(
+            'Локальный clean baseline Registry повреждён.',
+          );
         }
       }
 
@@ -321,17 +441,15 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           const <RegistryStructuralProblem>[];
 
       final RegistryNodeId? openRegistryNodeId =
-          persistedState?.openRegistryNodeId;
-
-      final RegistryPath? openRegistryPath = persistedState?.openRegistryPath;
+          effectiveState.openRegistryNodeId;
+      final RegistryPath? openRegistryPath = effectiveState.openRegistryPath;
 
       int? selectedProblemIndex;
 
-      if (persistedState != null &&
-          openRegistryNodeId != null &&
+      if (openRegistryNodeId != null &&
           openRegistryPath != null &&
-          persistedState.selectedProblemIndex != null) {
-        final int persistedProblemIndex = persistedState.selectedProblemIndex!;
+          effectiveState.selectedProblemIndex != null) {
+        final int persistedProblemIndex = effectiveState.selectedProblemIndex!;
 
         if (persistedProblemIndex < problems.length) {
           final RegistryStructuralProblem candidate =
@@ -343,31 +461,10 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           }
         }
 
-        if (selectedProblemIndex == null) {
-          final int resolvedProblemIndex = problems.indexWhere(
-            (RegistryStructuralProblem problem) =>
-                problem.exactNode.id == openRegistryNodeId &&
-                problem.path == openRegistryPath,
-          );
-
-          if (resolvedProblemIndex >= 0) {
-            selectedProblemIndex = resolvedProblemIndex;
-          }
-        }
-      }
-
-      if (persistedState == null) {
-        await revisionStateStore.saveRevisionState(
-          RegistryRevisionState(
-            projectId: snapshot.projectId,
-            projectAdapterId: snapshot.projectAdapterId,
-            sourceDocumentPath: snapshot.sourceDocumentPath,
-            currentRevision: snapshot.sourceRevision,
-            previousRevision: null,
-            cleanBaselineRevision: null,
-            searchQuery: searchQuery,
-            registryViewFilter: registryViewFilter,
-          ),
+        selectedProblemIndex ??= _findProblemIndex(
+          problems,
+          openRegistryNodeId,
+          openRegistryPath,
         );
       }
 
@@ -380,76 +477,24 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         ),
       );
 
-      final RegistryAnalysisHistoryEntry
-      historyEntry = RegistryAnalysisHistoryEntry(
-        loadedAt: DateTime.now().toUtc(),
-        projectId: snapshot.projectId,
-        projectAdapterId: snapshot.projectAdapterId,
-        sourceDocumentPath: snapshot.sourceDocumentPath,
-        sourceRevision: snapshot.sourceRevision,
-        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
-        previousRevision: previousSnapshot?.sourceRevision,
-        cleanBaselineRevision: cleanBaselineSnapshot?.sourceRevision,
-        previousAddedCount: previousComparison?.addedCount ?? 0,
-        previousRemovedCount: previousComparison?.removedCount ?? 0,
-        previousChangedCount: previousComparison?.changedCount ?? 0,
-        cleanBaselineAddedCount: cleanBaselineComparison?.addedCount ?? 0,
-        cleanBaselineRemovedCount: cleanBaselineComparison?.removedCount ?? 0,
-        cleanBaselineChangedCount: cleanBaselineComparison?.changedCount ?? 0,
-        problemCount: problems.length,
-        problems: problems
-            .map(
-              (RegistryStructuralProblem problem) =>
-                  RegistryAnalysisHistoryProblem(
-                    nodeId: problem.exactNode.id.value,
-                    pathSegments: problem.path.segments,
-                    status: problem.status.name,
-                    reason: problem.reason,
-                  ),
-            )
-            .toList(growable: false),
+      final RegistryAnalysisHistoryEntry historyEntry = _buildHistoryEntry(
+        snapshot: snapshot,
+        previousSnapshot: previousSnapshot,
+        cleanBaselineSnapshot: cleanBaselineSnapshot,
+        previousComparison: previousComparison,
+        cleanBaselineComparison: cleanBaselineComparison,
+        problems: problems,
       );
 
-      final bool historyEntryAlreadyRecorded =
-          analysisHistory.isNotEmpty &&
-          analysisHistory.last.sourceRevision == historyEntry.sourceRevision &&
-          analysisHistory.last.sourceSnapshotFingerprint ==
-              historyEntry.sourceSnapshotFingerprint &&
-          analysisHistory.last.previousRevision ==
-              historyEntry.previousRevision &&
-          analysisHistory.last.cleanBaselineRevision ==
-              historyEntry.cleanBaselineRevision &&
-          analysisHistory.last.previousAddedCount ==
-              historyEntry.previousAddedCount &&
-          analysisHistory.last.previousRemovedCount ==
-              historyEntry.previousRemovedCount &&
-          analysisHistory.last.previousChangedCount ==
-              historyEntry.previousChangedCount &&
-          analysisHistory.last.cleanBaselineAddedCount ==
-              historyEntry.cleanBaselineAddedCount &&
-          analysisHistory.last.cleanBaselineRemovedCount ==
-              historyEntry.cleanBaselineRemovedCount &&
-          analysisHistory.last.cleanBaselineChangedCount ==
-              historyEntry.cleanBaselineChangedCount &&
-          analysisHistory.last.problemCount == historyEntry.problemCount &&
-          analysisHistory.last.problems.length ==
-              historyEntry.problems.length &&
-          analysisHistory.last.problems.asMap().entries.every(
-            (MapEntry<int, RegistryAnalysisHistoryProblem> problemEntry) =>
-                problemEntry.value == historyEntry.problems[problemEntry.key],
-          );
-
-      if (!historyEntryAlreadyRecorded) {
-        await analysisHistoryStore.appendHistoryEntry(historyEntry);
-
-        analysisHistory = List<RegistryAnalysisHistoryEntry>.unmodifiable(
-          <RegistryAnalysisHistoryEntry>[...analysisHistory, historyEntry],
-        );
-      }
+      analysisHistory = await _appendHistoryIfChanged(
+        analysisHistory,
+        historyEntry,
+      );
 
       _currentSnapshot = snapshot;
       _previousSnapshot = previousSnapshot;
       _cleanBaselineSnapshot = cleanBaselineSnapshot;
+      _retryRefresh = false;
 
       if (!isClosed) {
         emit(
@@ -469,13 +514,27 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           ),
         );
       }
-    } catch (error) {
-      if (!isClosed) {
-        final String message = error.toString().trim();
+    } on _RegistrySnapshotUnavailable catch (error) {
+      _retryRefresh = true;
 
+      if (!isClosed) {
         emit(
           RegistryExplorerFailure(
-            message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
+            error.message,
+            openRegistryNodeBeforeRefresh: null,
+            registryViewFilterBeforeRefresh: registryViewFilter,
+            searchQueryBeforeRefresh: searchQuery,
+            analysisHistoryBeforeRefresh: analysisHistory,
+          ),
+        );
+      }
+    } catch (error) {
+      _retryRefresh = true;
+
+      if (!isClosed) {
+        emit(
+          RegistryExplorerFailure(
+            _registryUserMessage(error, duringRefresh: false),
             openRegistryNodeBeforeRefresh: null,
             registryViewFilterBeforeRefresh: registryViewFilter,
             searchQueryBeforeRefresh: searchQuery,
@@ -494,43 +553,44 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     }
 
     final RegistryExplorerState stateBeforeRefresh = state;
-
-    final RegistryNode? openRegistryNodeBeforeRefresh;
-    final RegistryStructuralProblem? selectedProblemBeforeRefresh;
-    final String registryViewFilterBeforeRefresh;
-    final String searchQueryBeforeRefresh;
-    final List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh =
+    final RegistryExplorerLoaded? loadedBeforeRefresh =
         stateBeforeRefresh is RegistryExplorerLoaded
-        ? stateBeforeRefresh.analysisHistory
-        : stateBeforeRefresh is RegistryExplorerFailure
-        ? stateBeforeRefresh.analysisHistoryBeforeRefresh
-        : const <RegistryAnalysisHistoryEntry>[];
+        ? stateBeforeRefresh
+        : null;
 
-    if (stateBeforeRefresh is RegistryExplorerLoaded) {
-      openRegistryNodeBeforeRefresh = stateBeforeRefresh.openRegistryNode;
-      selectedProblemBeforeRefresh = stateBeforeRefresh.selectedProblem;
-      registryViewFilterBeforeRefresh = stateBeforeRefresh.registryViewFilter;
-      searchQueryBeforeRefresh = stateBeforeRefresh.searchQuery;
-    } else if (stateBeforeRefresh is RegistryExplorerFailure) {
-      openRegistryNodeBeforeRefresh =
-          stateBeforeRefresh.openRegistryNodeBeforeRefresh;
-      selectedProblemBeforeRefresh = null;
-      registryViewFilterBeforeRefresh =
-          stateBeforeRefresh.registryViewFilterBeforeRefresh;
-      searchQueryBeforeRefresh = stateBeforeRefresh.searchQueryBeforeRefresh;
-    } else {
-      openRegistryNodeBeforeRefresh = null;
-      selectedProblemBeforeRefresh = null;
-      registryViewFilterBeforeRefresh = 'all';
-      searchQueryBeforeRefresh = '';
-    }
-
-    final RegistryNodeId? openRegistryNodeId =
-        openRegistryNodeBeforeRefresh?.id;
+    final RegistryNode? openRegistryNodeBeforeRefresh =
+        loadedBeforeRefresh?.openRegistryNode;
+    final RegistryStructuralProblem? selectedProblemBeforeRefresh =
+        loadedBeforeRefresh?.selectedProblem;
+    final String registryViewFilterBeforeRefresh =
+        loadedBeforeRefresh?.registryViewFilter ??
+        (stateBeforeRefresh is RegistryExplorerFailure
+            ? stateBeforeRefresh.registryViewFilterBeforeRefresh
+            : 'all');
+    final String searchQueryBeforeRefresh =
+        loadedBeforeRefresh?.searchQuery ??
+        (stateBeforeRefresh is RegistryExplorerFailure
+            ? stateBeforeRefresh.searchQueryBeforeRefresh
+            : '');
+    final List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh =
+        loadedBeforeRefresh?.analysisHistory ??
+        (stateBeforeRefresh is RegistryExplorerFailure
+            ? stateBeforeRefresh.analysisHistoryBeforeRefresh
+            : const <RegistryAnalysisHistoryEntry>[]);
 
     _retryRefresh = true;
     _isLoading = true;
-    emit(const RegistryExplorerLoading());
+
+    if (loadedBeforeRefresh != null) {
+      emit(
+        loadedBeforeRefresh.copyWith(
+          isRefreshing: true,
+          clearRefreshWarning: true,
+        ),
+      );
+    } else {
+      emit(const RegistryExplorerLoading());
+    }
 
     try {
       await _pendingRevisionStateWrite;
@@ -543,25 +603,35 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
               currentSnapshot.sourceRevision,
             );
 
+      if (currentSnapshot != null &&
+          (snapshot.projectId != currentSnapshot.projectId ||
+              snapshot.projectAdapterId != currentSnapshot.projectAdapterId ||
+              snapshot.sourceDocumentPath !=
+                  currentSnapshot.sourceDocumentPath)) {
+        throw StateError(
+          'Refreshed Registry snapshot does not match '
+          'the current Registry coordinates.',
+        );
+      }
+
+      final RegistrySnapshotCache? localSnapshotCache = snapshotCache;
+
+      if (localSnapshotCache != null) {
+        if (currentSnapshot != null) {
+          await localSnapshotCache.saveSnapshot(currentSnapshot);
+        }
+
+        await localSnapshotCache.saveSnapshot(snapshot);
+      }
+
       RegistrySnapshot? previousSnapshot = _previousSnapshot;
 
-      if (currentSnapshot != null) {
-        if (snapshot.projectId != currentSnapshot.projectId ||
-            snapshot.projectAdapterId != currentSnapshot.projectAdapterId ||
-            snapshot.sourceDocumentPath != currentSnapshot.sourceDocumentPath) {
-          throw StateError(
-            'Refreshed Registry snapshot does not match '
-            'the current Registry coordinates.',
-          );
-        }
-
-        if (snapshot.sourceRevision != currentSnapshot.sourceRevision) {
-          previousSnapshot = currentSnapshot;
-        }
+      if (currentSnapshot != null &&
+          snapshot.sourceRevision != currentSnapshot.sourceRevision) {
+        previousSnapshot = currentSnapshot;
       }
 
       final RegistrySnapshot? cleanBaselineSnapshot = _cleanBaselineSnapshot;
-
       final RegistryStructuralIndex index = RegistryStructuralIndex(snapshot);
 
       final RegistrySnapshotComparison? previousComparison =
@@ -587,12 +657,9 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       int? refreshedSelectedProblemIndex;
 
       if (selectedProblemBeforeRefresh != null) {
-        final RegistryStructuralProblem selectedProblem =
-            selectedProblemBeforeRefresh;
-
         final int identityMatchIndex = refreshedProblems.indexWhere(
           (RegistryStructuralProblem problem) =>
-              problem.exactNode.id == selectedProblem.exactNode.id,
+              problem.exactNode.id == selectedProblemBeforeRefresh.exactNode.id,
         );
 
         if (identityMatchIndex >= 0) {
@@ -600,7 +667,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         } else {
           final int pathMatchIndex = refreshedProblems.indexWhere(
             (RegistryStructuralProblem problem) =>
-                problem.path == selectedProblem.path,
+                problem.path == selectedProblemBeforeRefresh.path,
           );
 
           if (pathMatchIndex >= 0) {
@@ -615,8 +682,9 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           : refreshedProblems[refreshedSelectedProblemIndex];
 
       final RegistryNode? refreshedOpenRegistryNode =
-          refreshedSelectedProblem == null && openRegistryNodeId != null
-          ? index.nodesById[openRegistryNodeId]
+          refreshedSelectedProblem == null &&
+              openRegistryNodeBeforeRefresh != null
+          ? index.nodesById[openRegistryNodeBeforeRefresh.id]
           : null;
 
       final RegistryNodeId? refreshedOpenRegistryNodeId =
@@ -642,44 +710,19 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         ),
       );
 
-      final RegistryAnalysisHistoryEntry
-      historyEntry = RegistryAnalysisHistoryEntry(
-        loadedAt: DateTime.now().toUtc(),
-        projectId: snapshot.projectId,
-        projectAdapterId: snapshot.projectAdapterId,
-        sourceDocumentPath: snapshot.sourceDocumentPath,
-        sourceRevision: snapshot.sourceRevision,
-        sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
-        previousRevision: previousSnapshot?.sourceRevision,
-        cleanBaselineRevision: cleanBaselineSnapshot?.sourceRevision,
-        previousAddedCount: previousComparison?.addedCount ?? 0,
-        previousRemovedCount: previousComparison?.removedCount ?? 0,
-        previousChangedCount: previousComparison?.changedCount ?? 0,
-        cleanBaselineAddedCount: cleanBaselineComparison?.addedCount ?? 0,
-        cleanBaselineRemovedCount: cleanBaselineComparison?.removedCount ?? 0,
-        cleanBaselineChangedCount: cleanBaselineComparison?.changedCount ?? 0,
-        problemCount: refreshedProblems.length,
-        problems: refreshedProblems
-            .map(
-              (RegistryStructuralProblem problem) =>
-                  RegistryAnalysisHistoryProblem(
-                    nodeId: problem.exactNode.id.value,
-                    pathSegments: problem.path.segments,
-                    status: problem.status.name,
-                    reason: problem.reason,
-                  ),
-            )
-            .toList(growable: false),
+      final RegistryAnalysisHistoryEntry historyEntry = _buildHistoryEntry(
+        snapshot: snapshot,
+        previousSnapshot: previousSnapshot,
+        cleanBaselineSnapshot: cleanBaselineSnapshot,
+        previousComparison: previousComparison,
+        cleanBaselineComparison: cleanBaselineComparison,
+        problems: refreshedProblems,
       );
 
-      await analysisHistoryStore.appendHistoryEntry(historyEntry);
-
       final List<RegistryAnalysisHistoryEntry> analysisHistory =
-          List<RegistryAnalysisHistoryEntry>.unmodifiable(
-            <RegistryAnalysisHistoryEntry>[
-              ...analysisHistoryBeforeRefresh,
-              historyEntry,
-            ],
+          await _appendHistoryIfChanged(
+            analysisHistoryBeforeRefresh,
+            historyEntry,
           );
 
       _currentSnapshot = snapshot;
@@ -705,22 +748,162 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         );
       }
     } catch (error) {
-      if (!isClosed) {
-        final String message = error.toString().trim();
+      final String message = _registryUserMessage(error, duringRefresh: true);
 
-        emit(
-          RegistryExplorerFailure(
-            message.isEmpty ? 'Неизвестная ошибка загрузки Registry.' : message,
-            openRegistryNodeBeforeRefresh: openRegistryNodeBeforeRefresh,
-            registryViewFilterBeforeRefresh: registryViewFilterBeforeRefresh,
-            searchQueryBeforeRefresh: searchQueryBeforeRefresh,
-            analysisHistoryBeforeRefresh: analysisHistoryBeforeRefresh,
-          ),
-        );
+      if (!isClosed) {
+        if (loadedBeforeRefresh != null) {
+          _retryRefresh = false;
+          emit(
+            loadedBeforeRefresh.copyWith(
+              isRefreshing: false,
+              refreshWarning: message,
+            ),
+          );
+        } else {
+          _retryRefresh = true;
+          emit(
+            RegistryExplorerFailure(
+              message,
+              openRegistryNodeBeforeRefresh: openRegistryNodeBeforeRefresh,
+              registryViewFilterBeforeRefresh: registryViewFilterBeforeRefresh,
+              searchQueryBeforeRefresh: searchQueryBeforeRefresh,
+              analysisHistoryBeforeRefresh: analysisHistoryBeforeRefresh,
+            ),
+          );
+        }
       }
     } finally {
       _isLoading = false;
     }
+  }
+
+  static int? _findProblemIndex(
+    List<RegistryStructuralProblem> problems,
+    RegistryNodeId nodeId,
+    RegistryPath path,
+  ) {
+    final int index = problems.indexWhere(
+      (RegistryStructuralProblem problem) =>
+          problem.exactNode.id == nodeId && problem.path == path,
+    );
+
+    return index < 0 ? null : index;
+  }
+
+  RegistryAnalysisHistoryEntry _buildHistoryEntry({
+    required RegistrySnapshot snapshot,
+    required RegistrySnapshot? previousSnapshot,
+    required RegistrySnapshot? cleanBaselineSnapshot,
+    required RegistrySnapshotComparison? previousComparison,
+    required RegistrySnapshotComparison? cleanBaselineComparison,
+    required List<RegistryStructuralProblem> problems,
+  }) {
+    return RegistryAnalysisHistoryEntry(
+      loadedAt: DateTime.now().toUtc(),
+      projectId: snapshot.projectId,
+      projectAdapterId: snapshot.projectAdapterId,
+      sourceDocumentPath: snapshot.sourceDocumentPath,
+      sourceRevision: snapshot.sourceRevision,
+      sourceSnapshotFingerprint: snapshot.sourceSnapshotFingerprint,
+      previousRevision: previousSnapshot?.sourceRevision,
+      cleanBaselineRevision: cleanBaselineSnapshot?.sourceRevision,
+      previousAddedCount: previousComparison?.addedCount ?? 0,
+      previousRemovedCount: previousComparison?.removedCount ?? 0,
+      previousChangedCount: previousComparison?.changedCount ?? 0,
+      cleanBaselineAddedCount: cleanBaselineComparison?.addedCount ?? 0,
+      cleanBaselineRemovedCount: cleanBaselineComparison?.removedCount ?? 0,
+      cleanBaselineChangedCount: cleanBaselineComparison?.changedCount ?? 0,
+      problemCount: problems.length,
+      problems: problems
+          .map(
+            (RegistryStructuralProblem problem) =>
+                RegistryAnalysisHistoryProblem(
+                  nodeId: problem.exactNode.id.value,
+                  pathSegments: problem.path.segments,
+                  status: problem.status.name,
+                  reason: problem.reason,
+                ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  Future<List<RegistryAnalysisHistoryEntry>> _appendHistoryIfChanged(
+    List<RegistryAnalysisHistoryEntry> history,
+    RegistryAnalysisHistoryEntry candidate,
+  ) async {
+    if (history.isNotEmpty &&
+        _sameHistoryEntryIgnoringLoadedAt(history.last, candidate)) {
+      return List<RegistryAnalysisHistoryEntry>.unmodifiable(history);
+    }
+
+    try {
+      await analysisHistoryStore.appendHistoryEntry(candidate);
+    } catch (_) {
+      // Registry availability is more important than optional analysis
+      // history. The next successful restore or refresh can record it.
+      return List<RegistryAnalysisHistoryEntry>.unmodifiable(history);
+    }
+
+    return List<RegistryAnalysisHistoryEntry>.unmodifiable(
+      <RegistryAnalysisHistoryEntry>[...history, candidate],
+    );
+  }
+
+  static bool _sameHistoryEntryIgnoringLoadedAt(
+    RegistryAnalysisHistoryEntry left,
+    RegistryAnalysisHistoryEntry right,
+  ) {
+    return left.projectId == right.projectId &&
+        left.projectAdapterId == right.projectAdapterId &&
+        left.sourceDocumentPath == right.sourceDocumentPath &&
+        left.sourceRevision == right.sourceRevision &&
+        left.sourceSnapshotFingerprint == right.sourceSnapshotFingerprint &&
+        left.previousRevision == right.previousRevision &&
+        left.cleanBaselineRevision == right.cleanBaselineRevision &&
+        left.previousAddedCount == right.previousAddedCount &&
+        left.previousRemovedCount == right.previousRemovedCount &&
+        left.previousChangedCount == right.previousChangedCount &&
+        left.cleanBaselineAddedCount == right.cleanBaselineAddedCount &&
+        left.cleanBaselineRemovedCount == right.cleanBaselineRemovedCount &&
+        left.cleanBaselineChangedCount == right.cleanBaselineChangedCount &&
+        left.problemCount == right.problemCount &&
+        left.problems.length == right.problems.length &&
+        left.problems.asMap().entries.every(
+          (MapEntry<int, RegistryAnalysisHistoryProblem> entry) =>
+              entry.value == right.problems[entry.key],
+        );
+  }
+
+  static String _registryUserMessage(
+    Object error, {
+    required bool duringRefresh,
+  }) {
+    final String action = duringRefresh ? 'обновить' : 'восстановить';
+
+    if (error is TimeoutException) {
+      return 'Не удалось $action Registry: сервер не ответил вовремя. '
+          'Проверьте VPN или сеть и повторите вручную.';
+    }
+
+    if (error is SocketException || error is HttpException) {
+      return 'Не удалось $action Registry через сеть. '
+          'Сохранённый snapshot не изменён. '
+          'Проверьте VPN или соединение и повторите вручную.';
+    }
+
+    if (error is FormatException) {
+      return 'Не удалось $action Registry: сохранённые или загруженные '
+          'данные имеют неверный формат.';
+    }
+
+    if (error is StateError) {
+      return 'Не удалось $action Registry: полученная revision '
+          'не соответствует текущему проекту.';
+    }
+
+    return 'Не удалось $action Registry. '
+        'Сохранённый snapshot не изменён.';
   }
 
   Future<void> confirmCurrentAsCleanBaseline() async {
@@ -1128,6 +1311,17 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     return write;
   }
 
+  void dismissRefreshWarning() {
+    final RegistryExplorerState currentState = state;
+
+    if (currentState is! RegistryExplorerLoaded ||
+        currentState.refreshWarning == null) {
+      return;
+    }
+
+    emit(currentState.copyWith(clearRefreshWarning: true));
+  }
+
   Future<void> retry() {
     if (_retryRefresh) {
       return refresh();
@@ -1141,4 +1335,10 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
     await _pendingRevisionStateWrite;
     await super.close();
   }
+}
+
+final class _RegistrySnapshotUnavailable implements Exception {
+  const _RegistrySnapshotUnavailable(this.message);
+
+  final String message;
 }

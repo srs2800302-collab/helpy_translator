@@ -188,8 +188,18 @@ final class _TranslatorWorkspaceBodyState
                         status: state.status,
                         isRunning: state.isRunning,
                         accessKeyRestoring: accessKeyState.isRestoring,
+                        retryAuditOnly: state.canRetryAudit,
                         onRun: () {
-                          return context.read<TranslatorCubit>().translate(
+                          final TranslatorCubit cubit = context
+                              .read<TranslatorCubit>();
+
+                          if (state.canRetryAudit) {
+                            return cubit.retryAudit(
+                              accessKey: accessKeyState.accessKey,
+                            );
+                          }
+
+                          return cubit.translate(
                             accessKey: accessKeyState.accessKey,
                           );
                         },
@@ -219,6 +229,13 @@ final class _TranslatorWorkspaceBodyState
                       if (state.isRunning) ...<Widget>[
                         const SizedBox(height: 16),
                         TranslatorProgressCard(stage: state.stage),
+                      ],
+                      if (state.partialBundle != null &&
+                          state.report == null) ...<Widget>[
+                        const SizedBox(height: 16),
+                        TranslatorPartialBundleView(
+                          bundle: state.partialBundle!,
+                        ),
                       ],
                       if (state.failure != null) ...<Widget>[
                         const SizedBox(height: 16),

@@ -17,6 +17,7 @@ final class TranslatorState extends Equatable {
     required this.sourceText,
     this.stage,
     this.report,
+    this.partialBundle,
     this.failure,
     this.restoreWarning,
   });
@@ -28,10 +29,14 @@ final class TranslatorState extends Equatable {
   final String sourceText;
   final TranslatorRunStage? stage;
   final TranslatorRunReport? report;
+  final TranslationBundle? partialBundle;
   final TranslatorFailure? failure;
   final String? restoreWarning;
 
   bool get isRunning => status == TranslatorViewStatus.running;
+
+  bool get canRetryAudit =>
+      !isRunning && report == null && partialBundle != null;
 
   TranslatorState copyWith({
     TranslatorViewStatus? status,
@@ -40,6 +45,8 @@ final class TranslatorState extends Equatable {
     bool clearStage = false,
     TranslatorRunReport? report,
     bool clearReport = false,
+    TranslationBundle? partialBundle,
+    bool clearPartialBundle = false,
     TranslatorFailure? failure,
     bool clearFailure = false,
     String? restoreWarning,
@@ -50,6 +57,9 @@ final class TranslatorState extends Equatable {
       sourceText: sourceText ?? this.sourceText,
       stage: clearStage ? null : stage ?? this.stage,
       report: clearReport ? null : report ?? this.report,
+      partialBundle: clearPartialBundle
+          ? null
+          : partialBundle ?? this.partialBundle,
       failure: clearFailure ? null : failure ?? this.failure,
       restoreWarning: clearRestoreWarning
           ? null
@@ -63,6 +73,7 @@ final class TranslatorState extends Equatable {
     sourceText,
     stage,
     report,
+    partialBundle,
     failure,
     restoreWarning,
   ];
