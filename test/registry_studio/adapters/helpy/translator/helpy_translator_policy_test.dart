@@ -32,7 +32,14 @@ void main() {
 
     expect(prompt, contains('do not retranslate, rewrite'));
     expect(prompt, contains('do not invent a project glossary'));
-    expect(prompt, contains('Do not use external canonical terms'));
+    final String normalizedPrompt = prompt.replaceAll(RegExp(r'\s+'), ' ');
+
+    expect(
+      normalizedPrompt,
+      contains(
+        'Do not use external canonical terms because no dictionary is connected.',
+      ),
+    );
     expect(prompt, contains('do not choose a verdict'));
     expect(prompt, isNot(contains('reverse section')));
   });
