@@ -60,7 +60,7 @@ void main() {
   });
 
   group('TranslationBundle', () {
-    test('preserves exact five-section direct payload', () {
+    test('preserves direct sections and reverse diagnostics', () {
       final TranslationBundle bundle = _bundle();
 
       expect(bundle.directSections.keys, <String>[
@@ -70,14 +70,32 @@ void main() {
         'EN',
         'TH',
       ]);
+      expect(bundle.allSections.keys, <String>[
+        'SOURCE LANGUAGE',
+        'SOURCE TEXT',
+        'RU',
+        'EN',
+        'TH',
+        'EN_TO_RU',
+        'TH_TO_RU',
+        'EN_TO_TH',
+        'TH_TO_EN',
+      ]);
       expect(bundle.directSections['EN'], 'Provider wording.');
+      expect(bundle.reverseTranslations?.thToEn, 'Provider wording.');
     });
 
-    test('contains no reverse translation fields', () {
-      final String keys = _bundle().directSections.keys.join(',');
+    test('keeps reverse diagnostics optional for legacy drafts', () {
+      final TranslationBundle legacy = TranslationBundle(
+        sourceLanguage: TranslationLanguage.ru,
+        sourceText: 'Исходный текст.',
+        ru: 'Исходный текст.',
+        en: 'Provider wording.',
+        th: 'ข้อความจากผู้ให้บริการ',
+      );
 
-      expect(keys, isNot(contains('EN_TO_RU')));
-      expect(keys, isNot(contains('TH_TO_EN')));
+      expect(legacy.reverseTranslations, isNull);
+      expect(legacy.allSections.keys, legacy.directSections.keys);
     });
 
     test('rejects source-language section different from source text', () {
@@ -102,5 +120,11 @@ TranslationBundle _bundle() {
     ru: 'Исходный текст.',
     en: 'Provider wording.',
     th: 'ข้อความจากผู้ให้บริการ',
+    reverseTranslations: ReverseTranslationBundle(
+      enToRu: 'Исходный текст.',
+      thToRu: 'Исходный текст.',
+      enToTh: 'ข้อความจากผู้ให้บริการ',
+      thToEn: 'Provider wording.',
+    ),
   );
 }

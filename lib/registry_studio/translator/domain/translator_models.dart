@@ -57,7 +57,7 @@ enum TranslatorFailureCode {
 
 final class TranslatorWorkRequest extends Equatable {
   TranslatorWorkRequest({required String sourceText, String? engineerContext})
-    : sourceText = _requiredText(sourceText, 'sourceText'),
+    : sourceText = _requiredContent(sourceText, 'sourceText'),
       engineerContext = _optionalText(engineerContext);
 
   final String sourceText;
@@ -67,6 +67,33 @@ final class TranslatorWorkRequest extends Equatable {
   List<Object?> get props => <Object?>[sourceText, engineerContext];
 }
 
+final class ReverseTranslationBundle extends Equatable {
+  ReverseTranslationBundle({
+    required String enToRu,
+    required String thToRu,
+    required String enToTh,
+    required String thToEn,
+  }) : enToRu = _requiredContent(enToRu, 'enToRu'),
+       thToRu = _requiredContent(thToRu, 'thToRu'),
+       enToTh = _requiredContent(enToTh, 'enToTh'),
+       thToEn = _requiredContent(thToEn, 'thToEn');
+
+  final String enToRu;
+  final String thToRu;
+  final String enToTh;
+  final String thToEn;
+
+  Map<String, String> get sections => <String, String>{
+    'EN_TO_RU': enToRu,
+    'TH_TO_RU': thToRu,
+    'EN_TO_TH': enToTh,
+    'TH_TO_EN': thToEn,
+  };
+
+  @override
+  List<Object?> get props => <Object?>[enToRu, thToRu, enToTh, thToEn];
+}
+
 final class TranslationBundle extends Equatable {
   TranslationBundle({
     required this.sourceLanguage,
@@ -74,10 +101,11 @@ final class TranslationBundle extends Equatable {
     required String ru,
     required String en,
     required String th,
-  }) : sourceText = _requiredText(sourceText, 'sourceText'),
-       ru = _requiredText(ru, 'ru'),
-       en = _requiredText(en, 'en'),
-       th = _requiredText(th, 'th') {
+    this.reverseTranslations,
+  }) : sourceText = _requiredContent(sourceText, 'sourceText'),
+       ru = _requiredContent(ru, 'ru'),
+       en = _requiredContent(en, 'en'),
+       th = _requiredContent(th, 'th') {
     final String sourceLanguageText = switch (sourceLanguage) {
       TranslationLanguage.ru => this.ru,
       TranslationLanguage.en => this.en,
@@ -96,6 +124,7 @@ final class TranslationBundle extends Equatable {
   final String ru;
   final String en;
   final String th;
+  final ReverseTranslationBundle? reverseTranslations;
 
   Map<String, String> get directSections => <String, String>{
     'SOURCE LANGUAGE': sourceLanguage.code,
@@ -105,8 +134,20 @@ final class TranslationBundle extends Equatable {
     'TH': th,
   };
 
+  Map<String, String> get allSections => <String, String>{
+    ...directSections,
+    ...?reverseTranslations?.sections,
+  };
+
   @override
-  List<Object?> get props => <Object?>[sourceLanguage, sourceText, ru, en, th];
+  List<Object?> get props => <Object?>[
+    sourceLanguage,
+    sourceText,
+    ru,
+    en,
+    th,
+    reverseTranslations,
+  ];
 }
 
 final class TranslationAudit extends Equatable {
@@ -198,6 +239,14 @@ final class TranslatorFailure extends Equatable {
     completeness,
     partialBundle,
   ];
+}
+
+String _requiredContent(String value, String name) {
+  if (value.trim().isEmpty) {
+    throw ArgumentError.value(value, name, '$name must not be empty.');
+  }
+
+  return value;
 }
 
 String _requiredText(String value, String name) {

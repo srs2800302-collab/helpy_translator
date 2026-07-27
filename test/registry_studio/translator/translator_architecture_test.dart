@@ -170,23 +170,30 @@ void main() {
     expect(workspace, isNot(contains('sourceLanguageHint')));
   });
 
-  test('active Translator contains no reverse generation pipeline', () {
-    final Directory root = Directory('lib/registry_studio/translator');
-    final String combined = root
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((File file) => file.path.endsWith('.dart'))
-        .where(
-          (File file) =>
-              !file.path.endsWith('json_file_translator_draft_store.dart'),
-        )
-        .map((File file) => file.readAsStringSync())
-        .join('\n');
+  test('reverse diagnostics use ASCII provider labels', () {
+    final String policy = File(
+      'lib/registry_studio/adapters/helpy/translator/'
+      'helpy_translator_policy.dart',
+    ).readAsStringSync();
+    final String provider = File(
+      'lib/registry_studio/translator/infrastructure/typhoon/'
+      'typhoon_translator_provider.dart',
+    ).readAsStringSync();
 
-    expect(combined, isNot(contains('buildReverse')));
-    expect(combined, isNot(contains('reverseTranslation')));
-    expect(combined, isNot(contains('EN_TO_RU')));
-    expect(combined, isNot(contains('TH_TO_EN')));
+    for (final String label in <String>[
+      'EN_TO_RU',
+      'TH_TO_RU',
+      'EN_TO_TH',
+      'TH_TO_EN',
+    ]) {
+      expect(policy, contains(label));
+      expect(provider, contains(label));
+    }
+
+    expect(policy, isNot(contains('EN → RU')));
+    expect(provider, isNot(contains('EN → RU')));
+    expect(policy, contains('same provider'));
+    expect(policy, contains('never as independent proof'));
   });
 
   test('direct output is not locally replaced or canonically rewritten', () {
@@ -202,8 +209,10 @@ void main() {
     expect(policy, contains('No project glossary'));
     expect(policy, isNot(contains('service professional')));
     expect(policy, isNot(contains('ผู้ให้บริการ')));
-    expect(provider, contains("en: direct['EN']!"));
-    expect(provider, contains("th: direct['TH']!"));
+    expect(provider, contains("direct['EN']!"));
+    expect(provider, contains("direct['TH']!"));
+    expect(provider, isNot(contains('service professional')));
+    expect(provider, isNot(contains('ผู้ให้บริการ')));
   });
 
   test('provider settings remain on the accepted baseline', () {
@@ -215,7 +224,7 @@ void main() {
     expect(provider, contains("'typhoon-v2.5-30b-a3b-instruct'"));
     expect(provider, contains("'temperature': 0.0"));
     expect(provider, contains("'top_p': 1.0"));
-    expect(provider, contains('maxTokens: 768'));
+    expect(provider, contains('maxTokens: 1536'));
     expect(provider, contains('maxTokens: 1024'));
   });
 }

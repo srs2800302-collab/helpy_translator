@@ -33,8 +33,8 @@ final class TranslatorSourcePanel extends StatelessWidget {
               key: const ValueKey<String>('translator-source-text-field'),
               controller: controller,
               enabled: enabled,
-              minLines: 3,
-              maxLines: 10,
+              minLines: 5,
+              maxLines: 12,
               textInputAction: TextInputAction.newline,
               decoration: InputDecoration(
                 labelText: l10n.sourceTextFieldLabel,

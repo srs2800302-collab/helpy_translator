@@ -138,7 +138,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
         'sourceLanguageHint': null,
         'engineerContext': report.request.engineerContext,
       },
-      'bundle': report.bundle.directSections,
+      'bundle': report.bundle.allSections,
       'audit': <String, Object?>{
         'meaningFindings': report.audit.meaningFindings,
         'terminologyFindings': report.audit.terminologyFindings,
@@ -182,7 +182,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       'EN',
       'TH',
     };
-    const Set<String> legacyReverseKeys = <String>{
+    const Set<String> reverseBundleKeys = <String>{
       'EN_TO_RU',
       'TH_TO_RU',
       'EN_TO_TH',
@@ -190,11 +190,16 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     };
     final Set<String> allowedBundleKeys = <String>{
       ...directBundleKeys,
-      ...legacyReverseKeys,
+      ...reverseBundleKeys,
     };
+    final Set<String> presentReverseKeys = bundle.keys.toSet().intersection(
+      reverseBundleKeys,
+    );
 
     if (!bundle.keys.toSet().containsAll(directBundleKeys) ||
-        bundle.keys.any((String key) => !allowedBundleKeys.contains(key))) {
+        bundle.keys.any((String key) => !allowedBundleKeys.contains(key)) ||
+        (presentReverseKeys.isNotEmpty &&
+            presentReverseKeys.length != reverseBundleKeys.length)) {
       throw const FormatException(
         'Translator report bundle schema is invalid.',
       );
@@ -214,6 +219,15 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
           ? null
           : _string(request['engineerContext'], 'request.engineerContext'),
     );
+    final ReverseTranslationBundle? reverseTranslations =
+        presentReverseKeys.isEmpty
+        ? null
+        : ReverseTranslationBundle(
+            enToRu: _string(bundle['EN_TO_RU'], 'bundle.EN_TO_RU'),
+            thToRu: _string(bundle['TH_TO_RU'], 'bundle.TH_TO_RU'),
+            enToTh: _string(bundle['EN_TO_TH'], 'bundle.EN_TO_TH'),
+            thToEn: _string(bundle['TH_TO_EN'], 'bundle.TH_TO_EN'),
+          );
     final TranslationBundle translationBundle = TranslationBundle(
       sourceLanguage: TranslationLanguage.fromCode(
         _string(bundle['SOURCE LANGUAGE'], 'bundle.SOURCE LANGUAGE'),
@@ -222,6 +236,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       ru: _string(bundle['RU'], 'bundle.RU'),
       en: _string(bundle['EN'], 'bundle.EN'),
       th: _string(bundle['TH'], 'bundle.TH'),
+      reverseTranslations: reverseTranslations,
     );
     final TranslationAudit translationAudit = TranslationAudit(
       meaningFindings: _strings(

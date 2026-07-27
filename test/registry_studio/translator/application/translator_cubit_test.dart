@@ -89,6 +89,23 @@ void main() {
     },
   );
 
+  test('passes exact multiline source text without trimming', () async {
+    const String exactSource = '  First line.\nSecond line.  ';
+    final _FakeProvider provider = _FakeProvider.success(_report());
+    final TranslatorCubit cubit = TranslatorCubit(
+      provider: provider,
+      draftStore: _MemoryDraftStore(),
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+    await cubit.updateSourceText(exactSource);
+    await cubit.translate(accessKey: 'key');
+
+    expect(provider.lastRequest?.sourceText, exactSource);
+    expect(cubit.state.sourceText, exactSource);
+  });
+
   test('cancel stops active operation and preserves input', () async {
     final _ControlledOperation operation = _ControlledOperation();
     final TranslatorCubit cubit = TranslatorCubit(
@@ -182,12 +199,16 @@ final class _FakeProvider implements TranslatorProvider {
     : _operation = _CompletedOperation.failure(failure);
 
   final TranslatorOperation _operation;
+  TranslatorWorkRequest? lastRequest;
 
   @override
   TranslatorOperation start({
     required TranslatorWorkRequest request,
     required String accessKey,
-  }) => _operation;
+  }) {
+    lastRequest = request;
+    return _operation;
+  }
 }
 
 final class _CompletedOperation implements TranslatorOperation {

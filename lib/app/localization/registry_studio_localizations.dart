@@ -144,9 +144,9 @@ final class RegistryStudioLocalizations {
   );
 
   String get directTranslationStage => _value(
-    ru: 'Прямой перевод RU / EN / TH',
-    en: 'Direct RU / EN / TH translation',
-    th: 'การแปลโดยตรง RU / EN / TH',
+    ru: 'Прямой и обратный перевод RU / EN / TH',
+    en: 'Direct and reverse RU / EN / TH translation',
+    th: 'การแปลโดยตรงและการแปลย้อนกลับ RU / EN / TH',
   );
 
   String get auditStage => _value(
@@ -166,23 +166,29 @@ final class RegistryStudioLocalizations {
 
   String get partialResultSaved => _value(
     ru:
-        'Прямой перевод RU / EN / TH сохранён, '
-        'но автоматический вердикт не создан.',
+        'Перевод RU / EN / TH сохранён, '
+        'но семантический вердикт не создан.',
     en:
-        'The direct RU / EN / TH translation was saved, '
-        'but no automatic verdict was created.',
+        'The RU / EN / TH translation was saved, '
+        'but no semantic verdict was created.',
     th:
-        'บันทึกคำแปลโดยตรง RU / EN / TH แล้ว '
-        'แต่ยังไม่ได้สร้างคำตัดสินอัตโนมัติ',
+        'บันทึกคำแปล RU / EN / TH แล้ว '
+        'แต่ยังไม่ได้สร้างคำตัดสินเชิงความหมาย',
   );
 
   String get directTranslation =>
       _value(ru: 'Прямой перевод', en: 'Direct translation', th: 'คำแปลโดยตรง');
 
+  String get reverseTranslationsForDiagnostics => _value(
+    ru: 'Обратные переводы для диагностики',
+    en: 'Reverse translations for diagnostics',
+    th: 'การแปลย้อนกลับเพื่อการวินิจฉัย',
+  );
+
   String get automaticVerdict => _value(
-    ru: 'Автоматический вердикт перевода',
-    en: 'Automatic translation verdict',
-    th: 'คำตัดสินการแปลอัตโนมัติ',
+    ru: 'Семантический вердикт',
+    en: 'Semantic verdict',
+    th: 'คำตัดสินเชิงความหมาย',
   );
 
   String get meaningPreserved => _value(
@@ -208,14 +214,14 @@ final class RegistryStudioLocalizations {
 
   String get verdictEngineerNotice => _value(
     ru:
-        'Вердикт сформирован автоматически по findings. '
-        'Итоговое решение принимает инженер.',
+        'Вердикт сформирован по семантическим findings без сравнения '
+        'со словарём проекта. Итоговое решение принимает инженер.',
     en:
-        'The verdict is generated automatically from findings. '
-        'The engineer makes the final decision.',
+        'The verdict is generated from semantic findings without comparison '
+        'with the project dictionary. The engineer makes the final decision.',
     th:
-        'คำตัดสินถูกสร้างโดยอัตโนมัติจากข้อค้นพบ '
-        'วิศวกรเป็นผู้ตัดสินใจขั้นสุดท้าย',
+        'คำตัดสินสร้างจากข้อค้นพบเชิงความหมายโดยยังไม่ได้เปรียบเทียบ '
+        'กับพจนานุกรมของโครงการ วิศวกรเป็นผู้ตัดสินใจขั้นสุดท้าย',
   );
 
   String get auditAndDiagnostics => _value(

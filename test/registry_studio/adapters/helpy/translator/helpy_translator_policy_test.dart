@@ -5,7 +5,7 @@ import 'package:helpy_translator/registry_studio/translator/domain/translator_mo
 void main() {
   const HelpyTranslatorPolicy policy = HelpyTranslatorPolicy();
 
-  test('direct prompt uses automatic detection and five direct sections', () {
+  test('direct prompt uses automatic detection and nine ASCII sections', () {
     final String prompt = policy.buildDirectSystemPrompt();
 
     expect(prompt, contains('Detect exactly one source language'));
@@ -14,8 +14,11 @@ void main() {
     expect(prompt, contains('RU:'));
     expect(prompt, contains('EN:'));
     expect(prompt, contains('TH:'));
+    expect(prompt, contains('EN_TO_RU:'));
+    expect(prompt, contains('TH_TO_RU:'));
+    expect(prompt, contains('EN_TO_TH:'));
+    expect(prompt, contains('TH_TO_EN:'));
     expect(prompt, isNot(contains('SOURCE LANGUAGE HINT')));
-    expect(prompt, isNot(contains('EN_TO_RU')));
   });
 
   test('direct prompt has no hardcoded project terminology', () {
@@ -41,10 +44,11 @@ void main() {
       ),
     );
     expect(prompt, contains('do not choose a verdict'));
-    expect(prompt, isNot(contains('reverse section')));
+    expect(prompt, contains('reverse translations'));
+    expect(prompt, contains('never as independent proof'));
   });
 
-  test('audit user prompt contains only the direct provider bundle', () {
+  test('audit user prompt contains direct and reverse diagnostic sections', () {
     final String prompt = policy.buildAuditUserPrompt(
       TranslationBundle(
         sourceLanguage: TranslationLanguage.ru,
@@ -52,13 +56,19 @@ void main() {
         ru: 'Исходный текст.',
         en: 'Provider wording.',
         th: 'ข้อความจากผู้ให้บริการ',
+        reverseTranslations: ReverseTranslationBundle(
+          enToRu: 'Исходный текст.',
+          thToRu: 'Исходный текст.',
+          enToTh: 'ข้อความจากผู้ให้บริการ',
+          thToEn: 'Provider wording.',
+        ),
       ),
     );
 
     expect(prompt, contains('SOURCE LANGUAGE:\nRU'));
     expect(prompt, contains('EN:\nProvider wording.'));
     expect(prompt, contains('TH:\nข้อความจากผู้ให้บริการ'));
-    expect(prompt, isNot(contains('EN_TO_RU')));
-    expect(prompt, isNot(contains('TH_TO_EN')));
+    expect(prompt, contains('EN_TO_RU:\nИсходный текст.'));
+    expect(prompt, contains('TH_TO_EN:\nProvider wording.'));
   });
 }

@@ -76,9 +76,9 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
   }
 
   Future<void> translate({required String accessKey}) async {
-    final String sourceText = state.sourceText.trim();
+    final String sourceText = state.sourceText;
 
-    if (sourceText.isEmpty) {
+    if (sourceText.trim().isEmpty) {
       emit(
         state.copyWith(
           status: TranslatorViewStatus.failure,

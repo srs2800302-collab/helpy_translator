@@ -7,7 +7,7 @@ import 'package:helpy_translator/registry_studio/translator/domain/translator_mo
 import 'package:helpy_translator/registry_studio/translator/presentation/translator_workspace_view.dart';
 
 void main() {
-  testWidgets('shows direct provider sections and automatic verdict', (
+  testWidgets('shows direct, reverse, and semantic verdict sections', (
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
@@ -44,9 +44,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Автоматический вердикт перевода'), findsOneWidget);
+    expect(find.text('Семантический вердикт'), findsOneWidget);
     expect(find.text('EXACT'), findsOneWidget);
     expect(find.text('Прямой перевод'), findsOneWidget);
+    expect(find.text('Обратные переводы для диагностики'), findsOneWidget);
     expect(find.text('Аудит и диагностика'), findsOneWidget);
   });
 
@@ -200,6 +201,8 @@ void main() {
       find.byKey(const ValueKey<String>('translator-source-text-field')),
     );
     expect(field.controller?.text, multilingual);
+    expect(field.minLines, 5);
+    expect(field.maxLines, 12);
     expect(
       find.byKey(const ValueKey<String>('translator-source-language-menu')),
       findsNothing,
@@ -243,6 +246,12 @@ TranslatorRunReport _report() {
       ru: request.sourceText,
       en: 'Photo of the installed cooktop.',
       th: 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
+      reverseTranslations: ReverseTranslationBundle(
+        enToRu: 'Фотография установленной варочной панели.',
+        thToRu: 'Фотография установленной варочной панели.',
+        enToTh: 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
+        thToEn: 'Photo of the installed cooktop.',
+      ),
     ),
     audit: TranslationAudit(),
     createdAt: DateTime.utc(2026, 7, 26, 6),

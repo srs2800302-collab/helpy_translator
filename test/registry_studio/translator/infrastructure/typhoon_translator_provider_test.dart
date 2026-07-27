@@ -72,6 +72,8 @@ void main() {
       expect(report.bundle.sourceLanguage, TranslationLanguage.ru);
       expect(report.bundle.en, _providerEn);
       expect(report.bundle.th, _providerTh);
+      expect(report.bundle.reverseTranslations?.enToRu, _reverseRu);
+      expect(report.bundle.reverseTranslations?.thToEn, _reverseEn);
       expect(report.audit.verdict, TranslationVerdict.exact);
       expect(transport.callCount, 2);
       expect(transport.bodies, hasLength(2));
@@ -98,6 +100,45 @@ void main() {
       ]);
     });
 
+    test(
+      'accepts inline sections and keeps Thai source locally exact',
+      () async {
+        const String thaiSource =
+            'ผู้เชี่ยวชาญต้องยืนยันการมาถึงก่อนเริ่มงานตามคำสั่งซื้อ';
+        final _QueueTransport transport = _QueueTransport(<Object>[
+          '''
+SOURCE LANGUAGE: TH
+SOURCE TEXT: ผู้เชี่ยวชาญต้องยืนยันการมาถึงก่อนเริ่มงาน
+RU: Специалист должен подтвердить прибытие до начала выполнения заказа.
+EN: The professional must confirm arrival before starting the order.
+TH: ผู้เชี่ยวชาญต้องยืนยันการมาถึงก่อนเริ่มงาน
+EN_TO_RU: Специалист должен подтвердить прибытие до начала заказа.
+TH_TO_RU: Специалист должен подтвердить прибытие до начала работы.
+EN_TO_TH: ผู้เชี่ยวชาญต้องยืนยันการมาถึงก่อนเริ่มคำสั่งซื้อ
+TH_TO_EN: The professional must confirm arrival before starting work.
+''',
+          _auditResponse(),
+        ]);
+
+        final TranslatorRunReport report = await _provider(transport)
+            .start(
+              request: TranslatorWorkRequest(sourceText: thaiSource),
+              accessKey: 'test-key',
+            )
+            .result;
+
+        expect(report.bundle.sourceLanguage, TranslationLanguage.th);
+        expect(report.bundle.sourceText, thaiSource);
+        expect(report.bundle.th, thaiSource);
+        expect(report.bundle.ru, contains('Специалист'));
+        expect(
+          report.bundle.reverseTranslations?.thToEn,
+          contains('professional'),
+        );
+        expect(transport.callCount, 2);
+      },
+    );
+
     test('keeps provider model and sampling settings unchanged', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _directResponse(),
@@ -112,7 +153,7 @@ void main() {
           .result;
 
       expect(transport.bodies.first['model'], 'typhoon-v2.5-30b-a3b-instruct');
-      expect(transport.bodies.first['max_tokens'], 768);
+      expect(transport.bodies.first['max_tokens'], 1536);
       expect(transport.bodies.last['max_tokens'], 1024);
 
       for (final Map<String, Object?> body in transport.bodies) {
@@ -183,8 +224,8 @@ void main() {
     );
 
     test('classifies missing direct section as incomplete', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        '''
+      const String malformed =
+          '''
 SOURCE LANGUAGE:
 RU
 
@@ -196,7 +237,10 @@ $_source
 
 EN:
 $_providerEn
-''',
+''';
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        malformed,
+        malformed,
       ]);
 
       final Future<TranslatorRunReport> result = _provider(transport)
@@ -223,6 +267,80 @@ $_providerEn
               ),
         ),
       );
+    });
+
+    test('retries malformed direct response once and succeeds', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        'SOURCE LANGUAGE:\nRU',
+        _directResponse(),
+        _auditResponse(),
+      ]);
+
+      final TranslatorRunReport report = await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: _source),
+            accessKey: 'test-key',
+          )
+          .result;
+
+      expect(report.bundle.en, _providerEn);
+      expect(report.bundle.reverseTranslations, isNotNull);
+      expect(transport.callCount, 3);
+      expect(transport.bodies.first['max_tokens'], 1536);
+      expect(transport.bodies[1]['max_tokens'], 1536);
+    });
+
+    test('keeps the local multiline source text authoritative', () async {
+      const String exactSource =
+          '  Registry:\n'
+          '- Preserve the historical order.\n'
+          '- Keep SOURCE TEXT: as user content.  ';
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        '''
+SOURCE LANGUAGE:
+EN
+
+SOURCE TEXT:
+Registry:
+RU:
+SOURCE TEXT:
+- Preserve the historical order.
+
+RU:
+Сохраняйте исторический порядок.
+
+EN:
+Registry: Preserve the historical order.
+
+TH:
+คงลำดับตามประวัติ
+
+EN_TO_RU:
+Сохраняйте исторический порядок.
+
+TH_TO_RU:
+Сохраняйте исторический порядок.
+
+EN_TO_TH:
+คงลำดับตามประวัติ
+
+TH_TO_EN:
+Preserve the historical order.
+''',
+        _auditResponse(),
+      ]);
+
+      final TranslatorRunReport report = await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: exactSource),
+            accessKey: 'test-key',
+          )
+          .result;
+
+      expect(report.request.sourceText, exactSource);
+      expect(report.bundle.sourceText, exactSource);
+      expect(report.bundle.en, exactSource);
+      expect(report.bundle.ru, 'Сохраняйте исторический порядок.');
     });
 
     test('retries malformed audit once and succeeds', () async {
@@ -315,8 +433,7 @@ $_providerEn
     test(
       'keeps invalid detected source language as technical failure',
       () async {
-        final _QueueTransport transport = _QueueTransport(<Object>[
-          '''
+        const String invalidLanguageResponse = '''
 SOURCE LANGUAGE:
 XX
 
@@ -331,7 +448,22 @@ Text.
 
 TH:
 ข้อความ
-''',
+
+EN_TO_RU:
+Текст.
+
+TH_TO_RU:
+Текст.
+
+EN_TO_TH:
+ข้อความ
+
+TH_TO_EN:
+Text.
+''';
+        final _QueueTransport transport = _QueueTransport(<Object>[
+          invalidLanguageResponse,
+          invalidLanguageResponse,
         ]);
 
         final Future<TranslatorRunReport> result = _provider(transport)
@@ -388,6 +520,11 @@ const String _source =
 const String _providerEn =
     'The service professional must confirm arrival before starting the job';
 const String _providerTh = 'ผู้ให้บริการต้องยืนยันการมาถึงก่อนเริ่มงาน';
+const String _reverseRu =
+    'Специалист по услугам должен подтвердить прибытие до начала работы';
+const String _reverseTh = 'ผู้ให้บริการต้องยืนยันการมาถึงก่อนเริ่มงาน';
+const String _reverseEn =
+    'The service provider must confirm arrival before starting work';
 
 TyphoonTranslatorProvider _provider(_QueueTransport transport) {
   return TyphoonTranslatorProvider(
@@ -412,6 +549,18 @@ $en
 
 TH:
 $th
+
+EN_TO_RU:
+$_reverseRu
+
+TH_TO_RU:
+$_reverseRu
+
+EN_TO_TH:
+$_reverseTh
+
+TH_TO_EN:
+$_reverseEn
 ''';
 }
 

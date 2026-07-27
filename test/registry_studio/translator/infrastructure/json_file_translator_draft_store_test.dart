@@ -55,41 +55,97 @@ void main() {
       'RU',
       'EN',
       'TH',
+      'EN_TO_RU',
+      'TH_TO_RU',
+      'EN_TO_TH',
+      'TH_TO_EN',
     ]);
-    expect(bundle.containsKey('EN_TO_RU'), isFalse);
+    expect(bundle['TH_TO_EN'], 'Provider wording.');
   });
 
-  test(
-    'migrates legacy manual hint and reverse sections without exposing them',
-    () async {
-      final File file = await _stateFile(directory);
-      await file.parent.create(recursive: true);
-      final TranslatorRunReport report = _report();
+  test('restores legacy manual hint and reverse diagnostic sections', () async {
+    final File file = await _stateFile(directory);
+    await file.parent.create(recursive: true);
+    final TranslatorRunReport report = _report();
 
-      await file.writeAsString(
-        '${jsonEncode(<String, Object?>{
-          'version': 'v1',
-          'sourceText': report.request.sourceText,
-          'sourceLanguageHint': 'RU',
-          'report': <String, Object?>{
-            'request': <String, Object?>{'sourceText': report.request.sourceText, 'sourceLanguageHint': 'RU', 'engineerContext': null},
-            'bundle': <String, Object?>{...report.bundle.directSections, 'EN_TO_RU': 'Старый обратный текст.', 'TH_TO_RU': 'Старый обратный текст.', 'EN_TO_TH': 'ข้อความย้อนกลับเดิม', 'TH_TO_EN': 'Old reverse text.'},
-            'audit': <String, Object?>{'meaningFindings': <String>[], 'terminologyFindings': <String>[], 'styleFindings': <String>[], 'ambiguityFindings': <String>[]},
-            'createdAt': report.createdAt.toIso8601String(),
-          },
-        })}\n',
-      );
+    await file.writeAsString(
+      '${jsonEncode(<String, Object?>{
+        'version': 'v1',
+        'sourceText': report.request.sourceText,
+        'sourceLanguageHint': 'RU',
+        'report': <String, Object?>{
+          'request': <String, Object?>{'sourceText': report.request.sourceText, 'sourceLanguageHint': 'RU', 'engineerContext': null},
+          'bundle': <String, Object?>{...report.bundle.directSections, 'EN_TO_RU': 'Старый обратный текст.', 'TH_TO_RU': 'Старый обратный текст.', 'EN_TO_TH': 'ข้อความย้อนกลับเดิม', 'TH_TO_EN': 'Old reverse text.'},
+          'audit': <String, Object?>{'meaningFindings': <String>[], 'terminologyFindings': <String>[], 'styleFindings': <String>[], 'ambiguityFindings': <String>[]},
+          'createdAt': report.createdAt.toIso8601String(),
+        },
+      })}\n',
+    );
 
-      final TranslatorDraft? migrated = await store.load();
+    final TranslatorDraft? migrated = await store.load();
 
-      expect(migrated, isNotNull);
-      expect(migrated!.sourceText, report.request.sourceText);
-      expect(
-        migrated.report?.bundle.directSections,
-        report.bundle.directSections,
-      );
-    },
-  );
+    expect(migrated, isNotNull);
+    expect(migrated!.sourceText, report.request.sourceText);
+    expect(
+      migrated.report?.bundle.directSections,
+      report.bundle.directSections,
+    );
+    expect(
+      migrated.report?.bundle.reverseTranslations?.enToRu,
+      'Старый обратный текст.',
+    );
+    expect(
+      migrated.report?.bundle.reverseTranslations?.thToEn,
+      'Old reverse text.',
+    );
+  });
+
+  test('loads a legacy five-section draft without reverse diagnostics', () async {
+    final File file = await _stateFile(directory);
+    await file.parent.create(recursive: true);
+    final TranslatorRunReport report = _report();
+
+    await file.writeAsString(
+      '${jsonEncode(<String, Object?>{
+        'version': 'v1',
+        'sourceText': report.request.sourceText,
+        'sourceLanguageHint': null,
+        'report': <String, Object?>{
+          'request': <String, Object?>{'sourceText': report.request.sourceText, 'sourceLanguageHint': null, 'engineerContext': null},
+          'bundle': report.bundle.directSections,
+          'audit': <String, Object?>{'meaningFindings': <String>[], 'terminologyFindings': <String>[], 'styleFindings': <String>[], 'ambiguityFindings': <String>[]},
+          'createdAt': report.createdAt.toIso8601String(),
+        },
+      })}\n',
+    );
+
+    final TranslatorDraft? restored = await store.load();
+
+    expect(restored, isNotNull);
+    expect(restored?.report?.bundle.reverseTranslations, isNull);
+  });
+
+  test('rejects a persisted bundle with partial reverse diagnostics', () async {
+    final File file = await _stateFile(directory);
+    await file.parent.create(recursive: true);
+    final TranslatorRunReport report = _report();
+
+    await file.writeAsString(
+      '${jsonEncode(<String, Object?>{
+        'version': 'v1',
+        'sourceText': report.request.sourceText,
+        'sourceLanguageHint': null,
+        'report': <String, Object?>{
+          'request': <String, Object?>{'sourceText': report.request.sourceText, 'sourceLanguageHint': null, 'engineerContext': null},
+          'bundle': <String, Object?>{...report.bundle.directSections, 'EN_TO_RU': 'Только одна обратная секция.'},
+          'audit': <String, Object?>{'meaningFindings': <String>[], 'terminologyFindings': <String>[], 'styleFindings': <String>[], 'ambiguityFindings': <String>[]},
+          'createdAt': report.createdAt.toIso8601String(),
+        },
+      })}\n',
+    );
+
+    await expectLater(store.load(), throwsFormatException);
+  });
 
   test('clear removes only Translator draft file', () async {
     await store.save(const TranslatorDraft(sourceText: 'Черновик.'));
@@ -124,6 +180,12 @@ TranslatorRunReport _report() {
       ru: request.sourceText,
       en: 'Provider wording.',
       th: 'ข้อความจากผู้ให้บริการ',
+      reverseTranslations: ReverseTranslationBundle(
+        enToRu: 'Исходный текст.',
+        thToRu: 'Исходный текст.',
+        enToTh: 'ข้อความจากผู้ให้บริการ',
+        thToEn: 'Provider wording.',
+      ),
     ),
     audit: TranslationAudit(),
     createdAt: DateTime.utc(2026, 7, 26, 6),

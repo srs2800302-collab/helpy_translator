@@ -14,11 +14,11 @@ final class TranslatorReportView extends StatelessWidget {
     final TranslationBundle bundle = report.bundle;
     final TranslationAudit audit = report.audit;
 
+    final ReverseTranslationBundle? reverse = bundle.reverseTranslations;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _VerdictCard(audit: audit),
-        const SizedBox(height: 12),
         _SectionCard(
           title: l10n.directTranslation,
           entries: <MapEntry<String, String>>[
@@ -31,6 +31,20 @@ final class TranslatorReportView extends StatelessWidget {
             MapEntry<String, String>('TH', bundle.th),
           ],
         ),
+        if (reverse != null) ...<Widget>[
+          const SizedBox(height: 12),
+          _SectionCard(
+            title: l10n.reverseTranslationsForDiagnostics,
+            entries: <MapEntry<String, String>>[
+              MapEntry<String, String>('EN → RU', reverse.enToRu),
+              MapEntry<String, String>('TH → RU', reverse.thToRu),
+              MapEntry<String, String>('EN → TH', reverse.enToTh),
+              MapEntry<String, String>('TH → EN', reverse.thToEn),
+            ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        _VerdictCard(audit: audit),
         const SizedBox(height: 12),
         _AuditFindingsCard(audit: audit),
       ],

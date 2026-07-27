@@ -241,57 +241,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     try {
       _emit(TranslatorRunStage.directTranslation);
 
-      final String directContent = await _request(
-        systemPrompt: policy.buildDirectSystemPrompt(),
-        userPrompt: policy.buildDirectUserPrompt(request),
-        maxTokens: 768,
-      );
-
-      final Map<String, String> direct = _parsePayload(
-        content: directContent,
-        labels: _directLabels,
-        stage: TranslatorFailureStage.directTranslation,
-        responseName: 'Прямой перевод',
-      );
-
-      final TranslationLanguage sourceLanguage;
-
-      try {
-        sourceLanguage = TranslationLanguage.fromCode(
-          direct['SOURCE LANGUAGE']!,
-        );
-      } on ArgumentError catch (error) {
-        throw TranslatorProviderException(
-          TranslatorFailure(
-            stage: TranslatorFailureStage.directTranslation,
-            code: TranslatorFailureCode.invalidSourceLanguage,
-            message: error.message?.toString() ?? 'Invalid source language.',
-          ),
-        );
-      }
-
-      if (direct['SOURCE TEXT'] != request.sourceText) {
-        throw const _PayloadFailure(
-          stage: TranslatorFailureStage.directTranslation,
-          code: TranslatorFailureCode.sourceTextMismatch,
-          message: 'Typhoon изменил SOURCE TEXT.',
-        );
-      }
-
-      if (direct[sourceLanguage.code] != request.sourceText) {
-        throw const _PayloadFailure(
-          stage: TranslatorFailureStage.directTranslation,
-          code: TranslatorFailureCode.sourceTextMismatch,
-          message: 'Секция исходного языка не совпадает с SOURCE TEXT.',
-        );
-      }
-      partialBundle = TranslationBundle(
-        sourceLanguage: sourceLanguage,
-        sourceText: direct['SOURCE TEXT']!,
-        ru: direct['RU']!,
-        en: direct['EN']!,
-        th: direct['TH']!,
-      );
+      partialBundle = await _requestDirectBundle();
 
       _emit(TranslatorRunStage.audit);
 
@@ -363,12 +313,109 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     }
   }
 
+  Future<TranslationBundle> _requestDirectBundle() async {
+    final String directUserPrompt = policy.buildDirectUserPrompt(request);
+
+    try {
+      final String directContent = await _request(
+        systemPrompt: policy.buildDirectSystemPrompt(),
+        userPrompt: directUserPrompt,
+        maxTokens: 1536,
+      );
+
+      return _parseDirectBundle(directContent);
+    } on _PayloadFailure {
+      final String repairedDirectContent = await _request(
+        systemPrompt: _buildStrictDirectRetryPrompt(
+          policy.buildDirectSystemPrompt(),
+        ),
+        userPrompt: directUserPrompt,
+        maxTokens: 1536,
+      );
+
+      try {
+        return _parseDirectBundle(repairedDirectContent);
+      } on _PayloadFailure catch (error) {
+        throw _PayloadFailure(
+          stage: TranslatorFailureStage.directTranslation,
+          code: error.code,
+          message:
+              'Ответ прямого перевода остался некорректным после '
+              'повторной попытки: ${error.message}',
+        );
+      }
+    }
+  }
+
+  TranslationBundle _parseDirectBundle(String content) {
+    final Map<String, String> direct = _parsePayload(
+      content: content,
+      labels: _directLabels,
+      stage: TranslatorFailureStage.directTranslation,
+      responseName: 'Прямой перевод',
+      anchorFirstTwoLabels: true,
+    );
+
+    final TranslationLanguage sourceLanguage;
+
+    try {
+      sourceLanguage = TranslationLanguage.fromCode(direct['SOURCE LANGUAGE']!);
+    } on ArgumentError catch (error) {
+      throw _PayloadFailure(
+        stage: TranslatorFailureStage.directTranslation,
+        code: TranslatorFailureCode.invalidSourceLanguage,
+        message: error.message?.toString() ?? 'Invalid source language.',
+      );
+    }
+
+    final String ru = sourceLanguage == TranslationLanguage.ru
+        ? request.sourceText
+        : direct['RU']!;
+    final String en = sourceLanguage == TranslationLanguage.en
+        ? request.sourceText
+        : direct['EN']!;
+    final String th = sourceLanguage == TranslationLanguage.th
+        ? request.sourceText
+        : direct['TH']!;
+
+    return TranslationBundle(
+      sourceLanguage: sourceLanguage,
+      sourceText: request.sourceText,
+      ru: ru,
+      en: en,
+      th: th,
+      reverseTranslations: ReverseTranslationBundle(
+        enToRu: direct['EN_TO_RU']!,
+        thToRu: direct['TH_TO_RU']!,
+        enToTh: direct['EN_TO_TH']!,
+        thToEn: direct['TH_TO_EN']!,
+      ),
+    );
+  }
+
+  static String _buildStrictDirectRetryPrompt(String basePrompt) {
+    return '''
+$basePrompt
+
+The previous direct response violated the required output protocol.
+Translate again from the supplied source text.
+
+This is the final format attempt:
+- output exactly nine labels;
+- preserve the exact ASCII label spelling and order;
+- put each label on its own line with a colon;
+- provide one nonempty value for every label;
+- output no preamble, Markdown, code fence, verdict or commentary.
+'''
+        .trim();
+  }
+
   static String _buildStrictAuditRetryPrompt(String basePrompt) {
     return '''
 $basePrompt
 
 The previous audit response violated the required output protocol.
-Run the semantic audit again from the supplied five-section direct bundle.
+Run the semantic audit again from the supplied nine-section translation bundle.
 
 This is the final format attempt:
 - output exactly four labels;
@@ -433,11 +480,14 @@ This is the final format attempt:
     required TranslatorFailureStage stage,
     required String responseName,
     bool allowNone = false,
+    bool anchorFirstTwoLabels = false,
   }) {
-    final String normalized = content
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\r', '\n')
-        .trim();
+    final String normalized = _normalizeInlineSectionValues(
+      _stripSingleCodeFence(
+        content.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim(),
+      ),
+      labels,
+    );
 
     if (normalized.isEmpty) {
       throw _PayloadFailure(
@@ -447,39 +497,83 @@ This is the final format attempt:
       );
     }
 
-    final List<RegExpMatch> matches = _sectionPattern
-        .allMatches(normalized)
-        .toList(growable: false);
+    final List<RegExpMatch?> selected = List<RegExpMatch?>.filled(
+      labels.length,
+      null,
+    );
+    int firstUnanchoredIndex = 0;
+    int lowerBound = -1;
 
-    if (matches.length != labels.length) {
-      throw _PayloadFailure(
-        stage: stage,
-        code: TranslatorFailureCode.missingRequiredSection,
-        message: '$responseName содержит неверное количество секций.',
-      );
-    }
-
-    final List<String> actualLabels = matches
-        .map((RegExpMatch match) => match.group(1)!)
-        .toList(growable: false);
-
-    if (actualLabels.toSet().length != actualLabels.length) {
-      throw _PayloadFailure(
-        stage: stage,
-        code: TranslatorFailureCode.unexpectedSection,
-        message: '$responseName содержит дублированные секции.',
-      );
-    }
-
-    for (int index = 0; index < labels.length; index += 1) {
-      if (actualLabels[index] != labels[index]) {
-        throw _PayloadFailure(
-          stage: stage,
-          code: TranslatorFailureCode.invalidSectionOrder,
-          message: '$responseName содержит секции в неверном порядке.',
+    if (anchorFirstTwoLabels) {
+      if (labels.length < 2) {
+        throw ArgumentError.value(
+          labels,
+          'labels',
+          'At least two labels are required for anchored parsing.',
         );
       }
+
+      for (int index = 0; index < 2; index += 1) {
+        final RegExp labelPattern = RegExp(
+          '^${RegExp.escape(labels[index])}:[ \\t]*\$',
+          multiLine: true,
+        );
+        final Iterable<RegExpMatch> candidates = labelPattern
+            .allMatches(normalized)
+            .where(
+              (RegExpMatch match) =>
+                  index == 0 || match.start > selected[index - 1]!.end,
+            );
+
+        if (candidates.isEmpty) {
+          throw _PayloadFailure(
+            stage: stage,
+            code: TranslatorFailureCode.missingRequiredSection,
+            message: '$responseName не содержит секцию ${labels[index]}.',
+          );
+        }
+
+        selected[index] = candidates.first;
+      }
+
+      firstUnanchoredIndex = 2;
+      lowerBound = selected[1]!.end;
     }
+
+    int upperBound = normalized.length + 1;
+
+    for (
+      int index = labels.length - 1;
+      index >= firstUnanchoredIndex;
+      index -= 1
+    ) {
+      final RegExp labelPattern = RegExp(
+        '^${RegExp.escape(labels[index])}:[ \\t]*\$',
+        multiLine: true,
+      );
+      final List<RegExpMatch> candidates = labelPattern
+          .allMatches(normalized)
+          .where(
+            (RegExpMatch match) =>
+                match.start < upperBound && match.start > lowerBound,
+          )
+          .toList(growable: false);
+
+      if (candidates.isEmpty) {
+        throw _PayloadFailure(
+          stage: stage,
+          code: TranslatorFailureCode.missingRequiredSection,
+          message: '$responseName не содержит секцию ${labels[index]}.',
+        );
+      }
+
+      selected[index] = candidates.last;
+      upperBound = candidates.last.start;
+    }
+
+    final List<RegExpMatch> matches = selected.cast<RegExpMatch>().toList(
+      growable: false,
+    );
 
     final String preamble = normalized.substring(0, matches.first.start).trim();
 
@@ -522,6 +616,38 @@ This is the final format attempt:
     }
 
     return result;
+  }
+
+  static String _normalizeInlineSectionValues(
+    String value,
+    List<String> labels,
+  ) {
+    String normalized = value;
+
+    for (final String label in labels) {
+      final RegExp inlinePattern = RegExp(
+        '^${RegExp.escape(label)}:[ \\t]+(.+)\$',
+        multiLine: true,
+      );
+      normalized = normalized.replaceAllMapped(
+        inlinePattern,
+        (Match match) => '$label:\n${match.group(1)}',
+      );
+    }
+
+    return normalized;
+  }
+
+  static String _stripSingleCodeFence(String value) {
+    final List<String> lines = value.split('\n');
+
+    if (lines.length >= 2 &&
+        lines.first.trim().startsWith('```') &&
+        lines.last.trim() == '```') {
+      return lines.sublist(1, lines.length - 1).join('\n').trim();
+    }
+
+    return value;
   }
 
   static TranslationAudit _parseAudit(String content) {
@@ -636,6 +762,10 @@ This is the final format attempt:
     'RU',
     'EN',
     'TH',
+    'EN_TO_RU',
+    'TH_TO_RU',
+    'EN_TO_TH',
+    'TH_TO_EN',
   ];
 
   static const List<String> _auditLabels = <String>[
@@ -653,11 +783,6 @@ This is the final format attempt:
     'UNKNOWN',
     'NOT PROVIDED',
   };
-
-  static final RegExp _sectionPattern = RegExp(
-    r'^([A-Z][A-Z0-9 _]*):[ \t]*$',
-    multiLine: true,
-  );
 }
 
 final class _PayloadFailure implements Exception {
