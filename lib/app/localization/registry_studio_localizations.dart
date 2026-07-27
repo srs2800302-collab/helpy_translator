@@ -320,6 +320,65 @@ final class RegistryStudioLocalizations {
   String get yes => _value(ru: 'ДА', en: 'YES', th: 'ใช่');
   String get no => _value(ru: 'НЕТ', en: 'NO', th: 'ไม่');
 
+  String get translationHistory => _value(
+    ru: 'История переводов',
+    en: 'Translation history',
+    th: 'ประวัติการแปล',
+  );
+
+  String get deleteAllTranslations =>
+      _value(ru: 'Удалить все', en: 'Delete all', th: 'ลบทั้งหมด');
+
+  String get deleteAllTranslationsTitle => _value(
+    ru: 'Удалить всю историю переводов?',
+    en: 'Delete all translation history?',
+    th: 'ลบประวัติการแปลทั้งหมดหรือไม่',
+  );
+
+  String get deleteAllTranslationsMessage => _value(
+    ru:
+        'Все сохранённые переводы будут удалены с устройства. '
+        'Текущее поле ввода и API-ключ не изменятся.',
+    en:
+        'All saved translations will be removed from this device. '
+        'The current input and API key will not change.',
+    th:
+        'คำแปลที่บันทึกไว้ทั้งหมดจะถูกลบออกจากอุปกรณ์นี้ '
+        'ข้อความปัจจุบันและคีย์ API จะไม่เปลี่ยนแปลง',
+  );
+
+  String get copyTranslation =>
+      _value(ru: 'Копировать', en: 'Copy', th: 'คัดลอก');
+
+  String get translationCopied => _value(
+    ru: 'Перевод скопирован',
+    en: 'Translation copied',
+    th: 'คัดลอกคำแปลแล้ว',
+  );
+
+  String get deleteTranslation =>
+      _value(ru: 'Удалить запись', en: 'Delete entry', th: 'ลบรายการ');
+
+  String get delete => _value(ru: 'Удалить', en: 'Delete', th: 'ลบ');
+
+  String get historyWarning => _value(
+    ru: 'История переводов',
+    en: 'Translation history',
+    th: 'ประวัติการแปล',
+  );
+
+  String get exactVerdict => 'EXACT';
+  String get equivalentVerdict => 'EQUIVALENT';
+
+  String get needsReviewVerdict =>
+      _value(ru: 'NEEDS REVIEW', en: 'NEEDS REVIEW', th: 'ต้องตรวจสอบ');
+
+  String get canonicalDriftVerdict => _value(
+    ru: 'CANONICAL DRIFT',
+    en: 'CANONICAL DRIFT',
+    th: 'คลาดเคลื่อนจากมาตรฐาน',
+  );
+
   String get translatorPlaceholderDescription => _value(
     ru: 'Перевод и проверка формулировок RU / EN / TH',
     en: 'Translate and validate RU / EN / TH wording',

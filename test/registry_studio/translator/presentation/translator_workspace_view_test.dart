@@ -1,16 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/app/localization/registry_studio_localizations.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_access_key_store.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_draft_store.dart';
+import 'package:helpy_translator/registry_studio/translator/application/translator_history_store.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
+import 'package:helpy_translator/registry_studio/translator/presentation/history/translator_history_card.dart';
 import 'package:helpy_translator/registry_studio/translator/presentation/translator_workspace_view.dart';
 
 void main() {
+  test('clipboard text contains the complete saved translation', () {
+    final TranslatorHistoryEntry entry = TranslatorHistoryEntry(
+      id: 'copy',
+      report: _report(),
+    );
+    const RegistryStudioLocalizations l10n = RegistryStudioLocalizations(
+      Locale('ru'),
+    );
+
+    final String text = buildTranslatorHistoryClipboardText(entry, l10n);
+
+    expect(text, contains('Семантический вердикт: EXACT'));
+    expect(text, contains('Исходный текст:'));
+    expect(text, contains('RU:'));
+    expect(text, contains('EN_TO_RU:'));
+    expect(text, contains('Канонический словарь: НЕ ПОДКЛЮЧЁН'));
+    expect(text, contains('Аудит и диагностика:'));
+  });
+
   testWidgets('shows direct, reverse, and semantic verdict sections', (
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
+    final String historyEntryId =
+        'translation-${report.createdAt.toUtc().microsecondsSinceEpoch}';
     final TranslatorWorkspaceController controller =
         TranslatorWorkspaceController();
 
@@ -43,9 +67,27 @@ void main() {
       find.byKey(const ValueKey<String>('translator-run-button')),
     );
     await tester.pumpAndSettle();
+    await _scrollToHistory(tester);
+
+    expect(find.byType(TranslatorHistoryCard), findsOneWidget);
+    final Text collapsedSource = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(TranslatorHistoryCard),
+        matching: find.text(report.request.sourceText),
+      ),
+    );
+    expect(collapsedSource.maxLines, 2);
+    expect(collapsedSource.overflow, TextOverflow.ellipsis);
+    expect(find.text('EXACT'), findsOneWidget);
+    expect(find.text('Прямой перевод'), findsNothing);
+    expect(find.text('Обратные переводы для диагностики'), findsNothing);
+
+    await tester.tap(
+      find.byKey(ValueKey<String>('translator-history-toggle-$historyEntryId')),
+    );
+    await tester.pumpAndSettle();
 
     expect(find.text('Семантический вердикт'), findsOneWidget);
-    expect(find.text('EXACT'), findsOneWidget);
     expect(find.text('Прямой перевод'), findsOneWidget);
     expect(find.text('Обратные переводы для диагностики'), findsOneWidget);
     expect(find.text('Аудит и диагностика'), findsOneWidget);
@@ -54,7 +96,7 @@ void main() {
     expect(find.text('Канонический вердикт недоступен'), findsOneWidget);
   });
 
-  testWidgets('clear removes Translator result only', (
+  testWidgets('clear keeps saved translation history', (
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
@@ -74,13 +116,20 @@ void main() {
       draftStore: store,
       accessKeyStore: accessKeyStore,
     );
+    await _scrollToHistory(tester);
 
     expect(find.text('EXACT'), findsOneWidget);
 
+    await tester.scrollUntilVisible(
+      find.text('Очистить Translator'),
+      -300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Очистить Translator'));
     await tester.pumpAndSettle();
+    await _scrollToHistory(tester);
 
-    expect(find.text('EXACT'), findsNothing);
+    expect(find.text('EXACT'), findsOneWidget);
     expect(store.clearCount, 1);
     expect(accessKeyStore.value, 'saved-key');
     expect(accessKeyStore.clearCount, 0);
@@ -164,6 +213,138 @@ void main() {
     expect(keyField.controller?.text, isEmpty);
   });
 
+  testWidgets('keeps only one history card expanded', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorHistoryEntry first = TranslatorHistoryEntry(
+      id: 'first',
+      report: _reportAt(DateTime.utc(2026, 7, 26, 6)),
+    );
+    final TranslatorHistoryEntry second = TranslatorHistoryEntry(
+      id: 'second',
+      report: _reportAt(DateTime.utc(2026, 7, 26, 7)),
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(_report()),
+      draftStore: _MemoryDraftStore(),
+      historyStore: _MemoryHistoryStore(
+        entries: <TranslatorHistoryEntry>[second, first],
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+    await _scrollToHistory(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('translator-history-toggle-first')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('translator-history-toggle-first')),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('translator-history-toggle-second')),
+      -250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-history-toggle-second')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('translator-history-details-second')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('translator-history-details-first')),
+      findsNothing,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('translator-history-toggle-first')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-history-toggle-first')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('translator-history-details-second')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('translator-history-details-first')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('deletes one entry and all history only by explicit actions', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorHistoryEntry first = TranslatorHistoryEntry(
+      id: 'first',
+      report: _reportAt(DateTime.utc(2026, 7, 26, 6)),
+    );
+    final TranslatorHistoryEntry second = TranslatorHistoryEntry(
+      id: 'second',
+      report: _reportAt(DateTime.utc(2026, 7, 26, 7)),
+    );
+    final _MemoryHistoryStore historyStore = _MemoryHistoryStore(
+      entries: <TranslatorHistoryEntry>[second, first],
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(_report()),
+      draftStore: _MemoryDraftStore(),
+      historyStore: historyStore,
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+    await _scrollToHistory(tester);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-history-toggle-second')),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('translator-history-delete-second')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-history-delete-second')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(historyStore.entries, <TranslatorHistoryEntry>[first]);
+
+    await _scrollToHistory(tester);
+    expect(find.byType(TranslatorHistoryCard), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-history-clear-all')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Удалить всю историю переводов?'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('translator-history-clear-all-confirm'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TranslatorHistoryCard), findsNothing);
+    expect(historyStore.entries, isEmpty);
+  });
+
   testWidgets('uses automatic source detection and text-only run button', (
     WidgetTester tester,
   ) async {
@@ -213,11 +394,21 @@ void main() {
   });
 }
 
+Future<void> _scrollToHistory(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.text('История переводов'),
+    300,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> _pumpTranslator(
   WidgetTester tester, {
   required TranslatorProvider provider,
   required TranslatorDraftStore draftStore,
   required TranslatorAccessKeyStore accessKeyStore,
+  TranslatorHistoryStore? historyStore,
   TranslatorWorkspaceController? controller,
 }) async {
   await tester.pumpWidget(
@@ -226,6 +417,7 @@ Future<void> _pumpTranslator(
         body: TranslatorWorkspaceView(
           provider: provider,
           draftStore: draftStore,
+          historyStore: historyStore ?? _MemoryHistoryStore(),
           accessKeyStore: accessKeyStore,
           controller: controller,
         ),
@@ -237,6 +429,10 @@ Future<void> _pumpTranslator(
 }
 
 TranslatorRunReport _report() {
+  return _reportAt(DateTime.utc(2026, 7, 26, 6));
+}
+
+TranslatorRunReport _reportAt(DateTime createdAt) {
   final TranslatorWorkRequest request = TranslatorWorkRequest(
     sourceText: 'Фотография установленной варочной панели.',
   );
@@ -257,7 +453,7 @@ TranslatorRunReport _report() {
       ),
     ),
     audit: TranslationAudit(),
-    createdAt: DateTime.utc(2026, 7, 26, 6),
+    createdAt: createdAt,
   );
 }
 
@@ -310,6 +506,29 @@ final class _SuccessOperation implements TranslatorOperation {
 
   @override
   void cancel() {}
+}
+
+final class _MemoryHistoryStore implements TranslatorHistoryStore {
+  _MemoryHistoryStore({
+    Iterable<TranslatorHistoryEntry> entries = const <TranslatorHistoryEntry>[],
+  }) : entries = List<TranslatorHistoryEntry>.of(entries);
+
+  List<TranslatorHistoryEntry> entries;
+
+  @override
+  Future<List<TranslatorHistoryEntry>> load() async {
+    return List<TranslatorHistoryEntry>.unmodifiable(entries);
+  }
+
+  @override
+  Future<void> save(List<TranslatorHistoryEntry> entries) async {
+    this.entries = List<TranslatorHistoryEntry>.of(entries);
+  }
+
+  @override
+  Future<void> clear() async {
+    entries = <TranslatorHistoryEntry>[];
+  }
 }
 
 final class _MemoryAccessKeyStore implements TranslatorAccessKeyStore {

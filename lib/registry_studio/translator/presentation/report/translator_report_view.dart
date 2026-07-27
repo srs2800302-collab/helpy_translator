@@ -3,21 +3,77 @@ import 'package:flutter/material.dart';
 import '../../../../app/localization/registry_studio_localizations.dart';
 import '../../domain/translator_models.dart';
 
-final class TranslatorReportView extends StatelessWidget {
-  const TranslatorReportView({required this.report, super.key});
+final class TranslatorReportDetails extends StatelessWidget {
+  const TranslatorReportDetails({required this.report, super.key});
 
   final TranslatorRunReport report;
 
   @override
   Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+    final TranslationAudit audit = report.audit;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _TranslationBundleSections(bundle: report.bundle),
+        _DetailsHeading(title: l10n.sourceText),
+        const SizedBox(height: 6),
+        SelectableText(report.request.sourceText),
+        const Divider(height: 32),
+        TranslatorBundleDetails(bundle: report.bundle),
+        const Divider(height: 32),
+        _DetailsHeading(title: l10n.automaticVerdict),
+        const SizedBox(height: 8),
+        Text(
+          verdictLabel(l10n, audit.verdict),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        _BooleanEvidenceRow(
+          label: l10n.meaningPreserved,
+          value: audit.meaningPreserved,
+        ),
+        _BooleanEvidenceRow(
+          label: l10n.terminologyPreserved,
+          value: audit.terminologyPreserved,
+        ),
+        _BooleanEvidenceRow(
+          label: l10n.stylePreserved,
+          value: audit.stylePreserved,
+        ),
+        _BooleanEvidenceRow(
+          label: l10n.ambiguousWording,
+          value: audit.ambiguousWording,
+          positiveMeansGood: false,
+        ),
+        const Divider(height: 32),
+        _DetailsHeading(title: l10n.canonicalDictionary),
+        const SizedBox(height: 6),
+        Text(
+          l10n.notConnected,
+          key: const ValueKey<String>('translator-canonical-dictionary-status'),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(l10n.canonicalVerdictUnavailable, textAlign: TextAlign.center),
         const SizedBox(height: 12),
-        _VerdictCard(audit: report.audit),
+        Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
+        const Divider(height: 32),
+        _DetailsHeading(title: l10n.auditAndDiagnostics),
         const SizedBox(height: 12),
-        _AuditFindingsCard(audit: report.audit),
+        _FindingGroup(title: l10n.meaning, findings: audit.meaningFindings),
+        _FindingGroup(
+          title: l10n.terminology,
+          findings: audit.terminologyFindings,
+        ),
+        _FindingGroup(title: l10n.style, findings: audit.styleFindings),
+        _FindingGroup(title: l10n.ambiguity, findings: audit.ambiguityFindings),
       ],
     );
   }
@@ -36,7 +92,12 @@ final class TranslatorPartialBundleView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _TranslationBundleSections(bundle: bundle),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: TranslatorBundleDetails(bundle: bundle),
+          ),
+        ),
         const SizedBox(height: 12),
         Card(
           color: colors.tertiaryContainer,
@@ -95,8 +156,8 @@ final class TranslatorPartialBundleView extends StatelessWidget {
   }
 }
 
-final class _TranslationBundleSections extends StatelessWidget {
-  const _TranslationBundleSections({required this.bundle});
+final class TranslatorBundleDetails extends StatelessWidget {
+  const TranslatorBundleDetails({required this.bundle, super.key});
 
   final TranslationBundle bundle;
 
@@ -108,28 +169,26 @@ final class _TranslationBundleSections extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _SectionCard(
-          title: l10n.directTranslation,
-          entries: <MapEntry<String, String>>[
-            MapEntry<String, String>(
-              '${bundle.sourceLanguage.code} · SOURCE TEXT',
-              bundle.sourceText,
-            ),
-            MapEntry<String, String>('RU', bundle.ru),
-            MapEntry<String, String>('EN', bundle.en),
-            MapEntry<String, String>('TH', bundle.th),
-          ],
+        _DetailsHeading(title: l10n.directTranslation),
+        const SizedBox(height: 8),
+        _LabeledText(
+          label: '${bundle.sourceLanguage.code} · SOURCE TEXT',
+          value: bundle.sourceText,
         ),
+        _LabeledText(label: 'RU', value: bundle.ru),
+        _LabeledText(label: 'EN', value: bundle.en),
+        _LabeledText(label: 'TH', value: bundle.th, showDivider: false),
         if (reverse != null) ...<Widget>[
-          const SizedBox(height: 12),
-          _SectionCard(
-            title: l10n.reverseTranslationsForDiagnostics,
-            entries: <MapEntry<String, String>>[
-              MapEntry<String, String>('EN → RU', reverse.enToRu),
-              MapEntry<String, String>('TH → RU', reverse.thToRu),
-              MapEntry<String, String>('EN → TH', reverse.enToTh),
-              MapEntry<String, String>('TH → EN', reverse.thToEn),
-            ],
+          const Divider(height: 32),
+          _DetailsHeading(title: l10n.reverseTranslationsForDiagnostics),
+          const SizedBox(height: 8),
+          _LabeledText(label: 'EN → RU', value: reverse.enToRu),
+          _LabeledText(label: 'TH → RU', value: reverse.thToRu),
+          _LabeledText(label: 'EN → TH', value: reverse.enToTh),
+          _LabeledText(
+            label: 'TH → EN',
+            value: reverse.thToEn,
+            showDivider: false,
           ),
         ],
       ],
@@ -137,77 +196,38 @@ final class _TranslationBundleSections extends StatelessWidget {
   }
 }
 
-final class _VerdictCard extends StatelessWidget {
-  const _VerdictCard({required this.audit});
+final class _DetailsHeading extends StatelessWidget {
+  const _DetailsHeading({required this.title});
 
-  final TranslationAudit audit;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
-    final TranslationVerdict verdict = audit.verdict;
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    final Color background = switch (verdict) {
-      TranslationVerdict.exact => colors.primaryContainer,
-      TranslationVerdict.equivalent => colors.secondaryContainer,
-      TranslationVerdict.needsReview => colors.tertiaryContainer,
-      TranslationVerdict.canonicalDrift => colors.errorContainer,
-    };
+    return Text(title, style: Theme.of(context).textTheme.titleLarge);
+  }
+}
 
-    return Card(
-      color: background,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: <Widget>[
-            Text(
-              l10n.automaticVerdict,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _verdictLabel(verdict),
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 16),
-            _BooleanEvidenceRow(
-              label: l10n.meaningPreserved,
-              value: audit.meaningPreserved,
-            ),
-            _BooleanEvidenceRow(
-              label: l10n.terminologyPreserved,
-              value: audit.terminologyPreserved,
-            ),
-            _BooleanEvidenceRow(
-              label: l10n.stylePreserved,
-              value: audit.stylePreserved,
-            ),
-            _BooleanEvidenceRow(
-              label: l10n.ambiguousWording,
-              value: audit.ambiguousWording,
-              positiveMeansGood: false,
-            ),
-            const Divider(height: 32),
-            Text(
-              l10n.canonicalDictionary,
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.notConnected,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(l10n.canonicalVerdictUnavailable, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
+final class _LabeledText extends StatelessWidget {
+  const _LabeledText({
+    required this.label,
+    required this.value,
+    this.showDivider = true,
+  });
+
+  final String label;
+  final String value;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(label, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 6),
+        SelectableText(value),
+        if (showDivider) const Divider(height: 24),
+      ],
     );
   }
 }
@@ -235,71 +255,6 @@ final class _BooleanEvidenceRow extends StatelessWidget {
         Expanded(child: Text(label)),
         Text(value ? l10n.yes : l10n.no),
       ],
-    );
-  }
-}
-
-final class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.entries});
-
-  final String title;
-  final List<MapEntry<String, String>> entries;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            for (final MapEntry<String, String> entry in entries) ...<Widget>[
-              const Divider(height: 24),
-              Text(entry.key, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 6),
-              SelectableText(entry.value),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-final class _AuditFindingsCard extends StatelessWidget {
-  const _AuditFindingsCard({required this.audit});
-
-  final TranslationAudit audit;
-
-  @override
-  Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              l10n.auditAndDiagnostics,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            _FindingGroup(title: l10n.meaning, findings: audit.meaningFindings),
-            _FindingGroup(
-              title: l10n.terminology,
-              findings: audit.terminologyFindings,
-            ),
-            _FindingGroup(title: l10n.style, findings: audit.styleFindings),
-            _FindingGroup(
-              title: l10n.ambiguity,
-              findings: audit.ambiguityFindings,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -335,11 +290,14 @@ final class _FindingGroup extends StatelessWidget {
   }
 }
 
-String _verdictLabel(TranslationVerdict verdict) {
+String verdictLabel(
+  RegistryStudioLocalizations l10n,
+  TranslationVerdict verdict,
+) {
   return switch (verdict) {
-    TranslationVerdict.exact => 'EXACT',
-    TranslationVerdict.equivalent => 'EQUIVALENT',
-    TranslationVerdict.needsReview => 'NEEDS REVIEW',
-    TranslationVerdict.canonicalDrift => 'CANONICAL DRIFT',
+    TranslationVerdict.exact => l10n.exactVerdict,
+    TranslationVerdict.equivalent => l10n.equivalentVerdict,
+    TranslationVerdict.needsReview => l10n.needsReviewVerdict,
+    TranslationVerdict.canonicalDrift => l10n.canonicalDriftVerdict,
   };
 }

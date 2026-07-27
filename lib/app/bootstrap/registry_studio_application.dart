@@ -19,6 +19,7 @@ import '../../registry_studio/technical/storage/json_file_registry_snapshot_cach
 import '../../registry_studio/technical/storage/json_lines_registry_analysis_history_store.dart';
 import '../../registry_studio/translator/infrastructure/flutter_secure_translator_access_key_store.dart';
 import '../../registry_studio/translator/infrastructure/json_file_translator_draft_store.dart';
+import '../../registry_studio/translator/infrastructure/json_file_translator_history_store.dart';
 import '../../registry_studio/translator/infrastructure/typhoon/typhoon_translator_provider.dart';
 import '../../registry_studio/translator/presentation/translator_workspace_view.dart';
 import '../localization/flutter_secure_registry_studio_locale_store.dart';
@@ -81,6 +82,7 @@ final class RegistryStudioApplication extends StatelessWidget {
           policy: HelpyTranslatorPolicy(),
         ),
         draftStore: const JsonFileTranslatorDraftStore(),
+        historyStore: const JsonFileTranslatorHistoryStore(),
         accessKeyStore: FlutterSecureTranslatorAccessKeyStore(
           storageKey: 'registry_studio.translator.typhoon.api_key.v1',
         ),

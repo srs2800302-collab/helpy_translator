@@ -4,17 +4,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../domain/translator_models.dart';
 import 'translator_draft_store.dart';
+import 'translator_history_store.dart';
 import 'translator_provider.dart';
 import 'translator_state.dart';
 
 export 'translator_state.dart';
 
 final class TranslatorCubit extends Cubit<TranslatorState> {
-  TranslatorCubit({required this.provider, required this.draftStore})
-    : super(const TranslatorState.initial());
+  TranslatorCubit({
+    required this.provider,
+    required this.draftStore,
+    required this.historyStore,
+  }) : super(TranslatorState.initial());
 
   final TranslatorProvider provider;
   final TranslatorDraftStore draftStore;
+  final TranslatorHistoryStore historyStore;
 
   TranslatorOperation? _operation;
   StreamSubscription<TranslatorRunStage>? _progressSubscription;
@@ -24,67 +29,105 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
   Future<void> _pendingDraftWrite = Future<void>.value();
 
   Future<void> restore() async {
-    try {
-      final TranslatorDraft? draft = await draftStore.load();
+    TranslatorDraft? draft;
+    List<TranslatorHistoryEntry> history = const <TranslatorHistoryEntry>[];
+    String? restoreWarning;
+    String? historyWarning;
 
-      if (draft == null) {
-        emit(
-          state.copyWith(
-            status: TranslatorViewStatus.idle,
-            clearStage: true,
-            clearReport: true,
-            clearPartialBundle: true,
-            clearFailure: true,
-          ),
-        );
-        return;
+    try {
+      draft = await draftStore.load();
+    } on FormatException catch (error) {
+      restoreWarning =
+          'Сохранённое рабочее состояние Translator повреждено: '
+          '${error.message}';
+    } catch (_) {
+      restoreWarning =
+          'Не удалось восстановить рабочее состояние Translator. '
+          'Можно продолжить работу с новым текстом.';
+    }
+
+    try {
+      history = await historyStore.load();
+    } on FormatException catch (error) {
+      historyWarning =
+          'Сохранённая история переводов повреждена: ${error.message}';
+    } catch (_) {
+      historyWarning =
+          'Не удалось восстановить историю переводов. '
+          'Новые переводы можно продолжать создавать.';
+    }
+
+    final TranslatorRunReport? legacyReport = draft?.report;
+
+    if (legacyReport != null) {
+      final bool alreadyStored = history.any(
+        (TranslatorHistoryEntry entry) => entry.report == legacyReport,
+      );
+      bool migrationPersisted = alreadyStored;
+
+      if (!alreadyStored) {
+        history = <TranslatorHistoryEntry>[
+          _createHistoryEntry(legacyReport, history),
+          ...history,
+        ];
+
+        try {
+          await historyStore.save(history);
+          migrationPersisted = true;
+        } catch (_) {
+          historyWarning =
+              'Последний перевод показан в истории, '
+              'но не удалось сохранить миграцию на устройстве.';
+        }
       }
 
-      final TranslationBundle? partialBundle = draft.partialBundle;
+      if (migrationPersisted) {
+        final TranslatorDraft migratedDraft = TranslatorDraft(
+          sourceText: draft!.sourceText,
+          partialBundle: draft.partialBundle,
+        );
 
-      emit(
-        TranslatorState(
-          status: draft.report != null
-              ? TranslatorViewStatus.success
-              : partialBundle != null
-              ? TranslatorViewStatus.failure
-              : TranslatorViewStatus.idle,
-          sourceText: draft.sourceText,
-          report: draft.report,
-          partialBundle: partialBundle,
-          failure: partialBundle == null
-              ? null
-              : TranslatorFailure(
-                  stage: TranslatorFailureStage.audit,
-                  code: TranslatorFailureCode.networkFailure,
-                  message:
-                      'Прямой и обратный переводы сохранены. '
-                      'Семантический аудит не завершён.',
-                  completeness: TranslationCompleteness.complete,
-                  partialBundle: partialBundle,
-                ),
-        ),
-      );
-    } on FormatException catch (error) {
-      emit(
-        TranslatorState(
-          status: TranslatorViewStatus.idle,
-          sourceText: '',
-          restoreWarning:
-              'Сохранённый Translator draft повреждён: ${error.message}',
-        ),
-      );
-    } catch (_) {
-      emit(
-        const TranslatorState(
-          status: TranslatorViewStatus.idle,
-          sourceText: '',
-          restoreWarning:
-              'Не удалось восстановить Translator draft. '
-              'Можно продолжить работу с новым текстом.',
-        ),
-      );
+        try {
+          await draftStore.save(migratedDraft);
+          draft = migratedDraft;
+        } catch (_) {
+          restoreWarning =
+              'Последний перевод восстановлен в историю, '
+              'но рабочее состояние не удалось обновить.';
+        }
+      }
     }
+
+    final TranslationBundle? partialBundle = draft?.partialBundle;
+
+    if (isClosed) {
+      return;
+    }
+
+    emit(
+      TranslatorState(
+        status: partialBundle == null
+            ? TranslatorViewStatus.idle
+            : TranslatorViewStatus.failure,
+        sourceText: draft?.sourceText ?? '',
+        report: null,
+        partialBundle: partialBundle,
+        failure: partialBundle == null
+            ? null
+            : TranslatorFailure(
+                stage: TranslatorFailureStage.audit,
+                code: TranslatorFailureCode.networkFailure,
+                message:
+                    'Прямой и обратный переводы сохранены. '
+                    'Семантический аудит не завершён.',
+                completeness: TranslationCompleteness.complete,
+                partialBundle: partialBundle,
+              ),
+        restoreWarning: restoreWarning,
+        historyWarning: historyWarning,
+        history: history,
+      ),
+    );
   }
 
   Future<void> updateSourceText(String value) async {
@@ -193,6 +236,71 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     );
   }
 
+  Future<void> deleteHistoryEntry(String id) async {
+    if (state.isRunning) {
+      return;
+    }
+
+    final List<TranslatorHistoryEntry> updated = state.history
+        .where((TranslatorHistoryEntry entry) => entry.id != id)
+        .toList(growable: false);
+
+    if (updated.length == state.history.length) {
+      return;
+    }
+
+    try {
+      await historyStore.save(updated);
+
+      if (isClosed) {
+        return;
+      }
+
+      emit(state.copyWith(history: updated, clearHistoryWarning: true));
+    } catch (_) {
+      if (isClosed) {
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          historyWarning: 'Не удалось удалить запись из истории на устройстве.',
+        ),
+      );
+    }
+  }
+
+  Future<void> clearHistory() async {
+    if (state.isRunning || state.history.isEmpty) {
+      return;
+    }
+
+    try {
+      await historyStore.clear();
+
+      if (isClosed) {
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          history: const <TranslatorHistoryEntry>[],
+          clearHistoryWarning: true,
+        ),
+      );
+    } catch (_) {
+      if (isClosed) {
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          historyWarning: 'Не удалось удалить историю переводов на устройстве.',
+        ),
+      );
+    }
+  }
+
   Future<void> _runOperation({
     required TranslatorOperation operation,
     required String sourceText,
@@ -250,10 +358,35 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
         return;
       }
 
+      final List<TranslatorHistoryEntry> updatedHistory =
+          <TranslatorHistoryEntry>[
+            _createHistoryEntry(report, state.history),
+            ...state.history,
+          ];
+      bool historyPersisted = true;
+      String? historyWarning;
+
+      try {
+        await historyStore.save(updatedHistory);
+      } catch (_) {
+        historyPersisted = false;
+        historyWarning =
+            'Перевод добавлен в текущую историю, '
+            'но не удалось сохранить его на устройстве.';
+      }
+
+      if (requestId != _requestId || isClosed) {
+        return;
+      }
+
       emit(
         state.copyWith(
           status: TranslatorViewStatus.success,
-          report: report,
+          report: historyPersisted ? null : report,
+          clearReport: historyPersisted,
+          history: updatedHistory,
+          historyWarning: historyWarning,
+          clearHistoryWarning: historyPersisted,
           clearPartialBundle: true,
           clearFailure: true,
           clearStage: true,
@@ -376,7 +509,12 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     await draftStore.clear();
 
     emit(
-      const TranslatorState(status: TranslatorViewStatus.idle, sourceText: ''),
+      TranslatorState(
+        status: TranslatorViewStatus.idle,
+        sourceText: '',
+        history: state.history,
+        historyWarning: state.historyWarning,
+      ),
     );
   }
 
@@ -406,6 +544,26 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     );
 
     return write.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+  }
+
+  TranslatorHistoryEntry _createHistoryEntry(
+    TranslatorRunReport report,
+    List<TranslatorHistoryEntry> existing,
+  ) {
+    final String base =
+        'translation-${report.createdAt.toUtc().microsecondsSinceEpoch}';
+    final Set<String> existingIds = existing
+        .map((TranslatorHistoryEntry entry) => entry.id)
+        .toSet();
+    String candidate = base;
+    int suffix = 2;
+
+    while (existingIds.contains(candidate)) {
+      candidate = '$base-$suffix';
+      suffix += 1;
+    }
+
+    return TranslatorHistoryEntry(id: candidate, report: report);
   }
 
   Future<void> _cancelActiveOperation() async {

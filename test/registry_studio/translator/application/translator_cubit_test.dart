@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_draft_store.dart';
+import 'package:helpy_translator/registry_studio/translator/application/translator_history_store.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_cubit.dart';
@@ -15,6 +16,7 @@ void main() {
     final TranslatorCubit cubit = TranslatorCubit(
       provider: _FakeProvider.success(_report()),
       draftStore: store,
+      historyStore: _MemoryHistoryStore(),
     );
     addTearDown(cubit.close);
 
@@ -28,9 +30,11 @@ void main() {
     final TranslatorRunReport report = _report();
     final _MemoryDraftStore store = _MemoryDraftStore();
 
+    final _MemoryHistoryStore historyStore = _MemoryHistoryStore();
     final TranslatorCubit cubit = TranslatorCubit(
       provider: _FakeProvider.success(report),
       draftStore: store,
+      historyStore: historyStore,
     );
     addTearDown(cubit.close);
 
@@ -45,8 +49,11 @@ void main() {
     await cubit.translate(accessKey: 'key');
 
     expect(cubit.state.status, TranslatorViewStatus.success);
-    expect(cubit.state.report, report);
-    expect(store.draft?.report, report);
+    expect(cubit.state.report, isNull);
+    expect(cubit.state.history, hasLength(1));
+    expect(cubit.state.history.single.report, report);
+    expect(historyStore.entries.single.report, report);
+    expect(store.draft?.report, isNull);
     expect(
       states
           .where((TranslatorState state) => state.stage != null)
@@ -73,6 +80,7 @@ void main() {
       final TranslatorCubit cubit = TranslatorCubit(
         provider: _FakeProvider.failure(failure),
         draftStore: _MemoryDraftStore(),
+        historyStore: _MemoryHistoryStore(),
       );
       addTearDown(cubit.close);
 
@@ -95,6 +103,7 @@ void main() {
     final TranslatorCubit cubit = TranslatorCubit(
       provider: provider,
       draftStore: _MemoryDraftStore(),
+      historyStore: _MemoryHistoryStore(),
     );
     addTearDown(cubit.close);
 
@@ -111,6 +120,7 @@ void main() {
     final TranslatorCubit cubit = TranslatorCubit(
       provider: _SingleOperationProvider(operation),
       draftStore: _MemoryDraftStore(),
+      historyStore: _MemoryHistoryStore(),
     );
     addTearDown(cubit.close);
 
@@ -135,9 +145,11 @@ void main() {
     final TranslatorRunReport report = _report();
     final _MemoryDraftStore store = _MemoryDraftStore();
     final _RetryCapableProvider provider = _RetryCapableProvider(report);
+    final _MemoryHistoryStore historyStore = _MemoryHistoryStore();
     final TranslatorCubit cubit = TranslatorCubit(
       provider: provider,
       draftStore: store,
+      historyStore: historyStore,
     );
     addTearDown(cubit.close);
 
@@ -155,22 +167,32 @@ void main() {
     await cubit.retryAudit(accessKey: 'key');
 
     expect(cubit.state.status, TranslatorViewStatus.success);
-    expect(cubit.state.report, report);
+    expect(cubit.state.report, isNull);
+    expect(cubit.state.history, hasLength(1));
+    expect(cubit.state.history.single.report, report);
+    expect(historyStore.entries.single.report, report);
     expect(cubit.state.partialBundle, isNull);
-    expect(store.draft?.report, report);
+    expect(store.draft?.report, isNull);
     expect(store.draft?.partialBundle, isNull);
     expect(provider.fullRunCount, 1);
     expect(provider.auditOnlyRunCount, 1);
   });
 
-  test('clear affects only Translator state and store', () async {
+  test('clear affects only current Translator draft', () async {
     final _MemoryDraftStore store = _MemoryDraftStore(
       draft: const TranslatorDraft(sourceText: 'Черновик.'),
     );
-
+    final TranslatorHistoryEntry historyEntry = TranslatorHistoryEntry(
+      id: 'saved',
+      report: _report(),
+    );
+    final _MemoryHistoryStore historyStore = _MemoryHistoryStore(
+      entries: <TranslatorHistoryEntry>[historyEntry],
+    );
     final TranslatorCubit cubit = TranslatorCubit(
       provider: _FakeProvider.success(_report()),
       draftStore: store,
+      historyStore: historyStore,
     );
     addTearDown(cubit.close);
 
@@ -179,7 +201,113 @@ void main() {
 
     expect(cubit.state.status, TranslatorViewStatus.idle);
     expect(cubit.state.sourceText, isEmpty);
+    expect(cubit.state.history, <TranslatorHistoryEntry>[historyEntry]);
+    expect(historyStore.entries, <TranslatorHistoryEntry>[historyEntry]);
     expect(store.clearCount, 1);
+    expect(historyStore.clearCount, 0);
+  });
+
+  test('editing new text keeps completed history entries', () async {
+    final TranslatorRunReport report = _report();
+    final _MemoryHistoryStore historyStore = _MemoryHistoryStore();
+    final TranslatorCubit cubit = TranslatorCubit(
+      provider: _FakeProvider.success(report),
+      draftStore: _MemoryDraftStore(),
+      historyStore: historyStore,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+    await cubit.updateSourceText(report.request.sourceText);
+    await cubit.translate(accessKey: 'key');
+    final List<TranslatorHistoryEntry> historyBeforeEditing =
+        cubit.state.history;
+    await cubit.updateSourceText('Новая фраза.');
+
+    expect(cubit.state.sourceText, 'Новая фраза.');
+    expect(identical(cubit.state.history, historyBeforeEditing), isTrue);
+    expect(cubit.state.history, hasLength(1));
+    expect(cubit.state.history.single.report, report);
+    expect(historyStore.entries, hasLength(1));
+  });
+
+  test('same completed phrase creates separate history entries', () async {
+    final TranslatorRunReport report = _report();
+    final _MemoryHistoryStore historyStore = _MemoryHistoryStore();
+    final TranslatorCubit cubit = TranslatorCubit(
+      provider: _FakeProvider.success(report),
+      draftStore: _MemoryDraftStore(),
+      historyStore: historyStore,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+    await cubit.updateSourceText(report.request.sourceText);
+    await cubit.translate(accessKey: 'key');
+    await cubit.translate(accessKey: 'key');
+
+    expect(cubit.state.history, hasLength(2));
+    expect(cubit.state.history[0].report, report);
+    expect(cubit.state.history[1].report, report);
+    expect(cubit.state.history[0].id, isNot(cubit.state.history[1].id));
+    expect(historyStore.entries, hasLength(2));
+  });
+
+  test('migrates legacy successful draft into history once', () async {
+    final TranslatorRunReport report = _report();
+    final _MemoryDraftStore draftStore = _MemoryDraftStore(
+      draft: TranslatorDraft(
+        sourceText: report.request.sourceText,
+        report: report,
+      ),
+    );
+    final _MemoryHistoryStore historyStore = _MemoryHistoryStore();
+    final TranslatorCubit cubit = TranslatorCubit(
+      provider: _FakeProvider.success(report),
+      draftStore: draftStore,
+      historyStore: historyStore,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+
+    expect(cubit.state.history, hasLength(1));
+    expect(cubit.state.history.single.report, report);
+    expect(historyStore.entries, hasLength(1));
+    expect(draftStore.draft?.report, isNull);
+    expect(draftStore.draft?.sourceText, report.request.sourceText);
+  });
+
+  test('deletes one history entry and clears all history explicitly', () async {
+    final TranslatorHistoryEntry first = TranslatorHistoryEntry(
+      id: 'first',
+      report: _report(),
+    );
+    final TranslatorHistoryEntry second = TranslatorHistoryEntry(
+      id: 'second',
+      report: _report(),
+    );
+    final _MemoryHistoryStore historyStore = _MemoryHistoryStore(
+      entries: <TranslatorHistoryEntry>[first, second],
+    );
+    final TranslatorCubit cubit = TranslatorCubit(
+      provider: _FakeProvider.success(_report()),
+      draftStore: _MemoryDraftStore(),
+      historyStore: historyStore,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+    await cubit.deleteHistoryEntry(first.id);
+
+    expect(cubit.state.history, <TranslatorHistoryEntry>[second]);
+    expect(historyStore.entries, <TranslatorHistoryEntry>[second]);
+
+    await cubit.clearHistory();
+
+    expect(cubit.state.history, isEmpty);
+    expect(historyStore.entries, isEmpty);
+    expect(historyStore.clearCount, 1);
   });
 }
 
@@ -223,14 +351,44 @@ final class _MemoryDraftStore implements TranslatorDraftStore {
   }
 }
 
+final class _MemoryHistoryStore implements TranslatorHistoryStore {
+  _MemoryHistoryStore({
+    Iterable<TranslatorHistoryEntry> entries = const <TranslatorHistoryEntry>[],
+  }) : entries = List<TranslatorHistoryEntry>.of(entries);
+
+  List<TranslatorHistoryEntry> entries;
+  int saveCount = 0;
+  int clearCount = 0;
+
+  @override
+  Future<List<TranslatorHistoryEntry>> load() async {
+    return List<TranslatorHistoryEntry>.unmodifiable(entries);
+  }
+
+  @override
+  Future<void> save(List<TranslatorHistoryEntry> entries) async {
+    saveCount += 1;
+    this.entries = List<TranslatorHistoryEntry>.of(entries);
+  }
+
+  @override
+  Future<void> clear() async {
+    clearCount += 1;
+    entries = <TranslatorHistoryEntry>[];
+  }
+}
+
 final class _FakeProvider implements TranslatorProvider {
   _FakeProvider.success(TranslatorRunReport report)
-    : _operation = _CompletedOperation.success(report);
+    : _report = report,
+      _failure = null;
 
   _FakeProvider.failure(TranslatorFailure failure)
-    : _operation = _CompletedOperation.failure(failure);
+    : _report = null,
+      _failure = failure;
 
-  final TranslatorOperation _operation;
+  final TranslatorRunReport? _report;
+  final TranslatorFailure? _failure;
   TranslatorWorkRequest? lastRequest;
 
   @override
@@ -239,7 +397,13 @@ final class _FakeProvider implements TranslatorProvider {
     required String accessKey,
   }) {
     lastRequest = request;
-    return _operation;
+    final TranslatorFailure? failure = _failure;
+
+    if (failure != null) {
+      return _CompletedOperation.failure(failure);
+    }
+
+    return _CompletedOperation.success(_report!);
   }
 }
 

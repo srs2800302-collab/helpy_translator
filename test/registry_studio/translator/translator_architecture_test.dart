@@ -71,6 +71,8 @@ void main() {
           'translator_status_cards.dart',
       'lib/registry_studio/translator/presentation/report/'
           'translator_report_view.dart',
+      'lib/registry_studio/translator/presentation/history/'
+          'translator_history_card.dart',
     ];
 
     for (final String path in leafFiles) {
@@ -91,6 +93,21 @@ void main() {
         );
       }
     }
+  });
+
+  test('history remains independent from the current draft store', () {
+    final String cubit = File(
+      'lib/registry_studio/translator/application/translator_cubit.dart',
+    ).readAsStringSync();
+    final String workspace = File(
+      'lib/registry_studio/translator/presentation/'
+      'translator_workspace_view.dart',
+    ).readAsStringSync();
+
+    expect(cubit, contains('TranslatorHistoryStore'));
+    expect(cubit, contains('historyStore.save'));
+    expect(cubit, contains('draftStore.clear'));
+    expect(workspace, contains('required this.historyStore'));
   });
 
   test('application layer never imports presentation', () {

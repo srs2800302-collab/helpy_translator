@@ -12,18 +12,48 @@ enum TranslatorViewStatus {
 }
 
 final class TranslatorState extends Equatable {
-  const TranslatorState({
+  factory TranslatorState({
+    required TranslatorViewStatus status,
+    required String sourceText,
+    TranslatorRunStage? stage,
+    TranslatorRunReport? report,
+    TranslationBundle? partialBundle,
+    TranslatorFailure? failure,
+    String? restoreWarning,
+    String? historyWarning,
+    Iterable<TranslatorHistoryEntry> history = const <TranslatorHistoryEntry>[],
+  }) {
+    return TranslatorState._(
+      status: status,
+      sourceText: sourceText,
+      stage: stage,
+      report: report,
+      partialBundle: partialBundle,
+      failure: failure,
+      restoreWarning: restoreWarning,
+      historyWarning: historyWarning,
+      history: List<TranslatorHistoryEntry>.unmodifiable(history),
+    );
+  }
+
+  factory TranslatorState.initial() {
+    return TranslatorState(
+      status: TranslatorViewStatus.restoring,
+      sourceText: '',
+    );
+  }
+
+  const TranslatorState._({
     required this.status,
     required this.sourceText,
-    this.stage,
-    this.report,
-    this.partialBundle,
-    this.failure,
-    this.restoreWarning,
+    required this.stage,
+    required this.report,
+    required this.partialBundle,
+    required this.failure,
+    required this.restoreWarning,
+    required this.historyWarning,
+    required this.history,
   });
-
-  const TranslatorState.initial()
-    : this(status: TranslatorViewStatus.restoring, sourceText: '');
 
   final TranslatorViewStatus status;
   final String sourceText;
@@ -32,6 +62,8 @@ final class TranslatorState extends Equatable {
   final TranslationBundle? partialBundle;
   final TranslatorFailure? failure;
   final String? restoreWarning;
+  final String? historyWarning;
+  final List<TranslatorHistoryEntry> history;
 
   bool get isRunning => status == TranslatorViewStatus.running;
 
@@ -51,8 +83,11 @@ final class TranslatorState extends Equatable {
     bool clearFailure = false,
     String? restoreWarning,
     bool clearRestoreWarning = false,
+    String? historyWarning,
+    bool clearHistoryWarning = false,
+    Iterable<TranslatorHistoryEntry>? history,
   }) {
-    return TranslatorState(
+    return TranslatorState._(
       status: status ?? this.status,
       sourceText: sourceText ?? this.sourceText,
       stage: clearStage ? null : stage ?? this.stage,
@@ -64,6 +99,12 @@ final class TranslatorState extends Equatable {
       restoreWarning: clearRestoreWarning
           ? null
           : restoreWarning ?? this.restoreWarning,
+      historyWarning: clearHistoryWarning
+          ? null
+          : historyWarning ?? this.historyWarning,
+      history: history == null
+          ? this.history
+          : List<TranslatorHistoryEntry>.unmodifiable(history),
     );
   }
 
@@ -76,5 +117,7 @@ final class TranslatorState extends Equatable {
     partialBundle,
     failure,
     restoreWarning,
+    historyWarning,
+    history,
   ];
 }

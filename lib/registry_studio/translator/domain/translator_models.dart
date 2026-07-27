@@ -218,6 +218,21 @@ final class TranslatorRunReport extends Equatable {
   List<Object?> get props => <Object?>[request, bundle, audit, createdAt];
 }
 
+final class TranslatorHistoryEntry extends Equatable {
+  TranslatorHistoryEntry({required String id, required this.report})
+    : id = _requiredText(id, 'id');
+
+  final String id;
+  final TranslatorRunReport report;
+
+  String get sourceText => report.request.sourceText;
+  TranslationVerdict get verdict => report.audit.verdict;
+  DateTime get createdAt => report.createdAt;
+
+  @override
+  List<Object?> get props => <Object?>[id, report];
+}
+
 final class TranslatorFailure extends Equatable {
   TranslatorFailure({
     required this.stage,
