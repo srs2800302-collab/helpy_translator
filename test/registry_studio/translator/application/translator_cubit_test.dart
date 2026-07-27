@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_draft_store.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
-import 'package:helpy_translator/registry_studio/translator/presentation/translator_cubit.dart';
+import 'package:helpy_translator/registry_studio/translator/application/translator_cubit.dart';
 
 void main() {
   test('restores persisted Translator draft independently', () async {
