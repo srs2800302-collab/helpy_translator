@@ -21,32 +21,47 @@ void main() {
       expect(audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('derives needs review from terminology without a dictionary', () {
+    test('derives drift from concrete terminology findings', () {
       final TranslationAudit audit = TranslationAudit(
         terminologyFindings: const <String>[
           'В EN роль необоснованно стала конкретной профессией.',
         ],
       );
 
-      expect(audit.verdict, TranslationVerdict.needsReview);
-      expect(audit.verdict, isNot(TranslationVerdict.canonicalDrift));
+      expect(audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(audit.terminologyPreserved, isFalse);
     });
 
-    test('derives needs review from meaning or ambiguity findings', () {
-      expect(
-        TranslationAudit(
-          meaningFindings: const <String>['Изменено обязательство.'],
-        ).verdict,
-        TranslationVerdict.needsReview,
+    test('derives drift from concrete meaning findings', () {
+      final TranslationAudit audit = TranslationAudit(
+        meaningFindings: const <String>['Изменено обязательство.'],
       );
-      expect(
-        TranslationAudit(
-          ambiguityFindings: const <String>[
-            'Фраза допускает два материально разных прочтения.',
-          ],
-        ).verdict,
-        TranslationVerdict.needsReview,
+
+      expect(audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(audit.meaningPreserved, isFalse);
+    });
+
+    test('derives needs review from unresolved ambiguity', () {
+      final TranslationAudit audit = TranslationAudit(
+        ambiguityFindings: const <String>[
+          'TH допускает значения «варочная панель» и «печь».',
+        ],
       );
+
+      expect(audit.verdict, TranslationVerdict.needsReview);
+      expect(audit.ambiguousWording, isTrue);
+    });
+
+    test('concrete drift has precedence over ambiguity and style', () {
+      final TranslationAudit audit = TranslationAudit(
+        terminologyFindings: const <String>[
+          'EN добавляет признак «электрическая».',
+        ],
+        styleFindings: const <String>['TH читается неестественно.'],
+        ambiguityFindings: const <String>['TH допускает два значения.'],
+      );
+
+      expect(audit.verdict, TranslationVerdict.canonicalDrift);
     });
 
     test('rejects duplicate findings', () {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/localization/registry_studio_localizations.dart';
 import '../../domain/translator_models.dart';
+import 'translator_system_comment.dart';
 
 final class TranslatorReportDetails extends StatelessWidget {
   const TranslatorReportDetails({required this.report, super.key});
@@ -28,7 +29,7 @@ final class TranslatorReportDetails extends StatelessWidget {
           verdictLabel(l10n, audit.verdict),
           style: Theme.of(
             context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
@@ -57,7 +58,7 @@ final class TranslatorReportDetails extends StatelessWidget {
           key: const ValueKey<String>('translator-canonical-dictionary-status'),
           style: Theme.of(
             context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
@@ -65,15 +66,7 @@ final class TranslatorReportDetails extends StatelessWidget {
         const SizedBox(height: 12),
         Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
         const Divider(height: 32),
-        _DetailsHeading(title: l10n.auditAndDiagnostics),
-        const SizedBox(height: 12),
-        _FindingGroup(title: l10n.meaning, findings: audit.meaningFindings),
-        _FindingGroup(
-          title: l10n.terminology,
-          findings: audit.terminologyFindings,
-        ),
-        _FindingGroup(title: l10n.style, findings: audit.styleFindings),
-        _FindingGroup(title: l10n.ambiguity, findings: audit.ambiguityFindings),
+        TranslatorSystemComment(audit: audit),
       ],
     );
   }
@@ -117,10 +110,11 @@ final class TranslatorPartialBundleView extends StatelessWidget {
                     children: <Widget>[
                       Text(
                         l10n.semanticAuditIncomplete,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: colors.onTertiaryContainer,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: colors.onTertiaryContainer,
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -134,10 +128,11 @@ final class TranslatorPartialBundleView extends StatelessWidget {
                         key: const ValueKey<String>(
                           'translator-canonical-dictionary-status',
                         ),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: colors.onTertiaryContainer,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: colors.onTertiaryContainer,
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -203,7 +198,12 @@ final class _DetailsHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(title, style: Theme.of(context).textTheme.titleLarge);
+    return Text(
+      title,
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+    );
   }
 }
 
@@ -255,37 +255,6 @@ final class _BooleanEvidenceRow extends StatelessWidget {
         Expanded(child: Text(label)),
         Text(value ? l10n.yes : l10n.no),
       ],
-    );
-  }
-}
-
-final class _FindingGroup extends StatelessWidget {
-  const _FindingGroup({required this.title, required this.findings});
-
-  final String title;
-  final List<String> findings;
-
-  @override
-  Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          if (findings.isEmpty)
-            Text(l10n.noViolations)
-          else
-            for (final String finding in findings)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('• $finding'),
-              ),
-        ],
-      ),
     );
   }
 }

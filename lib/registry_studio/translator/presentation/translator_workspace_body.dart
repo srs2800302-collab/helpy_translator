@@ -219,12 +219,6 @@ final class _TranslatorWorkspaceBodyState
 
           return cubit.translate(accessKey: accessKeyState.accessKey);
         },
-        onCancel: () {
-          context.read<TranslatorCubit>().cancel();
-        },
-        onClear: () {
-          context.read<TranslatorCubit>().clear();
-        },
       ),
       if (accessKeyWarning != null) ...<Widget>[
         const SizedBox(height: 12),

@@ -241,20 +241,87 @@ final class RegistryStudioLocalizations {
 
   String get verdictEngineerNotice => _value(
     ru:
-        'Вердикт сформирован по семантическим findings без сравнения '
-        'со словарём проекта. Итоговое решение принимает инженер.',
+        'Вердикт вычислен приложением по findings, сформированным '
+        'из фактических RU / EN / TH переводов. Словарь проекта '
+        'не подключён; итоговое решение принимает инженер.',
     en:
-        'The verdict is generated from semantic findings without comparison '
-        'with the project dictionary. The engineer makes the final decision.',
+        'The application computes the verdict from findings based on '
+        'the actual RU / EN / TH translations. The project dictionary '
+        'is not connected; the engineer makes the final decision.',
     th:
-        'คำตัดสินสร้างจากข้อค้นพบเชิงความหมายโดยยังไม่ได้เปรียบเทียบ '
-        'กับพจนานุกรมของโครงการ วิศวกรเป็นผู้ตัดสินใจขั้นสุดท้าย',
+        'แอปคำนวณคำตัดสินจากข้อค้นพบที่อิงคำแปลจริง RU / EN / TH '
+        'โดยยังไม่ได้เชื่อมต่อพจนานุกรมของโครงการ '
+        'และวิศวกรเป็นผู้ตัดสินใจขั้นสุดท้าย',
   );
 
-  String get auditAndDiagnostics => _value(
-    ru: 'Аудит и диагностика',
-    en: 'Audit and diagnostics',
-    th: 'การตรวจสอบและการวินิจฉัย',
+  String get systemComment => _value(
+    ru: 'Комментарий системы',
+    en: 'System comment',
+    th: 'ความคิดเห็นของระบบ',
+  );
+
+  String get systemCommentExact => _value(
+    ru:
+        'По фактическим прямым переводам RU / EN / TH подтверждённых '
+        'расхождений смысла, терминологии, стиля или неоднозначности '
+        'не обнаружено.',
+    en:
+        'No supported meaning, terminology, style, or ambiguity differences '
+        'were found in the actual RU / EN / TH direct translations.',
+    th:
+        'ไม่พบความแตกต่างด้านความหมาย คำศัพท์ รูปแบบ '
+        'หรือความกำกวมที่มีหลักฐานจากคำแปลโดยตรง RU / EN / TH',
+  );
+
+  String get systemCommentEquivalent => _value(
+    ru:
+        'Смысл и терминология сохранены, но найдены стилистические '
+        'различия, не меняющие содержание.',
+    en:
+        'Meaning and terminology are preserved, but style differences '
+        'that do not change the content were found.',
+    th:
+        'ความหมายและคำศัพท์ยังคงเดิม แต่พบความแตกต่างด้านรูปแบบ '
+        'ที่ไม่เปลี่ยนเนื้อหา',
+  );
+
+  String get systemCommentNeedsReview => _value(
+    ru:
+        'В фактических переводах обнаружена неоднозначность. '
+        'Контекста недостаточно для честного выбора одного значения; '
+        'требуется решение инженера.',
+    en:
+        'Ambiguity was found in the actual translations. '
+        'The supplied context is insufficient to choose one meaning honestly; '
+        'an engineer must decide.',
+    th:
+        'พบความกำกวมในคำแปลจริง บริบทที่ให้มายังไม่เพียงพอ '
+        'สำหรับการเลือกความหมายเดียวอย่างซื่อสัตย์ '
+        'จึงต้องให้วิศวกรตัดสินใจ',
+  );
+
+  String get systemCommentDrift => _value(
+    ru:
+        'В фактических переводах обнаружено подтверждённое изменение '
+        'смысла или терминологии.',
+    en:
+        'A supported meaning or terminology change was found '
+        'in the actual translations.',
+    th:
+        'พบการเปลี่ยนแปลงด้านความหมายหรือคำศัพท์ '
+        'ที่มีหลักฐานในคำแปลจริง',
+  );
+
+  String get systemCommentEvidenceNote => _value(
+    ru:
+        'Обратные переводы использованы только как диагностические сигналы '
+        'и не считаются независимым доказательством.',
+    en:
+        'Reverse translations are used only as diagnostic signals '
+        'and are not treated as independent proof.',
+    th:
+        'ใช้คำแปลย้อนกลับเป็นเพียงสัญญาณสำหรับการวินิจฉัย '
+        'และไม่ถือเป็นหลักฐานอิสระ',
   );
 
   String get meaning => _value(ru: 'Смысл', en: 'Meaning', th: 'ความหมาย');
@@ -373,11 +440,7 @@ final class RegistryStudioLocalizations {
   String get needsReviewVerdict =>
       _value(ru: 'NEEDS REVIEW', en: 'NEEDS REVIEW', th: 'ต้องตรวจสอบ');
 
-  String get canonicalDriftVerdict => _value(
-    ru: 'CANONICAL DRIFT',
-    en: 'CANONICAL DRIFT',
-    th: 'คลาดเคลื่อนจากมาตรฐาน',
-  );
+  String get canonicalDriftVerdict => 'DRIFT';
 
   String get translatorPlaceholderDescription => _value(
     ru: 'Перевод и проверка формулировок RU / EN / TH',

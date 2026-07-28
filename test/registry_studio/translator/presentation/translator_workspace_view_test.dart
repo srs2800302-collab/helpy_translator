@@ -7,6 +7,7 @@ import 'package:helpy_translator/registry_studio/translator/application/translat
 import 'package:helpy_translator/registry_studio/translator/application/translator_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
 import 'package:helpy_translator/registry_studio/translator/presentation/history/translator_history_card.dart';
+import 'package:helpy_translator/registry_studio/translator/presentation/report/translator_system_comment.dart';
 import 'package:helpy_translator/registry_studio/translator/presentation/translator_workspace_view.dart';
 
 void main() {
@@ -26,7 +27,25 @@ void main() {
     expect(text, contains('RU:'));
     expect(text, contains('EN_TO_RU:'));
     expect(text, contains('Канонический словарь: НЕ ПОДКЛЮЧЁН'));
-    expect(text, contains('Аудит и диагностика:'));
+    expect(text, contains('Комментарий системы:'));
+  });
+
+  test('system comment explains ambiguity from actual findings', () {
+    const RegistryStudioLocalizations l10n = RegistryStudioLocalizations(
+      Locale('ru'),
+    );
+    final TranslationAudit audit = TranslationAudit(
+      ambiguityFindings: const <String>[
+        'TH допускает значения «варочная панель» и «печь».',
+      ],
+    );
+
+    final String comment = buildTranslatorSystemCommentText(l10n, audit);
+
+    expect(comment, contains('требуется решение инженера'));
+    expect(comment, contains('варочная панель'));
+    expect(comment, contains('печь'));
+    expect(comment, contains('не считаются независимым доказательством'));
   });
 
   testWidgets('shows direct, reverse, and semantic verdict sections', (
@@ -79,6 +98,19 @@ void main() {
     expect(collapsedSource.maxLines, 2);
     expect(collapsedSource.overflow, TextOverflow.ellipsis);
     expect(find.text('EXACT'), findsOneWidget);
+    final Card exactCard = tester.widget<Card>(
+      find.byKey(ValueKey<String>('translator-history-card-$historyEntryId')),
+    );
+    expect(exactCard.color, const Color(0xFFE7F4E8));
+    final Text exactStatus = tester.widget<Text>(find.text('EXACT'));
+    final BuildContext cardContext = tester.element(
+      find.byKey(ValueKey<String>('translator-history-card-$historyEntryId')),
+    );
+    expect(
+      exactStatus.style?.fontSize,
+      Theme.of(cardContext).textTheme.titleMedium?.fontSize,
+    );
+    expect(exactStatus.style?.fontWeight, FontWeight.w700);
     expect(find.text('Прямой перевод'), findsNothing);
     expect(find.text('Обратные переводы для диагностики'), findsNothing);
 
@@ -90,49 +122,39 @@ void main() {
     expect(find.text('Семантический вердикт'), findsOneWidget);
     expect(find.text('Прямой перевод'), findsOneWidget);
     expect(find.text('Обратные переводы для диагностики'), findsOneWidget);
-    expect(find.text('Аудит и диагностика'), findsOneWidget);
+    expect(find.text('Комментарий системы'), findsOneWidget);
+    expect(find.text('Аудит и диагностика'), findsNothing);
     expect(find.text('Канонический словарь'), findsOneWidget);
     expect(find.text('НЕ ПОДКЛЮЧЁН'), findsOneWidget);
     expect(find.text('Канонический вердикт недоступен'), findsOneWidget);
   });
 
-  testWidgets('clear keeps saved translation history', (
+  testWidgets('does not show redundant clear or cancel actions', (
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
-    final _MemoryAccessKeyStore accessKeyStore = _MemoryAccessKeyStore(
-      value: 'saved-key',
-    );
-    final _MemoryDraftStore store = _MemoryDraftStore(
-      draft: TranslatorDraft(
-        sourceText: report.request.sourceText,
-        report: report,
-      ),
-    );
 
     await _pumpTranslator(
       tester,
       provider: _SuccessProvider(report),
-      draftStore: store,
-      accessKeyStore: accessKeyStore,
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
     );
+
+    expect(find.text('Очистить Translator'), findsNothing);
+    expect(find.text('Отменить'), findsNothing);
+
     await _scrollToHistory(tester);
 
-    expect(find.text('EXACT'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('Очистить Translator'),
-      -300,
-      scrollable: find.byType(Scrollable).first,
+    expect(
+      find.byKey(const ValueKey<String>('translator-history-clear-all')),
+      findsOneWidget,
     );
-    await tester.tap(find.text('Очистить Translator'));
-    await tester.pumpAndSettle();
-    await _scrollToHistory(tester);
-
-    expect(find.text('EXACT'), findsOneWidget);
-    expect(store.clearCount, 1);
-    expect(accessKeyStore.value, 'saved-key');
-    expect(accessKeyStore.clearCount, 0);
   });
 
   testWidgets('restores and persists API key through compact dialog', (
@@ -473,7 +495,6 @@ final class _MemoryDraftStore implements TranslatorDraftStore {
   _MemoryDraftStore({this.draft});
 
   TranslatorDraft? draft;
-  int clearCount = 0;
 
   @override
   Future<TranslatorDraft?> load() async => draft;
@@ -485,7 +506,6 @@ final class _MemoryDraftStore implements TranslatorDraftStore {
 
   @override
   Future<void> clear() async {
-    clearCount += 1;
     draft = null;
   }
 }

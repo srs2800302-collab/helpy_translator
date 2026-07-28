@@ -228,27 +228,44 @@ TH_TO_EN: The professional must confirm arrival before starting work.
       expect(report.audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test(
-      'maps terminology finding to needs review before dictionary',
-      () async {
-        final _QueueTransport transport = _QueueTransport(<Object>[
-          _directResponse(),
-          _auditResponse(
-            terminology: '- EN необоснованно сужает роль до профессии.',
-          ),
-        ]);
+    test('maps concrete terminology finding to drift', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _directResponse(),
+        _auditResponse(
+          terminology: '- EN необоснованно сужает роль до профессии.',
+        ),
+      ]);
 
-        final TranslatorRunReport report = await _provider(transport)
-            .start(
-              request: TranslatorWorkRequest(sourceText: _source),
-              accessKey: 'test-key',
-            )
-            .result;
+      final TranslatorRunReport report = await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: _source),
+            accessKey: 'test-key',
+          )
+          .result;
 
-        expect(report.audit.verdict, TranslationVerdict.needsReview);
-        expect(report.audit.verdict, isNot(TranslationVerdict.canonicalDrift));
-      },
-    );
+      expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
+    });
+
+    test('maps unresolved object ambiguity to needs review', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _directResponse(),
+        _auditResponse(
+          ambiguity:
+              '- TH допускает значения «варочная панель» и «печь»; '
+              'контекста недостаточно.',
+        ),
+      ]);
+
+      final TranslatorRunReport report = await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(sourceText: _source),
+            accessKey: 'test-key',
+          )
+          .result;
+
+      expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(report.audit.ambiguousWording, isTrue);
+    });
 
     test('classifies missing direct section as incomplete', () async {
       const String malformed =

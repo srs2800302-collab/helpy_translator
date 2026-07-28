@@ -558,21 +558,21 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         ? stateBeforeRefresh
         : null;
 
-    final RegistryNode? openRegistryNodeBeforeRefresh =
+    RegistryNode? openRegistryNodeBeforeRefresh =
         loadedBeforeRefresh?.openRegistryNode;
-    final RegistryStructuralProblem? selectedProblemBeforeRefresh =
+    RegistryStructuralProblem? selectedProblemBeforeRefresh =
         loadedBeforeRefresh?.selectedProblem;
-    final String registryViewFilterBeforeRefresh =
+    String registryViewFilterBeforeRefresh =
         loadedBeforeRefresh?.registryViewFilter ??
         (stateBeforeRefresh is RegistryExplorerFailure
             ? stateBeforeRefresh.registryViewFilterBeforeRefresh
             : 'all');
-    final String searchQueryBeforeRefresh =
+    String searchQueryBeforeRefresh =
         loadedBeforeRefresh?.searchQuery ??
         (stateBeforeRefresh is RegistryExplorerFailure
             ? stateBeforeRefresh.searchQueryBeforeRefresh
             : '');
-    final List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh =
+    List<RegistryAnalysisHistoryEntry> analysisHistoryBeforeRefresh =
         loadedBeforeRefresh?.analysisHistory ??
         (stateBeforeRefresh is RegistryExplorerFailure
             ? stateBeforeRefresh.analysisHistoryBeforeRefresh
@@ -650,16 +650,30 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
               currentIndex: index,
             );
 
+      final RegistryExplorerState liveStateBeforeApply = state;
+
+      if (liveStateBeforeApply is RegistryExplorerLoaded) {
+        openRegistryNodeBeforeRefresh = liveStateBeforeApply.openRegistryNode;
+        selectedProblemBeforeRefresh = liveStateBeforeApply.selectedProblem;
+        registryViewFilterBeforeRefresh =
+            liveStateBeforeApply.registryViewFilter;
+        searchQueryBeforeRefresh = liveStateBeforeApply.searchQuery;
+        analysisHistoryBeforeRefresh = liveStateBeforeApply.analysisHistory;
+      }
+
       final List<RegistryStructuralProblem> refreshedProblems =
           (cleanBaselineComparison ?? previousComparison)?.problems ??
           const <RegistryStructuralProblem>[];
 
       int? refreshedSelectedProblemIndex;
 
-      if (selectedProblemBeforeRefresh != null) {
+      final RegistryStructuralProblem? selectedProblemSnapshot =
+          selectedProblemBeforeRefresh;
+
+      if (selectedProblemSnapshot != null) {
         final int identityMatchIndex = refreshedProblems.indexWhere(
           (RegistryStructuralProblem problem) =>
-              problem.exactNode.id == selectedProblemBeforeRefresh.exactNode.id,
+              problem.exactNode.id == selectedProblemSnapshot.exactNode.id,
         );
 
         if (identityMatchIndex >= 0) {
@@ -667,7 +681,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
         } else {
           final int pathMatchIndex = refreshedProblems.indexWhere(
             (RegistryStructuralProblem problem) =>
-                problem.path == selectedProblemBeforeRefresh.path,
+                problem.path == selectedProblemSnapshot.path,
           );
 
           if (pathMatchIndex >= 0) {
@@ -693,6 +707,8 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
       final RegistryPath? refreshedOpenRegistryPath =
           refreshedSelectedProblem?.path ?? refreshedOpenRegistryNode?.path;
+
+      await _pendingRevisionStateWrite;
 
       await revisionStateStore.saveRevisionState(
         RegistryRevisionState(
@@ -723,6 +739,7 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
           await _appendHistoryIfChanged(
             analysisHistoryBeforeRefresh,
             historyEntry,
+            forceAppend: true,
           );
 
       _currentSnapshot = snapshot;
@@ -751,10 +768,16 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       final String message = _registryUserMessage(error, duringRefresh: true);
 
       if (!isClosed) {
-        if (loadedBeforeRefresh != null) {
+        final RegistryExplorerState liveStateAfterFailure = state;
+        final RegistryExplorerLoaded? fallbackLoaded =
+            liveStateAfterFailure is RegistryExplorerLoaded
+            ? liveStateAfterFailure
+            : loadedBeforeRefresh;
+
+        if (fallbackLoaded != null) {
           _retryRefresh = false;
           emit(
-            loadedBeforeRefresh.copyWith(
+            fallbackLoaded.copyWith(
               isRefreshing: false,
               refreshWarning: message,
             ),
@@ -830,9 +853,11 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
 
   Future<List<RegistryAnalysisHistoryEntry>> _appendHistoryIfChanged(
     List<RegistryAnalysisHistoryEntry> history,
-    RegistryAnalysisHistoryEntry candidate,
-  ) async {
-    if (history.isNotEmpty &&
+    RegistryAnalysisHistoryEntry candidate, {
+    bool forceAppend = false,
+  }) async {
+    if (!forceAppend &&
+        history.isNotEmpty &&
         _sameHistoryEntryIgnoringLoadedAt(history.last, candidate)) {
       return List<RegistryAnalysisHistoryEntry>.unmodifiable(history);
     }
@@ -1065,10 +1090,6 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
   }
 
   Future<void> selectRegistryNode(RegistryNodeId? nodeId) async {
-    if (_isLoading) {
-      throw StateError('Контекст Registry уже обновляется.');
-    }
-
     final RegistryExplorerState currentState = state;
 
     if (currentState is! RegistryExplorerLoaded) {
@@ -1083,43 +1104,63 @@ final class RegistryExplorerCubit extends Cubit<RegistryExplorerState> {
       throw StateError('Registry block недоступен.');
     }
 
+    final RegistryRevisionState persistedState = RegistryRevisionState(
+      projectId: currentState.snapshot.projectId,
+      projectAdapterId: currentState.snapshot.projectAdapterId,
+      sourceDocumentPath: currentState.snapshot.sourceDocumentPath,
+      currentRevision: currentState.snapshot.sourceRevision,
+      previousRevision: currentState.previousSnapshot?.sourceRevision,
+      cleanBaselineRevision: currentState.cleanBaselineSnapshot?.sourceRevision,
+      openRegistryNodeId: openRegistryNode?.id,
+      openRegistryPath: openRegistryNode?.path,
+      selectedProblemIndex: null,
+      searchQuery: currentState.searchQuery,
+      registryViewFilter: currentState.registryViewFilter,
+    );
+
+    if (_isLoading) {
+      if (!currentState.isRefreshing) {
+        throw StateError('Контекст Registry уже обновляется.');
+      }
+
+      if (!isClosed) {
+        emit(
+          currentState.copyWith(
+            openRegistryNodeId: openRegistryNode?.id,
+            clearOpenRegistryNodeId: openRegistryNode == null,
+            openRegistryPath: openRegistryNode?.path,
+            clearOpenRegistryPath: openRegistryNode == null,
+            clearSelectedProblemIndex: true,
+          ),
+        );
+      }
+
+      final Future<void> write = _pendingRevisionStateWrite.then<void>(
+        (_) => revisionStateStore.saveRevisionState(persistedState),
+      );
+
+      _pendingRevisionStateWrite = write.then<void>(
+        (_) {},
+        onError: (Object _, StackTrace _) {},
+      );
+
+      return write;
+    }
+
     _isLoading = true;
 
     try {
       await _pendingRevisionStateWrite;
-
-      await revisionStateStore.saveRevisionState(
-        RegistryRevisionState(
-          projectId: currentState.snapshot.projectId,
-          projectAdapterId: currentState.snapshot.projectAdapterId,
-          sourceDocumentPath: currentState.snapshot.sourceDocumentPath,
-          currentRevision: currentState.snapshot.sourceRevision,
-          previousRevision: currentState.previousSnapshot?.sourceRevision,
-          cleanBaselineRevision:
-              currentState.cleanBaselineSnapshot?.sourceRevision,
-          openRegistryNodeId: openRegistryNode?.id,
-          openRegistryPath: openRegistryNode?.path,
-          selectedProblemIndex: null,
-          searchQuery: currentState.searchQuery,
-          registryViewFilter: currentState.registryViewFilter,
-        ),
-      );
+      await revisionStateStore.saveRevisionState(persistedState);
 
       if (!isClosed) {
         emit(
-          RegistryExplorerLoaded(
-            snapshot: currentState.snapshot,
-            index: currentState.index,
-            previousSnapshot: currentState.previousSnapshot,
-            previousComparison: currentState.previousComparison,
-            cleanBaselineSnapshot: currentState.cleanBaselineSnapshot,
-            cleanBaselineComparison: currentState.cleanBaselineComparison,
+          currentState.copyWith(
             openRegistryNodeId: openRegistryNode?.id,
+            clearOpenRegistryNodeId: openRegistryNode == null,
             openRegistryPath: openRegistryNode?.path,
-            selectedProblemIndex: null,
-            registryViewFilter: currentState.registryViewFilter,
-            analysisHistory: currentState.analysisHistory,
-            searchQuery: currentState.searchQuery,
+            clearOpenRegistryPath: openRegistryNode == null,
+            clearSelectedProblemIndex: true,
           ),
         );
       }

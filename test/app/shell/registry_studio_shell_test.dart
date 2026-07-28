@@ -221,8 +221,27 @@ void main() {
       expect(store.state?.currentRevision, updatedSnapshot.sourceRevision);
       expect(store.state?.previousRevision, snapshot.sourceRevision);
 
-      expect(historyStore.entries, hasLength(2));
-      expect(historyStore.entries.last, same(firstRefreshHistoryEntry));
+      expect(historyStore.entries, hasLength(3));
+      final RegistryAnalysisHistoryEntry repeatedRefreshHistoryEntry =
+          historyStore.entries.last;
+      expect(
+        repeatedRefreshHistoryEntry.sourceRevision,
+        firstRefreshHistoryEntry.sourceRevision,
+      );
+      expect(
+        repeatedRefreshHistoryEntry.previousRevision,
+        firstRefreshHistoryEntry.previousRevision,
+      );
+      expect(
+        repeatedRefreshHistoryEntry.previousChangeCount,
+        firstRefreshHistoryEntry.previousChangeCount,
+      );
+      expect(
+        repeatedRefreshHistoryEntry.loadedAt.isAfter(
+          firstRefreshHistoryEntry.loadedAt,
+        ),
+        isTrue,
+      );
       expect(loaded.analysisHistory, historyStore.entries);
     },
   );
@@ -1770,7 +1789,9 @@ void main() {
 
     expect(selectedRegistryBlock, findsOneWidget);
 
-    final Finder refreshButton = find.byTooltip('Перезагрузить Registry');
+    final Finder refreshButton = find.byKey(
+      const ValueKey<String>('registry-selected-block-refresh'),
+    );
 
     await tester.tap(refreshButton);
     await tester.pumpAndSettle();
@@ -1953,8 +1974,8 @@ void main() {
 
     expect(store.state?.openRegistryPath, currentChild.path);
 
-    final Finder selectedRefreshButton = find.byTooltip(
-      'Перезагрузить Registry',
+    final Finder selectedRefreshButton = find.byKey(
+      const ValueKey<String>('registry-selected-block-refresh'),
     );
     expect(selectedRefreshButton, findsOneWidget);
 

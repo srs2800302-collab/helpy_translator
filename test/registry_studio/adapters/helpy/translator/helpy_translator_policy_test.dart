@@ -30,13 +30,20 @@ void main() {
     expect(prompt, isNot(contains('canonical service-marketplace')));
   });
 
-  test('audit prompt forbids rewriting and invented canon', () {
+  test('audit prompt uses actual provider output and honest evidence', () {
     final String prompt = policy.buildAuditSystemPrompt();
-
-    expect(prompt, contains('do not retranslate, rewrite'));
-    expect(prompt, contains('do not invent a project glossary'));
     final String normalizedPrompt = prompt.replaceAll(RegExp(r'\s+'), ' ');
 
+    expect(
+      normalizedPrompt,
+      contains('direct RU, EN and TH texts returned by the provider'),
+    );
+    expect(
+      normalizedPrompt,
+      contains('Do not silently replace a provider translation'),
+    );
+    expect(prompt, contains('do not retranslate, rewrite'));
+    expect(prompt, contains('do not invent a project glossary'));
     expect(
       normalizedPrompt,
       contains(
@@ -44,8 +51,17 @@ void main() {
       ),
     );
     expect(prompt, contains('do not choose a verdict'));
-    expect(prompt, contains('reverse translations'));
     expect(prompt, contains('never as independent proof'));
+    expect(
+      normalizedPrompt,
+      contains('Agreement between reverse translations is not proof'),
+    );
+    expect(
+      normalizedPrompt,
+      contains('broader, narrower or multiple ordinary meanings'),
+    );
+    expect(prompt, contains('state both readings'));
+    expect(prompt, contains('unsupported object type'));
   });
 
   test('audit user prompt contains direct and reverse diagnostic sections', () {
@@ -66,6 +82,7 @@ void main() {
     );
 
     expect(prompt, contains('SOURCE LANGUAGE:\nRU'));
+    expect(prompt, contains('SOURCE TEXT:\nИсходный текст.'));
     expect(prompt, contains('EN:\nProvider wording.'));
     expect(prompt, contains('TH:\nข้อความจากผู้ให้บริการ'));
     expect(prompt, contains('EN_TO_RU:\nИсходный текст.'));

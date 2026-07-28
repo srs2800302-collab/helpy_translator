@@ -415,9 +415,19 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
     final String? message;
 
     if (openRegistryNodeAfterRefresh == null) {
+      final bool nodeStillExists = stateAfterRefresh.index.nodesById
+          .containsKey(openRegistryNodeBeforeRefresh.id);
+
+      if (nodeStillExists) {
+        return;
+      }
+
       message =
           'Открытый Registry block удалён '
           'в новой revision.';
+    } else if (openRegistryNodeAfterRefresh.id !=
+        openRegistryNodeBeforeRefresh.id) {
+      return;
     } else if (moved && changed) {
       message =
           'Открытый Registry block перемещён '
@@ -1711,7 +1721,9 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                       'registry-selected-block-reset',
                     ),
                     tooltip: 'Сбросить контекст Registry Studio',
-                    onPressed: _resetRegistryStudio,
+                    onPressed: loaded.isRefreshing
+                        ? null
+                        : _resetRegistryStudio,
                     icon: const Icon(Icons.layers_clear_outlined),
                   ),
                   if (searchQuery.isNotEmpty)
@@ -1720,23 +1732,33 @@ final class _RegistryExplorerViewState extends State<_RegistryExplorerView> {
                         'registry-selected-block-search-clear',
                       ),
                       tooltip: 'Сбросить поиск Registry',
-                      onPressed: () async {
-                        await _clearSearch();
+                      onPressed: loaded.isRefreshing
+                          ? null
+                          : () async {
+                              await _clearSearch();
 
-                        if (!mounted ||
-                            !_selectedRegistryBlockScrollController
-                                .hasClients) {
-                          return;
-                        }
+                              if (!mounted ||
+                                  !_selectedRegistryBlockScrollController
+                                      .hasClients) {
+                                return;
+                              }
 
-                        _selectedRegistryBlockScrollController.jumpTo(0);
-                      },
+                              _selectedRegistryBlockScrollController.jumpTo(0);
+                            },
                       icon: const Icon(Icons.search_off),
                     ),
                   IconButton(
-                    tooltip: 'Перезагрузить Registry',
-                    onPressed: _refreshRegistry,
-                    icon: const Icon(Icons.refresh),
+                    key: const ValueKey<String>(
+                      'registry-selected-block-refresh',
+                    ),
+                    tooltip: 'Обновить Registry вручную',
+                    onPressed: loaded.isRefreshing ? null : _refreshRegistry,
+                    icon: loaded.isRefreshing
+                        ? const SizedBox.square(
+                            dimension: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          )
+                        : const Icon(Icons.refresh),
                   ),
                 ],
               ),

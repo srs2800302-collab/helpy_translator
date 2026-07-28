@@ -71,6 +71,8 @@ void main() {
           'translator_status_cards.dart',
       'lib/registry_studio/translator/presentation/report/'
           'translator_report_view.dart',
+      'lib/registry_studio/translator/presentation/report/'
+          'translator_system_comment.dart',
       'lib/registry_studio/translator/presentation/history/'
           'translator_history_card.dart',
     ];
@@ -169,6 +171,24 @@ void main() {
     expect(source, contains('History extension point'));
     expect(source, contains('Canonical actions extension point'));
     expect(source, contains('Accepted behavior'));
+  });
+
+  test('workspace has no redundant clear or cancel controls', () {
+    final String actions = File(
+      'lib/registry_studio/translator/presentation/execution/'
+      'translator_run_actions.dart',
+    ).readAsStringSync();
+    final String body = File(
+      'lib/registry_studio/translator/presentation/'
+      'translator_workspace_body.dart',
+    ).readAsStringSync();
+
+    expect(actions, isNot(contains('onClear')));
+    expect(actions, isNot(contains('onCancel')));
+    expect(actions, isNot(contains('translator-clear-button')));
+    expect(actions, isNot(contains('translator-cancel-button')));
+    expect(body, isNot(contains('onClear:')));
+    expect(body, isNot(contains('onCancel:')));
   });
 
   test('source input has no visible language override', () {

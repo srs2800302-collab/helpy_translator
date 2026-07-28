@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/localization/registry_studio_localizations.dart';
 import '../../domain/translator_models.dart';
 import '../report/translator_report_view.dart';
+import '../report/translator_system_comment.dart';
 
 final class TranslatorHistoryHeader extends StatelessWidget {
   const TranslatorHistoryHeader({
@@ -62,13 +63,14 @@ final class TranslatorHistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final RegistryStudioLocalizations l10n = context.rsL10n;
     final TranslationVerdict verdict = entry.verdict;
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    final Color background = _background(colors, verdict);
-    final Color foreground = _foreground(colors, verdict);
+    final Brightness brightness = Theme.of(context).brightness;
+    final Color background = _background(brightness, verdict);
+    final Color foreground = _foreground(brightness, verdict);
 
     return Card(
       key: ValueKey<String>('translator-history-card-${entry.id}'),
       color: background,
+      surfaceTintColor: Colors.transparent,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -87,15 +89,15 @@ final class TranslatorHistoryCard extends StatelessWidget {
                   children: <Widget>[
                     Row(
                       children: <Widget>[
-                        Icon(_icon(verdict), size: 32, color: foreground),
+                        Icon(_icon(verdict), size: 28, color: foreground),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             verdictLabel(l10n, verdict),
-                            style: Theme.of(context).textTheme.titleLarge
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
                                   color: foreground,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                 ),
                           ),
                         ),
@@ -163,21 +165,33 @@ final class TranslatorHistoryCard extends StatelessWidget {
     );
   }
 
-  static Color _background(ColorScheme colors, TranslationVerdict verdict) {
+  static Color _background(Brightness brightness, TranslationVerdict verdict) {
+    final bool dark = brightness == Brightness.dark;
+
     return switch (verdict) {
-      TranslationVerdict.exact => colors.primaryContainer,
-      TranslationVerdict.equivalent => colors.secondaryContainer,
-      TranslationVerdict.needsReview => colors.tertiaryContainer,
-      TranslationVerdict.canonicalDrift => colors.errorContainer,
+      TranslationVerdict.exact =>
+        dark ? const Color(0xFF173D21) : const Color(0xFFE7F4E8),
+      TranslationVerdict.equivalent =>
+        dark ? const Color(0xFF113A37) : const Color(0xFFE0F2F1),
+      TranslationVerdict.needsReview =>
+        dark ? const Color(0xFF4A3A09) : const Color(0xFFFFF8E1),
+      TranslationVerdict.canonicalDrift =>
+        dark ? const Color(0xFF4A1818) : const Color(0xFFFFE7E7),
     };
   }
 
-  static Color _foreground(ColorScheme colors, TranslationVerdict verdict) {
+  static Color _foreground(Brightness brightness, TranslationVerdict verdict) {
+    final bool dark = brightness == Brightness.dark;
+
     return switch (verdict) {
-      TranslationVerdict.exact => colors.onPrimaryContainer,
-      TranslationVerdict.equivalent => colors.onSecondaryContainer,
-      TranslationVerdict.needsReview => colors.onTertiaryContainer,
-      TranslationVerdict.canonicalDrift => colors.onErrorContainer,
+      TranslationVerdict.exact =>
+        dark ? const Color(0xFFA5D6A7) : const Color(0xFF1B5E20),
+      TranslationVerdict.equivalent =>
+        dark ? const Color(0xFF80CBC4) : const Color(0xFF004D40),
+      TranslationVerdict.needsReview =>
+        dark ? const Color(0xFFFFE082) : const Color(0xFF6D4C00),
+      TranslationVerdict.canonicalDrift =>
+        dark ? const Color(0xFFFFABAB) : const Color(0xFF8B1A1A),
     };
   }
 
@@ -231,21 +245,8 @@ String buildTranslatorHistoryClipboardText(
     ..writeln()
     ..writeln('${l10n.canonicalDictionary}: ${l10n.notConnected}')
     ..writeln()
-    ..writeln('${l10n.auditAndDiagnostics}:')
-    ..writeln('${l10n.meaning}: ${_findings(audit.meaningFindings, l10n)}')
-    ..writeln(
-      '${l10n.terminology}: '
-      '${_findings(audit.terminologyFindings, l10n)}',
-    )
-    ..writeln('${l10n.style}: ${_findings(audit.styleFindings, l10n)}')
-    ..writeln(
-      '${l10n.ambiguity}: '
-      '${_findings(audit.ambiguityFindings, l10n)}',
-    );
+    ..writeln('${l10n.systemComment}:')
+    ..writeln(buildTranslatorSystemCommentText(l10n, audit));
 
   return result.toString().trimRight();
-}
-
-String _findings(List<String> findings, RegistryStudioLocalizations l10n) {
-  return findings.isEmpty ? l10n.noViolations : findings.join(' | ');
 }

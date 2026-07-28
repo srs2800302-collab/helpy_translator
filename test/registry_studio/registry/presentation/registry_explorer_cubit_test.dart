@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -116,12 +117,88 @@ void main() {
     expect(loaded.isRefreshing, isFalse);
     expect(revisionStore.state?.currentRevision, snapshot.sourceRevision);
   });
+
+  test('manual refresh records same-revision analysis again', () async {
+    final RegistrySnapshot snapshot = _snapshot('revision-1');
+    final _MemoryAnalysisHistoryStore historyStore =
+        _MemoryAnalysisHistoryStore();
+    final RegistryExplorerCubit cubit = _cubit(
+      loader: _FakeSnapshotLoader(snapshot),
+      cache: _MemorySnapshotCache(<String, RegistrySnapshot>{
+        snapshot.sourceRevision: snapshot,
+      }),
+      revisionStateStore: _MemoryRevisionStateStore(_stateFor(snapshot)),
+      analysisHistoryStore: historyStore,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+    expect(historyStore.entries, hasLength(1));
+
+    await cubit.refresh();
+
+    final RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+    expect(historyStore.entries, hasLength(2));
+    expect(loaded.analysisHistory, hasLength(2));
+    expect(loaded.analysisHistory.last.sourceRevision, snapshot.sourceRevision);
+    expect(
+      loaded.analysisHistory.last.loadedAt,
+      isNot(loaded.analysisHistory.first.loadedAt),
+    );
+  });
+
+  test('closes a local block while network refresh is pending', () async {
+    final RegistrySnapshot snapshot = _snapshot('revision-1');
+    final Completer<RegistrySnapshot> refreshCompleter =
+        Completer<RegistrySnapshot>();
+    final _FakeSnapshotLoader loader = _FakeSnapshotLoader(
+      snapshot,
+      refreshCompleter: refreshCompleter,
+    );
+    final _MemoryRevisionStateStore revisionStore = _MemoryRevisionStateStore(
+      _stateFor(snapshot),
+    );
+    final RegistryExplorerCubit cubit = _cubit(
+      loader: loader,
+      cache: _MemorySnapshotCache(<String, RegistrySnapshot>{
+        snapshot.sourceRevision: snapshot,
+      }),
+      revisionStateStore: revisionStore,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+    await cubit.selectRegistryNode(RegistryNodeId('node.root'));
+    expect(
+      (cubit.state as RegistryExplorerLoaded).openRegistryNodeId,
+      RegistryNodeId('node.root'),
+    );
+
+    final Future<void> refresh = cubit.refresh();
+    await Future<void>.delayed(Duration.zero);
+
+    expect((cubit.state as RegistryExplorerLoaded).isRefreshing, isTrue);
+    await cubit.selectRegistryNode(null);
+
+    RegistryExplorerLoaded loaded = cubit.state as RegistryExplorerLoaded;
+    expect(loaded.isRefreshing, isTrue);
+    expect(loaded.openRegistryNode, isNull);
+
+    refreshCompleter.complete(snapshot);
+    await refresh;
+
+    loaded = cubit.state as RegistryExplorerLoaded;
+    expect(loaded.isRefreshing, isFalse);
+    expect(loaded.openRegistryNode, isNull);
+    expect(revisionStore.state?.openRegistryNodeId, isNull);
+  });
 }
 
 RegistryExplorerCubit _cubit({
   required _FakeSnapshotLoader loader,
   required RegistrySnapshotCache cache,
   required RegistryRevisionStateStore revisionStateStore,
+  RegistryAnalysisHistoryStore? analysisHistoryStore,
 }) {
   return RegistryExplorerCubit(
     snapshotLoader: loader,
@@ -129,7 +206,7 @@ RegistryExplorerCubit _cubit({
     snapshotRevisionLoader: loader,
     snapshotCache: cache,
     revisionStateStore: revisionStateStore,
-    analysisHistoryStore: _MemoryAnalysisHistoryStore(),
+    analysisHistoryStore: analysisHistoryStore ?? _MemoryAnalysisHistoryStore(),
     snapshotComparator: const RegistrySnapshotComparator(),
   );
 }
@@ -182,10 +259,15 @@ final class _FakeSnapshotLoader
         RegistrySnapshotLoader,
         RegistrySnapshotRefreshLoader,
         RegistrySnapshotRevisionLoader {
-  _FakeSnapshotLoader(this.snapshot, {this.refreshError});
+  _FakeSnapshotLoader(
+    this.snapshot, {
+    this.refreshError,
+    this.refreshCompleter,
+  });
 
   final RegistrySnapshot snapshot;
   final Object? refreshError;
+  final Completer<RegistrySnapshot>? refreshCompleter;
   int loadCount = 0;
   int refreshCount = 0;
   int revisionCount = 0;
@@ -205,6 +287,12 @@ final class _FakeSnapshotLoader
 
     if (error != null) {
       throw error;
+    }
+
+    final Completer<RegistrySnapshot>? pendingRefresh = refreshCompleter;
+
+    if (pendingRefresh != null) {
+      return pendingRefresh.future;
     }
 
     return snapshot;

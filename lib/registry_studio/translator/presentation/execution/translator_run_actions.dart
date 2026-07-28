@@ -10,8 +10,6 @@ final class TranslatorRunActions extends StatelessWidget {
     required this.accessKeyRestoring,
     required this.retryAuditOnly,
     required this.onRun,
-    required this.onCancel,
-    required this.onClear,
     super.key,
   });
 
@@ -20,8 +18,6 @@ final class TranslatorRunActions extends StatelessWidget {
   final bool accessKeyRestoring;
   final bool retryAuditOnly;
   final Future<void> Function() onRun;
-  final VoidCallback onCancel;
-  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
@@ -46,17 +42,6 @@ final class TranslatorRunActions extends StatelessWidget {
                 ? l10n.retry
                 : l10n.translateAndCheck,
           ),
-        ),
-        if (isRunning)
-          OutlinedButton.icon(
-            onPressed: onCancel,
-            icon: const Icon(Icons.stop_circle_outlined),
-            label: Text(l10n.cancel),
-          ),
-        OutlinedButton.icon(
-          onPressed: isRunning ? null : onClear,
-          icon: const Icon(Icons.clear),
-          label: Text(l10n.clearTranslator),
         ),
       ],
     );
