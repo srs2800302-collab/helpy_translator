@@ -53,6 +53,56 @@ void main() {
     expect(find.text('Аудит и диагностика'), findsOneWidget);
   });
 
+  testWidgets('needsReview uses yellow verdict card with audit findings', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorRunReport report = _report(
+      audit: TranslationAudit(
+        terminologyFindings: const <String>['Термин X'],
+        styleFindings: const <String>['Стиль X'],
+      ),
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text('NEEDS REVIEW'), findsOneWidget);
+    expect(find.text('Аудит и диагностика'), findsOneWidget);
+
+    final Finder verdictCard = find.ancestor(
+      of: find.text('NEEDS REVIEW'),
+      matching: find.byType(Card),
+    );
+
+    expect(verdictCard, findsOneWidget);
+    expect(tester.widget<Card>(verdictCard).color, Colors.yellow.shade50);
+    expect(
+      find.descendant(
+        of: verdictCard,
+        matching: find.text('Аудит и диагностика'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: verdictCard, matching: find.text('• Термин X')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: verdictCard, matching: find.text('• Стиль X')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('clear removes Translator result only', (
     WidgetTester tester,
   ) async {
@@ -208,7 +258,7 @@ Future<void> _pumpTranslator(
   await tester.pumpAndSettle();
 }
 
-TranslatorRunReport _report() {
+TranslatorRunReport _report({TranslationAudit? audit}) {
   final TranslatorWorkRequest request = TranslatorWorkRequest(
     sourceText: 'Фотография установленной варочной панели.',
     sourceLanguageHint: TranslationLanguage.ru,
@@ -227,7 +277,7 @@ TranslatorRunReport _report() {
       enToTh: 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
       thToEn: 'Photo of the installed cooktop.',
     ),
-    audit: TranslationAudit(),
+    audit: audit ?? TranslationAudit(),
     createdAt: DateTime.utc(2026, 7, 26, 6),
   );
 }

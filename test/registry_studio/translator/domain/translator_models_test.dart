@@ -21,23 +21,23 @@ void main() {
       expect(audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('derives canonical drift from terminology findings', () {
+    test('derives needsReview from terminology findings', () {
       final TranslationAudit audit = TranslationAudit(
         terminologyFindings: const <String>[
           'Термин исполнителя стал слишком узким.',
         ],
       );
 
-      expect(audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(audit.verdict, TranslationVerdict.needsReview);
       expect(audit.meaningPreserved, isTrue);
     });
 
-    test('derives needsReview from meaning or ambiguity findings', () {
+    test('derives canonical drift from meaning and review from ambiguity', () {
       expect(
         TranslationAudit(
           meaningFindings: const <String>['Изменено обязательство.'],
         ).verdict,
-        TranslationVerdict.needsReview,
+        TranslationVerdict.canonicalDrift,
       );
       expect(
         TranslationAudit(
@@ -49,13 +49,55 @@ void main() {
       );
     });
 
-    test('meaning risk has priority over terminology drift', () {
+    test('meaning risk has priority over terminology findings', () {
       final TranslationAudit audit = TranslationAudit(
         meaningFindings: const <String>['Изменено обязательство.'],
         terminologyFindings: const <String>['Изменён термин.'],
       );
 
-      expect(audit.verdict, TranslationVerdict.needsReview);
+      expect(audit.verdict, TranslationVerdict.canonicalDrift);
+    });
+
+    test('meaning risk has priority over ambiguity', () {
+      expect(
+        TranslationAudit(
+          meaningFindings: const <String>['m'],
+          ambiguityFindings: const <String>['a'],
+        ).verdict,
+        TranslationVerdict.canonicalDrift,
+      );
+    });
+
+    test('terminology blocks equivalent with style findings', () {
+      expect(
+        TranslationAudit(
+          terminologyFindings: const <String>['t'],
+          styleFindings: const <String>['s'],
+        ).verdict,
+        TranslationVerdict.needsReview,
+      );
+    });
+
+    test('terminology and ambiguity require review', () {
+      expect(
+        TranslationAudit(
+          terminologyFindings: const <String>['t'],
+          ambiguityFindings: const <String>['a'],
+        ).verdict,
+        TranslationVerdict.needsReview,
+      );
+    });
+
+    test('meaning risk wins when every findings group is non-empty', () {
+      expect(
+        TranslationAudit(
+          meaningFindings: const <String>['m'],
+          terminologyFindings: const <String>['t'],
+          styleFindings: const <String>['s'],
+          ambiguityFindings: const <String>['a'],
+        ).verdict,
+        TranslationVerdict.canonicalDrift,
+      );
     });
   });
 

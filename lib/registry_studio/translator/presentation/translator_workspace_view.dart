@@ -733,8 +733,6 @@ final class _TranslationReportView extends StatelessWidget {
             MapEntry<String, String>('TH → EN', bundle.thToEn),
           ],
         ),
-        const SizedBox(height: 12),
-        _AuditFindingsCard(audit: audit),
       ],
     );
   }
@@ -754,7 +752,7 @@ final class _VerdictCard extends StatelessWidget {
     final Color background = switch (verdict) {
       TranslationVerdict.exact => colors.primaryContainer,
       TranslationVerdict.equivalent => colors.secondaryContainer,
-      TranslationVerdict.needsReview => colors.tertiaryContainer,
+      TranslationVerdict.needsReview => Colors.yellow.shade50,
       TranslationVerdict.canonicalDrift => colors.errorContainer,
     };
 
@@ -763,14 +761,17 @@ final class _VerdictCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(
               l10n.automaticVerdict,
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
               _verdictLabel(verdict),
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
@@ -790,6 +791,25 @@ final class _VerdictCard extends StatelessWidget {
               label: l10n.ambiguousWording,
               value: audit.ambiguousWording,
               positiveMeansGood: false,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.auditAndDiagnostics,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            _FindingGroup(title: l10n.meaning, findings: audit.meaningFindings),
+            _FindingGroup(
+              title: l10n.terminology,
+              findings: audit.terminologyFindings,
+            ),
+            _FindingGroup(
+              title: l10n.canonicalStyle,
+              findings: audit.styleFindings,
+            ),
+            _FindingGroup(
+              title: l10n.ambiguity,
+              findings: audit.ambiguityFindings,
             ),
             const SizedBox(height: 8),
             Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
@@ -848,46 +868,6 @@ final class _SectionCard extends StatelessWidget {
               const SizedBox(height: 6),
               SelectableText(entry.value),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-final class _AuditFindingsCard extends StatelessWidget {
-  const _AuditFindingsCard({required this.audit});
-
-  final TranslationAudit audit;
-
-  @override
-  Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              l10n.auditAndDiagnostics,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            _FindingGroup(title: l10n.meaning, findings: audit.meaningFindings),
-            _FindingGroup(
-              title: l10n.terminology,
-              findings: audit.terminologyFindings,
-            ),
-            _FindingGroup(
-              title: l10n.canonicalStyle,
-              findings: audit.styleFindings,
-            ),
-            _FindingGroup(
-              title: l10n.ambiguity,
-              findings: audit.ambiguityFindings,
-            ),
           ],
         ),
       ),

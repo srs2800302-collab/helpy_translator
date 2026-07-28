@@ -129,7 +129,7 @@ void main() {
       expect(report.audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('maps meaning finding to needs review', () async {
+    test('maps meaning finding to canonical drift', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _directResponse(),
         _reverseResponse(),
@@ -147,10 +147,10 @@ void main() {
                 accessKey: 'test-key',
               )
               .result;
-      expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
     });
 
-    test('maps terminology finding to canonical drift', () async {
+    test('maps terminology finding to needs review', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _directResponse(),
         _reverseResponse(),
@@ -170,7 +170,7 @@ void main() {
                 accessKey: 'test-key',
               )
               .result;
-      expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(report.audit.verdict, TranslationVerdict.needsReview);
       expect(report.audit.meaningPreserved, isTrue);
     });
 
