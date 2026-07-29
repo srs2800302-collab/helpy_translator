@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path_provider_android/path_provider_android.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../maintenance/history/application/contracts/registry_analysis_history_store.dart';
 import '../../maintenance/history/domain/entities/registry_analysis_history_entry.dart';
@@ -27,18 +27,7 @@ final class JsonLinesRegistryAnalysisHistoryStore
     if (applicationSupportDirectory != null) {
       supportDirectory = applicationSupportDirectory!;
     } else {
-      final String? applicationSupportPath = await PathProviderAndroid()
-          .getApplicationSupportPath();
-
-      if (applicationSupportPath == null ||
-          applicationSupportPath.trim().isEmpty) {
-        throw StateError(
-          'Android application support directory '
-          'is unavailable.',
-        );
-      }
-
-      supportDirectory = Directory(applicationSupportPath);
+      supportDirectory = await getApplicationSupportDirectory();
     }
 
     final File historyFile = File(
@@ -313,18 +302,7 @@ final class JsonLinesRegistryAnalysisHistoryStore
     if (applicationSupportDirectory != null) {
       supportDirectory = applicationSupportDirectory!;
     } else {
-      final String? applicationSupportPath = await PathProviderAndroid()
-          .getApplicationSupportPath();
-
-      if (applicationSupportPath == null ||
-          applicationSupportPath.trim().isEmpty) {
-        throw StateError(
-          'Android application support directory '
-          'is unavailable.',
-        );
-      }
-
-      supportDirectory = Directory(applicationSupportPath);
+      supportDirectory = await getApplicationSupportDirectory();
     }
 
     final Directory historyDirectory = Directory(

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path_provider_android/path_provider_android.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/domain/value_objects/registry_path.dart';
 import '../../../registry/domain/value_objects/registry_node_id.dart';
@@ -56,17 +56,7 @@ final class JsonFileHelpyRegistryNodeIdentityStore
     if (applicationSupportDirectory != null) {
       supportDirectory = applicationSupportDirectory!;
     } else {
-      final String? applicationSupportPath = await PathProviderAndroid()
-          .getApplicationSupportPath();
-
-      if (applicationSupportPath == null ||
-          applicationSupportPath.trim().isEmpty) {
-        throw StateError(
-          'Android application support directory is unavailable.',
-        );
-      }
-
-      supportDirectory = Directory(applicationSupportPath);
+      supportDirectory = await getApplicationSupportDirectory();
     }
 
     final File revisionFile = File(
@@ -448,17 +438,7 @@ final class JsonFileHelpyRegistryNodeIdentityStore
     if (applicationSupportDirectory != null) {
       supportDirectory = applicationSupportDirectory!;
     } else {
-      final String? applicationSupportPath = await PathProviderAndroid()
-          .getApplicationSupportPath();
-
-      if (applicationSupportPath == null ||
-          applicationSupportPath.trim().isEmpty) {
-        throw StateError(
-          'Android application support directory is unavailable.',
-        );
-      }
-
-      supportDirectory = Directory(applicationSupportPath);
+      supportDirectory = await getApplicationSupportDirectory();
     }
 
     final Directory revisionDirectory = Directory(

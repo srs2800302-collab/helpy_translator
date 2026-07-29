@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path_provider_android/path_provider_android.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/domain/value_objects/registry_path.dart';
 import '../../registry/application/contracts/registry_revision_state_store.dart';
@@ -35,18 +35,7 @@ final class JsonFileRegistryRevisionStateStore
     if (applicationSupportDirectory != null) {
       supportDirectory = applicationSupportDirectory!;
     } else {
-      final String? applicationSupportPath = await PathProviderAndroid()
-          .getApplicationSupportPath();
-
-      if (applicationSupportPath == null ||
-          applicationSupportPath.trim().isEmpty) {
-        throw StateError(
-          'Android application support directory '
-          'is unavailable.',
-        );
-      }
-
-      supportDirectory = Directory(applicationSupportPath);
+      supportDirectory = await getApplicationSupportDirectory();
     }
 
     final Directory stateDirectory = Directory(
@@ -337,18 +326,7 @@ final class JsonFileRegistryRevisionStateStore
     if (applicationSupportDirectory != null) {
       supportDirectory = applicationSupportDirectory!;
     } else {
-      final String? applicationSupportPath = await PathProviderAndroid()
-          .getApplicationSupportPath();
-
-      if (applicationSupportPath == null ||
-          applicationSupportPath.trim().isEmpty) {
-        throw StateError(
-          'Android application support directory '
-          'is unavailable.',
-        );
-      }
-
-      supportDirectory = Directory(applicationSupportPath);
+      supportDirectory = await getApplicationSupportDirectory();
     }
 
     final Directory stateDirectory = Directory(

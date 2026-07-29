@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path_provider_android/path_provider_android.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../application/translator_draft_store.dart';
 import '../domain/translator_models.dart';
@@ -112,16 +112,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     if (applicationSupportDirectory != null) {
       supportDirectory = applicationSupportDirectory!;
     } else {
-      final String? path = await PathProviderAndroid()
-          .getApplicationSupportPath();
-
-      if (path == null || path.trim().isEmpty) {
-        throw StateError(
-          'Android application support directory is unavailable.',
-        );
-      }
-
-      supportDirectory = Directory(path);
+      supportDirectory = await getApplicationSupportDirectory();
     }
 
     return File(
