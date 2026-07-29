@@ -33,6 +33,7 @@ void main() {
 
     expect(prompt, contains('Do not add a preamble'));
     expect(prompt, contains('Do not choose a verdict'));
+    expect(prompt, contains('do not waive a supported issue'));
   });
 
   test('direct prompt preserves generic service-role granularity', () {
@@ -45,6 +46,13 @@ void main() {
     expect(prompt, contains('"ผู้ให้บริการ"'));
     expect(prompt, contains('Never infer carpenter'));
     expect(prompt, contains('unless SOURCE TEXT explicitly names it'));
+    expect(prompt, contains('editorially rewrite it'));
+    expect(prompt, contains('All five sections are required'));
+
+    final String reversePrompt = const HelpyTranslatorPolicy()
+        .buildReverseSystemPrompt();
+    expect(reversePrompt, contains('All four sections are required'));
+    expect(reversePrompt, contains('dash or placeholder'));
   });
 
   test('audit prompt separates primary and reverse evidence', () {

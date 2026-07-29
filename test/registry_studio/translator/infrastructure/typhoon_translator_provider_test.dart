@@ -103,6 +103,20 @@ void main() {
         expect(report.bundle.thToEn, 'Photo of the installed cooktop.');
         expect(report.audit.verdict, TranslationVerdict.exact);
         expect(transport.callCount, 3);
+        expect(transport.requestBodies, hasLength(3));
+        expect(
+          transport.requestBodies
+              .map((Map<String, Object?> body) => body['max_completion_tokens'])
+              .toList(growable: false),
+          <Object?>[700, 700, 500],
+        );
+
+        for (final Map<String, Object?> body in transport.requestBodies) {
+          expect(body['temperature'], 0.1);
+          expect(body['top_p'], 0.7);
+          expect(body['frequency_penalty'], 0.0);
+          expect(body.containsKey('max_tokens'), isFalse);
+        }
       },
     );
 
@@ -522,6 +536,7 @@ final class _QueueTransport implements TyphoonChatTransport {
   _QueueTransport(this.responses);
 
   final List<Object> responses;
+  final List<Map<String, Object?>> requestBodies = <Map<String, Object?>>[];
   int callCount = 0;
   bool cancelled = false;
 
@@ -532,6 +547,7 @@ final class _QueueTransport implements TyphoonChatTransport {
     required Map<String, Object?> body,
   }) async {
     callCount += 1;
+    requestBodies.add(Map<String, Object?>.unmodifiable(body));
     final Object response = responses.removeAt(0);
 
     if (response is Exception) {

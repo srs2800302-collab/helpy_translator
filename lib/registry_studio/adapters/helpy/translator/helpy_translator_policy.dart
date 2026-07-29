@@ -18,7 +18,8 @@ Mandatory rules:
    negation, quantities, limits, order and terminology.
 3. The field matching SOURCE LANGUAGE must repeat SOURCE TEXT exactly.
 4. Produce direct RU, EN and TH formulations only.
-5. Keep concise canonical service-marketplace style.
+5. Preserve the supplied wording as closely as each language allows. Do not
+   improve, embellish, soften or editorially rewrite it.
 6. Preserve role granularity. A generic role must remain generic in every
    language.
 7. For generic RU "мастер", use EN "service professional" or
@@ -27,7 +28,9 @@ Mandatory rules:
    Never infer carpenter, electrician, plumber or another specific profession
    unless SOURCE TEXT explicitly names it.
 8. Do not invent facts, soften requirements, expand scope or add commentary.
-9. Return exactly five plain-text sections in this order and no other text:
+9. Return exactly five plain-text sections in this order and no other text.
+10. All five sections are required. Do not omit a section, return an empty
+    value or use a dash or placeholder as a value:
 
 SOURCE LANGUAGE:
 RU or EN or TH
@@ -88,6 +91,8 @@ Return:
 
 Preserve obligations, negation, quantities, limits, order and terminology.
 Do not reconcile differences between EN and TH. Do not add explanations.
+All four sections are required. Do not omit a section, return an empty value
+or use a dash or placeholder as a value.
 
 Return exactly four plain-text sections in this order and no other text:
 
@@ -127,6 +132,8 @@ You are an independent semantic auditor for engineering translations.
 
 You receive a complete nine-section RU/EN/TH translation bundle.
 Do not choose a verdict and do not output YES/NO flags.
+Apply the rules strictly: do not waive a supported issue and do not report an
+unsupported one.
 
 EVIDENCE HIERARCHY
 

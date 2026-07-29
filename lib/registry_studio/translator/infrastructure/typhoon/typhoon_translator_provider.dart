@@ -244,7 +244,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
       final String directContent = await _request(
         systemPrompt: policy.buildDirectSystemPrompt(),
         userPrompt: policy.buildDirectUserPrompt(request),
-        maxTokens: 768,
+        maxTokens: 700,
       );
 
       final Map<String, String> direct = _parsePayload(
@@ -294,7 +294,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
           en: direct['EN']!,
           th: direct['TH']!,
         ),
-        maxTokens: 768,
+        maxTokens: 700,
       );
 
       final Map<String, String> reverse = _parsePayload(
@@ -326,7 +326,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         final String auditContent = await _request(
           systemPrompt: policy.buildAuditSystemPrompt(),
           userPrompt: auditUserPrompt,
-          maxTokens: 1024,
+          maxTokens: 500,
         );
 
         audit = _parseAudit(auditContent);
@@ -336,7 +336,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
             policy.buildAuditSystemPrompt(),
           ),
           userPrompt: auditUserPrompt,
-          maxTokens: 1024,
+          maxTokens: 500,
         );
 
         try {
@@ -413,9 +413,10 @@ This is the final format attempt:
       accessKey: accessKey.trim(),
       body: <String, Object?>{
         'model': model,
-        'max_tokens': maxTokens,
-        'temperature': 0.0,
-        'top_p': 1.0,
+        'max_completion_tokens': maxTokens,
+        'temperature': 0.1,
+        'top_p': 0.7,
+        'frequency_penalty': 0.0,
         'messages': <Map<String, String>>[
           <String, String>{'role': 'system', 'content': systemPrompt},
           <String, String>{'role': 'user', 'content': userPrompt},
