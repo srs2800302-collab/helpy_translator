@@ -47,7 +47,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
         throw const FormatException('Translator draft schema is invalid.');
       }
 
-      final String draftVersion = version as String;
+      final String draftVersion = version;
       final Object? sourceText = state['sourceText'];
       final Object? sourceLanguageHint = state['sourceLanguageHint'];
       final Object? report = state['report'];

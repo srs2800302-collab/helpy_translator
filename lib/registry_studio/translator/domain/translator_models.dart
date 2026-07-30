@@ -206,7 +206,7 @@ enum TranslationEvidenceKind { multilingual, russianOnly, legacy }
 final class TranslationFinding extends Equatable {
   TranslationFinding({
     required this.category,
-    required TranslationLanguage section,
+    required TranslationLanguage this.section,
     required String sourceFragment,
     required String translationFragment,
     required String reason,
@@ -214,7 +214,6 @@ final class TranslationFinding extends Equatable {
     required String correctVariant,
     required String sourceAmbiguity,
   }) : kind = TranslationEvidenceKind.russianOnly,
-       section = section,
        sourceFragment = _requiredText(sourceFragment, 'sourceFragment'),
        translationFragment = _requiredText(
          translationFragment,
@@ -231,7 +230,7 @@ final class TranslationFinding extends Equatable {
 
   TranslationFinding.multilingual({
     required this.category,
-    required TranslationLanguage section,
+    required TranslationLanguage this.section,
     required String sourceFragment,
     required String translationFragment,
     required LocalizedEvidenceText reason,
@@ -239,7 +238,6 @@ final class TranslationFinding extends Equatable {
     required String correctVariant,
     required LocalizedEvidenceText? sourceAmbiguity,
   }) : kind = TranslationEvidenceKind.multilingual,
-       section = section,
        sourceFragment = _requiredText(sourceFragment, 'sourceFragment'),
        translationFragment = _requiredText(
          translationFragment,
