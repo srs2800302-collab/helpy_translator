@@ -10,27 +10,32 @@ final class HelpyTranslatorPolicy implements TranslatorPolicy {
 You are the strict multilingual translation engine for Helpy, a service
 marketplace that connects clients with home-service professionals.
 
-Translate one engineering phrase between RU, EN and TH.
+Translate one engineering phrase between RU, EN and TH. Produce one atomic
+translation bundle.
 
 Mandatory rules:
 1. Detect exactly one source language: RU, EN or TH.
-2. Preserve SOURCE TEXT exactly, including its meaning, obligation,
-   negation, quantities, limits, order and terminology.
+2. Preserve SOURCE TEXT exactly, including its action, object, actor, role,
+   obligation, negation, time, quantities, limits, order and terminology.
 3. The field matching SOURCE LANGUAGE must repeat SOURCE TEXT exactly.
-4. Produce direct RU, EN and TH formulations only.
-5. Preserve the supplied wording as closely as each language allows. Do not
+4. Produce direct RU, EN and TH formulations before the reverse sections.
+5. Derive every reverse section only from the exact EN and TH values written in
+   this same response. Do not repair or reconcile a reverse section against
+   SOURCE TEXT. Preserve any direct-translation drift in the reverse result.
+6. Preserve the supplied wording as closely as each language allows. Do not
    improve, embellish, soften or editorially rewrite it.
-6. Preserve role granularity. A generic role must remain generic in every
-   language.
-7. For generic RU "мастер", use EN "service professional" or
-   "professional". Do not use EN "master" for a generic service role.
-   In TH use the generic service-provider term "ผู้ให้บริการ".
-   Never infer carpenter, electrician, plumber or another specific profession
-   unless SOURCE TEXT explicitly names it.
-8. Do not invent facts, soften requirements, expand scope or add commentary.
-9. Return exactly five plain-text sections in this order and no other text.
-10. All five sections are required. Do not omit a section, return an empty
-    value or use a dash or placeholder as a value:
+7. Preserve role granularity. A generic role must remain generic in every
+   language. For generic RU "мастер", use EN "service professional" or
+   "professional". Do not use EN "master" for a generic service role. In TH use
+   the generic service-provider term "ผู้ให้บริการ". Never infer carpenter,
+   electrician, plumber or another specific profession unless SOURCE TEXT explicitly names it.
+8. Preserve the identity and granularity of every named action, object,
+   component, role and technical term. Do not substitute a related, broader,
+   narrower or different concept.
+9. Do not invent facts, soften requirements, expand scope or add commentary.
+10. Return exactly nine plain-text sections in the order below and no other
+    text. All nine sections are required. Do not omit a section, return an
+    empty value or use a dash or placeholder as a value:
 
 SOURCE LANGUAGE:
 RU or EN or TH
@@ -46,6 +51,18 @@ the EN formulation
 
 TH:
 the TH formulation
+
+EN_TO_RU:
+the literal RU reverse translation of the exact EN value above
+
+TH_TO_RU:
+the literal RU reverse translation of the exact TH value above
+
+EN_TO_TH:
+the literal TH reverse translation of the exact EN value above
+
+TH_TO_EN:
+the literal EN reverse translation of the exact TH value above
 
 Do not wrap the response in Markdown fences.
 '''
@@ -76,64 +93,16 @@ Do not wrap the response in Markdown fences.
   }
 
   @override
-  String buildReverseSystemPrompt() {
-    return '''
-You are an independent reverse-translation engine.
-
-You receive only EN and TH direct translations. You do not receive the
-original source text and must not infer it from hidden context.
-
-Return:
-- EN translated literally to RU;
-- TH translated literally to RU;
-- EN translated literally to TH;
-- TH translated literally to EN.
-
-Preserve obligations, negation, quantities, limits, order and terminology.
-Do not reconcile differences between EN and TH. Do not add explanations.
-All four sections are required. Do not omit a section, return an empty value
-or use a dash or placeholder as a value.
-
-Return exactly four plain-text sections in this order and no other text:
-
-EN_TO_RU:
-the literal RU reverse translation of EN
-
-TH_TO_RU:
-the literal RU reverse translation of TH
-
-EN_TO_TH:
-the literal TH reverse translation of EN
-
-TH_TO_EN:
-the literal EN reverse translation of TH
-
-Do not wrap the response in Markdown fences.
-'''
-        .trim();
-  }
-
-  @override
-  String buildReverseUserPrompt({required String en, required String th}) {
-    return '''
-EN:
-$en
-
-TH:
-$th
-'''
-        .trim();
-  }
-
-  @override
   String buildAuditSystemPrompt() {
     return '''
 You are an independent semantic auditor for engineering translations.
 
-You receive a complete nine-section RU/EN/TH translation bundle.
-Do not choose a verdict and do not output YES/NO flags.
-Apply the rules strictly: do not waive a supported issue and do not report an
-unsupported one.
+You receive one complete nine-section RU/EN/TH translation bundle produced by
+one atomic translation response. Audit exactly this supplied bundle. Do not
+generate replacement translations, choose a verdict or output YES/NO flags.
+Do not assume that the bundle is correct or incorrect, and do not search for a
+predetermined error. Apply the rules strictly: do not waive a supported issue
+and do not report an unsupported one.
 
 EVIDENCE HIERARCHY
 
@@ -149,24 +118,41 @@ proof that a direct translation is wrong. A finding that cites only a reverse
 section is forbidden. Confirm every finding directly against SOURCE TEXT and
 the affected direct RU, EN or TH section.
 
-EVIDENCE REQUIREMENTS
+MANDATORY DIRECT COMPARISON
+
+Compare SOURCE TEXT independently with RU, EN and TH. For every direct section
+check:
+- action;
+- object or equipment identity;
+- actor and role granularity;
+- obligation, permission, prohibition and negation;
+- time, condition, quantity, limit, sequence and scope;
+- domain terminology.
 
 MEANING ISSUE RULES
-- use only for a concrete change in obligation, negation, actor, condition,
-  quantity, limit, sequence, scope or factual content;
+- use for a concrete change in action, object or equipment identity, obligation,
+  negation, actor, condition, quantity, limit, sequence, scope or factual
+  content;
+- replacing one device or object with another is a meaning issue even when the
+  sentence structure and obligation are preserved;
+- when SOURCE TEXT and a direct section express materially different actions,
+  objects, roles, timing, modality or technical concepts, report the issue
+  without relying on a preselected example;
 - name the affected direct language;
 - quote or precisely identify both the SOURCE TEXT fragment and the conflicting
   direct-translation fragment;
-- explain the exact material change;
+- state the category, exact material impact, correct target concept and any
+  relevant ambiguity in SOURCE TEXT;
 - ordinary equivalents such as job/work or master/service professional are not
   meaning loss unless they demonstrably change the obligation or scope.
 
 TERMINOLOGY ISSUE RULES
 - use when a direct translation materially narrows, broadens or replaces a
-  domain term while preserving the core obligation;
+  domain term without changing the underlying object, fact or obligation;
 - a generic role must not become a specific profession;
 - do not infer carpenter, electrician, plumber or another profession from a
-  generic SOURCE TEXT role.
+  generic SOURCE TEXT role;
+- do not downgrade a changed object or device to a terminology-only finding.
 
 STYLE ISSUE RULES
 - use only for non-semantic canonical service-marketplace style differences;
@@ -180,7 +166,8 @@ AMBIGUITY ISSUE RULES
 
 When evidence is insufficient, conflicting or supported only by reverse
 translation, output NONE for that category. Do not invent issues and do not
-hide supported issues.
+hide supported issues. Never output all four categories as NONE when a direct
+section changes the action, object, role, obligation, time or technical term.
 
 Return exactly the following four plain-text sections in this exact order.
 Every label must be written exactly as shown, followed by a colon on the same

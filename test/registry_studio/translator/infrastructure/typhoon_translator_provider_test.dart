@@ -64,11 +64,10 @@ void main() {
 
   group('TyphoonTranslatorProvider', () {
     test(
-      'runs direct, independent reverse and findings audit in order',
+      'runs atomic translation bundle and findings audit in order',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
-          _directResponse(),
-          _reverseResponse(),
+          _translationResponse(),
           _auditResponse(),
         ]);
 
@@ -95,25 +94,30 @@ void main() {
 
         expect(stages, <TranslatorRunStage>[
           TranslatorRunStage.directTranslation,
-          TranslatorRunStage.reverseTranslation,
           TranslatorRunStage.audit,
         ]);
         expect(report.bundle.sourceLanguage, TranslationLanguage.ru);
         expect(report.bundle.en, 'Photo of the installed cooktop.');
         expect(report.bundle.thToEn, 'Photo of the installed cooktop.');
         expect(report.audit.verdict, TranslationVerdict.exact);
-        expect(transport.callCount, 3);
-        expect(transport.requestBodies, hasLength(3));
+        expect(transport.callCount, 2);
+        expect(transport.requestBodies, hasLength(2));
         expect(
           transport.requestBodies
               .map((Map<String, Object?> body) => body['max_completion_tokens'])
               .toList(growable: false),
-          <Object?>[700, 700, 500],
+          <Object?>[1400, 500],
+        );
+
+        expect(
+          transport.requestBodies
+              .map((Map<String, Object?> body) => body['temperature'])
+              .toList(growable: false),
+          <Object?>[0.1, 0.0],
         );
 
         for (final Map<String, Object?> body in transport.requestBodies) {
-          expect(body['temperature'], 0.1);
-          expect(body['top_p'], 0.7);
+          expect(body.containsKey('top_p'), isFalse);
           expect(body['frequency_penalty'], 0.0);
           expect(body.containsKey('max_tokens'), isFalse);
         }
@@ -122,8 +126,7 @@ void main() {
 
     test('maps style-only finding to equivalent', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
-        _directResponse(),
-        _reverseResponse(),
+        _translationResponse(),
         _auditResponse(style: '- Формулировка EN менее канонична.'),
       ]);
 
@@ -143,10 +146,9 @@ void main() {
       expect(report.audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('maps meaning finding to canonical drift', () async {
+    test('maps supplied meaning finding to canonical drift', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
-        _directResponse(),
-        _reverseResponse(),
+        _translationResponse(),
         _auditResponse(meaning: '- В EN изменено обязательство.'),
       ]);
       final TranslatorRunReport report =
@@ -164,10 +166,10 @@ void main() {
       expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
     });
 
+
     test('maps terminology finding to needs review', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
-        _directResponse(),
-        _reverseResponse(),
+        _translationResponse(),
         _auditResponse(
           terminology: '- Общая роль заменена конкретной профессией.',
         ),
@@ -202,6 +204,18 @@ RU:
 
 EN:
 Photo of the installed cooktop.
+
+TH:
+ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
+
+EN_TO_RU:
+Фотография установленной варочной панели.
+
+TH_TO_RU:
+Фотография установленной варочной панели.
+
+EN_TO_TH:
+ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
 ''',
       ]);
 
@@ -239,8 +253,7 @@ Photo of the installed cooktop.
 
     test('retries malformed audit once and succeeds', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
-        _directResponse(),
-        _reverseResponse(),
+        _translationResponse(),
         '''
 MEANING_FINDINGS:
 NONE
@@ -265,15 +278,14 @@ NONE
               .result;
 
       expect(report.audit.verdict, TranslationVerdict.exact);
-      expect(transport.callCount, 4);
+      expect(transport.callCount, 3);
     });
 
     test(
       'keeps second invalid audit as technical failure with complete bundle',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
-          _directResponse(),
-          _reverseResponse(),
+          _translationResponse(),
           '''
 MEANING_FINDINGS:
 NONE
@@ -332,7 +344,7 @@ NONE
           ),
         );
 
-        expect(transport.callCount, 4);
+        expect(transport.callCount, 3);
       },
     );
 
@@ -340,7 +352,7 @@ NONE
       'rejects API key with invisible characters before transport',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
-          _directResponse(),
+          _translationResponse(),
         ]);
 
         final Future<TranslatorRunReport> result =
@@ -398,6 +410,18 @@ Text.
 
 TH:
 ข้อความ
+
+EN_TO_RU:
+Текст.
+
+TH_TO_RU:
+Текст.
+
+EN_TO_TH:
+ข้อความ
+
+TH_TO_EN:
+Text.
 ''',
       ]);
 
@@ -476,7 +500,11 @@ TH:
   });
 }
 
-String _directResponse() {
+String _translationResponse({
+  String th = 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
+  String thToRu = 'Фотография установленной варочной панели.',
+  String thToEn = 'Photo of the installed cooktop.',
+}) {
   return '''
 SOURCE LANGUAGE:
 RU
@@ -491,23 +519,19 @@ EN:
 Photo of the installed cooktop.
 
 TH:
-ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
-''';
-}
+$th
 
-String _reverseResponse() {
-  return '''
 EN_TO_RU:
 Фотография установленной варочной панели.
 
 TH_TO_RU:
-Фотография установленной варочной панели.
+$thToRu
 
 EN_TO_TH:
 ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
 
 TH_TO_EN:
-Photo of the installed cooktop.
+$thToEn
 ''';
 }
 
@@ -575,13 +599,6 @@ final class _TestPolicy implements TranslatorPolicy {
   @override
   String buildDirectUserPrompt(TranslatorWorkRequest request) =>
       request.sourceText;
-
-  @override
-  String buildReverseSystemPrompt() => 'reverse';
-
-  @override
-  String buildReverseUserPrompt({required String en, required String th}) =>
-      '$en\n$th';
 
   @override
   String buildAuditSystemPrompt() => 'audit';

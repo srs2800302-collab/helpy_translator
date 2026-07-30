@@ -241,24 +241,25 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     try {
       _emit(TranslatorRunStage.directTranslation);
 
-      final String directContent = await _request(
+      final String translationContent = await _request(
         systemPrompt: policy.buildDirectSystemPrompt(),
         userPrompt: policy.buildDirectUserPrompt(request),
-        maxTokens: 700,
+        maxTokens: _translationMaxTokens,
+        temperature: _translationTemperature,
       );
 
-      final Map<String, String> direct = _parsePayload(
-        content: directContent,
-        labels: _directLabels,
+      final Map<String, String> translation = _parsePayload(
+        content: translationContent,
+        labels: _translationLabels,
         stage: TranslatorFailureStage.directTranslation,
-        responseName: 'Прямой перевод',
+        responseName: 'Атомарный перевод',
       );
 
       final TranslationLanguage sourceLanguage;
 
       try {
         sourceLanguage = TranslationLanguage.fromCode(
-          direct['SOURCE LANGUAGE']!,
+          translation['SOURCE LANGUAGE']!,
         );
       } on ArgumentError catch (error) {
         throw TranslatorProviderException(
@@ -270,7 +271,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         );
       }
 
-      if (direct['SOURCE TEXT'] != request.sourceText) {
+      if (translation['SOURCE TEXT'] != request.sourceText) {
         throw const _PayloadFailure(
           stage: TranslatorFailureStage.directTranslation,
           code: TranslatorFailureCode.sourceTextMismatch,
@@ -278,7 +279,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         );
       }
 
-      if (direct[sourceLanguage.code] != request.sourceText) {
+      if (translation[sourceLanguage.code] != request.sourceText) {
         throw const _PayloadFailure(
           stage: TranslatorFailureStage.directTranslation,
           code: TranslatorFailureCode.sourceTextMismatch,
@@ -286,34 +287,16 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         );
       }
 
-      _emit(TranslatorRunStage.reverseTranslation);
-
-      final String reverseContent = await _request(
-        systemPrompt: policy.buildReverseSystemPrompt(),
-        userPrompt: policy.buildReverseUserPrompt(
-          en: direct['EN']!,
-          th: direct['TH']!,
-        ),
-        maxTokens: 700,
-      );
-
-      final Map<String, String> reverse = _parsePayload(
-        content: reverseContent,
-        labels: _reverseLabels,
-        stage: TranslatorFailureStage.reverseTranslation,
-        responseName: 'Независимый обратный перевод',
-      );
-
       partialBundle = TranslationBundle(
         sourceLanguage: sourceLanguage,
-        sourceText: direct['SOURCE TEXT']!,
-        ru: direct['RU']!,
-        en: direct['EN']!,
-        th: direct['TH']!,
-        enToRu: reverse['EN_TO_RU']!,
-        thToRu: reverse['TH_TO_RU']!,
-        enToTh: reverse['EN_TO_TH']!,
-        thToEn: reverse['TH_TO_EN']!,
+        sourceText: translation['SOURCE TEXT']!,
+        ru: translation['RU']!,
+        en: translation['EN']!,
+        th: translation['TH']!,
+        enToRu: translation['EN_TO_RU']!,
+        thToRu: translation['TH_TO_RU']!,
+        enToTh: translation['EN_TO_TH']!,
+        thToEn: translation['TH_TO_EN']!,
       );
 
       _emit(TranslatorRunStage.audit);
@@ -326,7 +309,8 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         final String auditContent = await _request(
           systemPrompt: policy.buildAuditSystemPrompt(),
           userPrompt: auditUserPrompt,
-          maxTokens: 500,
+          maxTokens: _auditMaxTokens,
+          temperature: _auditTemperature,
         );
 
         audit = _parseAudit(auditContent);
@@ -336,7 +320,8 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
             policy.buildAuditSystemPrompt(),
           ),
           userPrompt: auditUserPrompt,
-          maxTokens: 500,
+          maxTokens: _auditMaxTokens,
+          temperature: _auditTemperature,
         );
 
         try {
@@ -391,7 +376,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 $basePrompt
 
 The previous audit response violated the required output protocol.
-Run the semantic audit again from the supplied nine-section bundle.
+Run the semantic audit again from the supplied atomic nine-section bundle.
 
 This is the final format attempt:
 - output exactly four labels;
@@ -407,6 +392,7 @@ This is the final format attempt:
     required String systemPrompt,
     required String userPrompt,
     required int maxTokens,
+    required double temperature,
   }) {
     return transport.complete(
       endpoint: _endpoint,
@@ -414,8 +400,7 @@ This is the final format attempt:
       body: <String, Object?>{
         'model': model,
         'max_completion_tokens': maxTokens,
-        'temperature': 0.1,
-        'top_p': 0.7,
+        'temperature': temperature,
         'frequency_penalty': 0.0,
         'messages': <Map<String, String>>[
           <String, String>{'role': 'system', 'content': systemPrompt},
@@ -652,17 +637,19 @@ This is the final format attempt:
     );
   }
 
+  static const int _translationMaxTokens = 1400;
+  static const int _auditMaxTokens = 500;
+  static const double _translationTemperature = 0.1;
+  static const double _auditTemperature = 0.0;
+
   static final RegExp _accessKeyPattern = RegExp(r'^[\x21-\x7E]+$');
 
-  static const List<String> _directLabels = <String>[
+  static const List<String> _translationLabels = <String>[
     'SOURCE LANGUAGE',
     'SOURCE TEXT',
     'RU',
     'EN',
     'TH',
-  ];
-
-  static const List<String> _reverseLabels = <String>[
     'EN_TO_RU',
     'TH_TO_RU',
     'EN_TO_TH',
