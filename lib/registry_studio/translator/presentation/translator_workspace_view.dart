@@ -877,9 +877,11 @@ final class _FindingCard extends StatelessWidget {
       );
     }
 
-    final String sourceAmbiguity = finding.sourceAmbiguity! == 'NONE'
-        ? l10n.noSourceAmbiguity
-        : finding.sourceAmbiguity!;
+    final TranslationLanguage evidenceLanguage =
+        _translationLanguageForLocale(Localizations.localeOf(context));
+    final String sourceAmbiguity =
+        finding.sourceAmbiguityFor(evidenceLanguage) ??
+        l10n.noSourceAmbiguity;
 
     return Card(
       key: ValueKey<String>(
@@ -910,11 +912,11 @@ final class _FindingCard extends StatelessWidget {
             ),
             _EvidenceField(
               label: l10n.evidenceReason,
-              value: finding.reason!,
+              value: finding.reasonFor(evidenceLanguage),
             ),
             _EvidenceField(
               label: l10n.evidenceImpact,
-              value: finding.impact!,
+              value: finding.impactFor(evidenceLanguage),
             ),
             _EvidenceField(
               label: l10n.evidenceCorrectVariant,
@@ -957,6 +959,14 @@ final class _EvidenceField extends StatelessWidget {
       ),
     );
   }
+}
+
+TranslationLanguage _translationLanguageForLocale(Locale locale) {
+  return switch (locale.languageCode) {
+    'en' => TranslationLanguage.en,
+    'th' => TranslationLanguage.th,
+    _ => TranslationLanguage.ru,
+  };
 }
 
 List<TranslationFinding> _findingsByCategory(

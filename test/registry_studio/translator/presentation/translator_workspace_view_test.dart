@@ -248,6 +248,154 @@ void main() {
     );
   }
 
+  for (final ({
+        Locale locale,
+        String reason,
+        String impact,
+        String sourceAmbiguity,
+      })
+      localeCase
+      in <
+        ({Locale locale, String reason, String impact, String sourceAmbiguity})
+      >[
+        (
+          locale: RegistryStudioLocalizations.russian,
+          reason: 'Русское объяснение.',
+          impact: 'Русское влияние.',
+          sourceAmbiguity: 'Русская неоднозначность.',
+        ),
+        (
+          locale: RegistryStudioLocalizations.english,
+          reason: 'English reason.',
+          impact: 'English impact.',
+          sourceAmbiguity: 'English source ambiguity.',
+        ),
+        (
+          locale: RegistryStudioLocalizations.thai,
+          reason: 'คำอธิบายภาษาไทย',
+          impact: 'ผลกระทบภาษาไทย',
+          sourceAmbiguity: 'ความกำกวมของต้นฉบับภาษาไทย',
+        ),
+      ]) {
+    testWidgets(
+      'projects multilingual evidence for ${localeCase.locale.languageCode}',
+      (WidgetTester tester) async {
+        final TranslatorRunReport report = _report(
+          audit: TranslationAudit(
+            findings: <TranslationFinding>[
+              TranslationFinding.multilingual(
+                category: TranslationFindingCategory.meaning,
+                section: TranslationLanguage.en,
+                sourceFragment: 'оборудования',
+                translationFragment: 'equipment',
+                reason: LocalizedEvidenceText(
+                  ru: 'Русское объяснение.',
+                  en: 'English reason.',
+                  th: 'คำอธิบายภาษาไทย',
+                ),
+                impact: LocalizedEvidenceText(
+                  ru: 'Русское влияние.',
+                  en: 'English impact.',
+                  th: 'ผลกระทบภาษาไทย',
+                ),
+                correctVariant: 'installed equipment',
+                sourceAmbiguity: LocalizedEvidenceText(
+                  ru: 'Русская неоднозначность.',
+                  en: 'English source ambiguity.',
+                  th: 'ความกำกวมของต้นฉบับภาษาไทย',
+                ),
+              ),
+            ],
+          ),
+        );
+
+        await _pumpTranslator(
+          tester,
+          locale: localeCase.locale,
+          provider: _SuccessProvider(report),
+          draftStore: _MemoryDraftStore(
+            draft: TranslatorDraft(
+              sourceText: report.request.sourceText,
+              sourceLanguageHint: TranslationLanguage.ru,
+              report: report,
+            ),
+          ),
+          accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+        );
+
+        expect(find.text(localeCase.reason), findsOneWidget);
+        expect(find.text(localeCase.impact), findsOneWidget);
+        expect(find.text(localeCase.sourceAmbiguity), findsOneWidget);
+        expect(find.text('оборудования'), findsOneWidget);
+        expect(find.text('equipment'), findsOneWidget);
+        expect(find.text('installed equipment'), findsOneWidget);
+
+        for (final String localizedText in <String>[
+          'Русское объяснение.',
+          'Русское влияние.',
+          'Русская неоднозначность.',
+          'English reason.',
+          'English impact.',
+          'English source ambiguity.',
+          'คำอธิบายภาษาไทย',
+          'ผลกระทบภาษาไทย',
+          'ความกำกวมของต้นฉบับภาษาไทย',
+        ]) {
+          final bool selected =
+              localizedText == localeCase.reason ||
+              localizedText == localeCase.impact ||
+              localizedText == localeCase.sourceAmbiguity;
+          expect(
+            find.text(localizedText),
+            selected ? findsOneWidget : findsNothing,
+          );
+        }
+      },
+    );
+  }
+
+  testWidgets(
+    'keeps Russian-only evidence compatible under English UI locale',
+    (WidgetTester tester) async {
+      final TranslatorRunReport report = _report(
+        audit: TranslationAudit(
+          findings: <TranslationFinding>[
+            TranslationFinding(
+              category: TranslationFindingCategory.terminology,
+              section: TranslationLanguage.en,
+              sourceFragment: 'оборудования',
+              translationFragment: 'equipment',
+              reason: 'Русское объяснение совместимости.',
+              impact: 'Русское описание влияния совместимости.',
+              correctVariant: 'installed equipment',
+              sourceAmbiguity: 'NONE',
+            ),
+          ],
+        ),
+      );
+
+      await _pumpTranslator(
+        tester,
+        locale: RegistryStudioLocalizations.english,
+        provider: _SuccessProvider(report),
+        draftStore: _MemoryDraftStore(
+          draft: TranslatorDraft(
+            sourceText: report.request.sourceText,
+            sourceLanguageHint: TranslationLanguage.ru,
+            report: report,
+          ),
+        ),
+        accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+      );
+
+      expect(find.text('Русское объяснение совместимости.'), findsOneWidget);
+      expect(
+        find.text('Русское описание влияния совместимости.'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('clear removes Translator result only', (
     WidgetTester tester,
   ) async {
