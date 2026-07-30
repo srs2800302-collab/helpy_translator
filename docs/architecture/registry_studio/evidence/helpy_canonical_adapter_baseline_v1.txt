@@ -1,0 +1,51 @@
+REGISTRY_STUDIO_HELPY_CANONICAL_ADAPTER_BASELINE_V1
+GENERATED_UTC=2026-07-30T09:54:49Z
+GENERATED_LOCAL=2026-07-30 12:54:49 +0300
+PROJECT_ROOT=/data/data/com.termux/files/home/projects/helpy_translator_translator_first_rebuild
+BRANCH=registry-studio/stage3-clean-rebuild
+HEAD=da65fe5d687cf5a3b1918c34f0bb793cc6c5ceae
+UPSTREAM=origin/registry-studio/stage3-clean-rebuild
+UPSTREAM_HEAD=da65fe5d687cf5a3b1918c34f0bb793cc6c5ceae
+INITIAL_WORKTREE_CLEAN=YES
+PRODUCTION_FILES_MODIFIED=NO
+TESTS_EXECUTED=NO
+FLUTTER_ANALYZE_EXECUTED=NO
+COMMIT_CREATED=NO
+PUSH_PERFORMED=NO
+
+[REQUIRED_FILES]
+SHA256	LINES	BYTES	PATH
+d1825aeb326d387019807e450e99a55af5c506a81c10ea7372669205d13bc874	135	4729	AGENTS.md
+a39e0a7ba3f7efbeaec8e64a3b0d0f9001dfbebf791de344ed7ce55930eed6cc	1019	59226	docs/architecture/registry_studio/Registry_Studio_Engineering_Change_Propagation_and_Approval_Contract_v1.md
+2bcd2372217edf2ef8f18e76a6ebe6c7027e63a64446d4037cc4e2073931dbcf	146	13668	docs/architecture/registry_studio/Registry_Studio_Clean_Rebuild_Guard_v1.md
+82b44c9752c6c1900197c4ce97e39e704686702380a08a3c78778033fb50510d	471	15370	docs/architecture/registry_studio/Registry_Studio_Clean_Rebuild_RU_Readable_v1.md
+22bb538aba4f0a486db9ac444617e34ae2ea14e22721df0d384c3694e4f27ff9	182	6907	lib/registry_studio/adapters/helpy/canonical/helpy_canonical_adapter.dart
+77fe4cec7a147bd4f6ac5d4c5b80f404a283eba99065282f7f8145b7052f09a1	240	7121	lib/registry_studio/adapters/helpy/canonical/helpy_canonical_dictionary_reader.dart
+e6b4a6a76559b1ef81eefdb3c5e76750019c0c06831d6c7dc274c8507cfadf3a	85	3086	lib/registry_studio/adapters/helpy/canonical/helpy_canonical_registry_projector.dart
+93ada1286f7367bd3aecedab189dc11033157f951b9047a4513500dd2f4189a8	8	269	lib/registry_studio/canonical/application/project_canonical_adapter.dart
+f2a0134196ae15b5a5faad81bf2c4f6adab5adef5f596e6a7b247df0d4239518	1000	30094	lib/registry_studio/canonical/domain/canonical_analysis_package.dart
+9114f9df9528377d48b5805407e0ad7457837344b19601e71de550ec7a2eb8cc	656	18709	lib/registry_studio/canonical/domain/canonical_dictionary.dart
+5f4a35a24728919f9c5534a64b6396f38fba1aff98f8376c0b477f47b0bcf902	14	335	lib/registry_studio/adapters/helpy/application/contracts/helpy_canonical_dictionary_source.dart
+071b9e7abd82a6b9bd39381679fbd0c5250fd2b500a1bd437b1424f0b038b8bd	233	7363	lib/registry_studio/registry/domain/entities/registry_snapshot.dart
+3c419ab276f665cd119dd24fafa3d97e3bc08fd7e8db6ccf8f96478d9625bc90	103	2874	lib/registry_studio/registry/domain/entities/registry_node.dart
+1aa6661088b245d0d5eea441b5b969475163a930344bb45f9ee835f3757e41f4	24	525	lib/registry_studio/registry/domain/value_objects/registry_node_id.dart
+6685fc84b310ed434dc5addc8372ac4da8d9a04eb76d6e334ec0defa2a914f59	34	910	lib/registry_studio/core/domain/value_objects/registry_path.dart
+4ac5ebba2aab2e0da89ba517242c4e0c5e7c22515582d4127c417e317ba8c6c0	24	533	lib/registry_studio/core/domain/value_objects/registry_entity_id.dart
+7d5cc960f4daf67cf82b74b8df9f87442125d99ef9a0bbdc3384f1001abc70ef	79	2238	lib/registry_studio/core/domain/evidence/source_evidence.dart
+4f3ae77efe438882eb51d37da4b8c1fc61c7c6956686a9f7f15d509b4d666883	920	31475	test/registry_studio/canonical/canonical_architecture_test.dart
+
+[CANONICAL_TEST_FILES]
+4f3ae77efe438882eb51d37da4b8c1fc61c7c6956686a9f7f15d509b4d666883	920	31475	test/registry_studio/canonical/canonical_architecture_test.dart
+
+[RISK_SCAN]
+lib/registry_studio/adapters/helpy/canonical/helpy_canonical_dictionary_reader.dart:150:          code: 'dictionary_content_parsing_not_implemented',
+lib/registry_studio/adapters/helpy/canonical/helpy_canonical_registry_projector.dart:49:        code: 'registry_projection_not_implemented',
+test/registry_studio/canonical/canonical_architecture_test.dart:510:          'registry_projection_not_implemented',
+test/registry_studio/canonical/canonical_architecture_test.dart:531:          'registry_projection_not_implemented',
+test/registry_studio/canonical/canonical_architecture_test.dart:564:        'registry_projection_not_implemented',
+test/registry_studio/canonical/canonical_architecture_test.dart:565:        'dictionary_content_parsing_not_implemented',
+test/registry_studio/canonical/canonical_architecture_test.dart:606:        'registry_projection_not_implemented',
+test/registry_studio/canonical/canonical_architecture_test.dart:650:        'dictionary_content_parsing_not_implemented',
+
+[NEXT_ACTION]
+READ_ONLY_EXACT_CODE_AND_TEST_BASELINE_AUDIT
