@@ -287,7 +287,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         );
       }
 
-      partialBundle = TranslationBundle(
+      final TranslationBundle bundle = TranslationBundle(
         sourceLanguage: sourceLanguage,
         sourceText: translation['SOURCE TEXT']!,
         ru: translation['RU']!,
@@ -298,10 +298,11 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         enToTh: translation['EN_TO_TH']!,
         thToEn: translation['TH_TO_EN']!,
       );
+      partialBundle = bundle;
 
       _emit(TranslatorRunStage.audit);
 
-      final String auditUserPrompt = policy.buildAuditUserPrompt(partialBundle);
+      final String auditUserPrompt = policy.buildAuditUserPrompt(bundle);
 
       TranslationAudit audit;
 
@@ -313,7 +314,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
           temperature: _auditTemperature,
         );
 
-        audit = _parseAudit(auditContent);
+        audit = _parseAudit(auditContent, bundle);
       } on _AuditFailure {
         final String repairedAuditContent = await _request(
           systemPrompt: _buildStrictAuditRetryPrompt(
@@ -325,7 +326,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         );
 
         try {
-          audit = _parseAudit(repairedAuditContent);
+          audit = _parseAudit(repairedAuditContent, bundle);
         } on _AuditFailure catch (error) {
           throw _AuditFailure(
             'Ответ аудита остался некорректным после повторной попытки: '
@@ -336,7 +337,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 
       return TranslatorRunReport(
         request: request,
-        bundle: partialBundle,
+        bundle: bundle,
         audit: audit,
         createdAt: DateTime.now().toUtc(),
       );
@@ -375,14 +376,16 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     return '''
 $basePrompt
 
-The previous audit response violated the required output protocol.
+The previous audit response violated the required JSON protocol.
 Run the semantic audit again from the supplied atomic nine-section bundle.
 
 This is the final format attempt:
-- output exactly four labels;
-- preserve the exact label spelling and order;
-- put a colon after every label;
-- use only NONE or Russian "- " bullet points as values;
+- output exactly one JSON object;
+- the root object must contain only "findings";
+- every finding must contain all eight required string fields and no others;
+- use only MEANING, TERMINOLOGY, STYLE or AMBIGUITY as category;
+- use only RU, EN or TH as section;
+- copy exact fragments from SOURCE TEXT and the named direct section;
 - output no preamble, Markdown, verdict, summary or commentary.
 '''
         .trim();
@@ -441,7 +444,6 @@ This is the final format attempt:
     required List<String> labels,
     required TranslatorFailureStage stage,
     required String responseName,
-    bool allowNone = false,
   }) {
     final String normalized = content
         .replaceAll('\r\n', '\n')
@@ -519,7 +521,7 @@ This is the final format attempt:
         );
       }
 
-      if (!allowNone && _placeholderValues.contains(value.toUpperCase())) {
+      if (_placeholderValues.contains(value.toUpperCase())) {
         throw _PayloadFailure(
           stage: stage,
           code: TranslatorFailureCode.placeholderValue,
@@ -533,67 +535,171 @@ This is the final format attempt:
     return result;
   }
 
-  static TranslationAudit _parseAudit(String content) {
-    final Map<String, String> sections;
+  static TranslationAudit _parseAudit(
+    String content,
+    TranslationBundle bundle,
+  ) {
+    final String normalized = content.trim();
 
-    try {
-      sections = _parsePayload(
-        content: content,
-        labels: _auditLabels,
-        stage: TranslatorFailureStage.audit,
-        responseName: 'Ответ аудита',
-        allowNone: true,
-      );
-    } on _PayloadFailure catch (error) {
-      throw _AuditFailure(error.message);
+    if (normalized.isEmpty) {
+      throw const _AuditFailure('Ответ аудита пуст.');
     }
 
-    return TranslationAudit(
-      meaningFindings: _parseFindings(
-        sections['MEANING_FINDINGS']!,
-        'MEANING_FINDINGS',
-      ),
-      terminologyFindings: _parseFindings(
-        sections['TERMINOLOGY_FINDINGS']!,
-        'TERMINOLOGY_FINDINGS',
-      ),
-      styleFindings: _parseFindings(
-        sections['STYLE_FINDINGS']!,
-        'STYLE_FINDINGS',
-      ),
-      ambiguityFindings: _parseFindings(
-        sections['AMBIGUITY_FINDINGS']!,
-        'AMBIGUITY_FINDINGS',
-      ),
+    final Object? decoded;
+
+    try {
+      decoded = jsonDecode(normalized);
+    } on FormatException catch (error) {
+      throw _AuditFailure('Ответ аудита не является корректным JSON: $error');
+    }
+
+    final Map<String, Object?> root = _auditObject(
+      decoded,
+      'Корень ответа аудита',
+    );
+    _requireExactAuditKeys(root, _auditRootKeys, 'Корень ответа аудита');
+
+    final Object? rawFindings = root['findings'];
+
+    if (rawFindings is! List<Object?>) {
+      throw const _AuditFailure(
+        'Поле findings должно быть JSON-массивом.',
+      );
+    }
+
+    final List<TranslationFinding> findings = <TranslationFinding>[];
+
+    for (int index = 0; index < rawFindings.length; index += 1) {
+      findings.add(
+        _parseAuditFinding(
+          rawFindings[index],
+          index: index,
+          bundle: bundle,
+        ),
+      );
+    }
+
+    try {
+      return TranslationAudit(findings: findings);
+    } on ArgumentError catch (error) {
+      throw _AuditFailure('Ответ аудита содержит дубли: ${error.message}');
+    }
+  }
+
+  static TranslationFinding _parseAuditFinding(
+    Object? value, {
+    required int index,
+    required TranslationBundle bundle,
+  }) {
+    final String name = 'findings[$index]';
+    final Map<String, Object?> finding = _auditObject(value, name);
+    _requireExactAuditKeys(finding, _auditFindingKeys, name);
+
+    final String categoryCode = _auditString(
+      finding['category'],
+      '$name.category',
+    );
+    final String sectionCode = _auditString(
+      finding['section'],
+      '$name.section',
+    );
+
+    final TranslationFindingCategory category;
+    final TranslationLanguage section;
+
+    try {
+      category = TranslationFindingCategory.fromCode(categoryCode);
+      section = TranslationLanguage.fromCode(sectionCode);
+    } on ArgumentError catch (error) {
+      throw _AuditFailure('$name содержит неизвестный код: ${error.message}');
+    }
+
+    if (category.code != categoryCode || section.code != sectionCode) {
+      throw _AuditFailure(
+        '$name должен использовать точные uppercase-коды category и section.',
+      );
+    }
+
+    final String sourceFragment = _auditString(
+      finding['source_fragment'],
+      '$name.source_fragment',
+    );
+    final String translationFragment = _auditString(
+      finding['translation_fragment'],
+      '$name.translation_fragment',
+    );
+    final String reason = _auditString(finding['reason'], '$name.reason');
+    final String impact = _auditString(finding['impact'], '$name.impact');
+    final String correctVariant = _auditString(
+      finding['correct_variant'],
+      '$name.correct_variant',
+    );
+    final String sourceAmbiguity = _auditString(
+      finding['source_ambiguity'],
+      '$name.source_ambiguity',
+    );
+
+    if (!bundle.sourceText.contains(sourceFragment)) {
+      throw _AuditFailure(
+        '$name.source_fragment отсутствует в SOURCE TEXT.',
+      );
+    }
+
+    final String directText = switch (section) {
+      TranslationLanguage.ru => bundle.ru,
+      TranslationLanguage.en => bundle.en,
+      TranslationLanguage.th => bundle.th,
+    };
+
+    if (!directText.contains(translationFragment)) {
+      throw _AuditFailure(
+        '$name.translation_fragment отсутствует в секции ${section.code}.',
+      );
+    }
+
+    return TranslationFinding(
+      category: category,
+      section: section,
+      sourceFragment: sourceFragment,
+      translationFragment: translationFragment,
+      reason: reason,
+      impact: impact,
+      correctVariant: correctVariant,
+      sourceAmbiguity: sourceAmbiguity,
     );
   }
 
-  static List<String> _parseFindings(String value, String label) {
-    if (value.trim().toUpperCase() == 'NONE') {
-      return const <String>[];
+  static Map<String, Object?> _auditObject(Object? value, String name) {
+    if (value is! Map<Object?, Object?> ||
+        value.keys.any((Object? key) => key is! String)) {
+      throw _AuditFailure('$name должен быть JSON-объектом.');
     }
 
-    final List<String> lines = value
-        .split('\n')
-        .map((String line) => line.trim())
-        .where((String line) => line.isNotEmpty)
-        .toList(growable: false);
+    return value.cast<String, Object?>();
+  }
 
-    if (lines.isEmpty || lines.any((String line) => !line.startsWith('- '))) {
-      throw _AuditFailure(
-        'Секция $label должна содержать NONE или список "- ...".',
-      );
+  static void _requireExactAuditKeys(
+    Map<String, Object?> value,
+    Set<String> expected,
+    String name,
+  ) {
+    final Set<String> actual = value.keys.toSet();
+
+    if (actual.length != expected.length || !actual.containsAll(expected)) {
+      throw _AuditFailure('$name содержит неверный набор ключей.');
+    }
+  }
+
+  static String _auditString(Object? value, String name) {
+    if (value is! String || value.trim().isEmpty) {
+      throw _AuditFailure('$name должен быть непустой строкой.');
     }
 
-    final List<String> findings = lines
-        .map((String line) => line.substring(2).trim())
-        .toList(growable: false);
-
-    if (findings.any((String finding) => finding.isEmpty)) {
-      throw _AuditFailure('Секция $label содержит пустой finding.');
+    if (value != value.trim()) {
+      throw _AuditFailure('$name содержит внешние пробелы.');
     }
 
-    return findings;
+    return value;
   }
 
   static TranslatorFailure _mapTransportFailure(
@@ -638,7 +744,7 @@ This is the final format attempt:
   }
 
   static const int _translationMaxTokens = 1400;
-  static const int _auditMaxTokens = 500;
+  static const int _auditMaxTokens = 1200;
   static const double _translationTemperature = 0.1;
   static const double _auditTemperature = 0.0;
 
@@ -656,12 +762,18 @@ This is the final format attempt:
     'TH_TO_EN',
   ];
 
-  static const List<String> _auditLabels = <String>[
-    'MEANING_FINDINGS',
-    'TERMINOLOGY_FINDINGS',
-    'STYLE_FINDINGS',
-    'AMBIGUITY_FINDINGS',
-  ];
+  static const Set<String> _auditRootKeys = <String>{'findings'};
+
+  static const Set<String> _auditFindingKeys = <String>{
+    'category',
+    'section',
+    'source_fragment',
+    'translation_fragment',
+    'reason',
+    'impact',
+    'correct_variant',
+    'source_ambiguity',
+  };
 
   static const Set<String> _placeholderValues = <String>{
     '-',

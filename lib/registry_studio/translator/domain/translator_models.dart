@@ -149,29 +149,150 @@ final class TranslationBundle extends Equatable {
   ];
 }
 
+enum TranslationFindingCategory {
+  meaning('MEANING'),
+  terminology('TERMINOLOGY'),
+  style('STYLE'),
+  ambiguity('AMBIGUITY');
+
+  const TranslationFindingCategory(this.code);
+
+  final String code;
+
+  static TranslationFindingCategory fromCode(String value) {
+    final String normalized = value.trim().toUpperCase();
+
+    for (final TranslationFindingCategory category in values) {
+      if (category.code == normalized) {
+        return category;
+      }
+    }
+
+    throw ArgumentError.value(
+      value,
+      'value',
+      'Translation finding category is invalid.',
+    );
+  }
+}
+
+enum TranslationEvidenceKind { structured, legacy }
+
+final class TranslationFinding extends Equatable {
+  TranslationFinding({
+    required this.category,
+    required TranslationLanguage section,
+    required String sourceFragment,
+    required String translationFragment,
+    required String reason,
+    required String impact,
+    required String correctVariant,
+    required String sourceAmbiguity,
+  }) : kind = TranslationEvidenceKind.structured,
+       section = section,
+       sourceFragment = _requiredText(sourceFragment, 'sourceFragment'),
+       translationFragment = _requiredText(
+         translationFragment,
+         'translationFragment',
+       ),
+       reason = _requiredText(reason, 'reason'),
+       impact = _requiredText(impact, 'impact'),
+       correctVariant = _requiredText(correctVariant, 'correctVariant'),
+       sourceAmbiguity = _requiredText(sourceAmbiguity, 'sourceAmbiguity'),
+       legacyMessage = null;
+
+  TranslationFinding.legacy({
+    required this.category,
+    required String message,
+  }) : kind = TranslationEvidenceKind.legacy,
+       section = null,
+       sourceFragment = null,
+       translationFragment = null,
+       reason = null,
+       impact = null,
+       correctVariant = null,
+       sourceAmbiguity = null,
+       legacyMessage = _requiredText(message, 'message');
+
+  final TranslationFindingCategory category;
+  final TranslationEvidenceKind kind;
+  final TranslationLanguage? section;
+  final String? sourceFragment;
+  final String? translationFragment;
+  final String? reason;
+  final String? impact;
+  final String? correctVariant;
+  final String? sourceAmbiguity;
+  final String? legacyMessage;
+
+  bool get isLegacy => kind == TranslationEvidenceKind.legacy;
+
+  String get displayText => isLegacy ? legacyMessage! : reason!;
+
+  @override
+  List<Object?> get props => <Object?>[
+    category,
+    kind,
+    section,
+    sourceFragment,
+    translationFragment,
+    reason,
+    impact,
+    correctVariant,
+    sourceAmbiguity,
+    legacyMessage,
+  ];
+}
+
 final class TranslationAudit extends Equatable {
   TranslationAudit({
+    Iterable<TranslationFinding> findings = const <TranslationFinding>[],
     Iterable<String> meaningFindings = const <String>[],
     Iterable<String> terminologyFindings = const <String>[],
     Iterable<String> styleFindings = const <String>[],
     Iterable<String> ambiguityFindings = const <String>[],
-  }) : meaningFindings = _findings(meaningFindings, 'meaningFindings'),
-       terminologyFindings = _findings(
-         terminologyFindings,
-         'terminologyFindings',
-       ),
-       styleFindings = _findings(styleFindings, 'styleFindings'),
-       ambiguityFindings = _findings(ambiguityFindings, 'ambiguityFindings');
+  }) : findings = _translationFindings(<TranslationFinding>[
+         ...findings,
+         ..._legacyFindings(
+           TranslationFindingCategory.meaning,
+           meaningFindings,
+         ),
+         ..._legacyFindings(
+           TranslationFindingCategory.terminology,
+           terminologyFindings,
+         ),
+         ..._legacyFindings(TranslationFindingCategory.style, styleFindings),
+         ..._legacyFindings(
+           TranslationFindingCategory.ambiguity,
+           ambiguityFindings,
+         ),
+       ]);
 
-  final List<String> meaningFindings;
-  final List<String> terminologyFindings;
-  final List<String> styleFindings;
-  final List<String> ambiguityFindings;
+  final List<TranslationFinding> findings;
 
-  bool get meaningPreserved => meaningFindings.isEmpty;
-  bool get terminologyPreserved => terminologyFindings.isEmpty;
-  bool get canonicalStylePreserved => styleFindings.isEmpty;
-  bool get ambiguousWording => ambiguityFindings.isNotEmpty;
+  List<String> get meaningFindings =>
+      _displayFindings(TranslationFindingCategory.meaning);
+
+  List<String> get terminologyFindings =>
+      _displayFindings(TranslationFindingCategory.terminology);
+
+  List<String> get styleFindings =>
+      _displayFindings(TranslationFindingCategory.style);
+
+  List<String> get ambiguityFindings =>
+      _displayFindings(TranslationFindingCategory.ambiguity);
+
+  bool get meaningPreserved =>
+      !_hasFinding(TranslationFindingCategory.meaning);
+
+  bool get terminologyPreserved =>
+      !_hasFinding(TranslationFindingCategory.terminology);
+
+  bool get canonicalStylePreserved =>
+      !_hasFinding(TranslationFindingCategory.style);
+
+  bool get ambiguousWording =>
+      _hasFinding(TranslationFindingCategory.ambiguity);
 
   TranslationVerdict get verdict {
     if (!meaningPreserved) {
@@ -194,13 +315,24 @@ final class TranslationAudit extends Equatable {
     return TranslationVerdict.needsReview;
   }
 
+  bool _hasFinding(TranslationFindingCategory category) {
+    return findings.any(
+      (TranslationFinding finding) => finding.category == category,
+    );
+  }
+
+  List<String> _displayFindings(TranslationFindingCategory category) {
+    return List<String>.unmodifiable(
+      findings
+          .where(
+            (TranslationFinding finding) => finding.category == category,
+          )
+          .map((TranslationFinding finding) => finding.displayText),
+    );
+  }
+
   @override
-  List<Object?> get props => <Object?>[
-    meaningFindings,
-    terminologyFindings,
-    styleFindings,
-    ambiguityFindings,
-  ];
+  List<Object?> get props => <Object?>[findings];
 }
 
 final class TranslatorRunReport extends Equatable {
@@ -265,15 +397,34 @@ String? _optionalText(String? value) {
   return normalized.isEmpty ? null : normalized;
 }
 
-List<String> _findings(Iterable<String> values, String name) {
-  final List<String> normalized = values
-      .map((String value) => value.trim())
-      .where((String value) => value.isNotEmpty)
-      .toList(growable: false);
+Iterable<TranslationFinding> _legacyFindings(
+  TranslationFindingCategory category,
+  Iterable<String> values,
+) sync* {
+  for (final String value in values) {
+    final String normalized = value.trim();
+
+    if (normalized.isNotEmpty) {
+      yield TranslationFinding.legacy(
+        category: category,
+        message: normalized,
+      );
+    }
+  }
+}
+
+List<TranslationFinding> _translationFindings(
+  Iterable<TranslationFinding> values,
+) {
+  final List<TranslationFinding> normalized = values.toList(growable: false);
 
   if (normalized.toSet().length != normalized.length) {
-    throw ArgumentError.value(values, name, '$name contains duplicates.');
+    throw ArgumentError.value(
+      values,
+      'findings',
+      'findings contains duplicates.',
+    );
   }
 
-  return List<String>.unmodifiable(normalized);
+  return List<TranslationFinding>.unmodifiable(normalized);
 }

@@ -2,38 +2,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/translator/helpy_translator_policy.dart';
 
 void main() {
-  test('audit prompt exposes exact parser-compatible section template', () {
+  test('audit prompt exposes strict structured JSON contract', () {
     final String prompt = const HelpyTranslatorPolicy()
         .buildAuditSystemPrompt();
 
-    final List<String> expectedLabels = <String>[
-      'MEANING_FINDINGS',
-      'TERMINOLOGY_FINDINGS',
-      'STYLE_FINDINGS',
-      'AMBIGUITY_FINDINGS',
-    ];
-
-    final List<String> actualLabels =
-        RegExp(
-              r'^(MEANING_FINDINGS|TERMINOLOGY_FINDINGS|STYLE_FINDINGS|AMBIGUITY_FINDINGS):$',
-              multiLine: true,
-            )
-            .allMatches(prompt)
-            .map((RegExpMatch match) => match.group(1)!)
-            .toList(growable: false);
-
-    expect(actualLabels, expectedLabels);
-
-    for (final String label in expectedLabels) {
-      expect(
-        prompt.split('\n').where((String line) => line == '$label:'),
-        hasLength(1),
-      );
+    for (final String key in <String>[
+      '"findings"',
+      '"category"',
+      '"section"',
+      '"source_fragment"',
+      '"translation_fragment"',
+      '"reason"',
+      '"impact"',
+      '"correct_variant"',
+      '"source_ambiguity"',
+    ]) {
+      expect(prompt, contains(key));
     }
 
-    expect(prompt, contains('Do not add a preamble'));
-    expect(prompt, contains('Do not choose a verdict'));
+    expect(prompt, contains('{"findings":[]}'));
+    expect(prompt, contains('exactly one JSON object'));
+    expect(prompt, contains('Do not add unknown keys'));
+    expect(prompt, contains('Do not omit required keys'));
+    expect(prompt, contains('Do not use Markdown fences'));
+    expect(prompt, contains('Do not assume that the bundle is correct'));
     expect(prompt, contains('do not waive a supported issue'));
+    expect(prompt, isNot(contains('MEANING_FINDINGS:')));
   });
 
   test('translation prompt requires one atomic nine-section bundle', () {

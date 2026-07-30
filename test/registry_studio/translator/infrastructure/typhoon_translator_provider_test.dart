@@ -106,7 +106,7 @@ void main() {
           transport.requestBodies
               .map((Map<String, Object?> body) => body['max_completion_tokens'])
               .toList(growable: false),
-          <Object?>[1400, 500],
+          <Object?>[1400, 1200],
         );
 
         expect(
@@ -127,7 +127,16 @@ void main() {
     test('maps style-only finding to equivalent', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _translationResponse(),
-        _auditResponse(style: '- Формулировка EN менее канонична.'),
+        _auditResponse(
+          findings: <Map<String, Object?>>[
+            _structuredFinding(
+              category: 'STYLE',
+              reason: 'Формулировка EN менее канонична.',
+              impact: 'Смысл сохранён, но стиль менее каноничен.',
+              correctVariant: 'Использовать каноничную формулировку.',
+            ),
+          ],
+        ),
       ]);
 
       final TranslatorRunReport report =
@@ -149,7 +158,16 @@ void main() {
     test('maps supplied meaning finding to canonical drift', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _translationResponse(),
-        _auditResponse(meaning: '- В EN изменено обязательство.'),
+        _auditResponse(
+          findings: <Map<String, Object?>>[
+            _structuredFinding(
+              category: 'MEANING',
+              reason: 'В EN изменено обязательство.',
+              impact: 'Пользователь получает другое обязательство.',
+              correctVariant: 'Сохранить исходное обязательство.',
+            ),
+          ],
+        ),
       ]);
       final TranslatorRunReport report =
           await TyphoonTranslatorProvider(
@@ -171,7 +189,14 @@ void main() {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _translationResponse(),
         _auditResponse(
-          terminology: '- Общая роль заменена конкретной профессией.',
+          findings: <Map<String, Object?>>[
+            _structuredFinding(
+              category: 'TERMINOLOGY',
+              reason: 'Общая роль заменена конкретной профессией.',
+              impact: 'Роль стала уже исходной.',
+              correctVariant: 'Сохранить общую роль.',
+            ),
+          ],
         ),
       ]);
       final TranslatorRunReport report =
@@ -251,16 +276,20 @@ EN_TO_TH:
       );
     });
 
-    test('retries malformed audit once and succeeds', () async {
+    test('retries ungrounded structured audit once and succeeds', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _translationResponse(),
-        '''
-MEANING_FINDINGS:
-NONE
-
-TERMINOLOGY_FINDINGS:
-NONE
-''',
+        _auditResponse(
+          findings: <Map<String, Object?>>[
+            _structuredFinding(
+              category: 'MEANING',
+              reason: 'В EN изменён объект.',
+              impact: 'Пользователь получает другое указание.',
+              correctVariant: 'Сохранить исходный объект.',
+              sourceFragment: 'Фрагмент отсутствует',
+            ),
+          ],
+        ),
         _auditResponse(),
       ]);
 
@@ -286,20 +315,8 @@ NONE
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
           _translationResponse(),
-          '''
-MEANING_FINDINGS:
-NONE
-
-TERMINOLOGY_FINDINGS:
-NONE
-''',
-          '''
-MEANING_FINDINGS:
-NONE
-
-TERMINOLOGY_FINDINGS:
-NONE
-''',
+          '{"findings":"invalid"}',
+          '{"findings":[{"category":"MEANING","unknown":"value"}]}',
         ]);
 
         final Future<TranslatorRunReport> result =
@@ -536,24 +553,31 @@ $thToEn
 }
 
 String _auditResponse({
-  String meaning = 'NONE',
-  String terminology = 'NONE',
-  String style = 'NONE',
-  String ambiguity = 'NONE',
+  List<Map<String, Object?>> findings = const <Map<String, Object?>>[],
 }) {
-  return '''
-MEANING_FINDINGS:
-$meaning
+  return jsonEncode(<String, Object?>{'findings': findings});
+}
 
-TERMINOLOGY_FINDINGS:
-$terminology
-
-STYLE_FINDINGS:
-$style
-
-AMBIGUITY_FINDINGS:
-$ambiguity
-''';
+Map<String, Object?> _structuredFinding({
+  required String category,
+  required String reason,
+  required String impact,
+  required String correctVariant,
+  String section = 'EN',
+  String sourceFragment = 'Фотография',
+  String translationFragment = 'Photo',
+  String sourceAmbiguity = 'NONE',
+}) {
+  return <String, Object?>{
+    'category': category,
+    'section': section,
+    'source_fragment': sourceFragment,
+    'translation_fragment': translationFragment,
+    'reason': reason,
+    'impact': impact,
+    'correct_variant': correctVariant,
+    'source_ambiguity': sourceAmbiguity,
+  };
 }
 
 final class _QueueTransport implements TyphoonChatTransport {

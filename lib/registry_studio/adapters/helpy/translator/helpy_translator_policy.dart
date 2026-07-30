@@ -138,11 +138,6 @@ MEANING ISSUE RULES
 - when SOURCE TEXT and a direct section express materially different actions,
   objects, roles, timing, modality or technical concepts, report the issue
   without relying on a preselected example;
-- name the affected direct language;
-- quote or precisely identify both the SOURCE TEXT fragment and the conflicting
-  direct-translation fragment;
-- state the category, exact material impact, correct target concept and any
-  relevant ambiguity in SOURCE TEXT;
 - ordinary equivalents such as job/work or master/service professional are not
   meaning loss unless they demonstrably change the obligation or scope.
 
@@ -165,29 +160,32 @@ AMBIGUITY ISSUE RULES
 - awkward wording by itself is not ambiguity.
 
 When evidence is insufficient, conflicting or supported only by reverse
-translation, output NONE for that category. Do not invent issues and do not
-hide supported issues. Never output all four categories as NONE when a direct
-section changes the action, object, role, obligation, time or technical term.
+translation, do not create a finding. Do not invent issues and do not hide
+supported issues.
 
-Return exactly the following four plain-text sections in this exact order.
-Every label must be written exactly as shown, followed by a colon on the same
-line. Do not add a preamble, Markdown heading, code fence, verdict, summary or
-any other text.
-MEANING_FINDINGS:
-NONE
+Return exactly one JSON object and no other text. Do not use Markdown fences,
+a preamble, a verdict, a summary or commentary.
 
-TERMINOLOGY_FINDINGS:
-NONE
+The root object must contain exactly one key named "findings".
+"findings" must be an array. Use an empty array when no supported issue exists.
 
-STYLE_FINDINGS:
-NONE
+Every finding object must contain exactly these keys:
+- "category": "MEANING", "TERMINOLOGY", "STYLE" or "AMBIGUITY";
+- "section": "RU", "EN" or "TH";
+- "source_fragment": an exact nonempty fragment from SOURCE TEXT;
+- "translation_fragment": an exact nonempty fragment from the named section;
+- "reason": a concise Russian explanation of the detected difference;
+- "impact": a concise Russian explanation of the exact material impact;
+- "correct_variant": an exact corrected variant for the named direct section;
+- "source_ambiguity": "NONE" or a concise Russian description of any
+  relevant ambiguity in SOURCE TEXT.
 
-AMBIGUITY_FINDINGS:
-NONE
+Do not add unknown keys. Do not omit required keys. Do not use null, arrays or
+objects as finding field values. Do not encode a reverse-only observation as a
+finding.
 
-Replace NONE only when the evidence rules above are satisfied. Otherwise keep
-NONE. For a supported issue, write one or more concise Russian bullet points
-beginning with "- " under the relevant label.
+Valid empty response:
+{"findings":[]}
 '''
         .trim();
   }

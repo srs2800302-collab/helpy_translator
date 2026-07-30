@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +48,106 @@ void main() {
     expect(restored.report, report);
   });
 
+  test('writes v2 structured evidence schema', () async {
+    final TranslatorRunReport report = _report();
+
+    await store.save(
+      TranslatorDraft(
+        sourceText: report.request.sourceText,
+        sourceLanguageHint: TranslationLanguage.ru,
+        report: report,
+      ),
+    );
+
+    final Map<String, Object?> state =
+        (jsonDecode(await _stateFile(directory).readAsString())
+                as Map<Object?, Object?>)
+            .cast<String, Object?>();
+    final Map<String, Object?> encodedReport =
+        (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
+    final Map<String, Object?> audit =
+        (encodedReport['audit']! as Map<Object?, Object?>)
+            .cast<String, Object?>();
+    final List<Object?> findings = audit['findings']! as List<Object?>;
+
+    expect(state['version'], 'v2');
+    expect(audit.keys.toList(growable: false), <String>['findings']);
+    expect(findings, hasLength(1));
+    expect(
+      (findings.single as Map<Object?, Object?>)['kind'],
+      'structured',
+    );
+  });
+
+  test('removes v2 evidence outside the stored bundle', () async {
+    final TranslatorRunReport report = _report();
+    await store.save(
+      TranslatorDraft(
+        sourceText: report.request.sourceText,
+        sourceLanguageHint: TranslationLanguage.ru,
+        report: report,
+      ),
+    );
+
+    final File file = _stateFile(directory);
+    final Map<String, Object?> state =
+        (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
+            .cast<String, Object?>();
+    final Map<String, Object?> encodedReport =
+        (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
+    final Map<String, Object?> audit =
+        (encodedReport['audit']! as Map<Object?, Object?>)
+            .cast<String, Object?>();
+    final List<Object?> findings = audit['findings']! as List<Object?>;
+    final Map<String, Object?> finding =
+        (findings.single as Map<Object?, Object?>).cast<String, Object?>();
+
+    finding['sourceFragment'] = 'Фрагмент отсутствует';
+    await file.writeAsString('${jsonEncode(state)}\n');
+
+    await expectLater(store.load(), throwsFormatException);
+    expect(await file.exists(), isFalse);
+  });
+
+  test('loads valid v1 strings as explicit legacy evidence', () async {
+    final TranslatorRunReport report = _report();
+
+    await store.save(
+      TranslatorDraft(
+        sourceText: report.request.sourceText,
+        sourceLanguageHint: TranslationLanguage.ru,
+        report: report,
+      ),
+    );
+
+    final File stateFile = _stateFile(directory);
+    final Map<String, Object?> state =
+        (jsonDecode(await stateFile.readAsString()) as Map<Object?, Object?>)
+            .cast<String, Object?>();
+    final Map<String, Object?> encodedReport =
+        (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
+
+    state['version'] = 'v1';
+    encodedReport['audit'] = <String, Object?>{
+      'meaningFindings': <String>[],
+      'terminologyFindings': <String>['Старое доказательство.'],
+      'styleFindings': <String>[],
+      'ambiguityFindings': <String>[],
+    };
+    await stateFile.writeAsString('${jsonEncode(state)}\n');
+
+    final TranslatorDraft? restored = await store.load();
+
+    expect(restored, isNotNull);
+    expect(await stateFile.exists(), isTrue);
+    expect(restored!.report!.audit.findings, hasLength(1));
+    expect(restored.report!.audit.findings.single.isLegacy, isTrue);
+    expect(
+      restored.report!.audit.terminologyFindings,
+      <String>['Старое доказательство.'],
+    );
+  });
+
   test('clear removes only Translator draft file', () async {
     await store.save(
       const TranslatorDraft(
@@ -84,7 +185,7 @@ void main() {
     const List<String> corruptDrafts = <String>[
       '{',
       '{"version":"v1"}',
-      '{"version":"v2","sourceText":"Текст.",'
+      '{"version":"v3","sourceText":"Текст.",'
           '"sourceLanguageHint":null,"report":null}',
       '{"version":"v1","sourceText":"Текст.",'
           '"sourceLanguageHint":"DE","report":null}',
@@ -104,6 +205,15 @@ void main() {
       expect(await store.load(), isNull);
     }
   });
+}
+
+File _stateFile(Directory directory) {
+  return File(
+    '${directory.path}${Platform.pathSeparator}'
+    '${JsonFileTranslatorDraftStore.directoryName}'
+    '${Platform.pathSeparator}'
+    '${JsonFileTranslatorDraftStore.fileName}',
+  );
 }
 
 TranslatorRunReport _report() {
@@ -127,7 +237,20 @@ TranslatorRunReport _report() {
   return TranslatorRunReport(
     request: request,
     bundle: bundle,
-    audit: TranslationAudit(),
+    audit: TranslationAudit(
+      findings: <TranslationFinding>[
+        TranslationFinding(
+          category: TranslationFindingCategory.style,
+          section: TranslationLanguage.en,
+          sourceFragment: 'Исходный текст',
+          translationFragment: 'Source text',
+          reason: 'Формулировка менее канонична.',
+          impact: 'Смысл сохранён.',
+          correctVariant: 'Использовать каноничную формулировку.',
+          sourceAmbiguity: 'NONE',
+        ),
+      ],
+    ),
     createdAt: DateTime.utc(2026, 7, 26, 6),
   );
 }

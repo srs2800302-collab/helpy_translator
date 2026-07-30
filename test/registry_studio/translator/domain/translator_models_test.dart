@@ -13,6 +13,69 @@ void main() {
       expect(audit.ambiguousWording, isFalse);
     });
 
+    test('preserves structured evidence and derives verdict from category', () {
+      final TranslationFinding finding = TranslationFinding(
+        category: TranslationFindingCategory.meaning,
+        section: TranslationLanguage.en,
+        sourceFragment: 'Исходный текст',
+        translationFragment: 'Different text',
+        reason: 'Изменён объект.',
+        impact: 'Пользователь получает другое указание.',
+        correctVariant: 'Сохранить исходный объект.',
+        sourceAmbiguity: 'NONE',
+      );
+      final TranslationAudit audit = TranslationAudit(
+        findings: <TranslationFinding>[finding],
+      );
+
+      expect(audit.findings, <TranslationFinding>[finding]);
+      expect(audit.meaningFindings, <String>['Изменён объект.']);
+      expect(audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(finding.isLegacy, isFalse);
+    });
+
+    test('marks compatibility string findings as legacy evidence', () {
+      final TranslationAudit audit = TranslationAudit(
+        terminologyFindings: const <String>['Старое строковое доказательство.'],
+      );
+
+      expect(audit.findings, hasLength(1));
+      expect(audit.findings.single.isLegacy, isTrue);
+      expect(
+        audit.terminologyFindings,
+        <String>['Старое строковое доказательство.'],
+      );
+      expect(audit.verdict, TranslationVerdict.needsReview);
+    });
+
+    test('rejects empty structured evidence fields and duplicate findings', () {
+      expect(
+        () => TranslationFinding(
+          category: TranslationFindingCategory.style,
+          section: TranslationLanguage.th,
+          sourceFragment: 'Текст',
+          translationFragment: 'ข้อความ',
+          reason: ' ',
+          impact: 'Нет смыслового влияния.',
+          correctVariant: 'Каноничная формулировка.',
+          sourceAmbiguity: 'NONE',
+        ),
+        throwsArgumentError,
+      );
+
+      final TranslationFinding finding = TranslationFinding.legacy(
+        category: TranslationFindingCategory.ambiguity,
+        message: 'Старое доказательство.',
+      );
+
+      expect(
+        () => TranslationAudit(
+          findings: <TranslationFinding>[finding, finding],
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('derives equivalent from style-only findings', () {
       final TranslationAudit audit = TranslationAudit(
         styleFindings: const <String>['Формулировка менее канонична.'],
