@@ -106,7 +106,7 @@ void main() {
           transport.requestBodies
               .map((Map<String, Object?> body) => body['max_completion_tokens'])
               .toList(growable: false),
-          <Object?>[1400, 1200],
+          <Object?>[1400, 2200],
         );
 
         expect(
@@ -183,7 +183,6 @@ void main() {
               .result;
       expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
     });
-
 
     test('maps terminology finding to needs review', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
@@ -309,6 +308,131 @@ EN_TO_TH:
       expect(report.audit.verdict, TranslationVerdict.exact);
       expect(transport.callCount, 3);
     });
+
+    test(
+      'rejects malformed multilingual audit fields after one repair',
+      () async {
+        final List<Map<String, Object?>> malformedFindings =
+            <Map<String, Object?>>[
+              <String, Object?>{
+                ..._structuredFinding(
+                  category: 'MEANING',
+                  reason: 'Причина.',
+                  impact: 'Влияние.',
+                  correctVariant: 'Photo of the installed cooktop.',
+                ),
+                'reason': 'Причина строкой',
+              },
+              <String, Object?>{
+                ..._structuredFinding(
+                  category: 'MEANING',
+                  reason: 'Причина.',
+                  impact: 'Влияние.',
+                  correctVariant: 'Photo of the installed cooktop.',
+                ),
+                'reason': <String, Object?>{'ru': 'Причина.', 'en': 'Reason.'},
+              },
+              <String, Object?>{
+                ..._structuredFinding(
+                  category: 'MEANING',
+                  reason: 'Причина.',
+                  impact: 'Влияние.',
+                  correctVariant: 'Photo of the installed cooktop.',
+                ),
+                'reason': <String, Object?>{
+                  'ru': 'Причина.',
+                  'en': 'Reason.',
+                  'th': 'เหตุผล',
+                  'de': 'Grund',
+                },
+              },
+              <String, Object?>{
+                ..._structuredFinding(
+                  category: 'MEANING',
+                  reason: 'Причина.',
+                  impact: 'Влияние.',
+                  correctVariant: 'Photo of the installed cooktop.',
+                ),
+                'reason': <String, Object?>{
+                  'ru': 'Причина.',
+                  'en': '',
+                  'th': 'เหตุผล',
+                },
+              },
+              <String, Object?>{
+                ..._structuredFinding(
+                  category: 'MEANING',
+                  reason: 'Причина.',
+                  impact: 'Влияние.',
+                  correctVariant: 'Photo of the installed cooktop.',
+                ),
+                'reason': <String, Object?>{
+                  'ru': 'Причина.',
+                  'en': ' Reason. ',
+                  'th': 'เหตุผล',
+                },
+              },
+              <String, Object?>{
+                ..._structuredFinding(
+                  category: 'MEANING',
+                  reason: 'Причина.',
+                  impact: 'Влияние.',
+                  correctVariant: 'Photo of the installed cooktop.',
+                ),
+                'source_ambiguity': 'NONE',
+              },
+              <String, Object?>{
+                ..._structuredFinding(
+                  category: 'MEANING',
+                  reason: 'Причина.',
+                  impact: 'Влияние.',
+                  correctVariant: 'Photo of the installed cooktop.',
+                ),
+                'source_ambiguity': <String, Object?>{
+                  'ru': 'Неоднозначность.',
+                  'en': 'Ambiguity.',
+                },
+              },
+            ];
+
+        for (final Map<String, Object?> malformedFinding in malformedFindings) {
+          final String malformedAudit = _auditResponse(
+            findings: <Map<String, Object?>>[malformedFinding],
+          );
+          final _QueueTransport transport = _QueueTransport(<Object>[
+            _translationResponse(),
+            malformedAudit,
+            malformedAudit,
+          ]);
+
+          final Future<TranslatorRunReport> result =
+              TyphoonTranslatorProvider(
+                    policy: const _TestPolicy(),
+                    transportFactory: () => transport,
+                  )
+                  .start(
+                    request: TranslatorWorkRequest(
+                      sourceText: 'Фотография установленной варочной панели.',
+                    ),
+                    accessKey: 'test-key',
+                  )
+                  .result;
+
+          await expectLater(
+            result,
+            throwsA(
+              isA<TranslatorProviderException>().having(
+                (TranslatorProviderException error) => error.failure.code,
+                'code',
+                TranslatorFailureCode.invalidAuditResponse,
+              ),
+            ),
+          );
+
+          expect(transport.callCount, 3);
+        }
+      },
+    );
 
     test(
       'keeps second invalid audit as technical failure with complete bundle',
@@ -573,10 +697,20 @@ Map<String, Object?> _structuredFinding({
     'section': section,
     'source_fragment': sourceFragment,
     'translation_fragment': translationFragment,
-    'reason': reason,
-    'impact': impact,
+    'reason': _localizedEvidence(reason),
+    'impact': _localizedEvidence(impact),
     'correct_variant': correctVariant,
-    'source_ambiguity': sourceAmbiguity,
+    'source_ambiguity': sourceAmbiguity == 'NONE'
+        ? null
+        : _localizedEvidence(sourceAmbiguity),
+  };
+}
+
+Map<String, Object?> _localizedEvidence(String ru) {
+  return <String, Object?>{
+    'ru': ru,
+    'en': 'English explanation for this finding.',
+    'th': 'คำอธิบายภาษาไทยสำหรับข้อค้นพบนี้',
   };
 }
 

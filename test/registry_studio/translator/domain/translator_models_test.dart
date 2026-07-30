@@ -34,6 +34,123 @@ void main() {
       expect(finding.isLegacy, isFalse);
     });
 
+    test('stores all locales and rejects wording-only semantic duplicates', () {
+      final TranslationFinding first = TranslationFinding.multilingual(
+        category: TranslationFindingCategory.meaning,
+        section: TranslationLanguage.en,
+        sourceFragment: 'Исходный текст',
+        translationFragment: 'Different text',
+        reason: LocalizedEvidenceText(
+          ru: 'Изменён объект.',
+          en: 'The object changed.',
+          th: 'วัตถุถูกเปลี่ยน',
+        ),
+        impact: LocalizedEvidenceText(
+          ru: 'Изменилось указание.',
+          en: 'The instruction changed.',
+          th: 'คำสั่งเปลี่ยนไป',
+        ),
+        correctVariant: 'Original object.',
+        sourceAmbiguity: null,
+      );
+
+      expect(first.isMultilingual, isTrue);
+      expect(first.reasonFor(TranslationLanguage.ru), 'Изменён объект.');
+      expect(first.reasonFor(TranslationLanguage.en), 'The object changed.');
+      expect(first.reasonFor(TranslationLanguage.th), 'วัตถุถูกเปลี่ยน');
+      expect(first.sourceAmbiguityFor(TranslationLanguage.en), isNull);
+
+      final TranslationFinding sameEvidence = TranslationFinding.multilingual(
+        category: TranslationFindingCategory.meaning,
+        section: TranslationLanguage.en,
+        sourceFragment: 'Исходный текст',
+        translationFragment: 'Different text',
+        reason: LocalizedEvidenceText(
+          ru: 'Другая формулировка.',
+          en: 'Different wording.',
+          th: 'ถ้อยคำอีกแบบหนึ่ง',
+        ),
+        impact: LocalizedEvidenceText(
+          ru: 'Другая формулировка влияния.',
+          en: 'Different impact wording.',
+          th: 'ถ้อยคำผลกระทบอีกแบบหนึ่ง',
+        ),
+        correctVariant: 'Alternative correction.',
+        sourceAmbiguity: null,
+      );
+
+      expect(
+        () => TranslationAudit(
+          findings: <TranslationFinding>[first, sameEvidence],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test(
+      'rejects cross-category duplicates but preserves legacy categories',
+      () {
+        final TranslationFinding meaning = TranslationFinding.multilingual(
+          category: TranslationFindingCategory.meaning,
+          section: TranslationLanguage.en,
+          sourceFragment: 'Исходный текст',
+          translationFragment: 'Different text',
+          reason: LocalizedEvidenceText(
+            ru: 'Изменён объект.',
+            en: 'The object changed.',
+            th: 'วัตถุถูกเปลี่ยน',
+          ),
+          impact: LocalizedEvidenceText(
+            ru: 'Изменилось указание.',
+            en: 'The instruction changed.',
+            th: 'คำสั่งเปลี่ยนไป',
+          ),
+          correctVariant: 'Original object.',
+          sourceAmbiguity: null,
+        );
+        final TranslationFinding terminology = TranslationFinding.multilingual(
+          category: TranslationFindingCategory.terminology,
+          section: TranslationLanguage.en,
+          sourceFragment: 'Исходный текст',
+          translationFragment: 'Different text',
+          reason: LocalizedEvidenceText(
+            ru: 'Изменён термин.',
+            en: 'The term changed.',
+            th: 'คำศัพท์ถูกเปลี่ยน',
+          ),
+          impact: LocalizedEvidenceText(
+            ru: 'Термин стал неточным.',
+            en: 'The term became inaccurate.',
+            th: 'คำศัพท์ไม่แม่นยำ',
+          ),
+          correctVariant: 'Original object.',
+          sourceAmbiguity: null,
+        );
+
+        expect(
+          () => TranslationAudit(
+            findings: <TranslationFinding>[meaning, terminology],
+          ),
+          throwsArgumentError,
+        );
+
+        final TranslationAudit legacyAudit = TranslationAudit(
+          findings: <TranslationFinding>[
+            TranslationFinding.legacy(
+              category: TranslationFindingCategory.meaning,
+              message: 'Одинаковое старое доказательство.',
+            ),
+            TranslationFinding.legacy(
+              category: TranslationFindingCategory.terminology,
+              message: 'Одинаковое старое доказательство.',
+            ),
+          ],
+        );
+
+        expect(legacyAudit.findings, hasLength(2));
+      },
+    );
+
     test('marks compatibility string findings as legacy evidence', () {
       final TranslationAudit audit = TranslationAudit(
         terminologyFindings: const <String>['Старое строковое доказательство.'],
@@ -41,10 +158,9 @@ void main() {
 
       expect(audit.findings, hasLength(1));
       expect(audit.findings.single.isLegacy, isTrue);
-      expect(
-        audit.terminologyFindings,
-        <String>['Старое строковое доказательство.'],
-      );
+      expect(audit.terminologyFindings, <String>[
+        'Старое строковое доказательство.',
+      ]);
       expect(audit.verdict, TranslationVerdict.needsReview);
     });
 
@@ -69,9 +185,8 @@ void main() {
       );
 
       expect(
-        () => TranslationAudit(
-          findings: <TranslationFinding>[finding, finding],
-        ),
+        () =>
+            TranslationAudit(findings: <TranslationFinding>[finding, finding]),
         throwsArgumentError,
       );
     });

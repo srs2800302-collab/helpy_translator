@@ -11,7 +11,8 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
 
   static const String directoryName = 'registry_studio';
   static const String fileName = 'translator_draft_v1.json';
-  static const String _currentVersion = 'v2';
+  static const String _currentVersion = 'v3';
+  static const String _structuredVersion = 'v2';
   static const String _legacyVersion = 'v1';
 
   final Directory? applicationSupportDirectory;
@@ -40,7 +41,9 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       if (state.keys.length != expectedKeys.length ||
           !state.keys.toSet().containsAll(expectedKeys) ||
           version is! String ||
-          (version != _currentVersion && version != _legacyVersion)) {
+          (version != _currentVersion &&
+              version != _structuredVersion &&
+              version != _legacyVersion)) {
         throw const FormatException('Translator draft schema is invalid.');
       }
 
@@ -228,9 +231,17 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       thToEn: _string(bundle['TH_TO_EN'], 'bundle.TH_TO_EN'),
     );
 
-    final TranslationAudit translationAudit = version == _legacyVersion
-        ? _decodeLegacyAudit(audit)
-        : _decodeStructuredAudit(audit, bundle: translationBundle);
+    final TranslationAudit translationAudit;
+
+    if (version == _legacyVersion) {
+      translationAudit = _decodeLegacyAudit(audit);
+    } else {
+      translationAudit = _decodeStructuredAudit(
+        audit,
+        bundle: translationBundle,
+        version: version,
+      );
+    }
 
     return TranslatorRunReport(
       request: workRequest,
@@ -240,9 +251,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     );
   }
 
-  static Map<String, Object?> _encodeFinding(
-    TranslationFinding finding,
-  ) {
+  static Map<String, Object?> _encodeFinding(TranslationFinding finding) {
     if (finding.isLegacy) {
       return <String, Object?>{
         'kind': 'legacy',
@@ -251,22 +260,42 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       };
     }
 
+    if (finding.isRussianOnly) {
+      return <String, Object?>{
+        'kind': 'russianOnly',
+        'category': finding.category.code,
+        'section': finding.section!.code,
+        'sourceFragment': finding.sourceFragment,
+        'translationFragment': finding.translationFragment,
+        'reason': finding.reason,
+        'impact': finding.impact,
+        'correctVariant': finding.correctVariant,
+        'sourceAmbiguity': finding.sourceAmbiguity,
+      };
+    }
+
     return <String, Object?>{
-      'kind': 'structured',
+      'kind': 'multilingual',
       'category': finding.category.code,
       'section': finding.section!.code,
       'sourceFragment': finding.sourceFragment,
       'translationFragment': finding.translationFragment,
-      'reason': finding.reason,
-      'impact': finding.impact,
+      'reason': _encodeLocalizedText(finding.localizedReason!),
+      'impact': _encodeLocalizedText(finding.localizedImpact!),
       'correctVariant': finding.correctVariant,
-      'sourceAmbiguity': finding.sourceAmbiguity,
+      'sourceAmbiguity': finding.localizedSourceAmbiguity == null
+          ? null
+          : _encodeLocalizedText(finding.localizedSourceAmbiguity!),
     };
   }
 
-  static TranslationAudit _decodeLegacyAudit(
-    Map<String, Object?> audit,
+  static Map<String, Object?> _encodeLocalizedText(
+    LocalizedEvidenceText value,
   ) {
+    return <String, Object?>{'ru': value.ru, 'en': value.en, 'th': value.th};
+  }
+
+  static TranslationAudit _decodeLegacyAudit(Map<String, Object?> audit) {
     const Set<String> expectedKeys = <String>{
       'meaningFindings',
       'terminologyFindings',
@@ -284,10 +313,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
         audit['terminologyFindings'],
         'audit.terminologyFindings',
       ),
-      styleFindings: _strings(
-        audit['styleFindings'],
-        'audit.styleFindings',
-      ),
+      styleFindings: _strings(audit['styleFindings'], 'audit.styleFindings'),
       ambiguityFindings: _strings(
         audit['ambiguityFindings'],
         'audit.ambiguityFindings',
@@ -298,6 +324,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
   static TranslationAudit _decodeStructuredAudit(
     Map<String, Object?> audit, {
     required TranslationBundle bundle,
+    required String version,
   }) {
     const Set<String> expectedKeys = <String>{'findings'};
     _requireExactKeys(audit, expectedKeys, 'Translator audit');
@@ -305,44 +332,42 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     final Object? rawFindings = audit['findings'];
 
     if (rawFindings is! List<Object?>) {
-      throw const FormatException(
-        'audit.findings must be an array.',
-      );
+      throw const FormatException('audit.findings must be an array.');
     }
 
-    return TranslationAudit(
-      findings: <TranslationFinding>[
-        for (int index = 0; index < rawFindings.length; index += 1)
-          _decodeFinding(rawFindings[index], index, bundle),
-      ],
-    );
+    final List<TranslationFinding> findings = <TranslationFinding>[
+      for (int index = 0; index < rawFindings.length; index += 1)
+        _decodeFinding(rawFindings[index], index, bundle, version: version),
+    ];
+
+    try {
+      return TranslationAudit(findings: findings);
+    } on ArgumentError catch (error) {
+      throw FormatException('audit.findings is invalid: ${error.message}');
+    }
   }
 
   static TranslationFinding _decodeFinding(
     Object? value,
     int index,
-    TranslationBundle bundle,
-  ) {
+    TranslationBundle bundle, {
+    required String version,
+  }) {
     final String name = 'audit.findings[$index]';
     final Map<String, Object?> finding = _map(value, name);
     final String kind = _string(finding['kind'], '$name.kind');
-    final String categoryCode = _string(
-      finding['category'],
+    final String categoryCode = _string(finding['category'], '$name.category');
+    final TranslationFindingCategory category = _category(
+      categoryCode,
       '$name.category',
     );
-    final TranslationFindingCategory category =
-        TranslationFindingCategory.fromCode(categoryCode);
 
     if (category.code != categoryCode) {
       throw FormatException('$name.category is not canonical.');
     }
 
     if (kind == 'legacy') {
-      const Set<String> expectedKeys = <String>{
-        'kind',
-        'category',
-        'message',
-      };
+      const Set<String> expectedKeys = <String>{'kind', 'category', 'message'};
       _requireExactKeys(finding, expectedKeys, name);
 
       return TranslationFinding.legacy(
@@ -351,8 +376,14 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       );
     }
 
-    if (kind != 'structured') {
-      throw FormatException('$name.kind is invalid.');
+    final bool russianOnly =
+        (version == _structuredVersion && kind == 'structured') ||
+        (version == _currentVersion && kind == 'russianOnly');
+    final bool multilingual =
+        version == _currentVersion && kind == 'multilingual';
+
+    if (!russianOnly && !multilingual) {
+      throw FormatException('$name.kind is invalid for draft $version.');
     }
 
     const Set<String> expectedKeys = <String>{
@@ -368,13 +399,8 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     };
     _requireExactKeys(finding, expectedKeys, name);
 
-    final String sectionCode = _string(
-      finding['section'],
-      '$name.section',
-    );
-    final TranslationLanguage section = TranslationLanguage.fromCode(
-      sectionCode,
-    );
+    final String sectionCode = _string(finding['section'], '$name.section');
+    final TranslationLanguage section = _language(sectionCode, '$name.section');
 
     if (section.code != sectionCode) {
       throw FormatException('$name.section is not canonical.');
@@ -388,6 +414,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       finding['translationFragment'],
       '$name.translationFragment',
     );
+
     final String directText = switch (section) {
       TranslationLanguage.ru => bundle.ru,
       TranslationLanguage.en => bundle.en,
@@ -399,22 +426,92 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       throw FormatException('$name is not grounded in its stored bundle.');
     }
 
-    return TranslationFinding(
+    if (russianOnly) {
+      return TranslationFinding(
+        category: category,
+        section: section,
+        sourceFragment: sourceFragment,
+        translationFragment: translationFragment,
+        reason: _string(finding['reason'], '$name.reason'),
+        impact: _string(finding['impact'], '$name.impact'),
+        correctVariant: _string(
+          finding['correctVariant'],
+          '$name.correctVariant',
+        ),
+        sourceAmbiguity: _string(
+          finding['sourceAmbiguity'],
+          '$name.sourceAmbiguity',
+        ),
+      );
+    }
+
+    return TranslationFinding.multilingual(
       category: category,
       section: section,
       sourceFragment: sourceFragment,
       translationFragment: translationFragment,
-      reason: _string(finding['reason'], '$name.reason'),
-      impact: _string(finding['impact'], '$name.impact'),
+      reason: _decodeLocalizedText(finding['reason'], '$name.reason'),
+      impact: _decodeLocalizedText(finding['impact'], '$name.impact'),
       correctVariant: _string(
         finding['correctVariant'],
         '$name.correctVariant',
       ),
-      sourceAmbiguity: _string(
-        finding['sourceAmbiguity'],
-        '$name.sourceAmbiguity',
-      ),
+      sourceAmbiguity: finding['sourceAmbiguity'] == null
+          ? null
+          : _decodeLocalizedText(
+              finding['sourceAmbiguity'],
+              '$name.sourceAmbiguity',
+            ),
     );
+  }
+
+  static LocalizedEvidenceText _decodeLocalizedText(
+    Object? value,
+    String name,
+  ) {
+    final Map<String, Object?> localized = _map(value, name);
+    const Set<String> expectedKeys = <String>{'ru', 'en', 'th'};
+    _requireExactKeys(localized, expectedKeys, name);
+
+    return LocalizedEvidenceText(
+      ru: _canonicalLocalizedString(localized['ru'], '$name.ru'),
+      en: _canonicalLocalizedString(localized['en'], '$name.en'),
+      th: _canonicalLocalizedString(localized['th'], '$name.th'),
+    );
+  }
+
+  static String _canonicalLocalizedString(Object? value, String name) {
+    if (value is! String) {
+      throw FormatException('$name must be a nonempty string.');
+    }
+
+    final String trimmed = value.trim();
+
+    if (trimmed.isEmpty) {
+      throw FormatException('$name must be a nonempty string.');
+    }
+
+    if (trimmed != value) {
+      throw FormatException('$name must not contain outer whitespace.');
+    }
+
+    return value;
+  }
+
+  static TranslationFindingCategory _category(String value, String name) {
+    try {
+      return TranslationFindingCategory.fromCode(value);
+    } on ArgumentError catch (error) {
+      throw FormatException('$name is invalid: ${error.message}');
+    }
+  }
+
+  static TranslationLanguage _language(String value, String name) {
+    try {
+      return TranslationLanguage.fromCode(value);
+    } on ArgumentError catch (error) {
+      throw FormatException('$name is invalid: ${error.message}');
+    }
   }
 
   static void _requireExactKeys(

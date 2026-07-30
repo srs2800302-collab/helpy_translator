@@ -21,6 +21,16 @@ void main() {
     }
 
     expect(prompt, contains('{"findings":[]}'));
+    expect(prompt, contains('three nonempty semantically equivalent'));
+    expect(prompt, contains('"ru"'));
+    expect(prompt, contains('"en"'));
+    expect(prompt, contains('"th"'));
+    expect(prompt, contains('JSON null'));
+    expect(prompt, contains('do not search'));
+    expect(prompt, contains('predetermined error'));
+    expect(prompt, contains('do not report an unsupported one'));
+    expect(prompt, contains('evidence is insufficient'));
+    expect(prompt, contains('Do not invent issues'));
     expect(prompt, contains('exactly one JSON object'));
     expect(prompt, contains('Do not add unknown keys'));
     expect(prompt, contains('Do not omit required keys'));

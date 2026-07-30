@@ -382,7 +382,9 @@ Run the semantic audit again from the supplied atomic nine-section bundle.
 This is the final format attempt:
 - output exactly one JSON object;
 - the root object must contain only "findings";
-- every finding must contain all eight required string fields and no others;
+- every finding must contain exactly eight required keys and no others;
+- reason and impact must be exact ru/en/th objects;
+- source_ambiguity must be null or an exact ru/en/th object;
 - use only MEANING, TERMINOLOGY, STYLE or AMBIGUITY as category;
 - use only RU, EN or TH as section;
 - copy exact fragments from SOURCE TEXT and the named direct section;
@@ -562,20 +564,14 @@ This is the final format attempt:
     final Object? rawFindings = root['findings'];
 
     if (rawFindings is! List<Object?>) {
-      throw const _AuditFailure(
-        'Поле findings должно быть JSON-массивом.',
-      );
+      throw const _AuditFailure('Поле findings должно быть JSON-массивом.');
     }
 
     final List<TranslationFinding> findings = <TranslationFinding>[];
 
     for (int index = 0; index < rawFindings.length; index += 1) {
       findings.add(
-        _parseAuditFinding(
-          rawFindings[index],
-          index: index,
-          bundle: bundle,
-        ),
+        _parseAuditFinding(rawFindings[index], index: index, bundle: bundle),
       );
     }
 
@@ -628,21 +624,28 @@ This is the final format attempt:
       finding['translation_fragment'],
       '$name.translation_fragment',
     );
-    final String reason = _auditString(finding['reason'], '$name.reason');
-    final String impact = _auditString(finding['impact'], '$name.impact');
+    final LocalizedEvidenceText reason = _auditLocalizedText(
+      finding['reason'],
+      '$name.reason',
+    );
+    final LocalizedEvidenceText impact = _auditLocalizedText(
+      finding['impact'],
+      '$name.impact',
+    );
     final String correctVariant = _auditString(
       finding['correct_variant'],
       '$name.correct_variant',
     );
-    final String sourceAmbiguity = _auditString(
-      finding['source_ambiguity'],
-      '$name.source_ambiguity',
-    );
+    final LocalizedEvidenceText? sourceAmbiguity =
+        finding['source_ambiguity'] == null
+        ? null
+        : _auditLocalizedText(
+            finding['source_ambiguity'],
+            '$name.source_ambiguity',
+          );
 
     if (!bundle.sourceText.contains(sourceFragment)) {
-      throw _AuditFailure(
-        '$name.source_fragment отсутствует в SOURCE TEXT.',
-      );
+      throw _AuditFailure('$name.source_fragment отсутствует в SOURCE TEXT.');
     }
 
     final String directText = switch (section) {
@@ -657,7 +660,7 @@ This is the final format attempt:
       );
     }
 
-    return TranslationFinding(
+    return TranslationFinding.multilingual(
       category: category,
       section: section,
       sourceFragment: sourceFragment,
@@ -666,6 +669,17 @@ This is the final format attempt:
       impact: impact,
       correctVariant: correctVariant,
       sourceAmbiguity: sourceAmbiguity,
+    );
+  }
+
+  static LocalizedEvidenceText _auditLocalizedText(Object? value, String name) {
+    final Map<String, Object?> localized = _auditObject(value, name);
+    _requireExactAuditKeys(localized, _auditLocaleKeys, name);
+
+    return LocalizedEvidenceText(
+      ru: _auditString(localized['ru'], '$name.ru'),
+      en: _auditString(localized['en'], '$name.en'),
+      th: _auditString(localized['th'], '$name.th'),
     );
   }
 
@@ -744,7 +758,7 @@ This is the final format attempt:
   }
 
   static const int _translationMaxTokens = 1400;
-  static const int _auditMaxTokens = 1200;
+  static const int _auditMaxTokens = 2200;
   static const double _translationTemperature = 0.1;
   static const double _auditTemperature = 0.0;
 
@@ -774,6 +788,8 @@ This is the final format attempt:
     'correct_variant',
     'source_ambiguity',
   };
+
+  static const Set<String> _auditLocaleKeys = <String>{'ru', 'en', 'th'};
 
   static const Set<String> _placeholderValues = <String>{
     '-',

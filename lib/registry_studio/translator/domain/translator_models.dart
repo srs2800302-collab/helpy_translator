@@ -176,7 +176,32 @@ enum TranslationFindingCategory {
   }
 }
 
-enum TranslationEvidenceKind { structured, legacy }
+final class LocalizedEvidenceText extends Equatable {
+  LocalizedEvidenceText({
+    required String ru,
+    required String en,
+    required String th,
+  }) : ru = _requiredText(ru, 'ru'),
+       en = _requiredText(en, 'en'),
+       th = _requiredText(th, 'th');
+
+  final String ru;
+  final String en;
+  final String th;
+
+  String forLanguage(TranslationLanguage language) {
+    return switch (language) {
+      TranslationLanguage.ru => ru,
+      TranslationLanguage.en => en,
+      TranslationLanguage.th => th,
+    };
+  }
+
+  @override
+  List<Object?> get props => <Object?>[ru, en, th];
+}
+
+enum TranslationEvidenceKind { multilingual, russianOnly, legacy }
 
 final class TranslationFinding extends Equatable {
   TranslationFinding({
@@ -188,7 +213,7 @@ final class TranslationFinding extends Equatable {
     required String impact,
     required String correctVariant,
     required String sourceAmbiguity,
-  }) : kind = TranslationEvidenceKind.structured,
+  }) : kind = TranslationEvidenceKind.russianOnly,
        section = section,
        sourceFragment = _requiredText(sourceFragment, 'sourceFragment'),
        translationFragment = _requiredText(
@@ -199,23 +224,52 @@ final class TranslationFinding extends Equatable {
        impact = _requiredText(impact, 'impact'),
        correctVariant = _requiredText(correctVariant, 'correctVariant'),
        sourceAmbiguity = _requiredText(sourceAmbiguity, 'sourceAmbiguity'),
+       localizedReason = null,
+       localizedImpact = null,
+       localizedSourceAmbiguity = null,
        legacyMessage = null;
 
-  TranslationFinding.legacy({
+  TranslationFinding.multilingual({
     required this.category,
-    required String message,
-  }) : kind = TranslationEvidenceKind.legacy,
-       section = null,
-       sourceFragment = null,
-       translationFragment = null,
-       reason = null,
-       impact = null,
-       correctVariant = null,
-       sourceAmbiguity = null,
-       legacyMessage = _requiredText(message, 'message');
+    required TranslationLanguage section,
+    required String sourceFragment,
+    required String translationFragment,
+    required LocalizedEvidenceText reason,
+    required LocalizedEvidenceText impact,
+    required String correctVariant,
+    required LocalizedEvidenceText? sourceAmbiguity,
+  }) : kind = TranslationEvidenceKind.multilingual,
+       section = section,
+       sourceFragment = _requiredText(sourceFragment, 'sourceFragment'),
+       translationFragment = _requiredText(
+         translationFragment,
+         'translationFragment',
+       ),
+       reason = reason.ru,
+       impact = impact.ru,
+       correctVariant = _requiredText(correctVariant, 'correctVariant'),
+       sourceAmbiguity = sourceAmbiguity?.ru ?? 'NONE',
+       localizedReason = reason,
+       localizedImpact = impact,
+       localizedSourceAmbiguity = sourceAmbiguity,
+       legacyMessage = null;
 
-  final TranslationFindingCategory category;
+  TranslationFinding.legacy({required this.category, required String message})
+    : kind = TranslationEvidenceKind.legacy,
+      section = null,
+      sourceFragment = null,
+      translationFragment = null,
+      reason = null,
+      impact = null,
+      correctVariant = null,
+      sourceAmbiguity = null,
+      localizedReason = null,
+      localizedImpact = null,
+      localizedSourceAmbiguity = null,
+      legacyMessage = _requiredText(message, 'message');
+
   final TranslationEvidenceKind kind;
+  final TranslationFindingCategory category;
   final TranslationLanguage? section;
   final String? sourceFragment;
   final String? translationFragment;
@@ -223,16 +277,55 @@ final class TranslationFinding extends Equatable {
   final String? impact;
   final String? correctVariant;
   final String? sourceAmbiguity;
+  final LocalizedEvidenceText? localizedReason;
+  final LocalizedEvidenceText? localizedImpact;
+  final LocalizedEvidenceText? localizedSourceAmbiguity;
   final String? legacyMessage;
 
+  bool get isMultilingual => kind == TranslationEvidenceKind.multilingual;
+
+  bool get isRussianOnly => kind == TranslationEvidenceKind.russianOnly;
+
   bool get isLegacy => kind == TranslationEvidenceKind.legacy;
+
+  String reasonFor(TranslationLanguage language) {
+    if (isLegacy) {
+      throw StateError('Legacy evidence has no structured reason.');
+    }
+
+    return localizedReason?.forLanguage(language) ?? reason!;
+  }
+
+  String impactFor(TranslationLanguage language) {
+    if (isLegacy) {
+      throw StateError('Legacy evidence has no structured impact.');
+    }
+
+    return localizedImpact?.forLanguage(language) ?? impact!;
+  }
+
+  String? sourceAmbiguityFor(TranslationLanguage language) {
+    if (isLegacy) {
+      throw StateError('Legacy evidence has no structured ambiguity.');
+    }
+
+    if (localizedSourceAmbiguity != null) {
+      return localizedSourceAmbiguity!.forLanguage(language);
+    }
+
+    if (isRussianOnly && sourceAmbiguity != 'NONE') {
+      return sourceAmbiguity;
+    }
+
+    return null;
+  }
 
   String get displayText => isLegacy ? legacyMessage! : reason!;
 
   @override
   List<Object?> get props => <Object?>[
-    category,
     kind,
+    category,
     section,
     sourceFragment,
     translationFragment,
@@ -240,6 +333,9 @@ final class TranslationFinding extends Equatable {
     impact,
     correctVariant,
     sourceAmbiguity,
+    localizedReason,
+    localizedImpact,
+    localizedSourceAmbiguity,
     legacyMessage,
   ];
 }
@@ -282,8 +378,7 @@ final class TranslationAudit extends Equatable {
   List<String> get ambiguityFindings =>
       _displayFindings(TranslationFindingCategory.ambiguity);
 
-  bool get meaningPreserved =>
-      !_hasFinding(TranslationFindingCategory.meaning);
+  bool get meaningPreserved => !_hasFinding(TranslationFindingCategory.meaning);
 
   bool get terminologyPreserved =>
       !_hasFinding(TranslationFindingCategory.terminology);
@@ -306,9 +401,7 @@ final class TranslationAudit extends Equatable {
       return TranslationVerdict.exact;
     }
 
-    if (meaningPreserved &&
-        terminologyPreserved &&
-        !ambiguousWording) {
+    if (meaningPreserved && terminologyPreserved && !ambiguousWording) {
       return TranslationVerdict.equivalent;
     }
 
@@ -324,9 +417,7 @@ final class TranslationAudit extends Equatable {
   List<String> _displayFindings(TranslationFindingCategory category) {
     return List<String>.unmodifiable(
       findings
-          .where(
-            (TranslationFinding finding) => finding.category == category,
-          )
+          .where((TranslationFinding finding) => finding.category == category)
           .map((TranslationFinding finding) => finding.displayText),
     );
   }
@@ -405,24 +496,63 @@ Iterable<TranslationFinding> _legacyFindings(
     final String normalized = value.trim();
 
     if (normalized.isNotEmpty) {
-      yield TranslationFinding.legacy(
-        category: category,
-        message: normalized,
-      );
+      yield TranslationFinding.legacy(category: category, message: normalized);
     }
   }
+}
+
+final class _TranslationFindingIdentity extends Equatable {
+  const _TranslationFindingIdentity({
+    required this.legacy,
+    this.legacyCategory,
+    this.section,
+    this.sourceFragment,
+    this.translationFragment,
+    this.legacyMessage,
+  });
+
+  factory _TranslationFindingIdentity.fromFinding(TranslationFinding finding) {
+    return _TranslationFindingIdentity(
+      legacy: finding.isLegacy,
+      legacyCategory: finding.isLegacy ? finding.category : null,
+      section: finding.section,
+      sourceFragment: finding.sourceFragment,
+      translationFragment: finding.translationFragment,
+      legacyMessage: finding.legacyMessage,
+    );
+  }
+
+  final bool legacy;
+  final TranslationFindingCategory? legacyCategory;
+  final TranslationLanguage? section;
+  final String? sourceFragment;
+  final String? translationFragment;
+  final String? legacyMessage;
+
+  @override
+  List<Object?> get props => <Object?>[
+    legacy,
+    legacyCategory,
+    section,
+    sourceFragment,
+    translationFragment,
+    legacyMessage,
+  ];
 }
 
 List<TranslationFinding> _translationFindings(
   Iterable<TranslationFinding> values,
 ) {
   final List<TranslationFinding> normalized = values.toList(growable: false);
+  final Set<_TranslationFindingIdentity> identities = normalized
+      .map(_TranslationFindingIdentity.fromFinding)
+      .toSet();
 
-  if (normalized.toSet().length != normalized.length) {
+  if (identities.length != normalized.length) {
     throw ArgumentError.value(
       values,
       'findings',
-      'findings contains duplicates.',
+      'findings contains semantic duplicates.',
     );
   }
 
