@@ -331,7 +331,7 @@ Photo of the installed cooktop.
               .cast<Map<String, String>>();
 
       expect(retryMessages.first['content'], startsWith('direct'));
-      expect(retryMessages.first['content'], contains('final format attempt'));
+      expect(retryMessages.first['content'], contains('final attempt'));
       expect(retryMessages.last['content'], firstMessages.last['content']);
     });
 

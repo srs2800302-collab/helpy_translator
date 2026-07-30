@@ -45,7 +45,7 @@ void main() {
     expect(prompt, contains('Do not omit required keys'));
     expect(prompt, contains('Do not use Markdown fences'));
     expect(prompt, contains('Do not assume that the translation is correct'));
-    expect(prompt, contains('do not waive a supported issue'));
+    expect(prompt, matches(RegExp(r'do not waive a supported\s+issue')));
     expect(prompt, isNot(contains('MEANING_FINDINGS:')));
   });
 
