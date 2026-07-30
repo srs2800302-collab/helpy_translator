@@ -241,19 +241,38 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     try {
       _emit(TranslatorRunStage.directTranslation);
 
-      final String translationContent = await _request(
-        systemPrompt: policy.buildDirectSystemPrompt(),
-        userPrompt: policy.buildDirectUserPrompt(request),
+      final String directSystemPrompt = policy.buildDirectSystemPrompt();
+      final String directUserPrompt = policy.buildDirectUserPrompt(request);
+      String translationContent = await _request(
+        systemPrompt: directSystemPrompt,
+        userPrompt: directUserPrompt,
         maxTokens: _translationMaxTokens,
         temperature: _translationTemperature,
       );
 
-      final Map<String, String> translation = _parsePayload(
-        content: translationContent,
-        labels: _translationLabels,
-        stage: TranslatorFailureStage.directTranslation,
-        responseName: 'Атомарный перевод',
-      );
+      late final Map<String, String> translation;
+      try {
+        translation = _parseTranslationPayload(translationContent);
+      } on _PayloadFailure {
+        translationContent = await _request(
+          systemPrompt: _buildStrictTranslationRetryPrompt(directSystemPrompt),
+          userPrompt: directUserPrompt,
+          maxTokens: _translationMaxTokens,
+          temperature: _translationTemperature,
+        );
+
+        try {
+          translation = _parseTranslationPayload(translationContent);
+        } on _PayloadFailure catch (error) {
+          throw _PayloadFailure(
+            stage: error.stage,
+            code: error.code,
+            message:
+                '${error.message} Ответ остаётся невалидным '
+                'после повторной попытки.',
+          );
+        }
+      }
 
       final TranslationLanguage sourceLanguage;
 
@@ -389,6 +408,27 @@ This is the final format attempt:
 - use only RU, EN or TH as section;
 - copy exact fragments from SOURCE TEXT and the named direct section;
 - output no preamble, Markdown, verdict, summary or commentary.
+'''
+        .trim();
+  }
+
+  static Map<String, String> _parseTranslationPayload(String content) {
+    return _parsePayload(
+      content: content,
+      labels: _translationLabels,
+      stage: TranslatorFailureStage.directTranslation,
+      responseName: 'Атомарный перевод',
+    );
+  }
+
+  static String _buildStrictTranslationRetryPrompt(String originalPrompt) {
+    return '''
+$originalPrompt
+
+The previous response violated the required nine-section transport protocol.
+This is the final format attempt. Return exactly the nine required sections,
+with every ASCII label once and in the prescribed order. Do not add a preamble,
+Markdown fences, commentary, unknown sections, empty values or placeholders.
 '''
         .trim();
   }

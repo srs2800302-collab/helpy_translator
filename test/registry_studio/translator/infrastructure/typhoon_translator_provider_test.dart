@@ -214,9 +214,8 @@ void main() {
       expect(report.audit.meaningPreserved, isTrue);
     });
 
-    test('classifies missing translation section as incomplete', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        '''
+    test('fails after one malformed direct protocol repair', () async {
+      final String malformed = '''
 SOURCE LANGUAGE:
 RU
 
@@ -240,7 +239,10 @@ TH_TO_RU:
 
 EN_TO_TH:
 ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
-''',
+''';
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        malformed,
+        malformed,
       ]);
 
       final Future<TranslatorRunReport> result =
@@ -270,9 +272,92 @@ EN_TO_TH:
                 (TranslatorProviderException error) => error.failure.stage,
                 'stage',
                 TranslatorFailureStage.directTranslation,
+              )
+              .having(
+                (TranslatorProviderException error) => error.failure.code,
+                'code',
+                TranslatorFailureCode.missingRequiredSection,
+              )
+              .having(
+                (TranslatorProviderException error) => error.failure.message,
+                'message',
+                contains('после повторной попытки'),
               ),
         ),
       );
+      expect(transport.callCount, 2);
+    });
+
+    test('repairs malformed direct protocol once and then audits', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(thToEn: ''),
+        _translationResponse(),
+        _auditResponse(),
+      ]);
+
+      final TranslatorRunReport report =
+          await TyphoonTranslatorProvider(
+                policy: const _TestPolicy(),
+                transportFactory: () => transport,
+              )
+              .start(
+                request: TranslatorWorkRequest(
+                  sourceText: 'Фотография установленной варочной панели.',
+                ),
+                accessKey: 'test-key',
+              )
+              .result;
+
+      expect(report.audit.verdict, TranslationVerdict.exact);
+      expect(transport.callCount, 3);
+      expect(
+        transport.requestBodies
+            .map((Map<String, Object?> body) => body['max_completion_tokens'])
+            .toList(growable: false),
+        <Object?>[1400, 1400, 2200],
+      );
+      expect(
+        transport.requestBodies
+            .map((Map<String, Object?> body) => body['temperature'])
+            .toList(growable: false),
+        <Object?>[0.1, 0.1, 0.0],
+      );
+
+      final List<Map<String, String>> firstMessages =
+          (transport.requestBodies[0]['messages']! as List<Object?>)
+              .cast<Map<String, String>>();
+      final List<Map<String, String>> retryMessages =
+          (transport.requestBodies[1]['messages']! as List<Object?>)
+              .cast<Map<String, String>>();
+
+      expect(retryMessages.first['content'], startsWith('direct'));
+      expect(retryMessages.first['content'], contains('final format attempt'));
+      expect(retryMessages.last['content'], firstMessages.last['content']);
+    });
+
+    test('bounds direct and audit protocol repairs independently', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(thToEn: ''),
+        _translationResponse(),
+        '{"findings":"invalid"}',
+        _auditResponse(),
+      ]);
+
+      final TranslatorRunReport report =
+          await TyphoonTranslatorProvider(
+                policy: const _TestPolicy(),
+                transportFactory: () => transport,
+              )
+              .start(
+                request: TranslatorWorkRequest(
+                  sourceText: 'Фотография установленной варочной панели.',
+                ),
+                accessKey: 'test-key',
+              )
+              .result;
+
+      expect(report.audit.verdict, TranslationVerdict.exact);
+      expect(transport.callCount, 4);
     });
 
     test('retries ungrounded structured audit once and succeeds', () async {
