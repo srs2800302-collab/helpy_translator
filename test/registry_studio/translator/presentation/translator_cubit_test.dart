@@ -28,6 +28,33 @@ void main() {
     expect(cubit.state.sourceLanguageHint, TranslationLanguage.ru);
   });
 
+  test('shows fixed Russian warning after corrupt draft recovery', () async {
+    final _MemoryDraftStore store = _MemoryDraftStore(
+      loadError: const FormatException('Internal English schema error.'),
+    );
+    final TranslatorCubit cubit = TranslatorCubit(
+      provider: _FakeProvider.success(_report()),
+      draftStore: store,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+
+    expect(cubit.state.status, TranslatorViewStatus.idle);
+    expect(cubit.state.sourceText, isEmpty);
+    expect(
+      cubit.state.restoreWarning,
+      'Сохранённый черновик Translator был повреждён и безопасно удалён.',
+    );
+    expect(cubit.state.restoreWarning, isNot(contains('schema')));
+    expect(store.clearCount, 0);
+
+    await cubit.clear();
+
+    expect(cubit.state.restoreWarning, isNull);
+    expect(store.clearCount, 1);
+  });
+
   test('emits visible stages and stores successful report', () async {
     final TranslatorRunReport report = _report();
     final _MemoryDraftStore store = _MemoryDraftStore();
@@ -164,13 +191,22 @@ TranslatorRunReport _report() {
 }
 
 final class _MemoryDraftStore implements TranslatorDraftStore {
-  _MemoryDraftStore({this.draft});
+  _MemoryDraftStore({this.draft, this.loadError});
 
   TranslatorDraft? draft;
+  Object? loadError;
   int clearCount = 0;
 
   @override
-  Future<TranslatorDraft?> load() async => draft;
+  Future<TranslatorDraft?> load() async {
+    final Object? error = loadError;
+
+    if (error != null) {
+      throw error;
+    }
+
+    return draft;
+  }
 
   @override
   Future<void> save(TranslatorDraft draft) async {
@@ -181,6 +217,7 @@ final class _MemoryDraftStore implements TranslatorDraftStore {
   Future<void> clear() async {
     clearCount += 1;
     draft = null;
+    loadError = null;
   }
 }
 

@@ -214,6 +214,36 @@ void main() {
     expect(keyField.controller?.text, isEmpty);
   });
 
+  testWidgets('shows and clears corrupt draft recovery warning', (
+    WidgetTester tester,
+  ) async {
+    final _MemoryDraftStore store = _MemoryDraftStore(
+      loadError: const FormatException('Internal English schema error.'),
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(_report()),
+      draftStore: store,
+      accessKeyStore: _MemoryAccessKeyStore(),
+    );
+
+    expect(find.text('Предупреждение восстановления'), findsOneWidget);
+    expect(
+      find.text(
+        'Сохранённый черновик Translator был повреждён и безопасно удалён.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('schema'), findsNothing);
+
+    await tester.tap(find.text('Очистить Translator'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Предупреждение восстановления'), findsNothing);
+    expect(store.clearCount, 1);
+  });
+
   testWidgets('uses compact source header and text-only run button', (
     WidgetTester tester,
   ) async {
@@ -283,13 +313,22 @@ TranslatorRunReport _report({TranslationAudit? audit}) {
 }
 
 final class _MemoryDraftStore implements TranslatorDraftStore {
-  _MemoryDraftStore({this.draft});
+  _MemoryDraftStore({this.draft, this.loadError});
 
   TranslatorDraft? draft;
+  Object? loadError;
   int clearCount = 0;
 
   @override
-  Future<TranslatorDraft?> load() async => draft;
+  Future<TranslatorDraft?> load() async {
+    final Object? error = loadError;
+
+    if (error != null) {
+      throw error;
+    }
+
+    return draft;
+  }
 
   @override
   Future<void> save(TranslatorDraft draft) async {
@@ -300,6 +339,7 @@ final class _MemoryDraftStore implements TranslatorDraftStore {
   Future<void> clear() async {
     clearCount += 1;
     draft = null;
+    loadError = null;
   }
 }
 

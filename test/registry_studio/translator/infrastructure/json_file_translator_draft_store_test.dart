@@ -64,7 +64,7 @@ void main() {
     expect(await unrelated.readAsString(), 'keep');
   });
 
-  test('rejects malformed persisted state instead of silent reset', () async {
+  test('removes corrupt draft and matching temporary file only', () async {
     final Directory stateDirectory = Directory(
       '${directory.path}${Platform.pathSeparator}'
       '${JsonFileTranslatorDraftStore.directoryName}',
@@ -75,9 +75,34 @@ void main() {
       '${stateDirectory.path}${Platform.pathSeparator}'
       '${JsonFileTranslatorDraftStore.fileName}',
     );
-    await stateFile.writeAsString('{"version":"v1"}\n');
+    final File temporaryFile = File('${stateFile.path}.tmp');
+    final File unrelatedFile = File(
+      '${stateDirectory.path}${Platform.pathSeparator}unrelated.json',
+    );
+    await unrelatedFile.writeAsString('keep');
 
-    await expectLater(store.load(), throwsFormatException);
+    const List<String> corruptDrafts = <String>[
+      '{',
+      '{"version":"v1"}',
+      '{"version":"v2","sourceText":"Текст.",'
+          '"sourceLanguageHint":null,"report":null}',
+      '{"version":"v1","sourceText":"Текст.",'
+          '"sourceLanguageHint":"DE","report":null}',
+      '{"version":"v1","sourceText":"Текст.",'
+          '"sourceLanguageHint":null,"report":{"request":{}}}',
+    ];
+
+    for (final String corruptDraft in corruptDrafts) {
+      await stateFile.writeAsString('$corruptDraft\n');
+      await temporaryFile.writeAsString('partial');
+
+      await expectLater(store.load(), throwsFormatException);
+
+      expect(await stateFile.exists(), isFalse);
+      expect(await temporaryFile.exists(), isFalse);
+      expect(await unrelatedFile.readAsString(), 'keep');
+      expect(await store.load(), isNull);
+    }
   });
 }
 

@@ -122,14 +122,14 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
           report: draft.report,
         ),
       );
-    } on FormatException catch (error) {
+    } on FormatException {
       emit(
-        TranslatorState(
+        const TranslatorState(
           status: TranslatorViewStatus.idle,
           sourceText: '',
           sourceLanguageHint: null,
           restoreWarning:
-              'Сохранённый Translator draft повреждён: ${error.message}',
+              'Сохранённый черновик Translator был повреждён и безопасно удалён.',
         ),
       );
     }

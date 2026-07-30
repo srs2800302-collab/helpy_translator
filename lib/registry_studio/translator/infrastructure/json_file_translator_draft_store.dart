@@ -23,43 +23,49 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       return null;
     }
 
-    final Object? decoded = jsonDecode(await file.readAsString());
-    final Map<String, Object?> state = _map(decoded, 'Translator draft');
+    try {
+      final Object? decoded = jsonDecode(await file.readAsString());
+      final Map<String, Object?> state = _map(decoded, 'Translator draft');
 
-    const Set<String> expectedKeys = <String>{
-      'version',
-      'sourceText',
-      'sourceLanguageHint',
-      'report',
-    };
+      const Set<String> expectedKeys = <String>{
+        'version',
+        'sourceText',
+        'sourceLanguageHint',
+        'report',
+      };
 
-    if (state.keys.length != expectedKeys.length ||
-        !state.keys.toSet().containsAll(expectedKeys) ||
-        state['version'] != _version) {
-      throw const FormatException('Translator draft schema is invalid.');
+      if (state.keys.length != expectedKeys.length ||
+          !state.keys.toSet().containsAll(expectedKeys) ||
+          state['version'] != _version) {
+        throw const FormatException('Translator draft schema is invalid.');
+      }
+
+      final Object? sourceText = state['sourceText'];
+      final Object? sourceLanguageHint = state['sourceLanguageHint'];
+      final Object? report = state['report'];
+
+      if (sourceText is! String ||
+          (sourceLanguageHint != null && sourceLanguageHint is! String) ||
+          (report != null && report is! Map<Object?, Object?>)) {
+        throw const FormatException(
+          'Translator draft field types are invalid.',
+        );
+      }
+
+      return TranslatorDraft(
+        sourceText: sourceText,
+        sourceLanguageHint: sourceLanguageHint == null
+            ? null
+            : TranslationLanguage.fromCode(sourceLanguageHint as String),
+        report: report == null
+            ? null
+            : _decodeReport(_map(report, 'Translator report')),
+      );
+    } on FormatException {
+      return _discardInvalid(file);
+    } on ArgumentError {
+      return _discardInvalid(file);
     }
-
-    final Object? sourceText = state['sourceText'];
-    final Object? sourceLanguageHint = state['sourceLanguageHint'];
-    final Object? report = state['report'];
-
-    if (sourceText is! String ||
-        (sourceLanguageHint != null && sourceLanguageHint is! String) ||
-        (report != null && report is! Map<Object?, Object?>)) {
-      throw const FormatException('Translator draft field types are invalid.');
-    }
-
-    return TranslatorDraft(
-      sourceText: sourceText,
-      sourceLanguageHint: sourceLanguageHint == null
-          ? null
-          : TranslationLanguage.fromCode(sourceLanguageHint as String),
-      report: report == null
-          ? null
-          : _decodeReport(
-              (report as Map<Object?, Object?>).cast<String, Object?>(),
-            ),
-    );
   }
 
   @override
@@ -93,8 +99,15 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
 
   @override
   Future<void> clear() async {
-    final File file = await _file();
+    await _deleteDraftFiles(await _file());
+  }
 
+  static Future<Never> _discardInvalid(File file) async {
+    await _deleteDraftFiles(file);
+    throw const FormatException('Translator draft is invalid and was removed.');
+  }
+
+  static Future<void> _deleteDraftFiles(File file) async {
     if (await file.exists()) {
       await file.delete();
     }
