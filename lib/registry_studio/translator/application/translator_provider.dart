@@ -7,7 +7,13 @@ abstract interface class TranslatorPolicy {
 
   String buildAuditSystemPrompt();
 
-  String buildAuditUserPrompt(TranslationBundle bundle);
+  String buildAuditUserPrompt({
+    required TranslationLanguage sourceLanguage,
+    required String sourceText,
+    required String ru,
+    required String en,
+    required String th,
+  });
 }
 
 abstract interface class TranslatorOperation {

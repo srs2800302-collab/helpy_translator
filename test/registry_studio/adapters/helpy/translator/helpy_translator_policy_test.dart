@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/translator/helpy_translator_policy.dart';
+import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
 
 void main() {
   test('audit prompt exposes strict structured JSON contract', () {
@@ -7,6 +8,10 @@ void main() {
         .buildAuditSystemPrompt();
 
     for (final String key in <String>[
+      '"EN_TO_RU"',
+      '"TH_TO_RU"',
+      '"EN_TO_TH"',
+      '"TH_TO_EN"',
       '"findings"',
       '"category"',
       '"section"',
@@ -20,7 +25,11 @@ void main() {
       expect(prompt, contains(key));
     }
 
-    expect(prompt, contains('{"findings":[]}'));
+    expect(prompt, contains('exactly these five keys'));
+    expect(prompt, contains('only from the exact EN value'));
+    expect(prompt, contains('only from the exact TH value'));
+    expect(prompt, contains('Do not use SOURCE TEXT or RU to repair'));
+    expect(prompt, contains('Preserve any direct-translation drift'));
     expect(prompt, contains('three nonempty semantically equivalent'));
     expect(prompt, contains('"ru"'));
     expect(prompt, contains('"en"'));
@@ -35,12 +44,12 @@ void main() {
     expect(prompt, contains('Do not add unknown keys'));
     expect(prompt, contains('Do not omit required keys'));
     expect(prompt, contains('Do not use Markdown fences'));
-    expect(prompt, contains('Do not assume that the bundle is correct'));
+    expect(prompt, contains('Do not assume that the translation is correct'));
     expect(prompt, contains('do not waive a supported issue'));
     expect(prompt, isNot(contains('MEANING_FINDINGS:')));
   });
 
-  test('translation prompt requires one atomic nine-section bundle', () {
+  test('translation prompt requires only five direct sections', () {
     final String prompt = const HelpyTranslatorPolicy()
         .buildDirectSystemPrompt();
 
@@ -50,10 +59,6 @@ void main() {
       'RU',
       'EN',
       'TH',
-      'EN_TO_RU',
-      'TH_TO_RU',
-      'EN_TO_TH',
-      'TH_TO_EN',
     ];
 
     final List<String> actualLabels =
@@ -66,10 +71,11 @@ void main() {
             .toList(growable: false);
 
     expect(actualLabels, expectedLabels);
-    expect(prompt, contains('one atomic translation bundle'));
-    expect(prompt, contains('All nine sections are required'));
-    expect(prompt, contains('only from the exact EN and TH values'));
-    expect(prompt, contains('Preserve any direct-translation drift'));
+    expect(prompt, contains('direct RU, EN and TH formulations only'));
+    expect(prompt, contains('All five sections are required'));
+    expect(prompt, contains('Do not return reverse translations'));
+    expect(prompt, isNot(contains('EN_TO_RU:')));
+    expect(prompt, isNot(contains('TH_TO_EN:')));
     expect(prompt, contains('Preserve role granularity'));
     expect(prompt, contains('service professional'));
     expect(prompt, contains('Do not use EN "master"'));
@@ -114,5 +120,32 @@ void main() {
     ]) {
       expect(productionPrompts, isNot(contains(forbidden)));
     }
+  });
+
+  test('audit user prompt contains only direct evidence', () {
+    final String prompt = const HelpyTranslatorPolicy().buildAuditUserPrompt(
+      sourceLanguage: TranslationLanguage.ru,
+      sourceText: 'Исходный текст.',
+      ru: 'Исходный текст.',
+      en: 'Source text.',
+      th: 'ข้อความต้นฉบับ',
+    );
+
+    final List<String> labels =
+        RegExp(
+              r'^(SOURCE LANGUAGE|SOURCE TEXT|RU|EN|TH|EN_TO_RU|TH_TO_RU|EN_TO_TH|TH_TO_EN|findings):$',
+              multiLine: true,
+            )
+            .allMatches(prompt)
+            .map((RegExpMatch match) => match.group(1)!)
+            .toList(growable: false);
+
+    expect(labels, <String>[
+      'SOURCE LANGUAGE',
+      'SOURCE TEXT',
+      'RU',
+      'EN',
+      'TH',
+    ]);
   });
 }

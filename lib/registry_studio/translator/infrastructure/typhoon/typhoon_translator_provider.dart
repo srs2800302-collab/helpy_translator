@@ -243,26 +243,26 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 
       final String directSystemPrompt = policy.buildDirectSystemPrompt();
       final String directUserPrompt = policy.buildDirectUserPrompt(request);
-      String translationContent = await _request(
+      String directContent = await _request(
         systemPrompt: directSystemPrompt,
         userPrompt: directUserPrompt,
         maxTokens: _translationMaxTokens,
         temperature: _translationTemperature,
       );
 
-      late final Map<String, String> translation;
+      late final Map<String, String> direct;
       try {
-        translation = _parseTranslationPayload(translationContent);
+        direct = _parseDirectPayload(directContent);
       } on _PayloadFailure {
-        translationContent = await _request(
-          systemPrompt: _buildStrictTranslationRetryPrompt(directSystemPrompt),
+        directContent = await _request(
+          systemPrompt: _buildStrictDirectRetryPrompt(directSystemPrompt),
           userPrompt: directUserPrompt,
           maxTokens: _translationMaxTokens,
           temperature: _translationTemperature,
         );
 
         try {
-          translation = _parseTranslationPayload(translationContent);
+          direct = _parseDirectPayload(directContent);
         } on _PayloadFailure catch (error) {
           throw _PayloadFailure(
             stage: error.stage,
@@ -278,7 +278,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 
       try {
         sourceLanguage = TranslationLanguage.fromCode(
-          translation['SOURCE LANGUAGE']!,
+          direct['SOURCE LANGUAGE']!,
         );
       } on ArgumentError catch (error) {
         throw TranslatorProviderException(
@@ -290,7 +290,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         );
       }
 
-      if (translation['SOURCE TEXT'] != request.sourceText) {
+      if (direct['SOURCE TEXT'] != request.sourceText) {
         throw const _PayloadFailure(
           stage: TranslatorFailureStage.directTranslation,
           code: TranslatorFailureCode.sourceTextMismatch,
@@ -298,7 +298,7 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         );
       }
 
-      if (translation[sourceLanguage.code] != request.sourceText) {
+      if (direct[sourceLanguage.code] != request.sourceText) {
         throw const _PayloadFailure(
           stage: TranslatorFailureStage.directTranslation,
           code: TranslatorFailureCode.sourceTextMismatch,
@@ -306,49 +306,68 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
         );
       }
 
-      final TranslationBundle bundle = TranslationBundle(
-        sourceLanguage: sourceLanguage,
-        sourceText: translation['SOURCE TEXT']!,
-        ru: translation['RU']!,
-        en: translation['EN']!,
-        th: translation['TH']!,
-        enToRu: translation['EN_TO_RU']!,
-        thToRu: translation['TH_TO_RU']!,
-        enToTh: translation['EN_TO_TH']!,
-        thToEn: translation['TH_TO_EN']!,
-      );
-      partialBundle = bundle;
-
       _emit(TranslatorRunStage.audit);
 
-      final String auditUserPrompt = policy.buildAuditUserPrompt(bundle);
+      final String auditSystemPrompt = policy.buildAuditSystemPrompt();
+      final String auditUserPrompt = policy.buildAuditUserPrompt(
+        sourceLanguage: sourceLanguage,
+        sourceText: direct['SOURCE TEXT']!,
+        ru: direct['RU']!,
+        en: direct['EN']!,
+        th: direct['TH']!,
+      );
 
-      TranslationAudit audit;
+      Future<({TranslationBundle bundle, TranslationAudit audit})> requestAudit(
+        String systemPrompt,
+      ) async {
+        final String content = await _request(
+          systemPrompt: systemPrompt,
+          userPrompt: auditUserPrompt,
+          maxTokens: _auditMaxTokens,
+          temperature: _auditTemperature,
+        );
+        final ({
+          String enToRu,
+          String thToRu,
+          String enToTh,
+          String thToEn,
+          Object? findings,
+        })
+        verification = _parseVerificationPayload(content);
+        final TranslationBundle bundle = TranslationBundle(
+          sourceLanguage: sourceLanguage,
+          sourceText: direct['SOURCE TEXT']!,
+          ru: direct['RU']!,
+          en: direct['EN']!,
+          th: direct['TH']!,
+          enToRu: verification.enToRu,
+          thToRu: verification.thToRu,
+          enToTh: verification.enToTh,
+          thToEn: verification.thToEn,
+        );
+
+        partialBundle = bundle;
+
+        return (
+          bundle: bundle,
+          audit: _parseAuditFindings(verification.findings, bundle),
+        );
+      }
+
+      late final ({TranslationBundle bundle, TranslationAudit audit}) result;
 
       try {
-        final String auditContent = await _request(
-          systemPrompt: policy.buildAuditSystemPrompt(),
-          userPrompt: auditUserPrompt,
-          maxTokens: _auditMaxTokens,
-          temperature: _auditTemperature,
-        );
-
-        audit = _parseAudit(auditContent, bundle);
+        result = await requestAudit(auditSystemPrompt);
       } on _AuditFailure {
-        final String repairedAuditContent = await _request(
-          systemPrompt: _buildStrictAuditRetryPrompt(
-            policy.buildAuditSystemPrompt(),
-          ),
-          userPrompt: auditUserPrompt,
-          maxTokens: _auditMaxTokens,
-          temperature: _auditTemperature,
-        );
+        partialBundle = null;
 
         try {
-          audit = _parseAudit(repairedAuditContent, bundle);
+          result = await requestAudit(
+            _buildStrictAuditRetryPrompt(auditSystemPrompt),
+          );
         } on _AuditFailure catch (error) {
           throw _AuditFailure(
-            'Ответ аудита остался некорректным после повторной попытки: '
+            'Ответ проверки остался некорректным после повторной попытки: '
             '${error.message}',
           );
         }
@@ -356,8 +375,8 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 
       return TranslatorRunReport(
         request: request,
-        bundle: bundle,
-        audit: audit,
+        bundle: result.bundle,
+        audit: result.audit,
         createdAt: DateTime.now().toUtc(),
       );
     } on TranslatorProviderException {
@@ -378,7 +397,9 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
           stage: TranslatorFailureStage.audit,
           code: TranslatorFailureCode.invalidAuditResponse,
           message: error.message,
-          completeness: TranslationCompleteness.complete,
+          completeness: partialBundle == null
+              ? TranslationCompleteness.translationIncomplete
+              : TranslationCompleteness.complete,
           partialBundle: partialBundle,
         ),
       );
@@ -395,40 +416,35 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     return '''
 $basePrompt
 
-The previous audit response violated the required JSON protocol.
-Run the semantic audit again from the supplied atomic nine-section bundle.
-
-This is the final format attempt:
-- output exactly one JSON object;
-- the root object must contain only "findings";
-- every finding must contain exactly eight required keys and no others;
-- reason and impact must be exact ru/en/th objects;
-- source_ambiguity must be null or an exact ru/en/th object;
-- use only MEANING, TERMINOLOGY, STYLE or AMBIGUITY as category;
-- use only RU, EN or TH as section;
+The previous response violated the required five-key JSON protocol.
+This is the final attempt:
+- output one JSON object only;
+- use exactly EN_TO_RU, TH_TO_RU, EN_TO_TH, TH_TO_EN and findings;
+- use nonempty trimmed strings for all reverse translations;
+- make findings an array with the exact eight-key finding objects;
 - copy exact fragments from SOURCE TEXT and the named direct section;
-- output no preamble, Markdown, verdict, summary or commentary.
+- output no Markdown, preamble, verdict, summary or commentary.
 '''
         .trim();
   }
 
-  static Map<String, String> _parseTranslationPayload(String content) {
+  static Map<String, String> _parseDirectPayload(String content) {
     return _parsePayload(
       content: content,
-      labels: _translationLabels,
+      labels: _directLabels,
       stage: TranslatorFailureStage.directTranslation,
-      responseName: 'Атомарный перевод',
+      responseName: 'Прямой перевод',
     );
   }
 
-  static String _buildStrictTranslationRetryPrompt(String originalPrompt) {
+  static String _buildStrictDirectRetryPrompt(String originalPrompt) {
     return '''
 $originalPrompt
 
-The previous response violated the required nine-section transport protocol.
-This is the final format attempt. Return exactly the nine required sections,
-with every ASCII label once and in the prescribed order. Do not add a preamble,
-Markdown fences, commentary, unknown sections, empty values or placeholders.
+The previous response violated the five-section direct-translation protocol.
+Return exactly SOURCE LANGUAGE, SOURCE TEXT, RU, EN and TH once and in order.
+Do not add reverse translations, Markdown, commentary, empty values or
+placeholders. This is the final attempt.
 '''
         .trim();
   }
@@ -577,14 +593,18 @@ Markdown fences, commentary, unknown sections, empty values or placeholders.
     return result;
   }
 
-  static TranslationAudit _parseAudit(
-    String content,
-    TranslationBundle bundle,
-  ) {
+  static ({
+    String enToRu,
+    String thToRu,
+    String enToTh,
+    String thToEn,
+    Object? findings,
+  })
+  _parseVerificationPayload(String content) {
     final String normalized = content.trim();
 
     if (normalized.isEmpty) {
-      throw const _AuditFailure('Ответ аудита пуст.');
+      throw const _AuditFailure('Ответ проверки пуст.');
     }
 
     final Object? decoded;
@@ -592,17 +612,42 @@ Markdown fences, commentary, unknown sections, empty values or placeholders.
     try {
       decoded = jsonDecode(normalized);
     } on FormatException catch (error) {
-      throw _AuditFailure('Ответ аудита не является корректным JSON: $error');
+      throw _AuditFailure('Ответ проверки не является корректным JSON: $error');
     }
 
     final Map<String, Object?> root = _auditObject(
       decoded,
-      'Корень ответа аудита',
+      'Корень ответа проверки',
     );
-    _requireExactAuditKeys(root, _auditRootKeys, 'Корень ответа аудита');
+    _requireExactAuditKeys(
+      root,
+      _verificationRootKeys,
+      'Корень ответа проверки',
+    );
 
-    final Object? rawFindings = root['findings'];
+    return (
+      enToRu: _verificationString(root, 'EN_TO_RU'),
+      thToRu: _verificationString(root, 'TH_TO_RU'),
+      enToTh: _verificationString(root, 'EN_TO_TH'),
+      thToEn: _verificationString(root, 'TH_TO_EN'),
+      findings: root['findings'],
+    );
+  }
 
+  static String _verificationString(Map<String, Object?> root, String key) {
+    final String value = _auditString(root[key], key);
+
+    if (_placeholderValues.contains(value.toUpperCase())) {
+      throw _AuditFailure('$key содержит значение-заглушку.');
+    }
+
+    return value;
+  }
+
+  static TranslationAudit _parseAuditFindings(
+    Object? rawFindings,
+    TranslationBundle bundle,
+  ) {
     if (rawFindings is! List<Object?>) {
       throw const _AuditFailure('Поле findings должно быть JSON-массивом.');
     }
@@ -618,7 +663,7 @@ Markdown fences, commentary, unknown sections, empty values or placeholders.
     try {
       return TranslationAudit(findings: findings);
     } on ArgumentError catch (error) {
-      throw _AuditFailure('Ответ аудита содержит дубли: ${error.message}');
+      throw _AuditFailure('Ответ проверки содержит дубли: ${error.message}');
     }
   }
 
@@ -804,19 +849,21 @@ Markdown fences, commentary, unknown sections, empty values or placeholders.
 
   static final RegExp _accessKeyPattern = RegExp(r'^[\x21-\x7E]+$');
 
-  static const List<String> _translationLabels = <String>[
+  static const List<String> _directLabels = <String>[
     'SOURCE LANGUAGE',
     'SOURCE TEXT',
     'RU',
     'EN',
     'TH',
+  ];
+
+  static const Set<String> _verificationRootKeys = <String>{
     'EN_TO_RU',
     'TH_TO_RU',
     'EN_TO_TH',
     'TH_TO_EN',
-  ];
-
-  static const Set<String> _auditRootKeys = <String>{'findings'};
+    'findings',
+  };
 
   static const Set<String> _auditFindingKeys = <String>{
     'category',

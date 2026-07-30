@@ -64,7 +64,7 @@ void main() {
 
   group('TyphoonTranslatorProvider', () {
     test(
-      'runs atomic translation bundle and findings audit in order',
+      'runs direct translation and independent verification in order',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
           _translationResponse(),
@@ -121,6 +121,18 @@ void main() {
           expect(body['frequency_penalty'], 0.0);
           expect(body.containsKey('max_tokens'), isFalse);
         }
+
+        final List<Map<String, String>> verificationMessages =
+            (transport.requestBodies[1]['messages']! as List<Object?>)
+                .cast<Map<String, String>>();
+        expect(verificationMessages.last['content'], contains('SOURCE TEXT'));
+        expect(verificationMessages.last['content'], contains('RU'));
+        expect(verificationMessages.last['content'], contains('EN'));
+        expect(verificationMessages.last['content'], contains('TH'));
+        expect(
+          verificationMessages.last['content'],
+          isNot(contains('EN_TO_RU')),
+        );
       },
     );
 
@@ -227,18 +239,6 @@ RU:
 
 EN:
 Photo of the installed cooktop.
-
-TH:
-ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
-
-EN_TO_RU:
-Фотография установленной варочной панели.
-
-TH_TO_RU:
-Фотография установленной варочной панели.
-
-EN_TO_TH:
-ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
 ''';
       final _QueueTransport transport = _QueueTransport(<Object>[
         malformed,
@@ -290,7 +290,7 @@ EN_TO_TH:
 
     test('repairs malformed direct protocol once and then audits', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(thToEn: ''),
+        _translationResponse(th: ''),
         _translationResponse(),
         _auditResponse(),
       ]);
@@ -337,7 +337,7 @@ EN_TO_TH:
 
     test('bounds direct and audit protocol repairs independently', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(thToEn: ''),
+        _translationResponse(th: ''),
         _translationResponse(),
         '{"findings":"invalid"}',
         _auditResponse(),
@@ -524,8 +524,12 @@ EN_TO_TH:
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
           _translationResponse(),
-          '{"findings":"invalid"}',
-          '{"findings":[{"category":"MEANING","unknown":"value"}]}',
+          _auditResponse(findings: 'invalid'),
+          _auditResponse(
+            findings: <Map<String, Object?>>[
+              <String, Object?>{'category': 'MEANING', 'unknown': 'value'},
+            ],
+          ),
         ]);
 
         final Future<TranslatorRunReport> result =
@@ -636,18 +640,6 @@ Text.
 
 TH:
 ข้อความ
-
-EN_TO_RU:
-Текст.
-
-TH_TO_RU:
-Текст.
-
-EN_TO_TH:
-ข้อความ
-
-TH_TO_EN:
-Text.
 ''',
       ]);
 
@@ -728,8 +720,6 @@ Text.
 
 String _translationResponse({
   String th = 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
-  String thToRu = 'Фотография установленной варочной панели.',
-  String thToEn = 'Photo of the installed cooktop.',
 }) {
   return '''
 SOURCE LANGUAGE:
@@ -746,25 +736,23 @@ Photo of the installed cooktop.
 
 TH:
 $th
-
-EN_TO_RU:
-Фотография установленной варочной панели.
-
-TH_TO_RU:
-$thToRu
-
-EN_TO_TH:
-ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว
-
-TH_TO_EN:
-$thToEn
 ''';
 }
 
 String _auditResponse({
-  List<Map<String, Object?>> findings = const <Map<String, Object?>>[],
+  Object? findings = const <Map<String, Object?>>[],
+  String enToRu = 'Фотография установленной варочной панели.',
+  String thToRu = 'Фотография установленной варочной панели.',
+  String enToTh = 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
+  String thToEn = 'Photo of the installed cooktop.',
 }) {
-  return jsonEncode(<String, Object?>{'findings': findings});
+  return jsonEncode(<String, Object?>{
+    'EN_TO_RU': enToRu,
+    'TH_TO_RU': thToRu,
+    'EN_TO_TH': enToTh,
+    'TH_TO_EN': thToEn,
+    'findings': findings,
+  });
 }
 
 Map<String, Object?> _structuredFinding({
@@ -847,6 +835,28 @@ final class _TestPolicy implements TranslatorPolicy {
   String buildAuditSystemPrompt() => 'audit';
 
   @override
-  String buildAuditUserPrompt(TranslationBundle bundle) =>
-      bundle.nineSections.toString();
+  String buildAuditUserPrompt({
+    required TranslationLanguage sourceLanguage,
+    required String sourceText,
+    required String ru,
+    required String en,
+    required String th,
+  }) {
+    return '''
+SOURCE LANGUAGE:
+${sourceLanguage.code}
+
+SOURCE TEXT:
+$sourceText
+
+RU:
+$ru
+
+EN:
+$en
+
+TH:
+$th
+''';
+  }
 }
