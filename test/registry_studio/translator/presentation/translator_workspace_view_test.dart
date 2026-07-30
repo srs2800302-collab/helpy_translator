@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:helpy_translator/app/localization/registry_studio_localizations.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_access_key_store.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_draft_store.dart';
 import 'package:helpy_translator/registry_studio/translator/application/translator_provider.dart';
@@ -7,7 +9,7 @@ import 'package:helpy_translator/registry_studio/translator/domain/translator_mo
 import 'package:helpy_translator/registry_studio/translator/presentation/translator_workspace_view.dart';
 
 void main() {
-  testWidgets('shows nine sections and automatic verdict', (
+  testWidgets('shows exactly eight visible sections and automatic verdict', (
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
@@ -46,10 +48,22 @@ void main() {
 
     expect(find.text('Автоматический вердикт перевода'), findsOneWidget);
     expect(find.text('EXACT'), findsOneWidget);
-    expect(find.text('Прямой перевод'), findsOneWidget);
-    expect(find.text('Независимая обратная проверка'), findsOneWidget);
-    expect(find.text('EN → RU'), findsOneWidget);
-    expect(find.text('TH → EN'), findsOneWidget);
+    expect(find.text('SOURCE TEXT и прямые секции'), findsOneWidget);
+    expect(find.text('Обратные секции перевода'), findsOneWidget);
+    for (final String section in <String>[
+      'SOURCE TEXT',
+      'RU',
+      'EN',
+      'TH',
+      'EN_TO_RU',
+      'TH_TO_RU',
+      'EN_TO_TH',
+      'TH_TO_EN',
+    ]) {
+      expect(find.text(section), findsOneWidget);
+    }
+    expect(find.text('RU · SOURCE TEXT'), findsNothing);
+    expect(find.textContaining('→'), findsNothing);
     expect(find.text('Аудит и диагностика'), findsOneWidget);
   });
 
@@ -94,14 +108,145 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: verdictCard, matching: find.text('• Термин X')),
+      find.descendant(of: verdictCard, matching: find.text('Термин X')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: verdictCard, matching: find.text('• Стиль X')),
+      find.descendant(of: verdictCard, matching: find.text('Стиль X')),
       findsOneWidget,
     );
+    expect(
+      find.descendant(
+        of: verdictCard,
+        matching: find.textContaining('Устаревшее доказательство'),
+      ),
+      findsNWidgets(2),
+    );
   });
+
+  testWidgets('shows every structured evidence field', (
+    WidgetTester tester,
+  ) async {
+    final TranslationFinding finding = TranslationFinding(
+      category: TranslationFindingCategory.meaning,
+      section: TranslationLanguage.en,
+      sourceFragment: 'оборудования',
+      translationFragment: 'installed equipment',
+      reason: 'Изменён объект.',
+      impact: 'Инструкция относится к другому устройству.',
+      correctVariant: 'Photo of the installed equipment.',
+      sourceAmbiguity: 'NONE',
+    );
+    final TranslatorRunReport report = _report(
+      audit: TranslationAudit(
+        findings: <TranslationFinding>[finding],
+      ),
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text('MEANING · EN'), findsOneWidget);
+    expect(find.text('Затронутая секция'), findsOneWidget);
+    expect(find.text('Фрагмент SOURCE TEXT'), findsOneWidget);
+    expect(find.text('оборудования'), findsOneWidget);
+    expect(find.text('Фрагмент перевода'), findsOneWidget);
+    expect(find.text('installed equipment'), findsOneWidget);
+    expect(find.text('Обнаруженное различие'), findsOneWidget);
+    expect(find.text('Изменён объект.'), findsOneWidget);
+    expect(find.text('Влияние'), findsOneWidget);
+    expect(
+      find.text('Инструкция относится к другому устройству.'),
+      findsOneWidget,
+    );
+    expect(find.text('Корректный вариант'), findsOneWidget);
+    expect(find.text('Photo of the installed equipment.'), findsWidgets);
+    expect(find.text('Неоднозначность SOURCE TEXT'), findsOneWidget);
+    expect(find.text('Не обнаружена'), findsOneWidget);
+  });
+
+  for (final ({
+    Locale locale,
+    String verdictTitle,
+    String auditTitle,
+    String evidenceSection,
+  }) localeCase in <({
+    Locale locale,
+    String verdictTitle,
+    String auditTitle,
+    String evidenceSection,
+  })>[
+    (
+      locale: RegistryStudioLocalizations.russian,
+      verdictTitle: 'Автоматический вердикт перевода',
+      auditTitle: 'Аудит и диагностика',
+      evidenceSection: 'Затронутая секция',
+    ),
+    (
+      locale: RegistryStudioLocalizations.english,
+      verdictTitle: 'Automatic translation verdict',
+      auditTitle: 'Audit and diagnostics',
+      evidenceSection: 'Affected section',
+    ),
+    (
+      locale: RegistryStudioLocalizations.thai,
+      verdictTitle: 'คำตัดสินการแปลอัตโนมัติ',
+      auditTitle: 'การตรวจสอบและการวินิจฉัย',
+      evidenceSection: 'ส่วนที่ได้รับผลกระทบ',
+    ),
+  ]) {
+    testWidgets(
+      'localizes evidence labels for ${localeCase.locale.languageCode}',
+      (WidgetTester tester) async {
+        final TranslatorRunReport report = _report(
+          audit: TranslationAudit(
+            findings: <TranslationFinding>[
+              TranslationFinding(
+                category: TranslationFindingCategory.style,
+                section: TranslationLanguage.en,
+                sourceFragment: 'Фотография',
+                translationFragment: 'Photo',
+                reason: 'Формулировка менее канонична.',
+                impact: 'Смысл сохранён.',
+                correctVariant: 'Use the canonical wording.',
+                sourceAmbiguity: 'NONE',
+              ),
+            ],
+          ),
+        );
+
+        await _pumpTranslator(
+          tester,
+          locale: localeCase.locale,
+          provider: _SuccessProvider(report),
+          draftStore: _MemoryDraftStore(
+            draft: TranslatorDraft(
+              sourceText: report.request.sourceText,
+              sourceLanguageHint: TranslationLanguage.ru,
+              report: report,
+            ),
+          ),
+          accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+        );
+
+        expect(find.text(localeCase.verdictTitle), findsOneWidget);
+        expect(find.text(localeCase.auditTitle), findsOneWidget);
+        expect(find.text(localeCase.evidenceSection), findsOneWidget);
+        expect(find.text('EXACT'), findsNothing);
+        expect(find.text('EQUIVALENT'), findsOneWidget);
+      },
+    );
+  }
 
   testWidgets('clear removes Translator result only', (
     WidgetTester tester,
@@ -244,6 +389,100 @@ void main() {
     expect(store.clearCount, 1);
   });
 
+  for (final ({
+    Locale locale,
+    String title,
+    String message,
+  }) localeCase in <({
+    Locale locale,
+    String title,
+    String message,
+  })>[
+    (
+      locale: RegistryStudioLocalizations.english,
+      title: 'Restore warning',
+      message: 'The saved Translator draft was corrupt and was safely removed.',
+    ),
+    (
+      locale: RegistryStudioLocalizations.thai,
+      title: 'คำเตือนการกู้คืน',
+      message:
+          'ฉบับร่าง Translator ที่บันทึกไว้เสียหายและถูกลบออกอย่างปลอดภัย',
+    ),
+  ]) {
+    testWidgets(
+      'localizes corrupt draft warning for ${localeCase.locale.languageCode}',
+      (WidgetTester tester) async {
+        await _pumpTranslator(
+          tester,
+          locale: localeCase.locale,
+          provider: _SuccessProvider(_report()),
+          draftStore: _MemoryDraftStore(
+            loadError: const FormatException('Internal schema detail.'),
+          ),
+          accessKeyStore: _MemoryAccessKeyStore(),
+        );
+
+        expect(find.text(localeCase.title), findsOneWidget);
+        expect(find.text(localeCase.message), findsOneWidget);
+        expect(find.textContaining('schema'), findsNothing);
+      },
+    );
+  }
+
+  for (final ({
+    Locale locale,
+    String message,
+    String codeLabel,
+  }) localeCase in <({
+    Locale locale,
+    String message,
+    String codeLabel,
+  })>[
+    (
+      locale: RegistryStudioLocalizations.english,
+      message: 'Typhoon rejected the API key. Check the saved key.',
+      codeLabel: 'Error code: unauthorized',
+    ),
+    (
+      locale: RegistryStudioLocalizations.thai,
+      message: 'Typhoon ปฏิเสธคีย์ API โปรดตรวจสอบคีย์ที่บันทึกไว้',
+      codeLabel: 'รหัสข้อผิดพลาด: unauthorized',
+    ),
+  ]) {
+    testWidgets(
+      'localizes provider failure for ${localeCase.locale.languageCode}',
+      (WidgetTester tester) async {
+        await _pumpTranslator(
+          tester,
+          locale: localeCase.locale,
+          provider: _FailureProvider(
+            TranslatorFailure(
+              stage: TranslatorFailureStage.transport,
+              code: TranslatorFailureCode.unauthorized,
+              message: 'Внутреннее сообщение provider.',
+            ),
+          ),
+          draftStore: _MemoryDraftStore(),
+          accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey<String>('translator-source-text-field')),
+          'Source text.',
+        );
+        await tester.tap(
+          find.byKey(const ValueKey<String>('translator-run-button')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text(localeCase.message), findsOneWidget);
+        expect(find.text(localeCase.codeLabel), findsOneWidget);
+        expect(find.textContaining('Внутреннее сообщение'), findsNothing);
+      },
+    );
+  }
+
   testWidgets('uses compact source header and text-only run button', (
     WidgetTester tester,
   ) async {
@@ -256,7 +495,7 @@ void main() {
 
     expect(
       find.byKey(const ValueKey<String>('translator-source-language-menu')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('Исходный текст'), findsOneWidget);
     expect(find.text('Язык источника'), findsNothing);
@@ -271,9 +510,18 @@ Future<void> _pumpTranslator(
   required TranslatorDraftStore draftStore,
   required TranslatorAccessKeyStore accessKeyStore,
   TranslatorWorkspaceController? controller,
+  Locale locale = RegistryStudioLocalizations.russian,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
+      supportedLocales: RegistryStudioLocalizations.supportedLocales,
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        RegistryStudioLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: Scaffold(
         body: TranslatorWorkspaceView(
           provider: provider,
@@ -290,7 +538,7 @@ Future<void> _pumpTranslator(
 
 TranslatorRunReport _report({TranslationAudit? audit}) {
   final TranslatorWorkRequest request = TranslatorWorkRequest(
-    sourceText: 'Фотография установленной варочной панели.',
+    sourceText: 'Фотография установленного оборудования.',
     sourceLanguageHint: TranslationLanguage.ru,
   );
 
@@ -300,12 +548,12 @@ TranslatorRunReport _report({TranslationAudit? audit}) {
       sourceLanguage: TranslationLanguage.ru,
       sourceText: request.sourceText,
       ru: request.sourceText,
-      en: 'Photo of the installed cooktop.',
-      th: 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
+      en: 'Photo of the installed equipment.',
+      th: 'ภาพถ่ายอุปกรณ์ที่ติดตั้งแล้ว',
       enToRu: request.sourceText,
       thToRu: request.sourceText,
-      enToTh: 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
-      thToEn: 'Photo of the installed cooktop.',
+      enToTh: 'ภาพถ่ายอุปกรณ์ที่ติดตั้งแล้ว',
+      thToEn: 'Photo of the installed equipment.',
     ),
     audit: audit ?? TranslationAudit(),
     createdAt: DateTime.utc(2026, 7, 26, 6),
@@ -368,6 +616,38 @@ final class _SuccessOperation implements TranslatorOperation {
 
   @override
   Future<TranslatorRunReport> get result async => report;
+
+  @override
+  void cancel() {}
+}
+
+final class _FailureProvider implements TranslatorProvider {
+  const _FailureProvider(this.failure);
+
+  final TranslatorFailure failure;
+
+  @override
+  TranslatorOperation start({
+    required TranslatorWorkRequest request,
+    required String accessKey,
+  }) {
+    return _FailureOperation(failure);
+  }
+}
+
+final class _FailureOperation implements TranslatorOperation {
+  const _FailureOperation(this.failure);
+
+  final TranslatorFailure failure;
+
+  @override
+  Stream<TranslatorRunStage> get progress =>
+      const Stream<TranslatorRunStage>.empty();
+
+  @override
+  Future<TranslatorRunReport> get result async {
+    throw TranslatorProviderException(failure);
+  }
 
   @override
   void cancel() {}

@@ -261,7 +261,7 @@ final class _TranslatorWorkspaceBodyState
                 const SizedBox(height: 12),
                 _MessageCard(
                   title: l10n.restoreWarning,
-                  message: state.restoreWarning!,
+                  message: l10n.corruptDraftRemoved,
                   icon: Icons.warning_amber_outlined,
                 ),
               ],
@@ -295,24 +295,9 @@ final class _TranslatorWorkspaceBodyState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    l10n.sourceText,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                _SourceLanguageMenu(
-                  selectedLanguage: state.sourceLanguageHint,
-                  enabled: !state.isRunning,
-                  onSelected: (TranslationLanguage? selectedLanguage) {
-                    context.read<TranslatorCubit>().selectSourceLanguage(
-                      selectedLanguage,
-                    );
-                  },
-                ),
-              ],
+            Text(
+              l10n.sourceText,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
             TextField(
@@ -512,76 +497,6 @@ final class _AccessKeyDialogState extends State<_AccessKeyDialog> {
   }
 }
 
-enum _SourceLanguageSelection { automatic, ru, en, th }
-
-final class _SourceLanguageMenu extends StatelessWidget {
-  const _SourceLanguageMenu({
-    required this.selectedLanguage,
-    required this.enabled,
-    required this.onSelected,
-  });
-
-  final TranslationLanguage? selectedLanguage;
-  final bool enabled;
-  final ValueChanged<TranslationLanguage?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
-
-    return PopupMenuButton<_SourceLanguageSelection>(
-      key: const ValueKey<String>('translator-source-language-menu'),
-      enabled: enabled,
-      tooltip: l10n.sourceLanguage,
-      onSelected: (_SourceLanguageSelection selection) {
-        onSelected(switch (selection) {
-          _SourceLanguageSelection.automatic => null,
-          _SourceLanguageSelection.ru => TranslationLanguage.ru,
-          _SourceLanguageSelection.en => TranslationLanguage.en,
-          _SourceLanguageSelection.th => TranslationLanguage.th,
-        });
-      },
-      itemBuilder: (BuildContext context) {
-        return <PopupMenuEntry<_SourceLanguageSelection>>[
-          PopupMenuItem<_SourceLanguageSelection>(
-            value: _SourceLanguageSelection.automatic,
-            child: Text(l10n.detectAutomatically),
-          ),
-          const PopupMenuItem<_SourceLanguageSelection>(
-            value: _SourceLanguageSelection.ru,
-            child: Text('RU'),
-          ),
-          const PopupMenuItem<_SourceLanguageSelection>(
-            value: _SourceLanguageSelection.en,
-            child: Text('EN'),
-          ),
-          const PopupMenuItem<_SourceLanguageSelection>(
-            value: _SourceLanguageSelection.th,
-            child: Text('TH'),
-          ),
-        ];
-      },
-      child: Semantics(
-        button: true,
-        label: l10n.sourceLanguage,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Icon(Icons.language_outlined),
-              const SizedBox(width: 6),
-              Text(selectedLanguage?.code ?? l10n.automaticShort),
-              const SizedBox(width: 2),
-              const Icon(Icons.arrow_drop_down),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 final class _ProgressCard extends StatelessWidget {
   const _ProgressCard({required this.stage});
 
@@ -639,8 +554,13 @@ final class _FailureCard extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            Text(failure.message),
+            Text(_failureMessage(l10n, failure.code)),
             const SizedBox(height: 8),
+            Text(
+              '${l10n.errorCode}: ${failure.code.name}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 4),
             Text(
               l10n.stageLabel(_failureStageLabel(l10n, failure.stage)),
               style: Theme.of(context).textTheme.bodySmall,
@@ -714,10 +634,7 @@ final class _TranslationReportView extends StatelessWidget {
         _SectionCard(
           title: l10n.directTranslation,
           entries: <MapEntry<String, String>>[
-            MapEntry<String, String>(
-              '${bundle.sourceLanguage.code} · SOURCE TEXT',
-              bundle.sourceText,
-            ),
+            MapEntry<String, String>('SOURCE TEXT', bundle.sourceText),
             MapEntry<String, String>('RU', bundle.ru),
             MapEntry<String, String>('EN', bundle.en),
             MapEntry<String, String>('TH', bundle.th),
@@ -727,10 +644,10 @@ final class _TranslationReportView extends StatelessWidget {
         _SectionCard(
           title: l10n.reverseCheck,
           entries: <MapEntry<String, String>>[
-            MapEntry<String, String>('EN → RU', bundle.enToRu),
-            MapEntry<String, String>('TH → RU', bundle.thToRu),
-            MapEntry<String, String>('EN → TH', bundle.enToTh),
-            MapEntry<String, String>('TH → EN', bundle.thToEn),
+            MapEntry<String, String>('EN_TO_RU', bundle.enToRu),
+            MapEntry<String, String>('TH_TO_RU', bundle.thToRu),
+            MapEntry<String, String>('EN_TO_TH', bundle.enToTh),
+            MapEntry<String, String>('TH_TO_EN', bundle.thToEn),
           ],
         ),
       ],
@@ -798,18 +715,33 @@ final class _VerdictCard extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            _FindingGroup(title: l10n.meaning, findings: audit.meaningFindings),
+            _FindingGroup(
+              title: l10n.meaning,
+              findings: _findingsByCategory(
+                audit,
+                TranslationFindingCategory.meaning,
+              ),
+            ),
             _FindingGroup(
               title: l10n.terminology,
-              findings: audit.terminologyFindings,
+              findings: _findingsByCategory(
+                audit,
+                TranslationFindingCategory.terminology,
+              ),
             ),
             _FindingGroup(
               title: l10n.canonicalStyle,
-              findings: audit.styleFindings,
+              findings: _findingsByCategory(
+                audit,
+                TranslationFindingCategory.style,
+              ),
             ),
             _FindingGroup(
               title: l10n.ambiguity,
-              findings: audit.ambiguityFindings,
+              findings: _findingsByCategory(
+                audit,
+                TranslationFindingCategory.ambiguity,
+              ),
             ),
             const SizedBox(height: 8),
             Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
@@ -879,7 +811,7 @@ final class _FindingGroup extends StatelessWidget {
   const _FindingGroup({required this.title, required this.findings});
 
   final String title;
-  final List<String> findings;
+  final List<TranslationFinding> findings;
 
   @override
   Widget build(BuildContext context) {
@@ -891,19 +823,182 @@ final class _FindingGroup extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           if (findings.isEmpty)
             Text(l10n.noViolations)
           else
-            for (final String finding in findings)
+            for (int index = 0; index < findings.length; index += 1)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('• $finding'),
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _FindingCard(
+                  finding: findings[index],
+                  index: index,
+                ),
               ),
         ],
       ),
     );
   }
+}
+
+final class _FindingCard extends StatelessWidget {
+  const _FindingCard({required this.finding, required this.index});
+
+  final TranslationFinding finding;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+    final ThemeData theme = Theme.of(context);
+
+    if (finding.isLegacy) {
+      return Card(
+        key: ValueKey<String>(
+          'translator-finding-${finding.category.code}-$index',
+        ),
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                '${finding.category.code} · ${l10n.legacyEvidence}',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 6),
+              Text(l10n.legacyEvidenceNotice),
+              const SizedBox(height: 8),
+              SelectableText(finding.legacyMessage!),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final String sourceAmbiguity = finding.sourceAmbiguity! == 'NONE'
+        ? l10n.noSourceAmbiguity
+        : finding.sourceAmbiguity!;
+
+    return Card(
+      key: ValueKey<String>(
+        'translator-finding-${finding.category.code}-$index',
+      ),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              '${finding.category.code} · ${finding.section!.code}',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            _EvidenceField(
+              label: l10n.evidenceSection,
+              value: finding.section!.code,
+            ),
+            _EvidenceField(
+              label: l10n.evidenceSourceFragment,
+              value: finding.sourceFragment!,
+            ),
+            _EvidenceField(
+              label: l10n.evidenceTranslationFragment,
+              value: finding.translationFragment!,
+            ),
+            _EvidenceField(
+              label: l10n.evidenceReason,
+              value: finding.reason!,
+            ),
+            _EvidenceField(
+              label: l10n.evidenceImpact,
+              value: finding.impact!,
+            ),
+            _EvidenceField(
+              label: l10n.evidenceCorrectVariant,
+              value: finding.correctVariant!,
+            ),
+            _EvidenceField(
+              label: l10n.evidenceSourceAmbiguity,
+              value: sourceAmbiguity,
+              isLast: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _EvidenceField extends StatelessWidget {
+  const _EvidenceField({
+    required this.label,
+    required this.value,
+    this.isLast = false,
+  });
+
+  final String label;
+  final String value;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 2),
+          SelectableText(value),
+        ],
+      ),
+    );
+  }
+}
+
+List<TranslationFinding> _findingsByCategory(
+  TranslationAudit audit,
+  TranslationFindingCategory category,
+) {
+  return audit.findings
+      .where(
+        (TranslationFinding finding) => finding.category == category,
+      )
+      .toList(growable: false);
+}
+
+String _failureMessage(
+  RegistryStudioLocalizations l10n,
+  TranslatorFailureCode code,
+) {
+  return switch (code) {
+    TranslatorFailureCode.sourceTextEmpty => l10n.sourceTextRequired,
+    TranslatorFailureCode.accessKeyEmpty => l10n.accessKeyRequired,
+    TranslatorFailureCode.accessKeyInvalidCharacters => l10n.accessKeyInvalid,
+    TranslatorFailureCode.missingRequiredSection =>
+      l10n.translationResponseInvalid,
+    TranslatorFailureCode.emptyRequiredSection =>
+      l10n.translationResponseInvalid,
+    TranslatorFailureCode.placeholderValue => l10n.translationResponseInvalid,
+    TranslatorFailureCode.unexpectedSection =>
+      l10n.translationResponseInvalid,
+    TranslatorFailureCode.invalidSectionOrder =>
+      l10n.translationResponseInvalid,
+    TranslatorFailureCode.malformedProviderResponse =>
+      l10n.translationResponseInvalid,
+    TranslatorFailureCode.invalidSourceLanguage => l10n.sourceLanguageInvalid,
+    TranslatorFailureCode.sourceTextMismatch => l10n.sourceTextChanged,
+    TranslatorFailureCode.invalidAuditResponse => l10n.auditResponseInvalid,
+    TranslatorFailureCode.unauthorized => l10n.unauthorizedFailure,
+    TranslatorFailureCode.rateLimited => l10n.rateLimitedFailure,
+    TranslatorFailureCode.serverFailure => l10n.serverFailure,
+    TranslatorFailureCode.networkFailure => l10n.networkFailure,
+    TranslatorFailureCode.timeout => l10n.timeoutFailure,
+    TranslatorFailureCode.cancelled => l10n.translationCancelled,
+  };
 }
 
 String _failureTitle(

@@ -151,16 +151,22 @@ final class RegistryStudioLocalizations {
     th: 'คำเตือนการกู้คืน',
   );
 
+  String get corruptDraftRemoved => _value(
+    ru: 'Сохранённый черновик Translator был повреждён и безопасно удалён.',
+    en: 'The saved Translator draft was corrupt and was safely removed.',
+    th: 'ฉบับร่าง Translator ที่บันทึกไว้เสียหายและถูกลบออกอย่างปลอดภัย',
+  );
+
   String get directTranslationStage => _value(
-    ru: 'Прямой перевод RU / EN / TH',
-    en: 'Direct RU / EN / TH translation',
-    th: 'การแปลโดยตรง RU / EN / TH',
+    ru: 'Атомарный пакет перевода RU / EN / TH',
+    en: 'Atomic RU / EN / TH translation bundle',
+    th: 'ชุดการแปลแบบอะตอม RU / EN / TH',
   );
 
   String get reverseTranslationStage => _value(
-    ru: 'Независимые обратные переводы',
-    en: 'Independent reverse translations',
-    th: 'การแปลย้อนกลับแบบอิสระ',
+    ru: 'Формирование обратных секций',
+    en: 'Building reverse sections',
+    th: 'กำลังสร้างส่วนการแปลย้อนกลับ',
   );
 
   String get auditStage => _value(
@@ -180,23 +186,26 @@ final class RegistryStudioLocalizations {
 
   String get partialResultSaved => _value(
     ru:
-        'Частичный девятисекционный результат сохранён, '
+        'Частичный результат перевода сохранён, '
         'но автоматический вердикт не создан.',
     en:
-        'The partial nine-section result was saved, '
+        'The partial translation result was saved, '
         'but no automatic verdict was created.',
     th:
-        'บันทึกผลลัพธ์เก้าส่วนที่ไม่สมบูรณ์แล้ว '
+        'บันทึกผลการแปลบางส่วนแล้ว '
         'แต่ยังไม่ได้สร้างคำตัดสินอัตโนมัติ',
   );
 
-  String get directTranslation =>
-      _value(ru: 'Прямой перевод', en: 'Direct translation', th: 'คำแปลโดยตรง');
+  String get directTranslation => _value(
+    ru: 'SOURCE TEXT и прямые секции',
+    en: 'SOURCE TEXT and direct sections',
+    th: 'SOURCE TEXT และส่วนการแปลโดยตรง',
+  );
 
   String get reverseCheck => _value(
-    ru: 'Независимая обратная проверка',
-    en: 'Independent reverse check',
-    th: 'การตรวจสอบย้อนกลับแบบอิสระ',
+    ru: 'Обратные секции перевода',
+    en: 'Reverse translation sections',
+    th: 'ส่วนการแปลย้อนกลับ',
   );
 
   String get automaticVerdict => _value(
@@ -267,6 +276,66 @@ final class RegistryStudioLocalizations {
     th: 'ไม่พบปัญหา',
   );
 
+  String get evidenceSection => _value(
+    ru: 'Затронутая секция',
+    en: 'Affected section',
+    th: 'ส่วนที่ได้รับผลกระทบ',
+  );
+
+  String get evidenceSourceFragment => _value(
+    ru: 'Фрагмент SOURCE TEXT',
+    en: 'SOURCE TEXT fragment',
+    th: 'ส่วนของ SOURCE TEXT',
+  );
+
+  String get evidenceTranslationFragment => _value(
+    ru: 'Фрагмент перевода',
+    en: 'Translation fragment',
+    th: 'ส่วนของคำแปล',
+  );
+
+  String get evidenceReason => _value(
+    ru: 'Обнаруженное различие',
+    en: 'Detected difference',
+    th: 'ความแตกต่างที่ตรวจพบ',
+  );
+
+  String get evidenceImpact =>
+      _value(ru: 'Влияние', en: 'Impact', th: 'ผลกระทบ');
+
+  String get evidenceCorrectVariant => _value(
+    ru: 'Корректный вариант',
+    en: 'Correct variant',
+    th: 'รูปแบบที่ถูกต้อง',
+  );
+
+  String get evidenceSourceAmbiguity => _value(
+    ru: 'Неоднозначность SOURCE TEXT',
+    en: 'SOURCE TEXT ambiguity',
+    th: 'ความกำกวมของ SOURCE TEXT',
+  );
+
+  String get noSourceAmbiguity =>
+      _value(ru: 'Не обнаружена', en: 'None detected', th: 'ไม่พบ');
+
+  String get legacyEvidence => _value(
+    ru: 'Устаревшее доказательство',
+    en: 'Legacy evidence',
+    th: 'หลักฐานเดิม',
+  );
+
+  String get legacyEvidenceNotice => _value(
+    ru:
+        'Это доказательство восстановлено из старого черновика. '
+        'Структурированные поля для него недоступны.',
+    en:
+        'This evidence was restored from an older draft. '
+        'Structured fields are unavailable for it.',
+    th:
+        'หลักฐานนี้กู้คืนมาจากฉบับร่างรุ่นเก่า '
+        'จึงไม่มีฟิลด์แบบมีโครงสร้าง',
+  );
+
   String get incompleteTranslation => _value(
     ru: 'Перевод неполный',
     en: 'Translation incomplete',
@@ -289,6 +358,81 @@ final class RegistryStudioLocalizations {
     ru: 'Техническая ошибка Translator',
     en: 'Translator technical error',
     th: 'ข้อผิดพลาดทางเทคนิคของ Translator',
+  );
+
+  String get errorCode =>
+      _value(ru: 'Код ошибки', en: 'Error code', th: 'รหัสข้อผิดพลาด');
+
+  String get sourceTextRequired => _value(
+    ru: 'Введите исходный текст.',
+    en: 'Enter the source text.',
+    th: 'ป้อนข้อความต้นฉบับ',
+  );
+
+  String get accessKeyRequired => _value(
+    ru: 'Введите Typhoon API key.',
+    en: 'Enter the Typhoon API key.',
+    th: 'ป้อนคีย์ API ของ Typhoon',
+  );
+
+  String get accessKeyInvalid => _value(
+    ru: 'Typhoon API key содержит недопустимые символы.',
+    en: 'The Typhoon API key contains invalid characters.',
+    th: 'คีย์ API ของ Typhoon มีอักขระที่ไม่ถูกต้อง',
+  );
+
+  String get translationResponseInvalid => _value(
+    ru: 'Typhoon вернул неполный или некорректный пакет перевода.',
+    en: 'Typhoon returned an incomplete or invalid translation bundle.',
+    th: 'Typhoon ส่งชุดการแปลที่ไม่สมบูรณ์หรือไม่ถูกต้อง',
+  );
+
+  String get sourceLanguageInvalid => _value(
+    ru: 'Typhoon вернул некорректный язык источника.',
+    en: 'Typhoon returned an invalid source language.',
+    th: 'Typhoon ส่งภาษาต้นฉบับที่ไม่ถูกต้อง',
+  );
+
+  String get sourceTextChanged => _value(
+    ru: 'Typhoon изменил SOURCE TEXT. Результат отклонён.',
+    en: 'Typhoon changed SOURCE TEXT. The result was rejected.',
+    th: 'Typhoon เปลี่ยน SOURCE TEXT ระบบจึงปฏิเสธผลลัพธ์',
+  );
+
+  String get auditResponseInvalid => _value(
+    ru: 'Typhoon вернул некорректное структурированное доказательство аудита.',
+    en: 'Typhoon returned invalid structured audit evidence.',
+    th: 'Typhoon ส่งหลักฐานการตรวจสอบแบบมีโครงสร้างที่ไม่ถูกต้อง',
+  );
+
+  String get unauthorizedFailure => _value(
+    ru: 'Typhoon отклонил API key. Проверьте сохранённый ключ.',
+    en: 'Typhoon rejected the API key. Check the saved key.',
+    th: 'Typhoon ปฏิเสธคีย์ API โปรดตรวจสอบคีย์ที่บันทึกไว้',
+  );
+
+  String get rateLimitedFailure => _value(
+    ru: 'Typhoon временно ограничил частоту запросов. Повторите позже.',
+    en: 'Typhoon temporarily rate-limited requests. Retry later.',
+    th: 'Typhoon จำกัดอัตราคำขอชั่วคราว โปรดลองอีกครั้งภายหลัง',
+  );
+
+  String get serverFailure => _value(
+    ru: 'Сервис Typhoon временно недоступен.',
+    en: 'The Typhoon service is temporarily unavailable.',
+    th: 'บริการ Typhoon ไม่พร้อมใช้งานชั่วคราว',
+  );
+
+  String get networkFailure => _value(
+    ru: 'Не удалось связаться с Typhoon. Проверьте сеть.',
+    en: 'Typhoon could not be reached. Check the network.',
+    th: 'ไม่สามารถเชื่อมต่อ Typhoon ได้ โปรดตรวจสอบเครือข่าย',
+  );
+
+  String get timeoutFailure => _value(
+    ru: 'Typhoon не ответил вовремя. Повторите запрос.',
+    en: 'Typhoon did not respond in time. Retry the request.',
+    th: 'Typhoon ไม่ตอบกลับภายในเวลาที่กำหนด โปรดลองคำขออีกครั้ง',
   );
 
   String get validationStage => _value(

@@ -118,7 +118,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
               ? TranslatorViewStatus.idle
               : TranslatorViewStatus.success,
           sourceText: draft.sourceText,
-          sourceLanguageHint: draft.sourceLanguageHint,
+          sourceLanguageHint: null,
           report: draft.report,
         ),
       );
@@ -144,6 +144,7 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
       state.copyWith(
         status: TranslatorViewStatus.idle,
         sourceText: value,
+        clearSourceLanguageHint: true,
         clearReport: true,
         clearFailure: true,
         clearStage: true,
@@ -196,7 +197,6 @@ final class TranslatorCubit extends Cubit<TranslatorState> {
     final int requestId = ++_requestId;
     final TranslatorWorkRequest request = TranslatorWorkRequest(
       sourceText: sourceText,
-      sourceLanguageHint: state.sourceLanguageHint,
     );
 
     final TranslatorOperation operation = provider.start(

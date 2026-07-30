@@ -7,7 +7,7 @@ import 'package:helpy_translator/registry_studio/translator/domain/translator_mo
 import 'package:helpy_translator/registry_studio/translator/presentation/translator_cubit.dart';
 
 void main() {
-  test('restores persisted Translator draft independently', () async {
+  test('restores draft without reusing hidden source language hint', () async {
     final _MemoryDraftStore store = _MemoryDraftStore(
       draft: const TranslatorDraft(
         sourceText: 'Сохранённый текст.',
@@ -25,7 +25,31 @@ void main() {
 
     expect(cubit.state.status, TranslatorViewStatus.idle);
     expect(cubit.state.sourceText, 'Сохранённый текст.');
+    expect(cubit.state.sourceLanguageHint, isNull);
+  });
+
+  test('clears and never sends a hidden source language hint', () async {
+    final _FakeProvider provider = _FakeProvider.success(_report());
+    final TranslatorCubit cubit = TranslatorCubit(
+      provider: provider,
+      draftStore: _MemoryDraftStore(),
+    );
+    addTearDown(cubit.close);
+
+    await cubit.restore();
+    await cubit.updateSourceText('ข้อความต้นฉบับ');
+    await cubit.selectSourceLanguage(TranslationLanguage.ru);
+
     expect(cubit.state.sourceLanguageHint, TranslationLanguage.ru);
+
+    await cubit.updateSourceText('ข้อความต้นฉบับที่แก้ไข');
+    expect(cubit.state.sourceLanguageHint, isNull);
+
+    await cubit.selectSourceLanguage(TranslationLanguage.ru);
+    await cubit.translate(accessKey: 'key');
+
+    expect(provider.lastRequest, isNotNull);
+    expect(provider.lastRequest!.sourceLanguageHint, isNull);
   });
 
   test('shows fixed Russian warning after corrupt draft recovery', () async {
@@ -229,12 +253,16 @@ final class _FakeProvider implements TranslatorProvider {
     : _operation = _CompletedOperation.failure(failure);
 
   final TranslatorOperation _operation;
+  TranslatorWorkRequest? lastRequest;
 
   @override
   TranslatorOperation start({
     required TranslatorWorkRequest request,
     required String accessKey,
-  }) => _operation;
+  }) {
+    lastRequest = request;
+    return _operation;
+  }
 }
 
 final class _CompletedOperation implements TranslatorOperation {
