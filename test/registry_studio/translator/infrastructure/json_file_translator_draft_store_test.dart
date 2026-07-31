@@ -7,431 +7,340 @@ import 'package:helpy_translator/registry_studio/translator/domain/translator_mo
 import 'package:helpy_translator/registry_studio/translator/infrastructure/json_file_translator_draft_store.dart';
 
 void main() {
-  late Directory directory;
+  late Directory tempDirectory;
   late JsonFileTranslatorDraftStore store;
 
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp(
-      'translator_draft_store_test_',
+    tempDirectory = await Directory.systemTemp.createTemp(
+      'registry-studio-translator-store-',
     );
     store = JsonFileTranslatorDraftStore(
-      applicationSupportDirectory: directory,
+      applicationSupportDirectory: tempDirectory,
     );
   });
 
   tearDown(() async {
-    if (await directory.exists()) {
-      await directory.delete(recursive: true);
+    if (await tempDirectory.exists()) {
+      await tempDirectory.delete(recursive: true);
     }
   });
 
-  test('returns no draft when file is absent', () async {
-    expect(await store.load(), isNull);
-  });
-
-  test('persists and restores exact draft and report', () async {
-    final TranslatorRunReport report = _report();
-
-    await store.save(
-      TranslatorDraft(
+  test(
+    'round-trips v4 semantic exact report without reverse sections',
+    () async {
+      final TranslatorRunReport report = _report(audit: _exactAudit());
+      final TranslatorDraft draft = TranslatorDraft(
         sourceText: report.request.sourceText,
         sourceLanguageHint: TranslationLanguage.ru,
         report: report,
-      ),
-    );
+      );
 
-    final TranslatorDraft? restored = await store.load();
+      await store.save(draft);
 
-    expect(restored, isNotNull);
-    expect(restored!.sourceText, report.request.sourceText);
-    expect(restored.sourceLanguageHint, TranslationLanguage.ru);
-    expect(restored.report, report);
-  });
+      final File file = _draftFile(tempDirectory);
+      final Map<String, Object?> encoded =
+          (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
+              .cast<String, Object?>();
+      final Map<String, Object?> encodedReport =
+          (encoded['report']! as Map<Object?, Object?>).cast<String, Object?>();
+      final Map<String, Object?> encodedBundle =
+          (encodedReport['bundle']! as Map<Object?, Object?>)
+              .cast<String, Object?>();
 
-  test('writes v3 Russian-only compatibility evidence schema', () async {
-    final TranslatorRunReport report = _report();
+      expect(encoded['version'], 'v4');
+      expect(encodedBundle.keys, <String>[
+        'SOURCE LANGUAGE',
+        'SOURCE TEXT',
+        'RU',
+        'EN',
+        'TH',
+      ]);
 
-    await store.save(
-      TranslatorDraft(
-        sourceText: report.request.sourceText,
-        sourceLanguageHint: TranslationLanguage.ru,
-        report: report,
-      ),
-    );
+      final TranslatorDraft? restored = await store.load();
 
-    final Map<String, Object?> state =
-        (jsonDecode(await _stateFile(directory).readAsString())
-                as Map<Object?, Object?>)
-            .cast<String, Object?>();
-    final Map<String, Object?> encodedReport =
-        (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
-    final Map<String, Object?> audit =
-        (encodedReport['audit']! as Map<Object?, Object?>)
-            .cast<String, Object?>();
-    final List<Object?> findings = audit['findings']! as List<Object?>;
+      expect(restored, isNotNull);
+      expect(restored!.report, report);
+      expect(restored.report!.audit.verdict, TranslationVerdict.exact);
+      expect(restored.report!.bundle.hasReverseDiagnostics, isFalse);
+    },
+  );
 
-    expect(state['version'], 'v3');
-    expect(audit.keys.toList(growable: false), <String>['findings']);
-    expect(findings, hasLength(1));
-    expect((findings.single as Map<Object?, Object?>)['kind'], 'russianOnly');
-  });
-
-  test('removes v2 evidence outside the stored bundle', () async {
-    final TranslatorRunReport report = _report();
-    await store.save(
-      TranslatorDraft(
-        sourceText: report.request.sourceText,
-        sourceLanguageHint: TranslationLanguage.ru,
-        report: report,
-      ),
-    );
-
-    final File file = _stateFile(directory);
-    final Map<String, Object?> state =
-        (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
-            .cast<String, Object?>();
-    final Map<String, Object?> encodedReport =
-        (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
-    final Map<String, Object?> audit =
-        (encodedReport['audit']! as Map<Object?, Object?>)
-            .cast<String, Object?>();
-    final List<Object?> findings = audit['findings']! as List<Object?>;
-    final Map<String, Object?> finding =
-        (findings.single as Map<Object?, Object?>).cast<String, Object?>();
-
-    finding['sourceFragment'] = 'Фрагмент отсутствует';
-    await file.writeAsString('${jsonEncode(state)}\n');
-
-    await expectLater(store.load(), throwsFormatException);
-    expect(await file.exists(), isFalse);
-  });
-
-  test('writes and restores v3 multilingual evidence', () async {
-    final TranslatorRunReport base = _report();
-    final TranslatorRunReport report = TranslatorRunReport(
-      request: base.request,
-      bundle: base.bundle,
-      audit: TranslationAudit(
-        findings: <TranslationFinding>[
-          TranslationFinding.multilingual(
-            category: TranslationFindingCategory.style,
-            section: TranslationLanguage.en,
-            sourceFragment: 'Исходный',
-            translationFragment: 'Source',
-            reason: LocalizedEvidenceText(
-              ru: 'Русское объяснение.',
-              en: 'English explanation.',
-              th: 'คำอธิบายภาษาไทย',
-            ),
-            impact: LocalizedEvidenceText(
-              ru: 'Русское влияние.',
-              en: 'English impact.',
-              th: 'ผลกระทบภาษาไทย',
-            ),
-            correctVariant: 'Source text.',
-            sourceAmbiguity: null,
-          ),
-        ],
-      ),
-      createdAt: base.createdAt,
+  test('round-trips protocol fallback as needs review', () async {
+    final TranslatorRunReport report = _report(
+      audit: TranslationAudit(protocolFallback: true),
     );
 
     await store.save(
       TranslatorDraft(sourceText: report.request.sourceText, report: report),
     );
 
-    final File stateFile = _stateFile(directory);
-    final Map<String, Object?> state =
-        (jsonDecode(await stateFile.readAsString()) as Map<Object?, Object?>)
-            .cast<String, Object?>();
-    final Map<String, Object?> encodedReport =
-        (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
-    final Map<String, Object?> audit =
-        (encodedReport['audit']! as Map<Object?, Object?>)
-            .cast<String, Object?>();
-    final Map<String, Object?> finding =
-        ((audit['findings']! as List<Object?>).single as Map<Object?, Object?>)
-            .cast<String, Object?>();
-    final Map<String, Object?> reason =
-        (finding['reason']! as Map<Object?, Object?>).cast<String, Object?>();
+    final TranslatorDraft? restored = await store.load();
 
-    expect(state['version'], 'v3');
-    expect(finding['kind'], 'multilingual');
-    expect(reason.keys.toSet(), <String>{'ru', 'en', 'th'});
-    expect(finding['sourceAmbiguity'], isNull);
-    expect((await store.load())!.report, report);
+    expect(restored!.report!.audit.protocolFallback, isTrue);
+    expect(restored.report!.audit.verdict, TranslationVerdict.needsReview);
   });
 
   test(
-    'loads v2 structured evidence as Russian-only compatibility data',
+    'reads v3 reverse report but does not trust empty legacy audit',
     () async {
-      final TranslatorRunReport report = _report();
-
-      await store.save(
-        TranslatorDraft(sourceText: report.request.sourceText, report: report),
+      final File file = _draftFile(tempDirectory);
+      await file.parent.create(recursive: true);
+      await file.writeAsString(
+        jsonEncode(<String, Object?>{
+          'version': 'v3',
+          'sourceText': 'Исходный текст.',
+          'sourceLanguageHint': 'RU',
+          'report': <String, Object?>{
+            'request': <String, Object?>{
+              'sourceText': 'Исходный текст.',
+              'sourceLanguageHint': 'RU',
+              'engineerContext': null,
+            },
+            'bundle': <String, Object?>{
+              'SOURCE LANGUAGE': 'RU',
+              'SOURCE TEXT': 'Исходный текст.',
+              'RU': 'Исходный текст.',
+              'EN': 'Source text.',
+              'TH': 'ข้อความต้นฉบับ',
+              'EN_TO_RU': 'Исходный текст.',
+              'TH_TO_RU': 'Исходный текст.',
+              'EN_TO_TH': 'ข้อความต้นฉบับ',
+              'TH_TO_EN': 'Source text.',
+            },
+            'audit': <String, Object?>{'findings': <Object?>[]},
+            'createdAt': '2026-07-31T07:00:00.000Z',
+          },
+        }),
       );
-
-      final File stateFile = _stateFile(directory);
-      final Map<String, Object?> state =
-          (jsonDecode(await stateFile.readAsString()) as Map<Object?, Object?>)
-              .cast<String, Object?>();
-      final Map<String, Object?> encodedReport =
-          (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
-      final Map<String, Object?> audit =
-          (encodedReport['audit']! as Map<Object?, Object?>)
-              .cast<String, Object?>();
-      final Map<String, Object?> finding =
-          ((audit['findings']! as List<Object?>).single
-                  as Map<Object?, Object?>)
-              .cast<String, Object?>();
-
-      state['version'] = 'v2';
-      finding['kind'] = 'structured';
-      await stateFile.writeAsString('${jsonEncode(state)}\n');
 
       final TranslatorDraft? restored = await store.load();
 
       expect(restored, isNotNull);
-      expect(restored!.report!.audit.findings.single.isRussianOnly, isTrue);
-      expect(restored.report!.audit.findings.single.isMultilingual, isFalse);
+      expect(restored!.report!.bundle.hasReverseDiagnostics, isTrue);
+      expect(restored.report!.audit.verdict, TranslationVerdict.needsReview);
     },
   );
 
-  test('removes malformed v3 localized evidence drafts', () async {
-    final File unrelated = File('${directory.path}/unrelated-v3.json');
-    await unrelated.writeAsString('keep');
-
-    final List<void Function(Map<String, Object?>)> corruptions =
-        <void Function(Map<String, Object?>)>[
-          (Map<String, Object?> finding) {
-            finding['reason'] = 'Причина строкой';
-          },
-          (Map<String, Object?> finding) {
-            finding['reason'] = <String, Object?>{
-              'ru': 'Причина.',
-              'en': 'Reason.',
-            };
-          },
-          (Map<String, Object?> finding) {
-            finding['reason'] = <String, Object?>{
-              'ru': 'Причина.',
-              'en': 'Reason.',
-              'th': 'เหตุผล',
-              'de': 'Grund',
-            };
-          },
-          (Map<String, Object?> finding) {
-            finding['reason'] = <String, Object?>{
-              'ru': 'Причина.',
-              'en': '',
-              'th': 'เหตุผล',
-            };
-          },
-          (Map<String, Object?> finding) {
-            finding['reason'] = <String, Object?>{
-              'ru': 'Причина.',
-              'en': ' Reason. ',
-              'th': 'เหตุผล',
-            };
-          },
-          (Map<String, Object?> finding) {
-            finding['sourceAmbiguity'] = 'NONE';
-          },
-          (Map<String, Object?> finding) {
-            finding['sourceAmbiguity'] = <String, Object?>{
-              'ru': 'Неоднозначность.',
-              'en': 'Ambiguity.',
-            };
-          },
-        ];
-
-    for (final void Function(Map<String, Object?>) corrupt in corruptions) {
-      final TranslatorRunReport report = _report();
+  test(
+    'rejects and deletes v4 bundle with partial reverse diagnostics',
+    () async {
+      final TranslatorRunReport report = _report(audit: _exactAudit());
       await store.save(
         TranslatorDraft(sourceText: report.request.sourceText, report: report),
       );
 
-      final File stateFile = _stateFile(directory);
-      final File temporaryFile = File('${stateFile.path}.tmp');
-      final Map<String, Object?> state =
-          (jsonDecode(await stateFile.readAsString()) as Map<Object?, Object?>)
+      final File file = _draftFile(tempDirectory);
+      final Map<String, Object?> encoded =
+          (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
               .cast<String, Object?>();
       final Map<String, Object?> encodedReport =
-          (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
-      final Map<String, Object?> audit =
-          (encodedReport['audit']! as Map<Object?, Object?>)
+          (encoded['report']! as Map<Object?, Object?>).cast<String, Object?>();
+      final Map<String, Object?> encodedBundle =
+          (encodedReport['bundle']! as Map<Object?, Object?>)
               .cast<String, Object?>();
-      final Map<String, Object?> finding =
-          ((audit['findings']! as List<Object?>).single
-                  as Map<Object?, Object?>)
-              .cast<String, Object?>();
-
-      finding['kind'] = 'multilingual';
-      finding['reason'] = <String, Object?>{
-        'ru': 'Причина.',
-        'en': 'Reason.',
-        'th': 'เหตุผล',
-      };
-      finding['impact'] = <String, Object?>{
-        'ru': 'Влияние.',
-        'en': 'Impact.',
-        'th': 'ผลกระทบ',
-      };
-      finding['sourceAmbiguity'] = null;
-      corrupt(finding);
-
-      await stateFile.writeAsString('${jsonEncode(state)}\n');
-      await temporaryFile.writeAsString('partial');
+      encodedBundle['EN_TO_RU'] = 'Исходный текст.';
+      await file.writeAsString(jsonEncode(encoded));
 
       await expectLater(store.load(), throwsFormatException);
+      expect(await file.exists(), isFalse);
+    },
+  );
 
-      expect(await stateFile.exists(), isFalse);
-      expect(await temporaryFile.exists(), isFalse);
-      expect(await unrelated.readAsString(), 'keep');
-    }
+  test('rejects and deletes corrupt draft', () async {
+    final File file = _draftFile(tempDirectory);
+    await file.parent.create(recursive: true);
+    await file.writeAsString('{broken');
+
+    await expectLater(store.load(), throwsFormatException);
+    expect(await file.exists(), isFalse);
   });
 
-  test('loads valid v1 strings as explicit legacy evidence', () async {
-    final TranslatorRunReport report = _report();
+  test('returns null when draft file is absent', () async {
+    expect(await store.load(), isNull);
+  });
 
-    await store.save(
-      TranslatorDraft(
-        sourceText: report.request.sourceText,
-        sourceLanguageHint: TranslationLanguage.ru,
-        report: report,
-      ),
+  test('loads v1 string findings as legacy evidence', () async {
+    await _writeLegacyDraft(
+      tempDirectory,
+      version: 'v1',
+      audit: <String, Object?>{
+        'meaningFindings': <String>[],
+        'terminologyFindings': <String>['Старое доказательство.'],
+        'styleFindings': <String>[],
+        'ambiguityFindings': <String>[],
+      },
     );
-
-    final File stateFile = _stateFile(directory);
-    final Map<String, Object?> state =
-        (jsonDecode(await stateFile.readAsString()) as Map<Object?, Object?>)
-            .cast<String, Object?>();
-    final Map<String, Object?> encodedReport =
-        (state['report']! as Map<Object?, Object?>).cast<String, Object?>();
-
-    state['version'] = 'v1';
-    encodedReport['audit'] = <String, Object?>{
-      'meaningFindings': <String>[],
-      'terminologyFindings': <String>['Старое доказательство.'],
-      'styleFindings': <String>[],
-      'ambiguityFindings': <String>[],
-    };
-    await stateFile.writeAsString('${jsonEncode(state)}\n');
 
     final TranslatorDraft? restored = await store.load();
 
     expect(restored, isNotNull);
-    expect(await stateFile.exists(), isTrue);
-    expect(restored!.report!.audit.findings, hasLength(1));
+    expect(restored!.report!.bundle.hasReverseDiagnostics, isTrue);
     expect(restored.report!.audit.findings.single.isLegacy, isTrue);
-    expect(restored.report!.audit.terminologyFindings, <String>[
-      'Старое доказательство.',
-    ]);
+    expect(restored.report!.audit.verdict, TranslationVerdict.needsReview);
   });
 
-  test('clear removes only Translator draft file', () async {
-    await store.save(
-      const TranslatorDraft(
-        sourceText: 'Черновик.',
-        sourceLanguageHint: TranslationLanguage.ru,
-      ),
+  test('loads v2 Russian-only structured evidence', () async {
+    await _writeLegacyDraft(
+      tempDirectory,
+      version: 'v2',
+      audit: <String, Object?>{
+        'findings': <Object?>[
+          <String, Object?>{
+            'kind': 'structured',
+            'category': 'MEANING',
+            'section': 'EN',
+            'sourceFragment': 'Исходный',
+            'translationFragment': 'Source',
+            'reason': 'Изменён объект.',
+            'impact': 'Изменилось практическое указание.',
+            'correctVariant': 'Source text.',
+            'sourceAmbiguity': 'NONE',
+          },
+        ],
+      },
     );
 
-    final File unrelated = File('${directory.path}/unrelated.txt');
-    await unrelated.writeAsString('keep');
+    final TranslatorDraft? restored = await store.load();
+
+    expect(restored, isNotNull);
+    expect(restored!.report!.audit.findings.single.isRussianOnly, isTrue);
+    expect(restored.report!.audit.verdict, TranslationVerdict.canonicalDrift);
+  });
+
+  test('loads v3 multilingual structured evidence', () async {
+    await _writeLegacyDraft(
+      tempDirectory,
+      version: 'v3',
+      audit: <String, Object?>{
+        'findings': <Object?>[
+          <String, Object?>{
+            'kind': 'multilingual',
+            'category': 'STYLE',
+            'section': 'EN',
+            'sourceFragment': 'Исходный',
+            'translationFragment': 'Source',
+            'reason': <String, Object?>{
+              'ru': 'Русское объяснение.',
+              'en': 'English explanation.',
+              'th': 'คำอธิบายภาษาไทย',
+            },
+            'impact': <String, Object?>{
+              'ru': 'Русское влияние.',
+              'en': 'English impact.',
+              'th': 'ผลกระทบภาษาไทย',
+            },
+            'correctVariant': 'Source text.',
+            'sourceAmbiguity': null,
+          },
+        ],
+      },
+    );
+
+    final TranslatorDraft? restored = await store.load();
+
+    expect(restored, isNotNull);
+    final TranslationFinding finding = restored!.report!.audit.findings.single;
+    expect(finding.isMultilingual, isTrue);
+    expect(finding.reasonFor(TranslationLanguage.th), 'คำอธิบายภาษาไทย');
+    expect(restored.report!.audit.verdict, TranslationVerdict.equivalent);
+  });
+
+  test('clear removes the draft and temporary file', () async {
+    final TranslatorRunReport report = _report(audit: _exactAudit());
+    await store.save(
+      TranslatorDraft(sourceText: report.request.sourceText, report: report),
+    );
+
+    final File file = _draftFile(tempDirectory);
+    final File temporary = File('${file.path}.tmp');
+    await temporary.writeAsString('temporary');
 
     await store.clear();
 
-    expect(await store.load(), isNull);
-    expect(await unrelated.readAsString(), 'keep');
-  });
-
-  test('removes corrupt draft and matching temporary file only', () async {
-    final Directory stateDirectory = Directory(
-      '${directory.path}${Platform.pathSeparator}'
-      '${JsonFileTranslatorDraftStore.directoryName}',
-    );
-    await stateDirectory.create(recursive: true);
-
-    final File stateFile = File(
-      '${stateDirectory.path}${Platform.pathSeparator}'
-      '${JsonFileTranslatorDraftStore.fileName}',
-    );
-    final File temporaryFile = File('${stateFile.path}.tmp');
-    final File unrelatedFile = File(
-      '${stateDirectory.path}${Platform.pathSeparator}unrelated.json',
-    );
-    await unrelatedFile.writeAsString('keep');
-
-    const List<String> corruptDrafts = <String>[
-      '{',
-      '{"version":"v1"}',
-      '{"version":"v4","sourceText":"Текст.",'
-          '"sourceLanguageHint":null,"report":null}',
-      '{"version":"v1","sourceText":"Текст.",'
-          '"sourceLanguageHint":"DE","report":null}',
-      '{"version":"v1","sourceText":"Текст.",'
-          '"sourceLanguageHint":null,"report":{"request":{}}}',
-    ];
-
-    for (final String corruptDraft in corruptDrafts) {
-      await stateFile.writeAsString('$corruptDraft\n');
-      await temporaryFile.writeAsString('partial');
-
-      await expectLater(store.load(), throwsFormatException);
-
-      expect(await stateFile.exists(), isFalse);
-      expect(await temporaryFile.exists(), isFalse);
-      expect(await unrelatedFile.readAsString(), 'keep');
-      expect(await store.load(), isNull);
-    }
+    expect(await file.exists(), isFalse);
+    expect(await temporary.exists(), isFalse);
   });
 }
 
-File _stateFile(Directory directory) {
-  return File(
-    '${directory.path}${Platform.pathSeparator}'
-    '${JsonFileTranslatorDraftStore.directoryName}'
-    '${Platform.pathSeparator}'
-    '${JsonFileTranslatorDraftStore.fileName}',
+Future<void> _writeLegacyDraft(
+  Directory root, {
+  required String version,
+  required Map<String, Object?> audit,
+}) async {
+  final File file = _draftFile(root);
+  await file.parent.create(recursive: true);
+  await file.writeAsString(
+    jsonEncode(<String, Object?>{
+      'version': version,
+      'sourceText': 'Исходный текст.',
+      'sourceLanguageHint': 'RU',
+      'report': <String, Object?>{
+        'request': <String, Object?>{
+          'sourceText': 'Исходный текст.',
+          'sourceLanguageHint': 'RU',
+          'engineerContext': null,
+        },
+        'bundle': <String, Object?>{
+          'SOURCE LANGUAGE': 'RU',
+          'SOURCE TEXT': 'Исходный текст.',
+          'RU': 'Исходный текст.',
+          'EN': 'Source text.',
+          'TH': 'ข้อความต้นฉบับ',
+          'EN_TO_RU': 'Исходный текст.',
+          'TH_TO_RU': 'Исходный текст.',
+          'EN_TO_TH': 'ข้อความต้นฉบับ',
+          'TH_TO_EN': 'Source text.',
+        },
+        'audit': audit,
+        'createdAt': '2026-07-31T07:00:00.000Z',
+      },
+    }),
   );
 }
 
-TranslatorRunReport _report() {
+TranslatorRunReport _report({required TranslationAudit audit}) {
   final TranslatorWorkRequest request = TranslatorWorkRequest(
     sourceText: 'Исходный текст.',
     sourceLanguageHint: TranslationLanguage.ru,
   );
 
-  final TranslationBundle bundle = TranslationBundle(
-    sourceLanguage: TranslationLanguage.ru,
-    sourceText: request.sourceText,
-    ru: request.sourceText,
-    en: 'Source text.',
-    th: 'ข้อความต้นฉบับ',
-    enToRu: request.sourceText,
-    thToRu: request.sourceText,
-    enToTh: 'ข้อความต้นฉบับ',
-    thToEn: 'Source text.',
-  );
-
   return TranslatorRunReport(
     request: request,
-    bundle: bundle,
-    audit: TranslationAudit(
-      findings: <TranslationFinding>[
-        TranslationFinding(
-          category: TranslationFindingCategory.style,
-          section: TranslationLanguage.en,
-          sourceFragment: 'Исходный текст',
-          translationFragment: 'Source text',
-          reason: 'Формулировка менее канонична.',
-          impact: 'Смысл сохранён.',
-          correctVariant: 'Использовать каноничную формулировку.',
-          sourceAmbiguity: 'NONE',
-        ),
-      ],
+    bundle: TranslationBundle(
+      sourceLanguage: TranslationLanguage.ru,
+      sourceText: request.sourceText,
+      ru: request.sourceText,
+      en: 'Source text.',
+      th: 'ข้อความต้นฉบับ',
     ),
-    createdAt: DateTime.utc(2026, 7, 26, 6),
+    audit: audit,
+    createdAt: DateTime.utc(2026, 7, 31, 7),
+  );
+}
+
+TranslationAudit _exactAudit() {
+  return TranslationAudit(
+    pairAudits: <TranslationPairAudit>[
+      for (final TranslationPair pair in TranslationPair.values)
+        TranslationPairAudit(
+          pair: pair,
+          result: TranslationPairAuditResult.clear,
+        ),
+    ],
+    exactCertifications: <ExactPairCertification>[
+      for (final TranslationPair pair in TranslationPair.values)
+        ExactPairCertification(
+          pair: pair,
+          result: ExactCertificationResult.clear,
+        ),
+    ],
+  );
+}
+
+File _draftFile(Directory root) {
+  return File(
+    '${root.path}${Platform.pathSeparator}'
+    '${JsonFileTranslatorDraftStore.directoryName}${Platform.pathSeparator}'
+    '${JsonFileTranslatorDraftStore.fileName}',
   );
 }

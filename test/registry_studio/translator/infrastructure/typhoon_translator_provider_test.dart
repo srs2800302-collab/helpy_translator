@@ -21,8 +21,7 @@ void main() {
           'messages': <Map<String, String>>[
             <String, String>{
               'role': 'user',
-              'content':
-                  'Мастер подтверждает прибытие. ผู้เชี่ยวชาญยืนยันการมาถึง',
+              'content': 'Мастер подтверждает прибытие. ช่างยืนยันการมาถึง',
             },
           ],
         };
@@ -63,728 +62,406 @@ void main() {
   });
 
   group('TyphoonTranslatorProvider', () {
+    test('non-exact result uses two calls and no reverse path', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        _lexicalGapAuditResponse(),
+      ]);
+      final TranslatorOperation operation = _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key');
+      final List<TranslatorRunStage> stages = <TranslatorRunStage>[];
+      final Future<void> progressDone = operation.progress.forEach(stages.add);
+
+      final TranslatorRunReport report = await operation.result;
+      await progressDone;
+
+      expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(report.bundle.hasReverseDiagnostics, isFalse);
+      expect(transport.callCount, 2);
+      expect(stages, <TranslatorRunStage>[
+        TranslatorRunStage.directTranslation,
+        TranslatorRunStage.audit,
+      ]);
+      _expectLockedSettings(transport.requestBodies);
+
+      final Map<String, Object?> auditUser = _userData(
+        transport.requestBodies[1],
+      );
+      expect(auditUser.keys.toSet(), <String>{'RU', 'EN', 'TH'});
+      expect(auditUser.keys, isNot(contains('SOURCE_TEXT')));
+      expect(auditUser.keys, isNot(contains('EN_TO_RU')));
+    });
+
+    test('exact requires five calls and three isolated challengers', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        _clearAuditResponse(),
+        _exactClear(),
+        _exactClear(),
+        _exactClear(),
+      ]);
+      final TranslatorOperation operation = _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key');
+      final List<TranslatorRunStage> stages = <TranslatorRunStage>[];
+      final Future<void> progressDone = operation.progress.forEach(stages.add);
+
+      final TranslatorRunReport report = await operation.result;
+      await progressDone;
+
+      expect(report.audit.verdict, TranslationVerdict.exact);
+      expect(transport.callCount, 5);
+      expect(stages, <TranslatorRunStage>[
+        TranslatorRunStage.directTranslation,
+        TranslatorRunStage.audit,
+        TranslatorRunStage.exactCertification,
+      ]);
+      _expectLockedSettings(transport.requestBodies);
+
+      final Map<String, Object?> ruEn = _userData(transport.requestBodies[2]);
+      final Map<String, Object?> ruTh = _userData(transport.requestBodies[3]);
+      final Map<String, Object?> enTh = _userData(transport.requestBodies[4]);
+
+      const Set<String> challengerKeys = <String>{
+        'PAIR',
+        'LEFT_LANGUAGE',
+        'LEFT_TEXT',
+        'RIGHT_LANGUAGE',
+        'RIGHT_TEXT',
+      };
+      expect(ruEn.keys.toSet(), challengerKeys);
+      expect(ruTh.keys.toSet(), challengerKeys);
+      expect(enTh.keys.toSet(), challengerKeys);
+
+      expect(ruEn, containsPair('PAIR', 'RU_EN'));
+      expect(ruEn, containsPair('LEFT_LANGUAGE', 'RU'));
+      expect(ruEn, containsPair('RIGHT_LANGUAGE', 'EN'));
+      expect(ruEn.values, isNot(contains('TH')));
+
+      expect(ruTh, containsPair('PAIR', 'RU_TH'));
+      expect(ruTh, containsPair('LEFT_LANGUAGE', 'RU'));
+      expect(ruTh, containsPair('RIGHT_LANGUAGE', 'TH'));
+      expect(ruTh.values, isNot(contains('EN')));
+
+      expect(enTh, containsPair('PAIR', 'EN_TH'));
+      expect(enTh, containsPair('LEFT_LANGUAGE', 'EN'));
+      expect(enTh, containsPair('RIGHT_LANGUAGE', 'TH'));
+      expect(enTh.values, isNot(contains('RU')));
+    });
+
+    test('hard mismatch ends after audit with canonical drift', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        _blockedAuditResponse(TranslationSemanticAtom.polarity),
+      ]);
+
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
+      expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(transport.callCount, 2);
+    });
+
+    test('ambiguity evidence ends after audit with needs review', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        _blockedAuditResponse(TranslationSemanticAtom.ambiguity),
+      ]);
+
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
+      expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(transport.callCount, 2);
+    });
+
+    test('style-only mismatch ends after audit with equivalent', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        _styleOnlyAuditResponse(),
+      ]);
+
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
+      expect(report.audit.verdict, TranslationVerdict.equivalent);
+      expect(transport.callCount, 2);
+    });
+
+    test('malformed audit retries once and fails closed', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        '{"RU_EN":{}}',
+        'not-json',
+      ]);
+
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
+      expect(report.audit.protocolFallback, isTrue);
+      expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(transport.callCount, 3);
+    });
+
+    test('malformed challenger retries once and fails closed', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        _clearAuditResponse(),
+        '{"RESULT":"CLEAR"}',
+        '{"RESULT":"CLEAR"}',
+        _exactClear(),
+        _exactClear(),
+      ]);
+
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
+      expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(
+        report.audit.exactCertifications.first.result,
+        ExactCertificationResult.protocolFailure,
+      );
+      expect(transport.callCount, 6);
+    });
+
     test(
-      'runs direct translation and independent verification in order',
+      'not-certified challenger blocks exact but all pairs still run',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
           _translationResponse(),
-          _auditResponse(),
+          _clearAuditResponse(),
+          _exactClear(),
+          _exactNotCertified(TranslationSemanticAtom.modality),
+          _exactClear(),
         ]);
 
-        final TyphoonTranslatorProvider provider = TyphoonTranslatorProvider(
-          policy: const _TestPolicy(),
-          transportFactory: () => transport,
-        );
+        final TranslatorRunReport report = await _provider(
+          transport,
+        ).start(request: _request(), accessKey: 'test-key').result;
 
-        final TranslatorOperation operation = provider.start(
-          request: TranslatorWorkRequest(
-            sourceText: 'Фотография установленной варочной панели.',
-            sourceLanguageHint: TranslationLanguage.ru,
-          ),
-          accessKey: 'test-key',
-        );
-
-        final List<TranslatorRunStage> stages = <TranslatorRunStage>[];
-        final Future<void> progressDone = operation.progress.forEach(
-          stages.add,
-        );
-
-        final TranslatorRunReport report = await operation.result;
-        await progressDone;
-
-        expect(stages, <TranslatorRunStage>[
-          TranslatorRunStage.directTranslation,
-          TranslatorRunStage.audit,
-        ]);
-        expect(report.bundle.sourceLanguage, TranslationLanguage.ru);
-        expect(report.bundle.en, 'Photo of the installed cooktop.');
-        expect(report.bundle.thToEn, 'Photo of the installed cooktop.');
-        expect(report.audit.verdict, TranslationVerdict.exact);
-        expect(transport.callCount, 2);
-        expect(transport.requestBodies, hasLength(2));
+        expect(report.audit.verdict, TranslationVerdict.needsReview);
+        expect(transport.callCount, 5);
         expect(
-          transport.requestBodies
-              .map((Map<String, Object?> body) => body['max_completion_tokens'])
-              .toList(growable: false),
-          <Object?>[1400, 2200],
-        );
-
-        expect(
-          transport.requestBodies
-              .map((Map<String, Object?> body) => body['temperature'])
-              .toList(growable: false),
-          <Object?>[0.1, 0.0],
-        );
-
-        for (final Map<String, Object?> body in transport.requestBodies) {
-          expect(body.containsKey('top_p'), isFalse);
-          expect(body['frequency_penalty'], 0.0);
-          expect(body.containsKey('max_tokens'), isFalse);
-        }
-
-        final List<Map<String, String>> verificationMessages =
-            (transport.requestBodies[1]['messages']! as List<Object?>)
-                .cast<Map<String, String>>();
-        expect(verificationMessages.last['content'], contains('SOURCE TEXT'));
-        expect(verificationMessages.last['content'], contains('RU'));
-        expect(verificationMessages.last['content'], contains('EN'));
-        expect(verificationMessages.last['content'], contains('TH'));
-        expect(
-          verificationMessages.last['content'],
-          isNot(contains('EN_TO_RU')),
+          report.audit.exactCertifications[1].atom,
+          TranslationSemanticAtom.modality,
         );
       },
     );
 
-    test('maps style-only finding to equivalent', () async {
+    test('direct protocol retries once and then succeeds', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
+        'not-json',
         _translationResponse(),
-        _auditResponse(
-          findings: <Map<String, Object?>>[
-            _structuredFinding(
-              category: 'STYLE',
-              reason: 'Формулировка EN менее канонична.',
-              impact: 'Смысл сохранён, но стиль менее каноничен.',
-              correctVariant: 'Использовать каноничную формулировку.',
-            ),
-          ],
-        ),
+        _lexicalGapAuditResponse(),
       ]);
 
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
 
-      expect(report.audit.verdict, TranslationVerdict.equivalent);
-    });
-
-    test('maps supplied meaning finding to canonical drift', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(),
-        _auditResponse(
-          findings: <Map<String, Object?>>[
-            _structuredFinding(
-              category: 'MEANING',
-              reason: 'В EN изменено обязательство.',
-              impact: 'Пользователь получает другое обязательство.',
-              correctVariant: 'Сохранить исходное обязательство.',
-            ),
-          ],
-        ),
-      ]);
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
-      expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
-    });
-
-    test('maps terminology finding to needs review', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(),
-        _auditResponse(
-          findings: <Map<String, Object?>>[
-            _structuredFinding(
-              category: 'TERMINOLOGY',
-              reason: 'Общая роль заменена конкретной профессией.',
-              impact: 'Роль стала уже исходной.',
-              correctVariant: 'Сохранить общую роль.',
-            ),
-          ],
-        ),
-      ]);
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
+      expect(report.bundle.en, 'install the cooktop');
       expect(report.audit.verdict, TranslationVerdict.needsReview);
-      expect(report.audit.meaningPreserved, isTrue);
+      expect(transport.callCount, 3);
     });
 
-    test('fails after one malformed direct protocol repair', () async {
-      final String malformed = '''
-SOURCE LANGUAGE:
-RU
-
-SOURCE TEXT:
-Фотография установленной варочной панели.
-
-RU:
-Фотография установленной варочной панели.
-
-EN:
-Photo of the installed cooktop.
-''';
+    test('direct protocol fails after exactly one retry', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
-        malformed,
-        malformed,
+        'not-json',
+        '{"SOURCE_LANGUAGE":"RU"}',
       ]);
-
-      final Future<TranslatorRunReport> result =
-          TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
 
       await expectLater(
-        result,
+        _provider(
+          transport,
+        ).start(request: _request(), accessKey: 'test-key').result,
         throwsA(
-          isA<TranslatorProviderException>()
-              .having(
-                (TranslatorProviderException error) =>
-                    error.failure.completeness,
-                'completeness',
-                TranslationCompleteness.translationIncomplete,
-              )
-              .having(
-                (TranslatorProviderException error) => error.failure.stage,
-                'stage',
-                TranslatorFailureStage.directTranslation,
-              )
-              .having(
-                (TranslatorProviderException error) => error.failure.code,
-                'code',
-                TranslatorFailureCode.missingRequiredSection,
-              )
-              .having(
-                (TranslatorProviderException error) => error.failure.message,
-                'message',
-                contains('после повторной попытки'),
-              ),
+          isA<TranslatorProviderException>().having(
+            (TranslatorProviderException error) => error.failure.code,
+            'code',
+            TranslatorFailureCode.malformedProviderResponse,
+          ),
         ),
       );
       expect(transport.callCount, 2);
     });
 
-    test('repairs malformed direct protocol once and then audits', () async {
+    test('recovers a missing Thai source field only', () async {
+      final String sourceText = 'อย่าติดตั้งเตาอบ';
       final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(th: ''),
-        _translationResponse(),
-        _auditResponse(),
+        jsonEncode(<String, Object?>{
+          'SOURCE_LANGUAGE': 'TH',
+          'SOURCE_TEXT': sourceText,
+          'RU': 'не устанавливать духовку',
+          'EN': 'do not install the oven',
+        }),
+        _lexicalGapAuditResponse(),
       ]);
 
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
-
-      expect(report.audit.verdict, TranslationVerdict.exact);
-      expect(transport.callCount, 3);
-      expect(
-        transport.requestBodies
-            .map((Map<String, Object?> body) => body['max_completion_tokens'])
-            .toList(growable: false),
-        <Object?>[1400, 1400, 2200],
-      );
-      expect(
-        transport.requestBodies
-            .map((Map<String, Object?> body) => body['temperature'])
-            .toList(growable: false),
-        <Object?>[0.1, 0.1, 0.0],
-      );
-
-      final List<Map<String, String>> firstMessages =
-          (transport.requestBodies[0]['messages']! as List<Object?>)
-              .cast<Map<String, String>>();
-      final List<Map<String, String>> retryMessages =
-          (transport.requestBodies[1]['messages']! as List<Object?>)
-              .cast<Map<String, String>>();
-
-      expect(retryMessages.first['content'], startsWith('direct'));
-      expect(retryMessages.first['content'], contains('final attempt'));
-      expect(retryMessages.last['content'], firstMessages.last['content']);
-    });
-
-    test('bounds direct and audit protocol repairs independently', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(th: ''),
-        _translationResponse(),
-        '{"findings":"invalid"}',
-        _auditResponse(),
-      ]);
-
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
-
-      expect(report.audit.verdict, TranslationVerdict.exact);
-      expect(transport.callCount, 4);
-    });
-
-    test('retries ungrounded structured audit once and succeeds', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(),
-        _auditResponse(
-          findings: <Map<String, Object?>>[
-            _structuredFinding(
-              category: 'MEANING',
-              reason: 'В EN изменён объект.',
-              impact: 'Пользователь получает другое указание.',
-              correctVariant: 'Сохранить исходный объект.',
-              sourceFragment: 'Фрагмент отсутствует',
+      final TranslatorRunReport report = await _provider(transport)
+          .start(
+            request: TranslatorWorkRequest(
+              sourceText: sourceText,
+              sourceLanguageHint: TranslationLanguage.th,
             ),
-          ],
+            accessKey: 'test-key',
+          )
+          .result;
+
+      expect(report.bundle.th, sourceText);
+      expect(transport.callCount, 2);
+    });
+
+    test('rejects empty and whitespace-containing access keys', () async {
+      await expectLater(
+        _provider(
+          _QueueTransport(<Object>[]),
+        ).start(request: _request(), accessKey: ' ').result,
+        throwsA(
+          isA<TranslatorProviderException>().having(
+            (TranslatorProviderException error) => error.failure.code,
+            'code',
+            TranslatorFailureCode.accessKeyEmpty,
+          ),
         ),
-        _auditResponse(),
-      ]);
-
-      final TranslatorRunReport report =
-          await TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(
-                  sourceText: 'Фотография установленной варочной панели.',
-                ),
-                accessKey: 'test-key',
-              )
-              .result;
-
-      expect(report.audit.verdict, TranslationVerdict.exact);
-      expect(transport.callCount, 3);
-    });
-
-    test(
-      'rejects malformed multilingual audit fields after one repair',
-      () async {
-        final List<Map<String, Object?>> malformedFindings =
-            <Map<String, Object?>>[
-              <String, Object?>{
-                ..._structuredFinding(
-                  category: 'MEANING',
-                  reason: 'Причина.',
-                  impact: 'Влияние.',
-                  correctVariant: 'Photo of the installed cooktop.',
-                ),
-                'reason': 'Причина строкой',
-              },
-              <String, Object?>{
-                ..._structuredFinding(
-                  category: 'MEANING',
-                  reason: 'Причина.',
-                  impact: 'Влияние.',
-                  correctVariant: 'Photo of the installed cooktop.',
-                ),
-                'reason': <String, Object?>{'ru': 'Причина.', 'en': 'Reason.'},
-              },
-              <String, Object?>{
-                ..._structuredFinding(
-                  category: 'MEANING',
-                  reason: 'Причина.',
-                  impact: 'Влияние.',
-                  correctVariant: 'Photo of the installed cooktop.',
-                ),
-                'reason': <String, Object?>{
-                  'ru': 'Причина.',
-                  'en': 'Reason.',
-                  'th': 'เหตุผล',
-                  'de': 'Grund',
-                },
-              },
-              <String, Object?>{
-                ..._structuredFinding(
-                  category: 'MEANING',
-                  reason: 'Причина.',
-                  impact: 'Влияние.',
-                  correctVariant: 'Photo of the installed cooktop.',
-                ),
-                'reason': <String, Object?>{
-                  'ru': 'Причина.',
-                  'en': '',
-                  'th': 'เหตุผล',
-                },
-              },
-              <String, Object?>{
-                ..._structuredFinding(
-                  category: 'MEANING',
-                  reason: 'Причина.',
-                  impact: 'Влияние.',
-                  correctVariant: 'Photo of the installed cooktop.',
-                ),
-                'reason': <String, Object?>{
-                  'ru': 'Причина.',
-                  'en': ' Reason. ',
-                  'th': 'เหตุผล',
-                },
-              },
-              <String, Object?>{
-                ..._structuredFinding(
-                  category: 'MEANING',
-                  reason: 'Причина.',
-                  impact: 'Влияние.',
-                  correctVariant: 'Photo of the installed cooktop.',
-                ),
-                'source_ambiguity': 'NONE',
-              },
-              <String, Object?>{
-                ..._structuredFinding(
-                  category: 'MEANING',
-                  reason: 'Причина.',
-                  impact: 'Влияние.',
-                  correctVariant: 'Photo of the installed cooktop.',
-                ),
-                'source_ambiguity': <String, Object?>{
-                  'ru': 'Неоднозначность.',
-                  'en': 'Ambiguity.',
-                },
-              },
-            ];
-
-        for (final Map<String, Object?> malformedFinding in malformedFindings) {
-          final String malformedAudit = _auditResponse(
-            findings: <Map<String, Object?>>[malformedFinding],
-          );
-          final _QueueTransport transport = _QueueTransport(<Object>[
-            _translationResponse(),
-            malformedAudit,
-            malformedAudit,
-          ]);
-
-          final Future<TranslatorRunReport> result =
-              TyphoonTranslatorProvider(
-                    policy: const _TestPolicy(),
-                    transportFactory: () => transport,
-                  )
-                  .start(
-                    request: TranslatorWorkRequest(
-                      sourceText: 'Фотография установленной варочной панели.',
-                    ),
-                    accessKey: 'test-key',
-                  )
-                  .result;
-
-          await expectLater(
-            result,
-            throwsA(
-              isA<TranslatorProviderException>().having(
-                (TranslatorProviderException error) => error.failure.code,
-                'code',
-                TranslatorFailureCode.invalidAuditResponse,
-              ),
-            ),
-          );
-
-          expect(transport.callCount, 3);
-        }
-      },
-    );
-
-    test(
-      'keeps second invalid audit as technical failure with complete bundle',
-      () async {
-        final _QueueTransport transport = _QueueTransport(<Object>[
-          _translationResponse(),
-          _auditResponse(findings: 'invalid'),
-          _auditResponse(
-            findings: <Map<String, Object?>>[
-              <String, Object?>{'category': 'MEANING', 'unknown': 'value'},
-            ],
-          ),
-        ]);
-
-        final Future<TranslatorRunReport> result =
-            TyphoonTranslatorProvider(
-                  policy: const _TestPolicy(),
-                  transportFactory: () => transport,
-                )
-                .start(
-                  request: TranslatorWorkRequest(
-                    sourceText: 'Фотография установленной варочной панели.',
-                  ),
-                  accessKey: 'test-key',
-                )
-                .result;
-
-        await expectLater(
-          result,
-          throwsA(
-            isA<TranslatorProviderException>()
-                .having(
-                  (TranslatorProviderException error) =>
-                      error.failure.completeness,
-                  'completeness',
-                  TranslationCompleteness.complete,
-                )
-                .having(
-                  (TranslatorProviderException error) => error.failure.code,
-                  'code',
-                  TranslatorFailureCode.invalidAuditResponse,
-                )
-                .having(
-                  (TranslatorProviderException error) =>
-                      error.failure.partialBundle,
-                  'partialBundle',
-                  isNotNull,
-                )
-                .having(
-                  (TranslatorProviderException error) => error.failure.message,
-                  'message',
-                  contains('после повторной попытки'),
-                ),
-          ),
-        );
-
-        expect(transport.callCount, 3);
-      },
-    );
-
-    test(
-      'rejects API key with invisible characters before transport',
-      () async {
-        final _QueueTransport transport = _QueueTransport(<Object>[
-          _translationResponse(),
-        ]);
-
-        final Future<TranslatorRunReport> result =
-            TyphoonTranslatorProvider(
-                  policy: const _TestPolicy(),
-                  transportFactory: () => transport,
-                )
-                .start(
-                  request: TranslatorWorkRequest(sourceText: 'Текст.'),
-                  accessKey: 'test\u200B-key',
-                )
-                .result;
-
-        await expectLater(
-          result,
-          throwsA(
-            isA<TranslatorProviderException>()
-                .having(
-                  (TranslatorProviderException error) => error.failure.stage,
-                  'stage',
-                  TranslatorFailureStage.validation,
-                )
-                .having(
-                  (TranslatorProviderException error) => error.failure.code,
-                  'code',
-                  TranslatorFailureCode.accessKeyInvalidCharacters,
-                )
-                .having(
-                  (TranslatorProviderException error) =>
-                      error.failure.completeness,
-                  'completeness',
-                  isNull,
-                ),
-          ),
-        );
-
-        expect(transport.callCount, 0);
-      },
-    );
-
-    test('keeps invalid source language as technical failure', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        '''
-SOURCE LANGUAGE:
-XX
-
-SOURCE TEXT:
-Текст.
-
-RU:
-Текст.
-
-EN:
-Text.
-
-TH:
-ข้อความ
-''',
-      ]);
-
-      final Future<TranslatorRunReport> result =
-          TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(sourceText: 'Текст.'),
-                accessKey: 'test-key',
-              )
-              .result;
+      );
 
       await expectLater(
-        result,
+        _provider(
+          _QueueTransport(<Object>[]),
+        ).start(request: _request(), accessKey: 'bad key').result,
         throwsA(
-          isA<TranslatorProviderException>()
-              .having(
-                (TranslatorProviderException error) => error.failure.stage,
-                'stage',
-                TranslatorFailureStage.directTranslation,
-              )
-              .having(
-                (TranslatorProviderException error) => error.failure.code,
-                'code',
-                TranslatorFailureCode.invalidSourceLanguage,
-              )
-              .having(
-                (TranslatorProviderException error) =>
-                    error.failure.completeness,
-                'completeness',
-                isNull,
-              ),
-        ),
-      );
-    });
-
-    test('keeps provider authorization error technical', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        const TyphoonTransportException.http(
-          statusCode: 401,
-          responseBody: 'unauthorized',
-        ),
-      ]);
-
-      final Future<TranslatorRunReport> result =
-          TyphoonTranslatorProvider(
-                policy: const _TestPolicy(),
-                transportFactory: () => transport,
-              )
-              .start(
-                request: TranslatorWorkRequest(sourceText: 'Текст.'),
-                accessKey: 'invalid',
-              )
-              .result;
-
-      await expectLater(
-        result,
-        throwsA(
-          isA<TranslatorProviderException>()
-              .having(
-                (TranslatorProviderException error) => error.failure.code,
-                'code',
-                TranslatorFailureCode.unauthorized,
-              )
-              .having(
-                (TranslatorProviderException error) =>
-                    error.failure.completeness,
-                'completeness',
-                isNull,
-              ),
+          isA<TranslatorProviderException>().having(
+            (TranslatorProviderException error) => error.failure.code,
+            'code',
+            TranslatorFailureCode.accessKeyInvalidCharacters,
+          ),
         ),
       );
     });
   });
 }
 
-String _translationResponse({
-  String th = 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
-}) {
-  return '''
-SOURCE LANGUAGE:
-RU
-
-SOURCE TEXT:
-Фотография установленной варочной панели.
-
-RU:
-Фотография установленной варочной панели.
-
-EN:
-Photo of the installed cooktop.
-
-TH:
-$th
-''';
+TyphoonTranslatorProvider _provider(_QueueTransport transport) {
+  return TyphoonTranslatorProvider(
+    policy: const _TestPolicy(),
+    transportFactory: () => transport,
+  );
 }
 
-String _auditResponse({
-  Object? findings = const <Map<String, Object?>>[],
-  String enToRu = 'Фотография установленной варочной панели.',
-  String thToRu = 'Фотография установленной варочной панели.',
-  String enToTh = 'ภาพถ่ายของเตาประกอบอาหารที่ติดตั้งแล้ว',
-  String thToEn = 'Photo of the installed cooktop.',
-}) {
+TranslatorWorkRequest _request() {
+  return TranslatorWorkRequest(
+    sourceText: 'установить варочную панель',
+    sourceLanguageHint: TranslationLanguage.ru,
+  );
+}
+
+String _translationResponse() {
   return jsonEncode(<String, Object?>{
-    'EN_TO_RU': enToRu,
-    'TH_TO_RU': thToRu,
-    'EN_TO_TH': enToTh,
-    'TH_TO_EN': thToEn,
-    'findings': findings,
+    'SOURCE_LANGUAGE': 'RU',
+    'SOURCE_TEXT': 'установить варочную панель',
+    'RU': 'установить варочную панель',
+    'EN': 'install the cooktop',
+    'TH': 'ติดตั้งเตาไฟ',
   });
 }
 
-Map<String, Object?> _structuredFinding({
-  required String category,
-  required String reason,
-  required String impact,
-  required String correctVariant,
-  String section = 'EN',
-  String sourceFragment = 'Фотография',
-  String translationFragment = 'Photo',
-  String sourceAmbiguity = 'NONE',
-}) {
+String _clearAuditResponse() {
+  return _auditResponse(<TranslationPair, Map<String, Object?>>{
+    for (final TranslationPair pair in TranslationPair.values)
+      pair: <String, Object?>{'RESULT': 'CLEAR', 'ISSUES': <Object?>[]},
+  });
+}
+
+String _lexicalGapAuditResponse() {
+  return _auditResponse(<TranslationPair, Map<String, Object?>>{
+    TranslationPair.ruEn: <String, Object?>{
+      'RESULT': 'CLEAR',
+      'ISSUES': <Object?>[],
+    },
+    TranslationPair.ruTh: _unproven(TranslationSemanticAtom.equipmentIdentity),
+    TranslationPair.enTh: _unproven(TranslationSemanticAtom.equipmentIdentity),
+  });
+}
+
+String _blockedAuditResponse(TranslationSemanticAtom atom) {
+  return _auditResponse(<TranslationPair, Map<String, Object?>>{
+    TranslationPair.ruEn: _blocked(atom),
+    TranslationPair.ruTh: _blocked(atom),
+    TranslationPair.enTh: <String, Object?>{
+      'RESULT': 'CLEAR',
+      'ISSUES': <Object?>[],
+    },
+  });
+}
+
+String _styleOnlyAuditResponse() {
+  return _auditResponse(<TranslationPair, Map<String, Object?>>{
+    TranslationPair.ruEn: _blocked(TranslationSemanticAtom.canonicalStyle),
+    TranslationPair.ruTh: <String, Object?>{
+      'RESULT': 'CLEAR',
+      'ISSUES': <Object?>[],
+    },
+    TranslationPair.enTh: <String, Object?>{
+      'RESULT': 'CLEAR',
+      'ISSUES': <Object?>[],
+    },
+  });
+}
+
+Map<String, Object?> _blocked(TranslationSemanticAtom atom) {
   return <String, Object?>{
-    'category': category,
-    'section': section,
-    'source_fragment': sourceFragment,
-    'translation_fragment': translationFragment,
-    'reason': _localizedEvidence(reason),
-    'impact': _localizedEvidence(impact),
-    'correct_variant': correctVariant,
-    'source_ambiguity': sourceAmbiguity == 'NONE'
-        ? null
-        : _localizedEvidence(sourceAmbiguity),
+    'RESULT': 'BLOCKED',
+    'ISSUES': <Object?>[
+      <String, Object?>{'ATOM': atom.code, 'STATUS': 'X'},
+    ],
   };
 }
 
-Map<String, Object?> _localizedEvidence(String ru) {
+Map<String, Object?> _unproven(TranslationSemanticAtom atom) {
   return <String, Object?>{
-    'ru': ru,
-    'en': 'English explanation for this finding.',
-    'th': 'คำอธิบายภาษาไทยสำหรับข้อค้นพบนี้',
+    'RESULT': 'UNPROVEN',
+    'ISSUES': <Object?>[
+      <String, Object?>{'ATOM': atom.code, 'STATUS': 'U'},
+    ],
   };
+}
+
+String _auditResponse(Map<TranslationPair, Map<String, Object?>> pairs) {
+  return jsonEncode(<String, Object?>{
+    for (final TranslationPair pair in TranslationPair.values)
+      pair.code: pairs[pair],
+  });
+}
+
+String _exactClear() => '{"RESULT":"CLEAR","ATOM":null}';
+
+String _exactNotCertified(TranslationSemanticAtom atom) {
+  return jsonEncode(<String, Object?>{
+    'RESULT': 'NOT_CERTIFIED',
+    'ATOM': atom.code,
+  });
+}
+
+Map<String, Object?> _userData(Map<String, Object?> body) {
+  final List<Object?> messages = body['messages']! as List<Object?>;
+  final String content = (messages.last as Map<String, String>)['content']!;
+  return (jsonDecode(content) as Map<Object?, Object?>).cast<String, Object?>();
+}
+
+void _expectLockedSettings(List<Map<String, Object?>> bodies) {
+  for (final Map<String, Object?> body in bodies) {
+    expect(body['max_completion_tokens'], 512);
+    expect(body['temperature'], 0.6);
+    expect(body['top_p'], 0.6);
+    expect(body['frequency_penalty'], 0.0);
+    expect(body.containsKey('max_tokens'), isFalse);
+  }
 }
 
 final class _QueueTransport implements TyphoonChatTransport {
@@ -793,7 +470,6 @@ final class _QueueTransport implements TyphoonChatTransport {
   final List<Object> responses;
   final List<Map<String, Object?>> requestBodies = <Map<String, Object?>>[];
   int callCount = 0;
-  bool cancelled = false;
 
   @override
   Future<String> complete({
@@ -813,9 +489,7 @@ final class _QueueTransport implements TyphoonChatTransport {
   }
 
   @override
-  void cancel() {
-    cancelled = true;
-  }
+  void cancel() {}
 
   @override
   void close() {}
@@ -828,35 +502,39 @@ final class _TestPolicy implements TranslatorPolicy {
   String buildDirectSystemPrompt() => 'direct';
 
   @override
-  String buildDirectUserPrompt(TranslatorWorkRequest request) =>
-      request.sourceText;
+  String buildDirectUserPrompt(TranslatorWorkRequest request) {
+    return jsonEncode(<String, Object?>{'SOURCE_TEXT': request.sourceText});
+  }
 
   @override
   String buildAuditSystemPrompt() => 'audit';
 
   @override
   String buildAuditUserPrompt({
-    required TranslationLanguage sourceLanguage,
-    required String sourceText,
     required String ru,
     required String en,
     required String th,
   }) {
-    return '''
-SOURCE LANGUAGE:
-${sourceLanguage.code}
+    return jsonEncode(<String, String>{'RU': ru, 'EN': en, 'TH': th});
+  }
 
-SOURCE TEXT:
-$sourceText
+  @override
+  String buildExactChallengerSystemPrompt(TranslationPair pair) {
+    return 'exact ${pair.code}';
+  }
 
-RU:
-$ru
-
-EN:
-$en
-
-TH:
-$th
-''';
+  @override
+  String buildExactChallengerUserPrompt({
+    required TranslationPair pair,
+    required String leftText,
+    required String rightText,
+  }) {
+    return jsonEncode(<String, String>{
+      'PAIR': pair.code,
+      'LEFT_LANGUAGE': pair.leftLanguage.code,
+      'LEFT_TEXT': leftText,
+      'RIGHT_LANGUAGE': pair.rightLanguage.code,
+      'RIGHT_TEXT': rightText,
+    });
   }
 }

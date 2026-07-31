@@ -1,151 +1,107 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/translator/helpy_translator_policy.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
 
 void main() {
-  test('audit prompt exposes strict structured JSON contract', () {
-    final String prompt = const HelpyTranslatorPolicy()
-        .buildAuditSystemPrompt();
+  const HelpyTranslatorPolicy policy = HelpyTranslatorPolicy();
 
-    for (final String key in <String>[
-      '"EN_TO_RU"',
-      '"TH_TO_RU"',
-      '"EN_TO_TH"',
-      '"TH_TO_EN"',
-      '"findings"',
-      '"category"',
-      '"section"',
-      '"source_fragment"',
-      '"translation_fragment"',
-      '"reason"',
-      '"impact"',
-      '"correct_variant"',
-      '"source_ambiguity"',
-    ]) {
-      expect(prompt, contains(key));
-    }
+  test('direct prompt locks five-key JSON and forbids verdicts', () {
+    final String prompt = policy.buildDirectSystemPrompt();
 
+    expect(prompt, contains('"SOURCE_LANGUAGE"'));
+    expect(prompt, contains('"SOURCE_TEXT"'));
+    expect(prompt, contains('"RU"'));
+    expect(prompt, contains('"EN"'));
+    expect(prompt, contains('"TH"'));
     expect(prompt, contains('exactly these five keys'));
-    expect(prompt, contains('only from the exact EN value'));
-    expect(prompt, contains('only from the exact TH value'));
-    expect(prompt, contains('Do not use SOURCE TEXT or RU to repair'));
-    expect(prompt, contains('Preserve any direct-translation drift'));
-    expect(prompt, contains('three nonempty semantically equivalent'));
-    expect(prompt, contains('"ru"'));
-    expect(prompt, contains('"en"'));
-    expect(prompt, contains('"th"'));
-    expect(prompt, contains('JSON null'));
-    expect(prompt, contains('do not search'));
-    expect(prompt, contains('predetermined error'));
-    expect(prompt, contains('do not report an unsupported one'));
-    expect(prompt, contains('evidence is insufficient'));
-    expect(prompt, contains('Do not invent issues'));
-    expect(prompt, contains('exactly one JSON object'));
-    expect(prompt, contains('Do not add unknown keys'));
-    expect(prompt, contains('Do not omit required keys'));
-    expect(prompt, contains('Do not use Markdown fences'));
-    expect(prompt, contains('Do not assume that the translation is correct'));
-    expect(prompt, matches(RegExp(r'do not waive a supported\s+issue')));
-    expect(prompt, isNot(contains('MEANING_FINDINGS:')));
+    expect(prompt, contains('Do not add explanations'));
+    expect(prompt, isNot(contains('EN_TO_RU')));
+    expect(prompt, isNot(contains('findings')));
   });
 
-  test('translation prompt requires only five direct sections', () {
-    final String prompt = const HelpyTranslatorPolicy()
-        .buildDirectSystemPrompt();
-
-    final List<String> expectedLabels = <String>[
-      'SOURCE LANGUAGE',
-      'SOURCE TEXT',
-      'RU',
-      'EN',
-      'TH',
-    ];
-
-    final List<String> actualLabels =
-        RegExp(
-              r'^(SOURCE LANGUAGE|SOURCE TEXT|RU|EN|TH|EN_TO_RU|TH_TO_RU|EN_TO_TH|TH_TO_EN):$',
-              multiLine: true,
+  test('direct user prompt serializes source text as JSON data', () {
+    final Map<String, Object?> prompt =
+        jsonDecode(
+              policy.buildDirectUserPrompt(
+                TranslatorWorkRequest(
+                  sourceText: 'мастер должен установить варочную панель',
+                  sourceLanguageHint: TranslationLanguage.ru,
+                  engineerContext: 'монтаж на объекте',
+                ),
+              ),
             )
-            .allMatches(prompt)
-            .map((RegExpMatch match) => match.group(1)!)
-            .toList(growable: false);
+            as Map<String, Object?>;
 
-    expect(actualLabels, expectedLabels);
-    expect(prompt, contains('direct RU, EN and TH formulations only'));
-    expect(prompt, contains('All five sections are required'));
-    expect(prompt, contains('Do not return reverse translations'));
-    expect(prompt, isNot(contains('EN_TO_RU:')));
-    expect(prompt, isNot(contains('TH_TO_EN:')));
-    expect(prompt, contains('Preserve role granularity'));
-    expect(prompt, contains('service professional'));
-    expect(prompt, contains('Do not use EN "master"'));
-    expect(prompt, contains('"ผู้ให้บริการ"'));
-    expect(prompt, contains('Never infer carpenter'));
-    expect(prompt, contains('unless SOURCE TEXT explicitly names it'));
-    expect(prompt, contains('editorially rewrite it'));
+    expect(prompt, <String, Object?>{
+      'SOURCE_TEXT': 'мастер должен установить варочную панель',
+      'SOURCE_LANGUAGE_HINT': 'RU',
+      'ENGINEER_CONTEXT': 'монтаж на объекте',
+    });
   });
 
-  test('audit prompt is neutral and requires grounded evidence', () {
-    final HelpyTranslatorPolicy policy = const HelpyTranslatorPolicy();
-    final String auditPrompt = policy.buildAuditSystemPrompt();
-    final String normalizedPrompt = auditPrompt.replaceAll(RegExp(r'\s+'), ' ');
-    final String productionPrompts = <String>[
-      policy.buildDirectSystemPrompt(),
-      auditPrompt,
-    ].join('\n').toLowerCase();
+  test('audit prompt defines compact fail-closed three-pair contract', () {
+    final String prompt = policy.buildAuditSystemPrompt();
 
-    expect(normalizedPrompt, contains('PRIMARY EVIDENCE'));
-    expect(normalizedPrompt, contains('SECONDARY DIAGNOSTIC EVIDENCE'));
-    expect(
-      normalizedPrompt,
-      contains('A finding that cites only a reverse section is forbidden'),
-    );
-    expect(
-      normalizedPrompt,
-      contains('Confirm every finding directly against SOURCE TEXT'),
-    );
-    expect(
-      normalizedPrompt,
-      contains('do not search for a predetermined error'),
-    );
-    expect(normalizedPrompt, contains('exact material impact'));
-    expect(normalizedPrompt, contains('relevant ambiguity in SOURCE TEXT'));
-
-    for (final String forbidden in <String>[
-      'варочная панель',
-      'cooktop',
-      'hob',
-      'oven',
-      'เตาอบ',
-    ]) {
-      expect(productionPrompts, isNot(contains(forbidden)));
-    }
+    expect(prompt, contains('RU_EN'));
+    expect(prompt, contains('RU_TH'));
+    expect(prompt, contains('EN_TH'));
+    expect(prompt, contains('"CLEAR"'));
+    expect(prompt, contains('"BLOCKED"'));
+    expect(prompt, contains('"UNPROVEN"'));
+    expect(prompt, contains('"X"'));
+    expect(prompt, contains('"U"'));
+    expect(prompt, contains('at most two objects'));
+    expect(prompt, contains('never ambiguity/X'));
+    expect(prompt, contains('Do not output translations'));
+    expect(prompt, isNot(contains('correct_variant')));
+    expect(prompt, contains('application verdict'));
+    expect(prompt, isNot(contains('"VERDICT"')));
   });
 
-  test('audit user prompt contains only direct evidence', () {
-    final String prompt = const HelpyTranslatorPolicy().buildAuditUserPrompt(
-      sourceLanguage: TranslationLanguage.ru,
-      sourceText: 'Исходный текст.',
-      ru: 'Исходный текст.',
-      en: 'Source text.',
-      th: 'ข้อความต้นฉบับ',
-    );
-
-    final List<String> labels =
-        RegExp(
-              r'^(SOURCE LANGUAGE|SOURCE TEXT|RU|EN|TH|EN_TO_RU|TH_TO_RU|EN_TO_TH|TH_TO_EN|findings):$',
-              multiLine: true,
+  test('audit user prompt contains only the translated JSON bundle', () {
+    final Map<String, Object?> prompt =
+        jsonDecode(
+              policy.buildAuditUserPrompt(
+                ru: 'установить варочную панель',
+                en: 'install the cooktop',
+                th: 'ติดตั้งเตาไฟ',
+              ),
             )
-            .allMatches(prompt)
-            .map((RegExpMatch match) => match.group(1)!)
-            .toList(growable: false);
+            as Map<String, Object?>;
 
-    expect(labels, <String>[
-      'SOURCE LANGUAGE',
-      'SOURCE TEXT',
-      'RU',
-      'EN',
-      'TH',
-    ]);
+    expect(prompt, <String, Object?>{
+      'RU': 'установить варочную панель',
+      'EN': 'install the cooktop',
+      'TH': 'ติดตั้งเตาไฟ',
+    });
+  });
+
+  test('exact challenger is pair-specific and has two outcomes', () {
+    final String system = policy.buildExactChallengerSystemPrompt(
+      TranslationPair.ruTh,
+    );
+    final String user = policy.buildExactChallengerUserPrompt(
+      pair: TranslationPair.ruTh,
+      leftText: 'варочная панель',
+      rightText: 'เตาไฟ',
+    );
+
+    expect(system, contains('RU_TH'));
+    expect(system, contains('"RESULT":"CLEAR"'));
+    expect(system, contains('"RESULT":"NOT_CERTIFIED"'));
+    expect(system, contains('surface difference alone'));
+    expect(system, isNot(contains('CANONICAL_DRIFT')));
+
+    final Map<String, Object?> userData =
+        jsonDecode(user) as Map<String, Object?>;
+    expect(userData, <String, Object?>{
+      'PAIR': 'RU_TH',
+      'LEFT_LANGUAGE': 'RU',
+      'LEFT_TEXT': 'варочная панель',
+      'RIGHT_LANGUAGE': 'TH',
+      'RIGHT_TEXT': 'เตาไฟ',
+    });
   });
 }

@@ -67,6 +67,253 @@ void main() {
     expect(find.text('Аудит и диагностика'), findsOneWidget);
   });
 
+  testWidgets('new semantic report hides legacy reverse diagnostics', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorRunReport report = _report(withReverse: false);
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text('EXACT'), findsOneWidget);
+    expect(find.text('Попарный семантический аудит'), findsOneWidget);
+    expect(find.text('Сертификация EXACT'), findsOneWidget);
+    expect(find.text('Обратные секции перевода'), findsNothing);
+    expect(find.text('EN_TO_RU'), findsNothing);
+  });
+
+  testWidgets('clear audit without certification shows fail-closed evidence', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorRunReport report = _report(
+      audit: TranslationAudit(
+        pairAudits: <TranslationPairAudit>[
+          for (final TranslationPair pair in TranslationPair.values)
+            TranslationPairAudit(
+              pair: pair,
+              result: TranslationPairAuditResult.clear,
+            ),
+        ],
+      ),
+      withReverse: false,
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text('NEEDS REVIEW'), findsOneWidget);
+    expect(find.text('Сертификация EXACT'), findsOneWidget);
+    expect(
+      find.text(
+        'Структурированное доказательство не получено. Требуется проверка.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('semantic fallback does not claim preserved evidence', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorRunReport report = _report(
+      audit: TranslationAudit(protocolFallback: true),
+      withReverse: false,
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text('NEEDS REVIEW'), findsOneWidget);
+    expect(
+      find.text(
+        'Структурированное доказательство не получено. Требуется проверка.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Смысл сохранён'), findsNothing);
+    expect(find.text('Терминология сохранена'), findsNothing);
+    expect(find.text('Канонический стиль сохранён'), findsNothing);
+  });
+
+  testWidgets('legacy empty audit does not claim preserved evidence', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorRunReport report = _report(
+      audit: TranslationAudit(),
+      withReverse: true,
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text('NEEDS REVIEW'), findsOneWidget);
+    expect(
+      find.text(
+        'Структурированное доказательство не получено. Требуется проверка.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Смысл сохранён'), findsNothing);
+    expect(find.text('Терминология сохранена'), findsNothing);
+    expect(find.text('Канонический стиль сохранён'), findsNothing);
+  });
+
+  testWidgets('style-only semantic issue uses a style-specific explanation', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorRunReport report = _report(
+      audit: TranslationAudit(
+        pairAudits: <TranslationPairAudit>[
+          TranslationPairAudit(
+            pair: TranslationPair.ruEn,
+            result: TranslationPairAuditResult.blocked,
+            issues: const <TranslationPairIssue>[
+              TranslationPairIssue(
+                atom: TranslationSemanticAtom.canonicalStyle,
+                status: TranslationIssueStatus.mismatch,
+              ),
+            ],
+          ),
+          TranslationPairAudit(
+            pair: TranslationPair.ruTh,
+            result: TranslationPairAuditResult.clear,
+          ),
+          TranslationPairAudit(
+            pair: TranslationPair.enTh,
+            result: TranslationPairAuditResult.clear,
+          ),
+        ],
+      ),
+      withReverse: false,
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text('EQUIVALENT'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Практический смысл сохранён, но формулировка не соответствует '
+        'каноническому стилю.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+        'На исполнение задания не влияет; перед публикацией требуется '
+        'нормализовать формулировку.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('ambiguity evidence is review-only and shows practical impact', (
+    WidgetTester tester,
+  ) async {
+    final TranslatorRunReport report = _report(
+      audit: TranslationAudit(
+        pairAudits: <TranslationPairAudit>[
+          TranslationPairAudit(
+            pair: TranslationPair.ruEn,
+            result: TranslationPairAuditResult.blocked,
+            issues: const <TranslationPairIssue>[
+              TranslationPairIssue(
+                atom: TranslationSemanticAtom.ambiguity,
+                status: TranslationIssueStatus.mismatch,
+              ),
+            ],
+          ),
+          TranslationPairAudit(
+            pair: TranslationPair.ruTh,
+            result: TranslationPairAuditResult.clear,
+          ),
+          TranslationPairAudit(
+            pair: TranslationPair.enTh,
+            result: TranslationPairAuditResult.clear,
+          ),
+        ],
+      ),
+      withReverse: false,
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text('NEEDS REVIEW'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Формулировка допускает неоднозначное практическое толкование.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+        'Разные участники могут понять задание по-разному; требуется '
+        'ручная проверка контекста.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('needsReview uses yellow verdict card with audit findings', (
     WidgetTester tester,
   ) async {
@@ -138,9 +385,7 @@ void main() {
       sourceAmbiguity: 'NONE',
     );
     final TranslatorRunReport report = _report(
-      audit: TranslationAudit(
-        findings: <TranslationFinding>[finding],
-      ),
+      audit: TranslationAudit(findings: <TranslationFinding>[finding]),
     );
 
     await _pumpTranslator(
@@ -176,35 +421,39 @@ void main() {
   });
 
   for (final ({
-    Locale locale,
-    String verdictTitle,
-    String auditTitle,
-    String evidenceSection,
-  }) localeCase in <({
-    Locale locale,
-    String verdictTitle,
-    String auditTitle,
-    String evidenceSection,
-  })>[
-    (
-      locale: RegistryStudioLocalizations.russian,
-      verdictTitle: 'Автоматический вердикт перевода',
-      auditTitle: 'Аудит и диагностика',
-      evidenceSection: 'Затронутая секция',
-    ),
-    (
-      locale: RegistryStudioLocalizations.english,
-      verdictTitle: 'Automatic translation verdict',
-      auditTitle: 'Audit and diagnostics',
-      evidenceSection: 'Affected section',
-    ),
-    (
-      locale: RegistryStudioLocalizations.thai,
-      verdictTitle: 'คำตัดสินการแปลอัตโนมัติ',
-      auditTitle: 'การตรวจสอบและการวินิจฉัย',
-      evidenceSection: 'ส่วนที่ได้รับผลกระทบ',
-    ),
-  ]) {
+        Locale locale,
+        String verdictTitle,
+        String auditTitle,
+        String evidenceSection,
+      })
+      localeCase
+      in <
+        ({
+          Locale locale,
+          String verdictTitle,
+          String auditTitle,
+          String evidenceSection,
+        })
+      >[
+        (
+          locale: RegistryStudioLocalizations.russian,
+          verdictTitle: 'Автоматический вердикт перевода',
+          auditTitle: 'Аудит и диагностика',
+          evidenceSection: 'Затронутая секция',
+        ),
+        (
+          locale: RegistryStudioLocalizations.english,
+          verdictTitle: 'Automatic translation verdict',
+          auditTitle: 'Audit and diagnostics',
+          evidenceSection: 'Affected section',
+        ),
+        (
+          locale: RegistryStudioLocalizations.thai,
+          verdictTitle: 'คำตัดสินการแปลอัตโนมัติ',
+          auditTitle: 'การตรวจสอบและการวินิจฉัย',
+          evidenceSection: 'ส่วนที่ได้รับผลกระทบ',
+        ),
+      ]) {
     testWidgets(
       'localizes evidence labels for ${localeCase.locale.languageCode}',
       (WidgetTester tester) async {
@@ -537,27 +786,21 @@ void main() {
     expect(store.clearCount, 1);
   });
 
-  for (final ({
-    Locale locale,
-    String title,
-    String message,
-  }) localeCase in <({
-    Locale locale,
-    String title,
-    String message,
-  })>[
-    (
-      locale: RegistryStudioLocalizations.english,
-      title: 'Restore warning',
-      message: 'The saved Translator draft was corrupt and was safely removed.',
-    ),
-    (
-      locale: RegistryStudioLocalizations.thai,
-      title: 'คำเตือนการกู้คืน',
-      message:
-          'ฉบับร่าง Translator ที่บันทึกไว้เสียหายและถูกลบออกอย่างปลอดภัย',
-    ),
-  ]) {
+  for (final ({Locale locale, String title, String message}) localeCase
+      in <({Locale locale, String title, String message})>[
+        (
+          locale: RegistryStudioLocalizations.english,
+          title: 'Restore warning',
+          message:
+              'The saved Translator draft was corrupt and was safely removed.',
+        ),
+        (
+          locale: RegistryStudioLocalizations.thai,
+          title: 'คำเตือนการกู้คืน',
+          message:
+              'ฉบับร่าง Translator ที่บันทึกไว้เสียหายและถูกลบออกอย่างปลอดภัย',
+        ),
+      ]) {
     testWidgets(
       'localizes corrupt draft warning for ${localeCase.locale.languageCode}',
       (WidgetTester tester) async {
@@ -578,26 +821,19 @@ void main() {
     );
   }
 
-  for (final ({
-    Locale locale,
-    String message,
-    String codeLabel,
-  }) localeCase in <({
-    Locale locale,
-    String message,
-    String codeLabel,
-  })>[
-    (
-      locale: RegistryStudioLocalizations.english,
-      message: 'Typhoon rejected the API key. Check the saved key.',
-      codeLabel: 'Error code: unauthorized',
-    ),
-    (
-      locale: RegistryStudioLocalizations.thai,
-      message: 'Typhoon ปฏิเสธคีย์ API โปรดตรวจสอบคีย์ที่บันทึกไว้',
-      codeLabel: 'รหัสข้อผิดพลาด: unauthorized',
-    ),
-  ]) {
+  for (final ({Locale locale, String message, String codeLabel}) localeCase
+      in <({Locale locale, String message, String codeLabel})>[
+        (
+          locale: RegistryStudioLocalizations.english,
+          message: 'Typhoon rejected the API key. Check the saved key.',
+          codeLabel: 'Error code: unauthorized',
+        ),
+        (
+          locale: RegistryStudioLocalizations.thai,
+          message: 'Typhoon ปฏิเสธคีย์ API โปรดตรวจสอบคีย์ที่บันทึกไว้',
+          codeLabel: 'รหัสข้อผิดพลาด: unauthorized',
+        ),
+      ]) {
     testWidgets(
       'localizes provider failure for ${localeCase.locale.languageCode}',
       (WidgetTester tester) async {
@@ -684,7 +920,10 @@ Future<void> _pumpTranslator(
   await tester.pumpAndSettle();
 }
 
-TranslatorRunReport _report({TranslationAudit? audit}) {
+TranslatorRunReport _report({
+  TranslationAudit? audit,
+  bool withReverse = true,
+}) {
   final TranslatorWorkRequest request = TranslatorWorkRequest(
     sourceText: 'Фотография установленного оборудования.',
     sourceLanguageHint: TranslationLanguage.ru,
@@ -698,13 +937,32 @@ TranslatorRunReport _report({TranslationAudit? audit}) {
       ru: request.sourceText,
       en: 'Photo of the installed equipment.',
       th: 'ภาพถ่ายอุปกรณ์ที่ติดตั้งแล้ว',
-      enToRu: request.sourceText,
-      thToRu: request.sourceText,
-      enToTh: 'ภาพถ่ายอุปกรณ์ที่ติดตั้งแล้ว',
-      thToEn: 'Photo of the installed equipment.',
+      enToRu: withReverse ? request.sourceText : null,
+      thToRu: withReverse ? request.sourceText : null,
+      enToTh: withReverse ? 'ภาพถ่ายอุปกรณ์ที่ติดตั้งแล้ว' : null,
+      thToEn: withReverse ? 'Photo of the installed equipment.' : null,
     ),
-    audit: audit ?? TranslationAudit(),
+    audit: audit ?? _exactAudit(),
     createdAt: DateTime.utc(2026, 7, 26, 6),
+  );
+}
+
+TranslationAudit _exactAudit() {
+  return TranslationAudit(
+    pairAudits: <TranslationPairAudit>[
+      for (final TranslationPair pair in TranslationPair.values)
+        TranslationPairAudit(
+          pair: pair,
+          result: TranslationPairAuditResult.clear,
+        ),
+    ],
+    exactCertifications: <ExactPairCertification>[
+      for (final TranslationPair pair in TranslationPair.values)
+        ExactPairCertification(
+          pair: pair,
+          result: ExactCertificationResult.clear,
+        ),
+    ],
   );
 }
 

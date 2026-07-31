@@ -11,7 +11,8 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
 
   static const String directoryName = 'registry_studio';
   static const String fileName = 'translator_draft_v1.json';
-  static const String _currentVersion = 'v3';
+  static const String _currentVersion = 'v4';
+  static const String _multilingualVersion = 'v3';
   static const String _structuredVersion = 'v2';
   static const String _legacyVersion = 'v1';
 
@@ -42,6 +43,7 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
           !state.keys.toSet().containsAll(expectedKeys) ||
           version is! String ||
           (version != _currentVersion &&
+              version != _multilingualVersion &&
               version != _structuredVersion &&
               version != _legacyVersion)) {
         throw const FormatException('Translator draft schema is invalid.');
@@ -160,6 +162,13 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
         'findings': report.audit.findings
             .map(_encodeFinding)
             .toList(growable: false),
+        'pairAudits': report.audit.pairAudits
+            .map(_encodePairAudit)
+            .toList(growable: false),
+        'exactCertifications': report.audit.exactCertifications
+            .map(_encodeExactCertification)
+            .toList(growable: false),
+        'protocolFallback': report.audit.protocolFallback,
       },
       'createdAt': report.createdAt.toUtc().toIso8601String(),
     };
@@ -217,6 +226,44 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
           : _string(request['engineerContext'], 'request.engineerContext'),
     );
 
+    final bool currentBundle = version == _currentVersion;
+    final Set<String> expectedBundleKeys = currentBundle
+        ? <String>{
+            'SOURCE LANGUAGE',
+            'SOURCE TEXT',
+            'RU',
+            'EN',
+            'TH',
+            if (bundle.containsKey('EN_TO_RU')) 'EN_TO_RU',
+            if (bundle.containsKey('TH_TO_RU')) 'TH_TO_RU',
+            if (bundle.containsKey('EN_TO_TH')) 'EN_TO_TH',
+            if (bundle.containsKey('TH_TO_EN')) 'TH_TO_EN',
+          }
+        : <String>{
+            'SOURCE LANGUAGE',
+            'SOURCE TEXT',
+            'RU',
+            'EN',
+            'TH',
+            'EN_TO_RU',
+            'TH_TO_RU',
+            'EN_TO_TH',
+            'TH_TO_EN',
+          };
+    _requireExactKeys(bundle, expectedBundleKeys, 'Translator report bundle');
+
+    final int reverseKeyCount = <String>{
+      'EN_TO_RU',
+      'TH_TO_RU',
+      'EN_TO_TH',
+      'TH_TO_EN',
+    }.where(bundle.containsKey).length;
+    if (currentBundle && reverseKeyCount != 0 && reverseKeyCount != 4) {
+      throw const FormatException(
+        'Translator report bundle has partial reverse diagnostics.',
+      );
+    }
+
     final TranslationBundle translationBundle = TranslationBundle(
       sourceLanguage: TranslationLanguage.fromCode(
         _string(bundle['SOURCE LANGUAGE'], 'bundle.SOURCE LANGUAGE'),
@@ -225,16 +272,26 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
       ru: _string(bundle['RU'], 'bundle.RU'),
       en: _string(bundle['EN'], 'bundle.EN'),
       th: _string(bundle['TH'], 'bundle.TH'),
-      enToRu: _string(bundle['EN_TO_RU'], 'bundle.EN_TO_RU'),
-      thToRu: _string(bundle['TH_TO_RU'], 'bundle.TH_TO_RU'),
-      enToTh: _string(bundle['EN_TO_TH'], 'bundle.EN_TO_TH'),
-      thToEn: _string(bundle['TH_TO_EN'], 'bundle.TH_TO_EN'),
+      enToRu: bundle['EN_TO_RU'] == null
+          ? null
+          : _string(bundle['EN_TO_RU'], 'bundle.EN_TO_RU'),
+      thToRu: bundle['TH_TO_RU'] == null
+          ? null
+          : _string(bundle['TH_TO_RU'], 'bundle.TH_TO_RU'),
+      enToTh: bundle['EN_TO_TH'] == null
+          ? null
+          : _string(bundle['EN_TO_TH'], 'bundle.EN_TO_TH'),
+      thToEn: bundle['TH_TO_EN'] == null
+          ? null
+          : _string(bundle['TH_TO_EN'], 'bundle.TH_TO_EN'),
     );
 
     final TranslationAudit translationAudit;
 
     if (version == _legacyVersion) {
       translationAudit = _decodeLegacyAudit(audit);
+    } else if (version == _currentVersion) {
+      translationAudit = _decodeCurrentAudit(audit, bundle: translationBundle);
     } else {
       translationAudit = _decodeStructuredAudit(
         audit,
@@ -289,10 +346,179 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
     };
   }
 
+  static Map<String, Object?> _encodePairAudit(TranslationPairAudit audit) {
+    return <String, Object?>{
+      'pair': audit.pair.code,
+      'result': audit.result.code,
+      'issues': audit.issues
+          .map(
+            (TranslationPairIssue issue) => <String, Object?>{
+              'atom': issue.atom.code,
+              'status': issue.status.code,
+            },
+          )
+          .toList(growable: false),
+    };
+  }
+
+  static Map<String, Object?> _encodeExactCertification(
+    ExactPairCertification certification,
+  ) {
+    return <String, Object?>{
+      'pair': certification.pair.code,
+      'result': certification.result.code,
+      'atom': certification.atom?.code,
+    };
+  }
+
   static Map<String, Object?> _encodeLocalizedText(
     LocalizedEvidenceText value,
   ) {
     return <String, Object?>{'ru': value.ru, 'en': value.en, 'th': value.th};
+  }
+
+  static TranslationAudit _decodeCurrentAudit(
+    Map<String, Object?> audit, {
+    required TranslationBundle bundle,
+  }) {
+    const Set<String> expectedKeys = <String>{
+      'findings',
+      'pairAudits',
+      'exactCertifications',
+      'protocolFallback',
+    };
+    _requireExactKeys(audit, expectedKeys, 'Translator audit');
+
+    final Object? rawFindings = audit['findings'];
+    final Object? rawPairAudits = audit['pairAudits'];
+    final Object? rawExactCertifications = audit['exactCertifications'];
+    final Object? protocolFallback = audit['protocolFallback'];
+
+    if (rawFindings is! List<Object?> ||
+        rawPairAudits is! List<Object?> ||
+        rawExactCertifications is! List<Object?> ||
+        protocolFallback is! bool) {
+      throw const FormatException('Translator audit field types are invalid.');
+    }
+
+    final List<TranslationFinding> findings = <TranslationFinding>[
+      for (int index = 0; index < rawFindings.length; index += 1)
+        _decodeFinding(
+          rawFindings[index],
+          index,
+          bundle,
+          version: _currentVersion,
+        ),
+    ];
+    final List<TranslationPairAudit> pairAudits = <TranslationPairAudit>[
+      for (int index = 0; index < rawPairAudits.length; index += 1)
+        _decodePairAudit(rawPairAudits[index], index),
+    ];
+    final List<ExactPairCertification> exactCertifications =
+        <ExactPairCertification>[
+          for (int index = 0; index < rawExactCertifications.length; index += 1)
+            _decodeExactCertification(rawExactCertifications[index], index),
+        ];
+
+    try {
+      return TranslationAudit(
+        findings: findings,
+        pairAudits: pairAudits,
+        exactCertifications: exactCertifications,
+        protocolFallback: protocolFallback,
+      );
+    } on ArgumentError catch (error) {
+      throw FormatException('Translator audit is invalid: ${error.message}');
+    }
+  }
+
+  static TranslationPairAudit _decodePairAudit(Object? value, int index) {
+    final String name = 'audit.pairAudits[$index]';
+    final Map<String, Object?> encoded = _map(value, name);
+    _requireExactKeys(encoded, const <String>{
+      'pair',
+      'result',
+      'issues',
+    }, name);
+
+    final Object? rawIssues = encoded['issues'];
+    if (rawIssues is! List<Object?>) {
+      throw FormatException('$name.issues must be an array.');
+    }
+
+    final TranslationPair pair;
+    final TranslationPairAuditResult result;
+
+    try {
+      pair = TranslationPair.fromCode(_string(encoded['pair'], '$name.pair'));
+      result = TranslationPairAuditResult.fromCode(
+        _string(encoded['result'], '$name.result'),
+      );
+    } on ArgumentError catch (error) {
+      throw FormatException('$name contains an invalid code: ${error.message}');
+    }
+
+    final List<TranslationPairIssue> issues = <TranslationPairIssue>[
+      for (int issueIndex = 0; issueIndex < rawIssues.length; issueIndex += 1)
+        _decodePairIssue(rawIssues[issueIndex], '$name.issues[$issueIndex]'),
+    ];
+
+    try {
+      return TranslationPairAudit(pair: pair, result: result, issues: issues);
+    } on ArgumentError catch (error) {
+      throw FormatException('$name is invalid: ${error.message}');
+    }
+  }
+
+  static TranslationPairIssue _decodePairIssue(Object? value, String name) {
+    final Map<String, Object?> encoded = _map(value, name);
+    _requireExactKeys(encoded, const <String>{'atom', 'status'}, name);
+
+    try {
+      return TranslationPairIssue(
+        atom: TranslationSemanticAtom.fromCode(
+          _string(encoded['atom'], '$name.atom'),
+        ),
+        status: TranslationIssueStatus.fromCode(
+          _string(encoded['status'], '$name.status'),
+        ),
+      );
+    } on ArgumentError catch (error) {
+      throw FormatException('$name contains an invalid code: ${error.message}');
+    }
+  }
+
+  static ExactPairCertification _decodeExactCertification(
+    Object? value,
+    int index,
+  ) {
+    final String name = 'audit.exactCertifications[$index]';
+    final Map<String, Object?> encoded = _map(value, name);
+    _requireExactKeys(encoded, const <String>{'pair', 'result', 'atom'}, name);
+
+    final TranslationPair pair;
+    final ExactCertificationResult result;
+    final TranslationSemanticAtom? atom;
+
+    try {
+      pair = TranslationPair.fromCode(_string(encoded['pair'], '$name.pair'));
+      result = ExactCertificationResult.fromCode(
+        _string(encoded['result'], '$name.result'),
+      );
+      atom = encoded['atom'] == null
+          ? null
+          : TranslationSemanticAtom.fromCode(
+              _string(encoded['atom'], '$name.atom'),
+            );
+    } on ArgumentError catch (error) {
+      throw FormatException('$name contains an invalid code: ${error.message}');
+    }
+
+    try {
+      return ExactPairCertification(pair: pair, result: result, atom: atom);
+    } on ArgumentError catch (error) {
+      throw FormatException('$name is invalid: ${error.message}');
+    }
   }
 
   static TranslationAudit _decodeLegacyAudit(Map<String, Object?> audit) {
@@ -378,9 +604,11 @@ final class JsonFileTranslatorDraftStore implements TranslatorDraftStore {
 
     final bool russianOnly =
         (version == _structuredVersion && kind == 'structured') ||
-        (version == _currentVersion && kind == 'russianOnly');
+        ((version == _multilingualVersion || version == _currentVersion) &&
+            kind == 'russianOnly');
     final bool multilingual =
-        version == _currentVersion && kind == 'multilingual';
+        (version == _multilingualVersion || version == _currentVersion) &&
+        kind == 'multilingual';
 
     if (!russianOnly && !multilingual) {
       throw FormatException('$name.kind is invalid for draft $version.');

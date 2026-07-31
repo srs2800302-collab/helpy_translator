@@ -507,8 +507,9 @@ final class _ProgressCard extends StatelessWidget {
     final RegistryStudioLocalizations l10n = context.rsL10n;
     final String label = switch (stage) {
       TranslatorRunStage.directTranslation => l10n.directTranslationStage,
-      TranslatorRunStage.reverseTranslation => l10n.reverseTranslationStage,
       TranslatorRunStage.audit => l10n.auditStage,
+      TranslatorRunStage.exactCertification => l10n.exactCertificationStage,
+      TranslatorRunStage.reverseTranslation => l10n.reverseTranslationStage,
       null => l10n.preparingTranslation,
     };
 
@@ -629,7 +630,7 @@ final class _TranslationReportView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _VerdictCard(audit: audit),
+        _VerdictCard(audit: audit, bundle: bundle),
         const SizedBox(height: 12),
         _SectionCard(
           title: l10n.directTranslation,
@@ -640,25 +641,28 @@ final class _TranslationReportView extends StatelessWidget {
             MapEntry<String, String>('TH', bundle.th),
           ],
         ),
-        const SizedBox(height: 12),
-        _SectionCard(
-          title: l10n.reverseCheck,
-          entries: <MapEntry<String, String>>[
-            MapEntry<String, String>('EN_TO_RU', bundle.enToRu),
-            MapEntry<String, String>('TH_TO_RU', bundle.thToRu),
-            MapEntry<String, String>('EN_TO_TH', bundle.enToTh),
-            MapEntry<String, String>('TH_TO_EN', bundle.thToEn),
-          ],
-        ),
+        if (bundle.hasReverseDiagnostics) ...<Widget>[
+          const SizedBox(height: 12),
+          _SectionCard(
+            title: l10n.reverseCheck,
+            entries: <MapEntry<String, String>>[
+              MapEntry<String, String>('EN_TO_RU', bundle.enToRu!),
+              MapEntry<String, String>('TH_TO_RU', bundle.thToRu!),
+              MapEntry<String, String>('EN_TO_TH', bundle.enToTh!),
+              MapEntry<String, String>('TH_TO_EN', bundle.thToEn!),
+            ],
+          ),
+        ],
       ],
     );
   }
 }
 
 final class _VerdictCard extends StatelessWidget {
-  const _VerdictCard({required this.audit});
+  const _VerdictCard({required this.audit, required this.bundle});
 
   final TranslationAudit audit;
+  final TranslationBundle bundle;
 
   @override
   Widget build(BuildContext context) {
@@ -692,59 +696,165 @@ final class _VerdictCard extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            _BooleanEvidenceRow(
-              label: l10n.meaningPreserved,
-              value: audit.meaningPreserved,
-            ),
-            _BooleanEvidenceRow(
-              label: l10n.terminologyPreserved,
-              value: audit.terminologyPreserved,
-            ),
-            _BooleanEvidenceRow(
-              label: l10n.canonicalStylePreserved,
-              value: audit.canonicalStylePreserved,
-            ),
-            _BooleanEvidenceRow(
-              label: l10n.ambiguousWording,
-              value: audit.ambiguousWording,
-              positiveMeansGood: false,
-            ),
+            if (!audit.usesSemanticProtocol &&
+                audit.findings.isNotEmpty) ...<Widget>[
+              _BooleanEvidenceRow(
+                label: l10n.meaningPreserved,
+                value: audit.meaningPreserved,
+              ),
+              _BooleanEvidenceRow(
+                label: l10n.terminologyPreserved,
+                value: audit.terminologyPreserved,
+              ),
+              _BooleanEvidenceRow(
+                label: l10n.canonicalStylePreserved,
+                value: audit.canonicalStylePreserved,
+              ),
+              _BooleanEvidenceRow(
+                label: l10n.ambiguousWording,
+                value: audit.ambiguousWording,
+                positiveMeansGood: false,
+              ),
+            ],
             const SizedBox(height: 16),
             Text(
               l10n.auditAndDiagnostics,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            _FindingGroup(
-              title: l10n.meaning,
-              findings: _findingsByCategory(
-                audit,
-                TranslationFindingCategory.meaning,
+            if (audit.usesSemanticProtocol)
+              _SemanticProtocolEvidence(audit: audit, bundle: bundle)
+            else if (audit.findings.isEmpty)
+              Text(l10n.semanticProtocolFallback)
+            else ...<Widget>[
+              _FindingGroup(
+                title: l10n.meaning,
+                findings: _findingsByCategory(
+                  audit,
+                  TranslationFindingCategory.meaning,
+                ),
               ),
-            ),
-            _FindingGroup(
-              title: l10n.terminology,
-              findings: _findingsByCategory(
-                audit,
-                TranslationFindingCategory.terminology,
+              _FindingGroup(
+                title: l10n.terminology,
+                findings: _findingsByCategory(
+                  audit,
+                  TranslationFindingCategory.terminology,
+                ),
               ),
-            ),
-            _FindingGroup(
-              title: l10n.canonicalStyle,
-              findings: _findingsByCategory(
-                audit,
-                TranslationFindingCategory.style,
+              _FindingGroup(
+                title: l10n.canonicalStyle,
+                findings: _findingsByCategory(
+                  audit,
+                  TranslationFindingCategory.style,
+                ),
               ),
-            ),
-            _FindingGroup(
-              title: l10n.ambiguity,
-              findings: _findingsByCategory(
-                audit,
-                TranslationFindingCategory.ambiguity,
+              _FindingGroup(
+                title: l10n.ambiguity,
+                findings: _findingsByCategory(
+                  audit,
+                  TranslationFindingCategory.ambiguity,
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 8),
             Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _SemanticProtocolEvidence extends StatelessWidget {
+  const _SemanticProtocolEvidence({required this.audit, required this.bundle});
+
+  final TranslationAudit audit;
+  final TranslationBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          l10n.semanticPairAudit,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 6),
+        if (audit.protocolFallback)
+          Text(l10n.semanticProtocolFallback)
+        else
+          for (final TranslationPairAudit pairAudit in audit.pairAudits)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _SemanticPairCard(audit: pairAudit, bundle: bundle),
+            ),
+        if (audit.candidateForExact) ...<Widget>[
+          const SizedBox(height: 8),
+          Text(
+            l10n.exactCertification,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          if (audit.exactCertifications.isEmpty)
+            Text(l10n.semanticProtocolFallback)
+          else
+            for (final ExactPairCertification certification
+                in audit.exactCertifications)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(_exactCertificationSummary(certification)),
+              ),
+        ],
+      ],
+    );
+  }
+}
+
+final class _SemanticPairCard extends StatelessWidget {
+  const _SemanticPairCard({required this.audit, required this.bundle});
+
+  final TranslationPairAudit audit;
+  final TranslationBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+    final TranslationLanguage leftLanguage = audit.pair.leftLanguage;
+    final TranslationLanguage rightLanguage = audit.pair.rightLanguage;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              '${audit.pair.code} · ${audit.result.code}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Text('${leftLanguage.code}: ${bundle.textFor(leftLanguage)}'),
+            const SizedBox(height: 4),
+            Text('${rightLanguage.code}: ${bundle.textFor(rightLanguage)}'),
+            if (audit.issues.isNotEmpty) ...<Widget>[
+              const Divider(height: 20),
+              for (final TranslationPairIssue issue in audit.issues)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    '${l10n.semanticAtomLabel(issue.atom.code)} '
+                    '· ${issue.status.code}\n'
+                    '${l10n.evidenceReason}: '
+                    '${l10n.semanticIssueExplanation(atomCode: issue.atom.code, statusCode: issue.status.code)}\n'
+                    '${l10n.evidenceImpact}: '
+                    '${l10n.semanticIssueImpact(atomCode: issue.atom.code, statusCode: issue.status.code)}',
+                  ),
+                ),
+            ],
           ],
         ),
       ),
@@ -830,10 +940,7 @@ final class _FindingGroup extends StatelessWidget {
             for (int index = 0; index < findings.length; index += 1)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _FindingCard(
-                  finding: findings[index],
-                  index: index,
-                ),
+                child: _FindingCard(finding: findings[index], index: index),
               ),
         ],
       ),
@@ -877,11 +984,11 @@ final class _FindingCard extends StatelessWidget {
       );
     }
 
-    final TranslationLanguage evidenceLanguage =
-        _translationLanguageForLocale(Localizations.localeOf(context));
+    final TranslationLanguage evidenceLanguage = _translationLanguageForLocale(
+      Localizations.localeOf(context),
+    );
     final String sourceAmbiguity =
-        finding.sourceAmbiguityFor(evidenceLanguage) ??
-        l10n.noSourceAmbiguity;
+        finding.sourceAmbiguityFor(evidenceLanguage) ?? l10n.noSourceAmbiguity;
 
     return Card(
       key: ValueKey<String>(
@@ -974,9 +1081,7 @@ List<TranslationFinding> _findingsByCategory(
   TranslationFindingCategory category,
 ) {
   return audit.findings
-      .where(
-        (TranslationFinding finding) => finding.category == category,
-      )
+      .where((TranslationFinding finding) => finding.category == category)
       .toList(growable: false);
 }
 
@@ -993,8 +1098,7 @@ String _failureMessage(
     TranslatorFailureCode.emptyRequiredSection =>
       l10n.translationResponseInvalid,
     TranslatorFailureCode.placeholderValue => l10n.translationResponseInvalid,
-    TranslatorFailureCode.unexpectedSection =>
-      l10n.translationResponseInvalid,
+    TranslatorFailureCode.unexpectedSection => l10n.translationResponseInvalid,
     TranslatorFailureCode.invalidSectionOrder =>
       l10n.translationResponseInvalid,
     TranslatorFailureCode.malformedProviderResponse =>
@@ -1026,6 +1130,12 @@ String _failureTitle(
     return l10n.checkInput;
   }
   return l10n.translatorTechnicalError;
+}
+
+String _exactCertificationSummary(ExactPairCertification certification) {
+  final String atom = certification.atom?.code ?? '';
+  return '${certification.pair.code}: ${certification.result.code}'
+      '${atom.isEmpty ? '' : ' · $atom'}';
 }
 
 String _verdictLabel(TranslationVerdict verdict) {

@@ -4,6 +4,7 @@ import 'dart:io';
 
 import '../../application/translator_provider.dart';
 import '../../domain/translator_models.dart';
+import 'typhoon_semantic_protocol.dart';
 
 final class TyphoonTranslatorProvider implements TranslatorProvider {
   const TyphoonTranslatorProvider({
@@ -240,169 +241,42 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
 
     try {
       _emit(TranslatorRunStage.directTranslation);
-
-      final String directSystemPrompt = policy.buildDirectSystemPrompt();
-      final String directUserPrompt = policy.buildDirectUserPrompt(request);
-      String directContent = await _request(
-        systemPrompt: directSystemPrompt,
-        userPrompt: directUserPrompt,
-        maxTokens: _translationMaxTokens,
-        temperature: _translationTemperature,
-      );
-
-      late final Map<String, String> direct;
-      try {
-        direct = _parseDirectPayload(directContent);
-      } on _PayloadFailure {
-        directContent = await _request(
-          systemPrompt: _buildStrictDirectRetryPrompt(directSystemPrompt),
-          userPrompt: directUserPrompt,
-          maxTokens: _translationMaxTokens,
-          temperature: _translationTemperature,
-        );
-
-        try {
-          direct = _parseDirectPayload(directContent);
-        } on _PayloadFailure catch (error) {
-          throw _PayloadFailure(
-            stage: error.stage,
-            code: error.code,
-            message:
-                '${error.message} Ответ остаётся невалидным '
-                'после повторной попытки.',
-          );
-        }
-      }
-
-      final TranslationLanguage sourceLanguage;
-
-      try {
-        sourceLanguage = TranslationLanguage.fromCode(
-          direct['SOURCE LANGUAGE']!,
-        );
-      } on ArgumentError catch (error) {
-        throw TranslatorProviderException(
-          TranslatorFailure(
-            stage: TranslatorFailureStage.directTranslation,
-            code: TranslatorFailureCode.invalidSourceLanguage,
-            message: error.message?.toString() ?? 'Invalid source language.',
-          ),
-        );
-      }
-
-      if (direct['SOURCE TEXT'] != request.sourceText) {
-        throw const _PayloadFailure(
-          stage: TranslatorFailureStage.directTranslation,
-          code: TranslatorFailureCode.sourceTextMismatch,
-          message: 'Typhoon изменил SOURCE TEXT.',
-        );
-      }
-
-      if (direct[sourceLanguage.code] != request.sourceText) {
-        throw const _PayloadFailure(
-          stage: TranslatorFailureStage.directTranslation,
-          code: TranslatorFailureCode.sourceTextMismatch,
-          message: 'Секция исходного языка не совпадает с SOURCE TEXT.',
-        );
-      }
+      final TranslationBundle bundle = await _requestTranslation();
+      partialBundle = bundle;
 
       _emit(TranslatorRunStage.audit);
-
-      final String auditSystemPrompt = policy.buildAuditSystemPrompt();
-      final String auditUserPrompt = policy.buildAuditUserPrompt(
-        sourceLanguage: sourceLanguage,
-        sourceText: direct['SOURCE TEXT']!,
-        ru: direct['RU']!,
-        en: direct['EN']!,
-        th: direct['TH']!,
+      final List<TranslationPairAudit>? pairAudits = await _requestGeneralAudit(
+        bundle,
       );
 
-      Future<({TranslationBundle bundle, TranslationAudit audit})> requestAudit(
-        String systemPrompt,
-      ) async {
-        final String content = await _request(
-          systemPrompt: systemPrompt,
-          userPrompt: auditUserPrompt,
-          maxTokens: _auditMaxTokens,
-          temperature: _auditTemperature,
-        );
-        final ({
-          String enToRu,
-          String thToRu,
-          String enToTh,
-          String thToEn,
-          Object? findings,
-        })
-        verification = _parseVerificationPayload(content);
-        final TranslationBundle bundle = TranslationBundle(
-          sourceLanguage: sourceLanguage,
-          sourceText: direct['SOURCE TEXT']!,
-          ru: direct['RU']!,
-          en: direct['EN']!,
-          th: direct['TH']!,
-          enToRu: verification.enToRu,
-          thToRu: verification.thToRu,
-          enToTh: verification.enToTh,
-          thToEn: verification.thToEn,
-        );
-
-        partialBundle = bundle;
-
-        return (
+      if (pairAudits == null) {
+        return _report(
           bundle: bundle,
-          audit: _parseAuditFindings(verification.findings, bundle),
+          audit: TranslationAudit(protocolFallback: true),
         );
       }
 
-      late final ({TranslationBundle bundle, TranslationAudit audit}) result;
+      final TranslationAudit auditCandidate = TranslationAudit(
+        pairAudits: pairAudits,
+      );
 
-      try {
-        result = await requestAudit(auditSystemPrompt);
-      } on _AuditFailure {
-        partialBundle = null;
-
-        try {
-          result = await requestAudit(
-            _buildStrictAuditRetryPrompt(auditSystemPrompt),
-          );
-        } on _AuditFailure catch (error) {
-          throw _AuditFailure(
-            'Ответ проверки остался некорректным после повторной попытки: '
-            '${error.message}',
-          );
-        }
+      if (!auditCandidate.candidateForExact) {
+        return _report(bundle: bundle, audit: auditCandidate);
       }
 
-      return TranslatorRunReport(
-        request: request,
-        bundle: result.bundle,
-        audit: result.audit,
-        createdAt: DateTime.now().toUtc(),
+      _emit(TranslatorRunStage.exactCertification);
+      final List<ExactPairCertification> certifications =
+          await _requestExactCertifications(bundle);
+
+      return _report(
+        bundle: bundle,
+        audit: TranslationAudit(
+          pairAudits: pairAudits,
+          exactCertifications: certifications,
+        ),
       );
     } on TranslatorProviderException {
       rethrow;
-    } on _PayloadFailure catch (error) {
-      throw TranslatorProviderException(
-        TranslatorFailure(
-          stage: error.stage,
-          code: error.code,
-          message: error.message,
-          completeness: TranslationCompleteness.translationIncomplete,
-          partialBundle: partialBundle,
-        ),
-      );
-    } on _AuditFailure catch (error) {
-      throw TranslatorProviderException(
-        TranslatorFailure(
-          stage: TranslatorFailureStage.audit,
-          code: TranslatorFailureCode.invalidAuditResponse,
-          message: error.message,
-          completeness: partialBundle == null
-              ? TranslationCompleteness.translationIncomplete
-              : TranslationCompleteness.complete,
-          partialBundle: partialBundle,
-        ),
-      );
     } on TyphoonTransportException catch (error) {
       throw TranslatorProviderException(
         _mapTransportFailure(error, partialBundle: partialBundle),
@@ -412,57 +286,142 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     }
   }
 
-  static String _buildStrictAuditRetryPrompt(String basePrompt) {
-    return '''
-$basePrompt
+  Future<TranslationBundle> _requestTranslation() async {
+    final String systemPrompt = policy.buildDirectSystemPrompt();
+    final String userPrompt = policy.buildDirectUserPrompt(request);
 
-The previous response violated the required five-key JSON protocol.
-This is the final attempt:
-- output one JSON object only;
-- use exactly EN_TO_RU, TH_TO_RU, EN_TO_TH, TH_TO_EN and findings;
-- use nonempty trimmed strings for all reverse translations;
-- make findings an array with the exact eight-key finding objects;
-- copy exact fragments from SOURCE TEXT and the named direct section;
-- output no Markdown, preamble, verdict, summary or commentary.
-'''
-        .trim();
+    for (int attempt = 0; attempt <= _protocolRetryMax; attempt += 1) {
+      final String content = await _request(
+        systemPrompt: attempt == 0
+            ? systemPrompt
+            : _strictTranslationRetryPrompt(systemPrompt),
+        userPrompt: userPrompt,
+      );
+
+      try {
+        return TyphoonSemanticProtocol.parseTranslation(
+          content: content,
+          expectedSourceText: request.sourceText,
+        );
+      } on TyphoonSemanticProtocolException catch (error) {
+        if (attempt == _protocolRetryMax) {
+          throw TranslatorProviderException(
+            TranslatorFailure(
+              stage: TranslatorFailureStage.directTranslation,
+              code: TranslatorFailureCode.malformedProviderResponse,
+              message:
+                  'Ответ перевода остался некорректным после повторной '
+                  'попытки: ${error.message}',
+              completeness: TranslationCompleteness.translationIncomplete,
+            ),
+          );
+        }
+      }
+    }
+
+    throw StateError('Unreachable translation retry state.');
   }
 
-  static Map<String, String> _parseDirectPayload(String content) {
-    return _parsePayload(
-      content: content,
-      labels: _directLabels,
-      stage: TranslatorFailureStage.directTranslation,
-      responseName: 'Прямой перевод',
+  Future<List<TranslationPairAudit>?> _requestGeneralAudit(
+    TranslationBundle bundle,
+  ) async {
+    final String systemPrompt = policy.buildAuditSystemPrompt();
+    final String userPrompt = policy.buildAuditUserPrompt(
+      ru: bundle.ru,
+      en: bundle.en,
+      th: bundle.th,
     );
+
+    for (int attempt = 0; attempt <= _protocolRetryMax; attempt += 1) {
+      final String content = await _request(
+        systemPrompt: attempt == 0
+            ? systemPrompt
+            : _strictAuditRetryPrompt(systemPrompt),
+        userPrompt: userPrompt,
+      );
+
+      try {
+        return TyphoonSemanticProtocol.parseGeneralAudit(content);
+      } on TyphoonSemanticProtocolException {
+        if (attempt == _protocolRetryMax) {
+          return null;
+        }
+      }
+    }
+
+    return null;
   }
 
-  static String _buildStrictDirectRetryPrompt(String originalPrompt) {
-    return '''
-$originalPrompt
+  Future<List<ExactPairCertification>> _requestExactCertifications(
+    TranslationBundle bundle,
+  ) async {
+    final List<ExactPairCertification> result = <ExactPairCertification>[];
 
-The previous response violated the five-section direct-translation protocol.
-Return exactly SOURCE LANGUAGE, SOURCE TEXT, RU, EN and TH once and in order.
-Do not add reverse translations, Markdown, commentary, empty values or
-placeholders. This is the final attempt.
-'''
-        .trim();
+    for (final TranslationPair pair in TranslationPair.values) {
+      final String systemPrompt = policy.buildExactChallengerSystemPrompt(pair);
+      final String userPrompt = policy.buildExactChallengerUserPrompt(
+        pair: pair,
+        leftText: bundle.textFor(pair.leftLanguage),
+        rightText: bundle.textFor(pair.rightLanguage),
+      );
+
+      ExactPairCertification? certification;
+
+      for (int attempt = 0; attempt <= _protocolRetryMax; attempt += 1) {
+        final String content = await _request(
+          systemPrompt: attempt == 0
+              ? systemPrompt
+              : _strictExactRetryPrompt(systemPrompt, pair),
+          userPrompt: userPrompt,
+        );
+
+        try {
+          certification = TyphoonSemanticProtocol.parseExactCertification(
+            content: content,
+            pair: pair,
+          );
+          break;
+        } on TyphoonSemanticProtocolException {
+          if (attempt == _protocolRetryMax) {
+            certification = ExactPairCertification(
+              pair: pair,
+              result: ExactCertificationResult.protocolFailure,
+            );
+          }
+        }
+      }
+
+      result.add(certification!);
+    }
+
+    return List<ExactPairCertification>.unmodifiable(result);
+  }
+
+  TranslatorRunReport _report({
+    required TranslationBundle bundle,
+    required TranslationAudit audit,
+  }) {
+    return TranslatorRunReport(
+      request: request,
+      bundle: bundle,
+      audit: audit,
+      createdAt: DateTime.now().toUtc(),
+    );
   }
 
   Future<String> _request({
     required String systemPrompt,
     required String userPrompt,
-    required int maxTokens,
-    required double temperature,
   }) {
     return transport.complete(
       endpoint: _endpoint,
       accessKey: accessKey.trim(),
       body: <String, Object?>{
         'model': model,
-        'max_completion_tokens': maxTokens,
-        'temperature': temperature,
-        'frequency_penalty': 0.0,
+        'max_completion_tokens': _maxCompletionTokens,
+        'temperature': _temperature,
+        'top_p': _topP,
+        'frequency_penalty': _frequencyPenalty,
         'messages': <Map<String, String>>[
           <String, String>{'role': 'system', 'content': systemPrompt},
           <String, String>{'role': 'user', 'content': userPrompt},
@@ -497,308 +456,42 @@ placeholders. This is the final attempt.
     }
   }
 
-  static Map<String, String> _parsePayload({
-    required String content,
-    required List<String> labels,
-    required TranslatorFailureStage stage,
-    required String responseName,
-  }) {
-    final String normalized = content
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\r', '\n')
+  static String _strictTranslationRetryPrompt(String basePrompt) {
+    return '''
+$basePrompt
+
+FINAL PROTOCOL RETRY:
+Return exactly one JSON object with exactly SOURCE_LANGUAGE, SOURCE_TEXT, RU,
+EN, and TH. No Markdown, preamble, commentary, reverse translations, empty
+values, placeholders, or unknown keys.
+'''
         .trim();
-
-    if (normalized.isEmpty) {
-      throw _PayloadFailure(
-        stage: stage,
-        code: TranslatorFailureCode.emptyRequiredSection,
-        message: '$responseName пуст.',
-      );
-    }
-
-    final List<RegExpMatch> matches = _sectionPattern
-        .allMatches(normalized)
-        .toList(growable: false);
-
-    if (matches.length != labels.length) {
-      throw _PayloadFailure(
-        stage: stage,
-        code: TranslatorFailureCode.missingRequiredSection,
-        message: '$responseName содержит неверное количество секций.',
-      );
-    }
-
-    final List<String> actualLabels = matches
-        .map((RegExpMatch match) => match.group(1)!)
-        .toList(growable: false);
-
-    if (actualLabels.toSet().length != actualLabels.length) {
-      throw _PayloadFailure(
-        stage: stage,
-        code: TranslatorFailureCode.unexpectedSection,
-        message: '$responseName содержит дублированные секции.',
-      );
-    }
-
-    for (int index = 0; index < labels.length; index += 1) {
-      if (actualLabels[index] != labels[index]) {
-        throw _PayloadFailure(
-          stage: stage,
-          code: TranslatorFailureCode.invalidSectionOrder,
-          message: '$responseName содержит секции в неверном порядке.',
-        );
-      }
-    }
-
-    final String preamble = normalized.substring(0, matches.first.start).trim();
-
-    if (preamble.isNotEmpty) {
-      throw _PayloadFailure(
-        stage: stage,
-        code: TranslatorFailureCode.unexpectedSection,
-        message: '$responseName содержит текст до первой секции.',
-      );
-    }
-
-    final Map<String, String> result = <String, String>{};
-
-    for (int index = 0; index < labels.length; index += 1) {
-      final int valueStart = matches[index].end;
-      final int valueEnd = index + 1 < matches.length
-          ? matches[index + 1].start
-          : normalized.length;
-
-      final String label = labels[index];
-      final String value = normalized.substring(valueStart, valueEnd).trim();
-
-      if (value.isEmpty) {
-        throw _PayloadFailure(
-          stage: stage,
-          code: TranslatorFailureCode.emptyRequiredSection,
-          message: 'Секция $label пуста.',
-        );
-      }
-
-      if (_placeholderValues.contains(value.toUpperCase())) {
-        throw _PayloadFailure(
-          stage: stage,
-          code: TranslatorFailureCode.placeholderValue,
-          message: 'Секция $label содержит значение-заглушку.',
-        );
-      }
-
-      result[label] = value;
-    }
-
-    return result;
   }
 
-  static ({
-    String enToRu,
-    String thToRu,
-    String enToTh,
-    String thToEn,
-    Object? findings,
-  })
-  _parseVerificationPayload(String content) {
-    final String normalized = content.trim();
+  static String _strictAuditRetryPrompt(String basePrompt) {
+    return '''
+$basePrompt
 
-    if (normalized.isEmpty) {
-      throw const _AuditFailure('Ответ проверки пуст.');
-    }
-
-    final Object? decoded;
-
-    try {
-      decoded = jsonDecode(normalized);
-    } on FormatException catch (error) {
-      throw _AuditFailure('Ответ проверки не является корректным JSON: $error');
-    }
-
-    final Map<String, Object?> root = _auditObject(
-      decoded,
-      'Корень ответа проверки',
-    );
-    _requireExactAuditKeys(
-      root,
-      _verificationRootKeys,
-      'Корень ответа проверки',
-    );
-
-    return (
-      enToRu: _verificationString(root, 'EN_TO_RU'),
-      thToRu: _verificationString(root, 'TH_TO_RU'),
-      enToTh: _verificationString(root, 'EN_TO_TH'),
-      thToEn: _verificationString(root, 'TH_TO_EN'),
-      findings: root['findings'],
-    );
+FINAL PROTOCOL RETRY:
+Return one JSON object with exactly RU_EN, RU_TH, and EN_TH. Every pair must
+contain exactly RESULT and ISSUES. ISSUES must be an array of at most two
+objects with exactly ATOM and STATUS. Output no other text.
+'''
+        .trim();
   }
 
-  static String _verificationString(Map<String, Object?> root, String key) {
-    final String value = _auditString(root[key], key);
-
-    if (_placeholderValues.contains(value.toUpperCase())) {
-      throw _AuditFailure('$key содержит значение-заглушку.');
-    }
-
-    return value;
-  }
-
-  static TranslationAudit _parseAuditFindings(
-    Object? rawFindings,
-    TranslationBundle bundle,
+  static String _strictExactRetryPrompt(
+    String basePrompt,
+    TranslationPair pair,
   ) {
-    if (rawFindings is! List<Object?>) {
-      throw const _AuditFailure('Поле findings должно быть JSON-массивом.');
-    }
+    return '''
+$basePrompt
 
-    final List<TranslationFinding> findings = <TranslationFinding>[];
-
-    for (int index = 0; index < rawFindings.length; index += 1) {
-      findings.add(
-        _parseAuditFinding(rawFindings[index], index: index, bundle: bundle),
-      );
-    }
-
-    try {
-      return TranslationAudit(findings: findings);
-    } on ArgumentError catch (error) {
-      throw _AuditFailure('Ответ проверки содержит дубли: ${error.message}');
-    }
-  }
-
-  static TranslationFinding _parseAuditFinding(
-    Object? value, {
-    required int index,
-    required TranslationBundle bundle,
-  }) {
-    final String name = 'findings[$index]';
-    final Map<String, Object?> finding = _auditObject(value, name);
-    _requireExactAuditKeys(finding, _auditFindingKeys, name);
-
-    final String categoryCode = _auditString(
-      finding['category'],
-      '$name.category',
-    );
-    final String sectionCode = _auditString(
-      finding['section'],
-      '$name.section',
-    );
-
-    final TranslationFindingCategory category;
-    final TranslationLanguage section;
-
-    try {
-      category = TranslationFindingCategory.fromCode(categoryCode);
-      section = TranslationLanguage.fromCode(sectionCode);
-    } on ArgumentError catch (error) {
-      throw _AuditFailure('$name содержит неизвестный код: ${error.message}');
-    }
-
-    if (category.code != categoryCode || section.code != sectionCode) {
-      throw _AuditFailure(
-        '$name должен использовать точные uppercase-коды category и section.',
-      );
-    }
-
-    final String sourceFragment = _auditString(
-      finding['source_fragment'],
-      '$name.source_fragment',
-    );
-    final String translationFragment = _auditString(
-      finding['translation_fragment'],
-      '$name.translation_fragment',
-    );
-    final LocalizedEvidenceText reason = _auditLocalizedText(
-      finding['reason'],
-      '$name.reason',
-    );
-    final LocalizedEvidenceText impact = _auditLocalizedText(
-      finding['impact'],
-      '$name.impact',
-    );
-    final String correctVariant = _auditString(
-      finding['correct_variant'],
-      '$name.correct_variant',
-    );
-    final LocalizedEvidenceText? sourceAmbiguity =
-        finding['source_ambiguity'] == null
-        ? null
-        : _auditLocalizedText(
-            finding['source_ambiguity'],
-            '$name.source_ambiguity',
-          );
-
-    if (!bundle.sourceText.contains(sourceFragment)) {
-      throw _AuditFailure('$name.source_fragment отсутствует в SOURCE TEXT.');
-    }
-
-    final String directText = switch (section) {
-      TranslationLanguage.ru => bundle.ru,
-      TranslationLanguage.en => bundle.en,
-      TranslationLanguage.th => bundle.th,
-    };
-
-    if (!directText.contains(translationFragment)) {
-      throw _AuditFailure(
-        '$name.translation_fragment отсутствует в секции ${section.code}.',
-      );
-    }
-
-    return TranslationFinding.multilingual(
-      category: category,
-      section: section,
-      sourceFragment: sourceFragment,
-      translationFragment: translationFragment,
-      reason: reason,
-      impact: impact,
-      correctVariant: correctVariant,
-      sourceAmbiguity: sourceAmbiguity,
-    );
-  }
-
-  static LocalizedEvidenceText _auditLocalizedText(Object? value, String name) {
-    final Map<String, Object?> localized = _auditObject(value, name);
-    _requireExactAuditKeys(localized, _auditLocaleKeys, name);
-
-    return LocalizedEvidenceText(
-      ru: _auditString(localized['ru'], '$name.ru'),
-      en: _auditString(localized['en'], '$name.en'),
-      th: _auditString(localized['th'], '$name.th'),
-    );
-  }
-
-  static Map<String, Object?> _auditObject(Object? value, String name) {
-    if (value is! Map<Object?, Object?> ||
-        value.keys.any((Object? key) => key is! String)) {
-      throw _AuditFailure('$name должен быть JSON-объектом.');
-    }
-
-    return value.cast<String, Object?>();
-  }
-
-  static void _requireExactAuditKeys(
-    Map<String, Object?> value,
-    Set<String> expected,
-    String name,
-  ) {
-    final Set<String> actual = value.keys.toSet();
-
-    if (actual.length != expected.length || !actual.containsAll(expected)) {
-      throw _AuditFailure('$name содержит неверный набор ключей.');
-    }
-  }
-
-  static String _auditString(Object? value, String name) {
-    if (value is! String || value.trim().isEmpty) {
-      throw _AuditFailure('$name должен быть непустой строкой.');
-    }
-
-    if (value != value.trim()) {
-      throw _AuditFailure('$name содержит внешние пробелы.');
-    }
-
-    return value;
+FINAL PROTOCOL RETRY FOR ${pair.code}:
+Return exactly {"RESULT":"CLEAR","ATOM":null} or
+{"RESULT":"NOT_CERTIFIED","ATOM":"<canonical_atom>"} and no other text.
+'''
+        .trim();
   }
 
   static TranslatorFailure _mapTransportFailure(
@@ -842,73 +535,13 @@ placeholders. This is the final attempt.
     );
   }
 
-  static const int _translationMaxTokens = 1400;
-  static const int _auditMaxTokens = 2200;
-  static const double _translationTemperature = 0.1;
-  static const double _auditTemperature = 0.0;
+  static const int _maxCompletionTokens = 512;
+  static const double _temperature = 0.6;
+  static const double _topP = 0.6;
+  static const double _frequencyPenalty = 0.0;
+  static const int _protocolRetryMax = 1;
 
   static final RegExp _accessKeyPattern = RegExp(r'^[\x21-\x7E]+$');
-
-  static const List<String> _directLabels = <String>[
-    'SOURCE LANGUAGE',
-    'SOURCE TEXT',
-    'RU',
-    'EN',
-    'TH',
-  ];
-
-  static const Set<String> _verificationRootKeys = <String>{
-    'EN_TO_RU',
-    'TH_TO_RU',
-    'EN_TO_TH',
-    'TH_TO_EN',
-    'findings',
-  };
-
-  static const Set<String> _auditFindingKeys = <String>{
-    'category',
-    'section',
-    'source_fragment',
-    'translation_fragment',
-    'reason',
-    'impact',
-    'correct_variant',
-    'source_ambiguity',
-  };
-
-  static const Set<String> _auditLocaleKeys = <String>{'ru', 'en', 'th'};
-
-  static const Set<String> _placeholderValues = <String>{
-    '-',
-    'N/A',
-    'NONE',
-    'NULL',
-    'UNKNOWN',
-    'NOT PROVIDED',
-  };
-
-  static final RegExp _sectionPattern = RegExp(
-    r'^([A-Z][A-Z0-9 _]*):[ \t]*$',
-    multiLine: true,
-  );
-}
-
-final class _PayloadFailure implements Exception {
-  const _PayloadFailure({
-    required this.stage,
-    required this.code,
-    required this.message,
-  });
-
-  final TranslatorFailureStage stage;
-  final TranslatorFailureCode code;
-  final String message;
-}
-
-final class _AuditFailure implements Exception {
-  const _AuditFailure(this.message);
-
-  final String message;
 }
 
 final class TyphoonTransportException implements Exception {

@@ -8,11 +8,17 @@ abstract interface class TranslatorPolicy {
   String buildAuditSystemPrompt();
 
   String buildAuditUserPrompt({
-    required TranslationLanguage sourceLanguage,
-    required String sourceText,
     required String ru,
     required String en,
     required String th,
+  });
+
+  String buildExactChallengerSystemPrompt(TranslationPair pair);
+
+  String buildExactChallengerUserPrompt({
+    required TranslationPair pair,
+    required String leftText,
+    required String rightText,
   });
 }
 

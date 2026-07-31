@@ -170,9 +170,15 @@ final class RegistryStudioLocalizations {
   );
 
   String get auditStage => _value(
-    ru: 'Семантический аудит и вердикт',
-    en: 'Semantic audit and verdict',
-    th: 'การตรวจสอบเชิงความหมายและคำตัดสิน',
+    ru: 'Попарный семантический аудит',
+    en: 'Pairwise semantic audit',
+    th: 'การตรวจสอบความหมายแบบรายคู่',
+  );
+
+  String get exactCertificationStage => _value(
+    ru: 'Независимая проверка кандидата EXACT',
+    en: 'Independent EXACT candidate check',
+    th: 'การตรวจสอบผู้สมัคร EXACT แบบอิสระ',
   );
 
   String get preparingTranslation => _value(
@@ -240,13 +246,13 @@ final class RegistryStudioLocalizations {
 
   String get verdictEngineerNotice => _value(
     ru:
-        'Вердикт сформирован автоматически по findings. '
+        'Вердикт вычислен приложением из структурированных доказательств. '
         'Итоговое решение принимает инженер.',
     en:
-        'The verdict is generated automatically from findings. '
+        'The application derives the verdict from structured evidence. '
         'The engineer makes the final decision.',
     th:
-        'คำตัดสินถูกสร้างโดยอัตโนมัติจากข้อค้นพบ '
+        'แอปคำนวณคำตัดสินจากหลักฐานแบบมีโครงสร้าง '
         'วิศวกรเป็นผู้ตัดสินใจขั้นสุดท้าย',
   );
 
@@ -255,6 +261,164 @@ final class RegistryStudioLocalizations {
     en: 'Audit and diagnostics',
     th: 'การตรวจสอบและการวินิจฉัย',
   );
+
+  String get semanticPairAudit => _value(
+    ru: 'Попарный семантический аудит',
+    en: 'Pairwise semantic audit',
+    th: 'การตรวจสอบความหมายแบบรายคู่',
+  );
+
+  String get exactCertification => _value(
+    ru: 'Сертификация EXACT',
+    en: 'EXACT certification',
+    th: 'การรับรอง EXACT',
+  );
+
+  String get semanticProtocolFallback => _value(
+    ru: 'Структурированное доказательство не получено. Требуется проверка.',
+    en: 'Structured evidence was not obtained. Review is required.',
+    th: 'ไม่ได้รับหลักฐานแบบมีโครงสร้าง จึงต้องตรวจสอบ',
+  );
+
+  String semanticAtomLabel(String code) {
+    return switch (code) {
+      'action' => _value(ru: 'Действие', en: 'Action', th: 'การกระทำ'),
+      'object' => _value(ru: 'Объект', en: 'Object', th: 'วัตถุ'),
+      'equipment_identity' => _value(
+        ru: 'Идентичность оборудования',
+        en: 'Equipment identity',
+        th: 'เอกลักษณ์ของอุปกรณ์',
+      ),
+      'actor' => _value(ru: 'Исполнитель', en: 'Actor', th: 'ผู้ดำเนินการ'),
+      'role_specificity' => _value(
+        ru: 'Точность роли',
+        en: 'Role specificity',
+        th: 'ความเฉพาะเจาะจงของบทบาท',
+      ),
+      'polarity' => _value(
+        ru: 'Полярность',
+        en: 'Polarity',
+        th: 'ขั้วความหมาย',
+      ),
+      'modality' => _value(ru: 'Модальность', en: 'Modality', th: 'มาลา'),
+      'permission' => _value(
+        ru: 'Разрешение',
+        en: 'Permission',
+        th: 'การอนุญาต',
+      ),
+      'obligation' => _value(
+        ru: 'Обязательность',
+        en: 'Obligation',
+        th: 'ข้อผูกพัน',
+      ),
+      'quantity' => _value(ru: 'Количество', en: 'Quantity', th: 'ปริมาณ'),
+      'time' => _value(ru: 'Время', en: 'Time', th: 'เวลา'),
+      'condition' => _value(ru: 'Условие', en: 'Condition', th: 'เงื่อนไข'),
+      'sequence' => _value(
+        ru: 'Последовательность',
+        en: 'Sequence',
+        th: 'ลำดับ',
+      ),
+      'scope' => _value(ru: 'Область действия', en: 'Scope', th: 'ขอบเขต'),
+      'ambiguity' => _value(
+        ru: 'Неоднозначность',
+        en: 'Ambiguity',
+        th: 'ความกำกวม',
+      ),
+      'canonical_style' => _value(
+        ru: 'Канонический стиль',
+        en: 'Canonical style',
+        th: 'รูปแบบมาตรฐาน',
+      ),
+      _ => code,
+    };
+  }
+
+  String semanticIssueExplanation({
+    required String atomCode,
+    required String statusCode,
+  }) {
+    if (atomCode == 'canonical_style' && statusCode == 'X') {
+      return _value(
+        ru:
+            'Практический смысл сохранён, но формулировка не соответствует '
+            'каноническому стилю.',
+        en:
+            'Practical meaning is preserved, but the wording is not in the '
+            'canonical style.',
+        th: 'ความหมายเชิงปฏิบัติยังคงเดิม แต่ถ้อยคำไม่เป็นไปตามรูปแบบมาตรฐาน',
+      );
+    }
+
+    if (atomCode == 'ambiguity') {
+      return _value(
+        ru: 'Формулировка допускает неоднозначное практическое толкование.',
+        en: 'The wording permits more than one practical interpretation.',
+        th: 'ถ้อยคำอาจตีความในทางปฏิบัติได้มากกว่าหนึ่งแบบ',
+      );
+    }
+
+    return switch (statusCode) {
+      'X' => _value(
+        ru: 'Подтверждено практическое расхождение между языковыми версиями.',
+        en: 'A practical mismatch between the language versions is confirmed.',
+        th: 'ยืนยันความแตกต่างเชิงปฏิบัติระหว่างฉบับภาษา',
+      ),
+      'U' => _value(
+        ru: 'Точное практическое соответствие не доказано.',
+        en: 'Exact practical identity has not been proven.',
+        th: 'ยังพิสูจน์ความตรงกันเชิงปฏิบัติอย่างแน่นอนไม่ได้',
+      ),
+      _ => statusCode,
+    };
+  }
+
+  String semanticIssueImpact({
+    required String atomCode,
+    required String statusCode,
+  }) {
+    if (atomCode == 'canonical_style' && statusCode == 'X') {
+      return _value(
+        ru:
+            'На исполнение задания не влияет; перед публикацией требуется '
+            'нормализовать формулировку.',
+        en:
+            'Task execution is unchanged; normalize the wording before '
+            'publication.',
+        th: 'ไม่กระทบการปฏิบัติงาน แต่ควรปรับถ้อยคำให้เป็นมาตรฐานก่อนเผยแพร่',
+      );
+    }
+
+    if (atomCode == 'ambiguity') {
+      return _value(
+        ru:
+            'Разные участники могут понять задание по-разному; требуется '
+            'ручная проверка контекста.',
+        en:
+            'Participants may understand the task differently; manual context '
+            'review is required.',
+        th: 'ผู้เกี่ยวข้องอาจเข้าใจงานต่างกัน จึงต้องตรวจสอบบริบทด้วยตนเอง',
+      );
+    }
+
+    return switch (statusCode) {
+      'X' => _value(
+        ru:
+            'Расхождение может привести к различному исполнению или приёмке '
+            'задания.',
+        en: 'The mismatch may cause different task execution or acceptance.',
+        th: 'ความแตกต่างอาจทำให้การปฏิบัติงานหรือการยอมรับผลงานไม่ตรงกัน',
+      ),
+      'U' => _value(
+        ru: 'До ручной проверки пакет нельзя безопасно считать идентичным.',
+        en:
+            'The bundle cannot be safely treated as identical before manual '
+            'review.',
+        th: 'ยังไม่ควรถือว่าชุดข้อความตรงกันจนกว่าจะตรวจสอบด้วยตนเอง',
+      ),
+      _ => statusCode,
+    };
+  }
 
   String get meaning => _value(ru: 'Смысл', en: 'Meaning', th: 'ความหมาย');
 
