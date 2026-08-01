@@ -104,6 +104,128 @@ final class TyphoonSemanticProtocol {
     }
   }
 
+  static ReverseDiagnostics parseReverseDiagnostics({required String content}) {
+    final Map<String, Object?> root = _jsonObject(
+      content,
+      name: 'reverse diagnostics',
+    );
+    _requireExactKeys(root, const <String>{
+      'EN_TO_RU',
+      'TH_TO_RU',
+    }, 'reverse diagnostics');
+
+    try {
+      return ReverseDiagnostics(
+        enToRu: _translationString(
+          root['EN_TO_RU'],
+          'reverse diagnostics.EN_TO_RU',
+        ),
+        thToRu: _translationString(
+          root['TH_TO_RU'],
+          'reverse diagnostics.TH_TO_RU',
+        ),
+      );
+    } on ArgumentError catch (error) {
+      throw TyphoonSemanticProtocolException(
+        'reverse diagnostics are invalid: ${error.message}',
+      );
+    }
+  }
+
+  static List<TranslationAtomAssessment> parseAtomVerification({
+    required String content,
+    required TranslationLanguage targetLanguage,
+    required String directText,
+  }) {
+    if (targetLanguage == TranslationLanguage.ru) {
+      throw const TyphoonSemanticProtocolException(
+        'atom verification target language must be EN or TH.',
+      );
+    }
+
+    final String target = _canonicalInputText(
+      directText,
+      'atom verification directText',
+    );
+    final Map<String, Object?> root = _atomVerificationJsonObject(content);
+    _requireExactKeys(root, const <String>{'ASSESSMENTS'}, 'atom verification');
+
+    final List<Object?> rawItems = _array(
+      root['ASSESSMENTS'],
+      'atom verification.ASSESSMENTS',
+    );
+    if (rawItems.isEmpty || rawItems.length > _maxExactCapabilityAtoms) {
+      throw TyphoonSemanticProtocolException(
+        'atom verification.ASSESSMENTS must contain 1..'
+        '$_maxExactCapabilityAtoms items.',
+      );
+    }
+
+    final Set<TranslationSemanticAtom> seenAtoms = <TranslationSemanticAtom>{};
+    final List<TranslationAtomAssessment> assessments =
+        <TranslationAtomAssessment>[];
+
+    for (int index = 0; index < rawItems.length; index += 1) {
+      final String name = 'atom verification.ASSESSMENTS[$index]';
+      final Map<String, Object?> item = _object(rawItems[index], name);
+      _requireExactKeys(item, const <String>{
+        'ATOM',
+        'STATUS',
+        'FRAGMENT',
+      }, name);
+
+      final TranslationSemanticAtom atom = _exactCapabilityAtom(
+        item['ATOM'],
+        '$name.ATOM',
+      );
+      if (!seenAtoms.add(atom)) {
+        throw TyphoonSemanticProtocolException(
+          '$name.ATOM duplicates ${atom.code}.',
+        );
+      }
+
+      TranslationAtomStatus status = _atomStatus(
+        item['STATUS'],
+        '$name.STATUS',
+      );
+      final String? fragment = _verifiedDirectFragment(
+        item['FRAGMENT'],
+        directText: target,
+      );
+      if (fragment == null && status != TranslationAtomStatus.unresolved) {
+        status = TranslationAtomStatus.unresolved;
+      }
+
+      final TranslationAtomReasonKey reason = switch (status) {
+        TranslationAtomStatus.supported => TranslationAtomReasonKey.preserved,
+        TranslationAtomStatus.contextual =>
+          TranslationAtomReasonKey.contextualReview,
+        TranslationAtomStatus.unresolved =>
+          TranslationAtomReasonKey.unresolvedEvidence,
+        TranslationAtomStatus.contradicted =>
+          TranslationAtomReasonKey.semanticMismatch,
+      };
+
+      try {
+        assessments.add(
+          TranslationAtomAssessment(
+            targetLanguage: targetLanguage,
+            atom: atom,
+            status: status,
+            directFragment: fragment,
+            localReasonKey: reason,
+          ),
+        );
+      } on ArgumentError catch (error) {
+        throw TyphoonSemanticProtocolException(
+          '$name is invalid: ${error.message}',
+        );
+      }
+    }
+
+    return List<TranslationAtomAssessment>.unmodifiable(assessments);
+  }
+
   static List<TranslationPairAudit> parseGeneralAudit({
     required String content,
     required TranslationBundle bundle,
@@ -361,6 +483,37 @@ final class TyphoonSemanticProtocol {
     return atom;
   }
 
+  static TranslationSemanticAtom _exactCapabilityAtom(
+    Object? value,
+    String name,
+  ) {
+    final TranslationSemanticAtom atom = _atom(value, name);
+    if (atom == TranslationSemanticAtom.canonicalStyle) {
+      throw TyphoonSemanticProtocolException(
+        '$name must not use canonical_style.',
+      );
+    }
+    return atom;
+  }
+
+  static TranslationAtomStatus _atomStatus(Object? value, String name) {
+    final String code = _canonicalString(value, name);
+    final TranslationAtomStatus status;
+    try {
+      status = TranslationAtomStatus.fromCode(code);
+    } on ArgumentError catch (error) {
+      throw TyphoonSemanticProtocolException(
+        '$name is invalid: ${error.message}',
+      );
+    }
+    if (status.code != code) {
+      throw TyphoonSemanticProtocolException(
+        '$name must use canonical S, C, U or X.',
+      );
+    }
+    return status;
+  }
+
   static TranslationIssueStatus _status(Object? value, String name) {
     final String code = _canonicalString(value, name);
     final TranslationIssueStatus status;
@@ -405,6 +558,68 @@ final class TyphoonSemanticProtocol {
       );
     }
     return reason;
+  }
+
+  static Map<String, Object?> _atomVerificationJsonObject(String content) {
+    final String normalized = content.trim();
+    if (normalized.isEmpty) {
+      throw const TyphoonSemanticProtocolException(
+        'atom verification response is empty.',
+      );
+    }
+
+    try {
+      return _object(jsonDecode(normalized), 'atom verification');
+    } on FormatException catch (originalError) {
+      const String malformedBoundary = '},"{"ATOM":';
+      final int recoveryCount = RegExp(
+        RegExp.escape(malformedBoundary),
+      ).allMatches(normalized).length;
+      if (recoveryCount < 1 || recoveryCount > _maxAtomBoundaryRecoveries) {
+        throw TyphoonSemanticProtocolException(
+          'atom verification response is not valid JSON: '
+          '${originalError.message}',
+        );
+      }
+
+      final String repaired = normalized.replaceAll(
+        malformedBoundary,
+        '},{"ATOM":',
+      );
+      try {
+        return _object(jsonDecode(repaired), 'atom verification');
+      } on FormatException catch (repairedError) {
+        throw TyphoonSemanticProtocolException(
+          'atom verification response is not valid JSON after the narrow '
+          'boundary repair: ${repairedError.message}',
+        );
+      }
+    }
+  }
+
+  static String? _verifiedDirectFragment(
+    Object? value, {
+    required String directText,
+  }) {
+    if (value is! String ||
+        value.isEmpty ||
+        value != value.trim() ||
+        !directText.contains(value)) {
+      return null;
+    }
+    return value;
+  }
+
+  static String _canonicalInputText(String value, String name) {
+    if (value.trim().isEmpty) {
+      throw TyphoonSemanticProtocolException('$name must not be empty.');
+    }
+    if (value != value.trim()) {
+      throw TyphoonSemanticProtocolException(
+        '$name must not contain outer whitespace.',
+      );
+    }
+    return value;
   }
 
   static Map<String, Object?> _jsonObject(
@@ -479,6 +694,8 @@ final class TyphoonSemanticProtocol {
     return result;
   }
 
+  static const int _maxAtomBoundaryRecoveries = 14;
+  static const int _maxExactCapabilityAtoms = 15;
   static const int _maxAuditIssuesPerPair = 2;
   static const int _maxChallengeDisqualifiers = 3;
   static const int _maxReasonWords = 18;

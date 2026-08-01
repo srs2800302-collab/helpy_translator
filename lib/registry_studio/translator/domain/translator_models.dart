@@ -322,6 +322,225 @@ final class TranslationBundle extends Equatable {
   ];
 }
 
+final class ReverseDiagnostics extends Equatable {
+  ReverseDiagnostics({required String enToRu, required String thToRu})
+    : enToRu = _requiredExactText(enToRu, 'enToRu'),
+      thToRu = _requiredExactText(thToRu, 'thToRu');
+
+  final String enToRu;
+  final String thToRu;
+
+  @override
+  List<Object?> get props => <Object?>[enToRu, thToRu];
+}
+
+enum TranslationAtomStatus {
+  supported('S'),
+  contextual('C'),
+  unresolved('U'),
+  contradicted('X');
+
+  const TranslationAtomStatus(this.code);
+
+  final String code;
+
+  static TranslationAtomStatus fromCode(String value) {
+    final String normalized = value.trim().toUpperCase();
+
+    for (final TranslationAtomStatus status in values) {
+      if (status.code == normalized) {
+        return status;
+      }
+    }
+
+    throw ArgumentError.value(
+      value,
+      'value',
+      'Translation atom status must be S, C, U or X.',
+    );
+  }
+}
+
+enum TranslationAtomReasonKey {
+  preserved('preserved'),
+  contextualReview('contextual_review'),
+  unresolvedEvidence('unresolved_evidence'),
+  semanticMismatch('semantic_mismatch'),
+  lexicalGap('lexical_gap'),
+  differentEquipmentType('different_equipment_type'),
+  addedHierarchy('added_hierarchy'),
+  changedActorRole('changed_actor_role');
+
+  const TranslationAtomReasonKey(this.code);
+
+  final String code;
+
+  static TranslationAtomReasonKey fromCode(String value) {
+    final String normalized = value.trim().toLowerCase();
+
+    for (final TranslationAtomReasonKey reason in values) {
+      if (reason.code == normalized) {
+        return reason;
+      }
+    }
+
+    throw ArgumentError.value(
+      value,
+      'value',
+      'Translation atom reason key is invalid.',
+    );
+  }
+}
+
+enum ExactCapabilityVerdict {
+  exact('EXACT'),
+  needsReview('NEEDS_REVIEW'),
+  blocked('BLOCKED'),
+  failed('FAILED');
+
+  const ExactCapabilityVerdict(this.code);
+
+  final String code;
+}
+
+final class TranslationAtomAssessment extends Equatable {
+  TranslationAtomAssessment({
+    required this.targetLanguage,
+    required this.atom,
+    required this.status,
+    String? directFragment,
+    required this.localReasonKey,
+  }) : directFragment = _optionalExactText(directFragment, 'directFragment') {
+    if (targetLanguage == TranslationLanguage.ru) {
+      throw ArgumentError.value(
+        targetLanguage,
+        'targetLanguage',
+        'Exact capability target language must be EN or TH.',
+      );
+    }
+
+    if (status != TranslationAtomStatus.unresolved &&
+        this.directFragment == null) {
+      throw ArgumentError(
+        '${status.code} atom assessment requires a direct fragment.',
+      );
+    }
+
+    final Set<TranslationAtomReasonKey> allowedReasons = switch (status) {
+      TranslationAtomStatus.supported => <TranslationAtomReasonKey>{
+        TranslationAtomReasonKey.preserved,
+      },
+      TranslationAtomStatus.contextual => <TranslationAtomReasonKey>{
+        TranslationAtomReasonKey.contextualReview,
+        TranslationAtomReasonKey.lexicalGap,
+      },
+      TranslationAtomStatus.unresolved => <TranslationAtomReasonKey>{
+        TranslationAtomReasonKey.unresolvedEvidence,
+      },
+      TranslationAtomStatus.contradicted => <TranslationAtomReasonKey>{
+        TranslationAtomReasonKey.semanticMismatch,
+        TranslationAtomReasonKey.differentEquipmentType,
+        TranslationAtomReasonKey.addedHierarchy,
+        TranslationAtomReasonKey.changedActorRole,
+      },
+    };
+
+    if (!allowedReasons.contains(localReasonKey)) {
+      throw ArgumentError.value(
+        localReasonKey,
+        'localReasonKey',
+        'Local reason key is inconsistent with atom status ${status.code}.',
+      );
+    }
+  }
+
+  final TranslationLanguage targetLanguage;
+  final TranslationSemanticAtom atom;
+  final TranslationAtomStatus status;
+  final String? directFragment;
+  final TranslationAtomReasonKey localReasonKey;
+
+  @override
+  List<Object?> get props => <Object?>[
+    targetLanguage,
+    atom,
+    status,
+    directFragment,
+    localReasonKey,
+  ];
+}
+
+final class ExactCapabilityAssessment extends Equatable {
+  ExactCapabilityAssessment({
+    required this.reverseDiagnostics,
+    required Iterable<TranslationAtomAssessment> assessments,
+  }) : protocolFailure = false,
+       assessments = _exactCapabilityAssessments(assessments);
+
+  const ExactCapabilityAssessment.protocolFailure({this.reverseDiagnostics})
+    : assessments = const <TranslationAtomAssessment>[],
+      protocolFailure = true;
+
+  final ReverseDiagnostics? reverseDiagnostics;
+  final List<TranslationAtomAssessment> assessments;
+  final bool protocolFailure;
+
+  ExactCapabilityVerdict get localVerdict {
+    if (protocolFailure) {
+      return ExactCapabilityVerdict.failed;
+    }
+
+    if (assessments.any(
+      (TranslationAtomAssessment assessment) =>
+          assessment.status == TranslationAtomStatus.contradicted,
+    )) {
+      return ExactCapabilityVerdict.blocked;
+    }
+
+    if (assessments.any(
+      (TranslationAtomAssessment assessment) =>
+          assessment.status == TranslationAtomStatus.contextual ||
+          assessment.status == TranslationAtomStatus.unresolved,
+    )) {
+      return ExactCapabilityVerdict.needsReview;
+    }
+
+    return ExactCapabilityVerdict.exact;
+  }
+
+  List<TranslationAtomAssessment> assessmentsFor(TranslationLanguage language) {
+    if (language == TranslationLanguage.ru) {
+      return const <TranslationAtomAssessment>[];
+    }
+
+    return List<TranslationAtomAssessment>.unmodifiable(
+      assessments.where(
+        (TranslationAtomAssessment assessment) =>
+            assessment.targetLanguage == language,
+      ),
+    );
+  }
+
+  TranslationAtomAssessment? assessmentFor({
+    required TranslationLanguage language,
+    required TranslationSemanticAtom atom,
+  }) {
+    for (final TranslationAtomAssessment assessment in assessments) {
+      if (assessment.targetLanguage == language && assessment.atom == atom) {
+        return assessment;
+      }
+    }
+    return null;
+  }
+
+  @override
+  List<Object?> get props => <Object?>[
+    reverseDiagnostics,
+    assessments,
+    protocolFailure,
+  ];
+}
+
 enum TranslationFindingCategory {
   meaning('MEANING'),
   terminology('TERMINOLOGY'),
@@ -713,6 +932,7 @@ final class TranslationAudit extends Equatable {
     Iterable<String> ambiguityFindings = const <String>[],
     Iterable<TranslationPairAudit> pairAudits = const <TranslationPairAudit>[],
     this.exactChallenge,
+    this.exactCapability,
     this.protocolFallback = false,
   }) : findings = _translationFindings(<TranslationFinding>[
          ...findings,
@@ -732,7 +952,9 @@ final class TranslationAudit extends Equatable {
        ]),
        pairAudits = _pairAudits(pairAudits) {
     final bool hasSemanticEvidence =
-        this.pairAudits.isNotEmpty || exactChallenge != null;
+        this.pairAudits.isNotEmpty ||
+        exactChallenge != null ||
+        exactCapability != null;
 
     if (protocolFallback && (this.findings.isNotEmpty || hasSemanticEvidence)) {
       throw ArgumentError(
@@ -749,15 +971,26 @@ final class TranslationAudit extends Equatable {
     if (exactChallenge != null && !candidateForExact) {
       throw ArgumentError('Exact challenge requires three CLEAR pair audits.');
     }
+
+    if (exactCapability != null &&
+        (this.pairAudits.isNotEmpty || exactChallenge != null)) {
+      throw ArgumentError(
+        'EXACT capability evidence must not be mixed with legacy pair evidence.',
+      );
+    }
   }
 
   final List<TranslationFinding> findings;
   final List<TranslationPairAudit> pairAudits;
   final ExactChallenge? exactChallenge;
+  final ExactCapabilityAssessment? exactCapability;
   final bool protocolFallback;
 
   bool get usesSemanticProtocol =>
-      protocolFallback || pairAudits.isNotEmpty || exactChallenge != null;
+      protocolFallback ||
+      pairAudits.isNotEmpty ||
+      exactChallenge != null ||
+      exactCapability != null;
 
   bool get candidateForExact =>
       pairAudits.length == TranslationPair.values.length &&
@@ -766,7 +999,8 @@ final class TranslationAudit extends Equatable {
             audit.result == TranslationPairAuditResult.clear,
       );
 
-  bool get auditProtocolFailed => protocolFallback;
+  bool get auditProtocolFailed =>
+      protocolFallback || exactCapability?.protocolFailure == true;
 
   bool get exactChallengeProtocolFailed =>
       exactChallenge?.result == ExactChallengeResult.protocolFailure;
@@ -796,6 +1030,11 @@ final class TranslationAudit extends Equatable {
   }
 
   bool get meaningPreserved {
+    final ExactCapabilityAssessment? capability = exactCapability;
+    if (capability != null) {
+      return capability.localVerdict == ExactCapabilityVerdict.exact;
+    }
+
     if (!usesSemanticProtocol) {
       return !_hasFinding(TranslationFindingCategory.meaning);
     }
@@ -807,6 +1046,25 @@ final class TranslationAudit extends Equatable {
   }
 
   bool get terminologyPreserved {
+    final ExactCapabilityAssessment? capability = exactCapability;
+    if (capability != null) {
+      if (capability.protocolFailure) {
+        return false;
+      }
+
+      return capability.assessments
+          .where(
+            (TranslationAtomAssessment assessment) =>
+                assessment.atom == TranslationSemanticAtom.equipmentIdentity ||
+                assessment.atom == TranslationSemanticAtom.actor ||
+                assessment.atom == TranslationSemanticAtom.roleSpecificity,
+          )
+          .every(
+            (TranslationAtomAssessment assessment) =>
+                assessment.status == TranslationAtomStatus.supported,
+          );
+    }
+
     if (!usesSemanticProtocol) {
       return !_hasFinding(TranslationFindingCategory.terminology);
     }
@@ -830,6 +1088,15 @@ final class TranslationAudit extends Equatable {
   }
 
   bool get ambiguousWording {
+    final ExactCapabilityAssessment? capability = exactCapability;
+    if (capability != null) {
+      return capability.assessments.any(
+        (TranslationAtomAssessment assessment) =>
+            assessment.atom == TranslationSemanticAtom.ambiguity &&
+            assessment.status != TranslationAtomStatus.supported,
+      );
+    }
+
     if (!usesSemanticProtocol) {
       return _hasFinding(TranslationFindingCategory.ambiguity);
     }
@@ -841,6 +1108,16 @@ final class TranslationAudit extends Equatable {
   }
 
   TranslationVerdict get verdict {
+    final ExactCapabilityAssessment? capability = exactCapability;
+    if (capability != null) {
+      return switch (capability.localVerdict) {
+        ExactCapabilityVerdict.exact => TranslationVerdict.exact,
+        ExactCapabilityVerdict.needsReview => TranslationVerdict.needsReview,
+        ExactCapabilityVerdict.blocked => TranslationVerdict.canonicalDrift,
+        ExactCapabilityVerdict.failed => TranslationVerdict.needsReview,
+      };
+    }
+
     if (usesSemanticProtocol) {
       if (protocolFallback) {
         return TranslationVerdict.needsReview;
@@ -917,6 +1194,7 @@ final class TranslationAudit extends Equatable {
     findings,
     pairAudits,
     exactChallenge,
+    exactCapability,
     protocolFallback,
   ];
 }
@@ -988,6 +1266,14 @@ String _requiredText(String value, String name) {
     throw ArgumentError.value(value, name, '$name must not be empty.');
   }
   return normalized;
+}
+
+String? _optionalExactText(String? value, String name) {
+  if (value == null) {
+    return null;
+  }
+
+  return _requiredExactText(value, name);
 }
 
 String? _optionalText(String? value) {
@@ -1068,6 +1354,80 @@ List<TranslationFinding> _translationFindings(
   }
 
   return List<TranslationFinding>.unmodifiable(normalized);
+}
+
+List<TranslationAtomAssessment> _exactCapabilityAssessments(
+  Iterable<TranslationAtomAssessment> values,
+) {
+  final List<TranslationAtomAssessment> normalized = values.toList(
+    growable: false,
+  );
+
+  if (normalized.isEmpty) {
+    throw ArgumentError.value(
+      values,
+      'assessments',
+      'Exact capability assessment must contain atom evidence.',
+    );
+  }
+
+  final Set<(TranslationLanguage, TranslationSemanticAtom)> identities =
+      normalized
+          .map(
+            (TranslationAtomAssessment assessment) =>
+                (assessment.targetLanguage, assessment.atom),
+          )
+          .toSet();
+  if (identities.length != normalized.length) {
+    throw ArgumentError.value(
+      values,
+      'assessments',
+      'Exact capability assessment contains duplicate target/atom evidence.',
+    );
+  }
+
+  final Set<TranslationSemanticAtom> enAtoms = normalized
+      .where(
+        (TranslationAtomAssessment assessment) =>
+            assessment.targetLanguage == TranslationLanguage.en,
+      )
+      .map((TranslationAtomAssessment assessment) => assessment.atom)
+      .toSet();
+  final Set<TranslationSemanticAtom> thAtoms = normalized
+      .where(
+        (TranslationAtomAssessment assessment) =>
+            assessment.targetLanguage == TranslationLanguage.th,
+      )
+      .map((TranslationAtomAssessment assessment) => assessment.atom)
+      .toSet();
+
+  if (enAtoms.isEmpty || thAtoms.isEmpty || !_sameAtoms(enAtoms, thAtoms)) {
+    throw ArgumentError.value(
+      values,
+      'assessments',
+      'Exact capability must assess the same non-empty atom set for EN and TH.',
+    );
+  }
+
+  normalized.sort((
+    TranslationAtomAssessment left,
+    TranslationAtomAssessment right,
+  ) {
+    final int atomComparison = left.atom.index.compareTo(right.atom.index);
+    if (atomComparison != 0) {
+      return atomComparison;
+    }
+    return left.targetLanguage.index.compareTo(right.targetLanguage.index);
+  });
+
+  return List<TranslationAtomAssessment>.unmodifiable(normalized);
+}
+
+bool _sameAtoms(
+  Set<TranslationSemanticAtom> left,
+  Set<TranslationSemanticAtom> right,
+) {
+  return left.length == right.length && left.containsAll(right);
 }
 
 List<TranslationPairAudit> _pairAudits(Iterable<TranslationPairAudit> values) {

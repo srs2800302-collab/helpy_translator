@@ -2,6 +2,349 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
 
 void main() {
+  group('EXACT capability v2 domain contract', () {
+    test('all paired atoms supported produces local EXACT', () {
+      final ExactCapabilityAssessment capability = ExactCapabilityAssessment(
+        reverseDiagnostics: ReverseDiagnostics(
+          enToRu: 'мастер должен приехать завтра',
+          thToRu: 'мастер должен приехать завтра',
+        ),
+        assessments: <TranslationAtomAssessment>[
+          _atomAssessment(
+            language: TranslationLanguage.en,
+            atom: TranslationSemanticAtom.actor,
+            fragment: 'technician',
+          ),
+          _atomAssessment(
+            language: TranslationLanguage.th,
+            atom: TranslationSemanticAtom.actor,
+            fragment: 'ช่าง',
+          ),
+          _atomAssessment(
+            language: TranslationLanguage.en,
+            atom: TranslationSemanticAtom.time,
+            fragment: 'tomorrow',
+          ),
+          _atomAssessment(
+            language: TranslationLanguage.th,
+            atom: TranslationSemanticAtom.time,
+            fragment: 'พรุ่งนี้',
+          ),
+        ],
+      );
+
+      expect(capability.localVerdict, ExactCapabilityVerdict.exact);
+      expect(
+        capability.reverseDiagnostics!.enToRu,
+        'мастер должен приехать завтра',
+      );
+      expect(
+        capability
+            .assessmentFor(
+              language: TranslationLanguage.th,
+              atom: TranslationSemanticAtom.actor,
+            )!
+            .directFragment,
+        'ช่าง',
+      );
+    });
+
+    test('contextual lexical gap produces local NEEDS_REVIEW', () {
+      final ExactCapabilityAssessment capability = ExactCapabilityAssessment(
+        reverseDiagnostics: ReverseDiagnostics(
+          enToRu: 'установить варочную панель',
+          thToRu: 'установить варочную панель',
+        ),
+        assessments: <TranslationAtomAssessment>[
+          _atomAssessment(
+            language: TranslationLanguage.en,
+            atom: TranslationSemanticAtom.equipmentIdentity,
+            fragment: 'cooktop',
+          ),
+          TranslationAtomAssessment(
+            targetLanguage: TranslationLanguage.th,
+            atom: TranslationSemanticAtom.equipmentIdentity,
+            status: TranslationAtomStatus.contextual,
+            directFragment: 'เตาไฟครัว',
+            localReasonKey: TranslationAtomReasonKey.lexicalGap,
+          ),
+        ],
+      );
+
+      expect(capability.localVerdict, ExactCapabilityVerdict.needsReview);
+      expect(
+        capability.assessmentsFor(TranslationLanguage.th).single.localReasonKey,
+        TranslationAtomReasonKey.lexicalGap,
+      );
+    });
+
+    test('one contradicted atom has priority and produces local BLOCKED', () {
+      final ExactCapabilityAssessment capability = ExactCapabilityAssessment(
+        reverseDiagnostics: ReverseDiagnostics(
+          enToRu: 'мастер должен приехать завтра',
+          thToRu: 'главный мастер должен приехать завтра',
+        ),
+        assessments: <TranslationAtomAssessment>[
+          _atomAssessment(
+            language: TranslationLanguage.en,
+            atom: TranslationSemanticAtom.actor,
+            fragment: 'technician',
+          ),
+          TranslationAtomAssessment(
+            targetLanguage: TranslationLanguage.th,
+            atom: TranslationSemanticAtom.actor,
+            status: TranslationAtomStatus.contradicted,
+            directFragment: 'หัวหน้า',
+            localReasonKey: TranslationAtomReasonKey.addedHierarchy,
+          ),
+          TranslationAtomAssessment(
+            targetLanguage: TranslationLanguage.en,
+            atom: TranslationSemanticAtom.time,
+            status: TranslationAtomStatus.unresolved,
+            localReasonKey: TranslationAtomReasonKey.unresolvedEvidence,
+          ),
+          _atomAssessment(
+            language: TranslationLanguage.th,
+            atom: TranslationSemanticAtom.time,
+            fragment: 'พรุ่งนี้',
+          ),
+        ],
+      );
+
+      expect(capability.localVerdict, ExactCapabilityVerdict.blocked);
+    });
+
+    test(
+      'protocol failure carries no atom evidence and produces local FAILED',
+      () {
+        final ReverseDiagnostics diagnostics = ReverseDiagnostics(
+          enToRu: 'обратный EN',
+          thToRu: 'обратный TH',
+        );
+        final ExactCapabilityAssessment capability =
+            ExactCapabilityAssessment.protocolFailure(
+              reverseDiagnostics: diagnostics,
+            );
+
+        expect(capability.localVerdict, ExactCapabilityVerdict.failed);
+        expect(capability.protocolFailure, isTrue);
+        expect(capability.reverseDiagnostics, diagnostics);
+        expect(capability.assessments, isEmpty);
+      },
+    );
+
+    test('rejects RU target and evidence claims without direct fragment', () {
+      expect(
+        () => _atomAssessment(
+          language: TranslationLanguage.ru,
+          atom: TranslationSemanticAtom.action,
+          fragment: 'установить',
+        ),
+        throwsArgumentError,
+      );
+
+      for (final TranslationAtomStatus status in <TranslationAtomStatus>[
+        TranslationAtomStatus.supported,
+        TranslationAtomStatus.contextual,
+        TranslationAtomStatus.contradicted,
+      ]) {
+        expect(
+          () => TranslationAtomAssessment(
+            targetLanguage: TranslationLanguage.en,
+            atom: TranslationSemanticAtom.action,
+            status: status,
+            localReasonKey: switch (status) {
+              TranslationAtomStatus.supported =>
+                TranslationAtomReasonKey.preserved,
+              TranslationAtomStatus.contextual =>
+                TranslationAtomReasonKey.contextualReview,
+              TranslationAtomStatus.contradicted =>
+                TranslationAtomReasonKey.semanticMismatch,
+              TranslationAtomStatus.unresolved =>
+                TranslationAtomReasonKey.unresolvedEvidence,
+            },
+          ),
+          throwsArgumentError,
+        );
+      }
+    });
+
+    test('rejects model-owned or status-inconsistent reason categories', () {
+      expect(
+        () => TranslationAtomAssessment(
+          targetLanguage: TranslationLanguage.th,
+          atom: TranslationSemanticAtom.equipmentIdentity,
+          status: TranslationAtomStatus.supported,
+          directFragment: 'เตาไฟครัว',
+          localReasonKey: TranslationAtomReasonKey.lexicalGap,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => TranslationAtomReasonKey.fromCode('free model explanation'),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects duplicate or asymmetric EN and TH atom coverage', () {
+      final TranslationAtomAssessment enAction = _atomAssessment(
+        language: TranslationLanguage.en,
+        atom: TranslationSemanticAtom.action,
+        fragment: 'install',
+      );
+      final TranslationAtomAssessment thAction = _atomAssessment(
+        language: TranslationLanguage.th,
+        atom: TranslationSemanticAtom.action,
+        fragment: 'ติดตั้ง',
+      );
+
+      expect(
+        () => ExactCapabilityAssessment(
+          reverseDiagnostics: ReverseDiagnostics(
+            enToRu: 'установить',
+            thToRu: 'установить',
+          ),
+          assessments: <TranslationAtomAssessment>[
+            enAction,
+            enAction,
+            thAction,
+          ],
+        ),
+        throwsArgumentError,
+      );
+
+      expect(
+        () => ExactCapabilityAssessment(
+          reverseDiagnostics: ReverseDiagnostics(
+            enToRu: 'установить завтра',
+            thToRu: 'установить',
+          ),
+          assessments: <TranslationAtomAssessment>[
+            enAction,
+            _atomAssessment(
+              language: TranslationLanguage.en,
+              atom: TranslationSemanticAtom.time,
+              fragment: 'tomorrow',
+            ),
+            thAction,
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('reverse diagnostics preserve exact provider text', () {
+      expect(
+        () => ReverseDiagnostics(enToRu: ' text ', thToRu: 'текст'),
+        throwsArgumentError,
+      );
+
+      final ReverseDiagnostics diagnostics = ReverseDiagnostics(
+        enToRu: 'техник должен прибыть завтра',
+        thToRu: 'мастер должен прибыть завтра',
+      );
+      expect(diagnostics.enToRu, 'техник должен прибыть завтра');
+      expect(diagnostics.thToRu, 'мастер должен прибыть завтра');
+    });
+  });
+
+  group('TranslationAudit EXACT capability projection', () {
+    test('projects local EXACT, NEEDS_REVIEW, BLOCKED and FAILED verdicts', () {
+      TranslationAudit auditFor(TranslationAtomStatus status) {
+        final TranslationAtomReasonKey reason = switch (status) {
+          TranslationAtomStatus.supported => TranslationAtomReasonKey.preserved,
+          TranslationAtomStatus.contextual =>
+            TranslationAtomReasonKey.contextualReview,
+          TranslationAtomStatus.unresolved =>
+            TranslationAtomReasonKey.unresolvedEvidence,
+          TranslationAtomStatus.contradicted =>
+            TranslationAtomReasonKey.semanticMismatch,
+        };
+        final String? fragment = status == TranslationAtomStatus.unresolved
+            ? null
+            : 'fragment';
+
+        return TranslationAudit(
+          exactCapability: ExactCapabilityAssessment(
+            reverseDiagnostics: ReverseDiagnostics(
+              enToRu: 'обратный EN',
+              thToRu: 'обратный TH',
+            ),
+            assessments: <TranslationAtomAssessment>[
+              TranslationAtomAssessment(
+                targetLanguage: TranslationLanguage.en,
+                atom: TranslationSemanticAtom.action,
+                status: status,
+                directFragment: fragment,
+                localReasonKey: reason,
+              ),
+              TranslationAtomAssessment(
+                targetLanguage: TranslationLanguage.th,
+                atom: TranslationSemanticAtom.action,
+                status: status,
+                directFragment: fragment,
+                localReasonKey: reason,
+              ),
+            ],
+          ),
+        );
+      }
+
+      expect(
+        auditFor(TranslationAtomStatus.supported).verdict,
+        TranslationVerdict.exact,
+      );
+      expect(
+        auditFor(TranslationAtomStatus.contextual).verdict,
+        TranslationVerdict.needsReview,
+      );
+      expect(
+        auditFor(TranslationAtomStatus.unresolved).verdict,
+        TranslationVerdict.needsReview,
+      );
+      expect(
+        auditFor(TranslationAtomStatus.contradicted).verdict,
+        TranslationVerdict.canonicalDrift,
+      );
+
+      final TranslationAudit failed = TranslationAudit(
+        exactCapability: const ExactCapabilityAssessment.protocolFailure(),
+      );
+      expect(failed.verdict, TranslationVerdict.needsReview);
+      expect(failed.auditProtocolFailed, isTrue);
+    });
+
+    test(
+      'rejects mixing new capability evidence with legacy pair evidence',
+      () {
+        expect(
+          () => TranslationAudit(
+            pairAudits: _clearAudits(),
+            exactCapability: ExactCapabilityAssessment(
+              reverseDiagnostics: ReverseDiagnostics(
+                enToRu: 'обратный EN',
+                thToRu: 'обратный TH',
+              ),
+              assessments: <TranslationAtomAssessment>[
+                _atomAssessment(
+                  language: TranslationLanguage.en,
+                  atom: TranslationSemanticAtom.action,
+                  fragment: 'install',
+                ),
+                _atomAssessment(
+                  language: TranslationLanguage.th,
+                  atom: TranslationSemanticAtom.action,
+                  fragment: 'ติดตั้ง',
+                ),
+              ],
+            ),
+          ),
+          throwsArgumentError,
+        );
+      },
+    );
+  });
+
   group('TranslationAudit semantic verdict', () {
     test('legacy empty audit is fail-closed', () {
       final TranslationAudit audit = TranslationAudit();
@@ -473,6 +816,20 @@ void main() {
       );
     });
   });
+}
+
+TranslationAtomAssessment _atomAssessment({
+  required TranslationLanguage language,
+  required TranslationSemanticAtom atom,
+  required String fragment,
+}) {
+  return TranslationAtomAssessment(
+    targetLanguage: language,
+    atom: atom,
+    status: TranslationAtomStatus.supported,
+    directFragment: fragment,
+    localReasonKey: TranslationAtomReasonKey.preserved,
+  );
 }
 
 TranslationAudit _semanticAudit({ExactChallenge? challenge}) {

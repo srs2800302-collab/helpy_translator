@@ -1,5 +1,23 @@
 import '../domain/translator_models.dart';
 
+abstract interface class ExactCapabilityPolicy {
+  String buildReverseDiagnosticsSystemPrompt();
+
+  String buildReverseDiagnosticsUserPrompt({
+    required String en,
+    required String th,
+  });
+
+  String buildAtomVerificationSystemPrompt();
+
+  String buildAtomVerificationUserPrompt({
+    required String sourceRu,
+    required TranslationLanguage targetLanguage,
+    required String targetText,
+    required String reverseDiagnostic,
+  });
+}
+
 abstract interface class TranslatorPolicy {
   String buildDirectSystemPrompt();
 

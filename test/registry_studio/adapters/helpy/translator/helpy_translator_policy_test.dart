@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/registry_studio/adapters/helpy/translator/helpy_translator_policy.dart';
+import 'package:helpy_translator/registry_studio/translator/application/translator_provider.dart';
 import 'package:helpy_translator/registry_studio/translator/domain/translator_models.dart';
 
 void main() {
@@ -43,6 +44,99 @@ void main() {
       'ENGINEER_CONTEXT': 'монтаж на объекте',
     });
   });
+
+  test('reverse diagnostics prompt is diagnostic-only and exact', () {
+    final ExactCapabilityPolicy capabilityPolicy = policy;
+    final String system = capabilityPolicy
+        .buildReverseDiagnosticsSystemPrompt();
+    final Map<String, Object?> user =
+        jsonDecode(
+              capabilityPolicy.buildReverseDiagnosticsUserPrompt(
+                en: 'provider EN text',
+                th: 'ข้อความจากผู้ให้บริการ',
+              ),
+            )
+            as Map<String, Object?>;
+
+    expect(system, contains('EN_TO_RU'));
+    expect(system, contains('TH_TO_RU'));
+    expect(system, contains('Do not reconcile'));
+    expect(system, isNot(contains('"VERDICT"')));
+    expect(user, <String, Object?>{
+      'EN': 'provider EN text',
+      'TH': 'ข้อความจากผู้ให้บริการ',
+    });
+  });
+
+  test(
+    'atom verification prompt handles one target without lab hardcoding',
+    () {
+      final ExactCapabilityPolicy capabilityPolicy = policy;
+      final String system = capabilityPolicy
+          .buildAtomVerificationSystemPrompt();
+      final Map<String, Object?> user =
+          jsonDecode(
+                capabilityPolicy.buildAtomVerificationUserPrompt(
+                  sourceRu: 'исполнитель завершит работу завтра',
+                  targetLanguage: TranslationLanguage.en,
+                  targetText: 'the worker will finish tomorrow',
+                  reverseDiagnostic: 'работник закончит завтра',
+                ),
+              )
+              as Map<String, Object?>;
+
+      expect(system, contains('exactly one target language'));
+      expect(system, contains('ASSESSMENTS'));
+      expect(system, contains('S, C, U or X'));
+      expect(system, isNot(contains('canonical_style')));
+      expect(system, isNot(contains('"VERDICT"')));
+      expect(system, isNot(contains('"REASON"')));
+      for (final String forbidden in <String>[
+        'cooktop',
+        'oven',
+        'master',
+        'technician',
+        'вароч',
+        'духов',
+        'เตาอบ',
+        'หัวหน้า',
+      ]) {
+        expect(system.toLowerCase(), isNot(contains(forbidden.toLowerCase())));
+      }
+      expect(user, <String, Object?>{
+        'SOURCE_RU': 'исполнитель завершит работу завтра',
+        'TARGET_LANGUAGE': 'EN',
+        'TARGET_TEXT': 'the worker will finish tomorrow',
+        'REVERSE_DIAGNOSTIC': 'работник закончит завтра',
+      });
+    },
+  );
+
+  test(
+    'atom verification user prompt rejects RU and altered input boundaries',
+    () {
+      final ExactCapabilityPolicy capabilityPolicy = policy;
+
+      expect(
+        () => capabilityPolicy.buildAtomVerificationUserPrompt(
+          sourceRu: 'текст',
+          targetLanguage: TranslationLanguage.ru,
+          targetText: 'текст',
+          reverseDiagnostic: 'текст',
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => capabilityPolicy.buildAtomVerificationUserPrompt(
+          sourceRu: ' текст ',
+          targetLanguage: TranslationLanguage.th,
+          targetText: 'ข้อความ',
+          reverseDiagnostic: 'текст',
+        ),
+        throwsArgumentError,
+      );
+    },
+  );
 
   test('audit prompt matches laboratory evidence contract', () {
     final String prompt = policy.buildAuditSystemPrompt();

@@ -271,9 +271,8 @@ final class _TranslatorWorkspaceBodyState
               ],
               if (state.failure != null) ...<Widget>[
                 const SizedBox(height: 16),
-                _FailureCard(failure: state.failure!),
-              ],
-              if (state.report != null) ...<Widget>[
+                _FailedResultCard(failure: state.failure!),
+              ] else if (state.report != null) ...<Widget>[
                 const SizedBox(height: 16),
                 _TranslationReportView(report: state.report!),
               ],
@@ -532,31 +531,66 @@ final class _ProgressCard extends StatelessWidget {
   }
 }
 
-final class _FailureCard extends StatelessWidget {
-  const _FailureCard({required this.failure});
+final class _FailedResultCard extends StatelessWidget {
+  const _FailedResultCard({required this.failure});
 
   final TranslatorFailure failure;
 
   @override
   Widget build(BuildContext context) {
     final RegistryStudioLocalizations l10n = context.rsL10n;
-    final bool incomplete =
-        failure.completeness == TranslationCompleteness.translationIncomplete;
+    final TranslationBundle? bundle = failure.partialBundle;
+    final String summary = bundle == null
+        ? l10n.failedWithoutTranslation
+        : l10n.failedWithPartialTranslation;
+    final String? detail = _safeFailureDetail(failure);
 
     return Card(
+      key: const ValueKey<String>('translator-result-card'),
       color: Theme.of(context).colorScheme.errorContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
+            if (bundle != null) ...<Widget>[
+              _ResultSection(
+                title: l10n.directTranslation,
+                entries: <MapEntry<String, String>>[
+                  MapEntry<String, String>('RU', bundle.ru),
+                  MapEntry<String, String>('EN', bundle.en),
+                  MapEntry<String, String>('TH', bundle.th),
+                ],
+              ),
+              if (bundle.hasReverseDiagnostics) ...<Widget>[
+                const SizedBox(height: 16),
+                _ResultSection(
+                  title: l10n.reverseCheck,
+                  entries: _reverseEntries(bundle),
+                ),
+              ],
+              const Divider(height: 32),
+            ],
             Text(
-              _failureTitle(l10n, failure, incomplete: incomplete),
-              style: Theme.of(context).textTheme.titleMedium,
+              'FAILED',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
+            Text(summary, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
             Text(_failureMessage(l10n, failure.code)),
-            const SizedBox(height: 8),
+            if (detail != null &&
+                detail != _failureMessage(l10n, failure.code)) ...<Widget>[
+              const SizedBox(height: 10),
+              Text(
+                l10n.failureDetails,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 4),
+              SelectableText(detail),
+            ],
+            const SizedBox(height: 10),
             Text(
               '${l10n.errorCode}: ${failure.code.name}',
               style: Theme.of(context).textTheme.bodySmall,
@@ -566,10 +600,6 @@ final class _FailureCard extends StatelessWidget {
               l10n.stageLabel(_failureStageLabel(l10n, failure.stage)),
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            if (failure.partialBundle != null) ...<Widget>[
-              const SizedBox(height: 8),
-              Text(l10n.partialResultSaved),
-            ],
           ],
         ),
       ),
@@ -627,153 +657,41 @@ final class _TranslationReportView extends StatelessWidget {
     final TranslationBundle bundle = report.bundle;
     final TranslationAudit audit = report.audit;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        _VerdictCard(audit: audit, bundle: bundle),
-        const SizedBox(height: 12),
-        _SectionCard(
-          title: l10n.directTranslation,
-          entries: <MapEntry<String, String>>[
-            MapEntry<String, String>('SOURCE TEXT', bundle.sourceText),
-            MapEntry<String, String>('RU', bundle.ru),
-            MapEntry<String, String>('EN', bundle.en),
-            MapEntry<String, String>('TH', bundle.th),
-          ],
-        ),
-        if (bundle.hasReverseDiagnostics) ...<Widget>[
-          const SizedBox(height: 12),
-          _SectionCard(
-            title: l10n.reverseCheck,
-            entries: <MapEntry<String, String>>[
-              MapEntry<String, String>('EN_TO_RU', bundle.enToRu!),
-              MapEntry<String, String>('TH_TO_RU', bundle.thToRu!),
-              MapEntry<String, String>('EN_TO_TH', bundle.enToTh!),
-              MapEntry<String, String>('TH_TO_EN', bundle.thToEn!),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-final class _VerdictCard extends StatelessWidget {
-  const _VerdictCard({required this.audit, required this.bundle});
-
-  final TranslationAudit audit;
-  final TranslationBundle bundle;
-
-  @override
-  Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
-    final TranslationVerdict verdict = audit.verdict;
-    final ColorScheme colors = Theme.of(context).colorScheme;
-
-    final Color background = switch (verdict) {
-      TranslationVerdict.exact => colors.primaryContainer,
-      TranslationVerdict.equivalent => colors.secondaryContainer,
-      TranslationVerdict.needsReview => Colors.yellow.shade50,
-      TranslationVerdict.canonicalDrift => colors.errorContainer,
-    };
-
     return Card(
-      color: background,
+      key: const ValueKey<String>('translator-result-card'),
+      color: _verdictBackground(Theme.of(context).colorScheme, audit.verdict),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(
-              l10n.automaticVerdict,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
+            _ResultSection(
+              title: l10n.directTranslation,
+              audit: audit,
+              entries: <MapEntry<String, String>>[
+                MapEntry<String, String>('RU', bundle.ru),
+                MapEntry<String, String>('EN', bundle.en),
+                MapEntry<String, String>('TH', bundle.th),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              _verdictLabel(verdict),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _verdictExplanation(l10n, verdict),
-              textAlign: TextAlign.center,
-            ),
-            if (audit.auditChallengerConflict) ...<Widget>[
-              const SizedBox(height: 8),
-              Text(l10n.auditChallengerConflict, textAlign: TextAlign.center),
+            if (bundle.hasReverseDiagnostics) ...<Widget>[
+              const SizedBox(height: 16),
+              _ResultSection(
+                title: l10n.reverseCheck,
+                entries: _reverseEntries(bundle),
+              ),
             ],
-            if (audit.exactChallengeProtocolFailed) ...<Widget>[
-              const SizedBox(height: 8),
+            const Divider(height: 32),
+            _VerdictSummary(audit: audit),
+            if (_hasResultDiagnostics(audit)) ...<Widget>[
+              const Divider(height: 32),
               Text(
-                l10n.exactChallengeProtocolFallback,
-                textAlign: TextAlign.center,
+                l10n.auditAndDiagnostics,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
+              const SizedBox(height: 12),
+              _CompactAuditEvidence(audit: audit),
             ],
-            const SizedBox(height: 16),
-            if (!audit.usesSemanticProtocol &&
-                audit.findings.isNotEmpty) ...<Widget>[
-              _BooleanEvidenceRow(
-                label: l10n.meaningPreserved,
-                value: audit.meaningPreserved,
-              ),
-              _BooleanEvidenceRow(
-                label: l10n.terminologyPreserved,
-                value: audit.terminologyPreserved,
-              ),
-              _BooleanEvidenceRow(
-                label: l10n.canonicalStylePreserved,
-                value: audit.canonicalStylePreserved,
-              ),
-              _BooleanEvidenceRow(
-                label: l10n.ambiguousWording,
-                value: audit.ambiguousWording,
-                positiveMeansGood: false,
-              ),
-            ],
-            const SizedBox(height: 16),
-            Text(
-              l10n.auditAndDiagnostics,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            if (audit.usesSemanticProtocol)
-              _SemanticProtocolEvidence(audit: audit, bundle: bundle)
-            else if (audit.findings.isEmpty)
-              Text(l10n.semanticProtocolFallback)
-            else ...<Widget>[
-              _FindingGroup(
-                title: l10n.meaning,
-                findings: _findingsByCategory(
-                  audit,
-                  TranslationFindingCategory.meaning,
-                ),
-              ),
-              _FindingGroup(
-                title: l10n.terminology,
-                findings: _findingsByCategory(
-                  audit,
-                  TranslationFindingCategory.terminology,
-                ),
-              ),
-              _FindingGroup(
-                title: l10n.canonicalStyle,
-                findings: _findingsByCategory(
-                  audit,
-                  TranslationFindingCategory.style,
-                ),
-              ),
-              _FindingGroup(
-                title: l10n.ambiguity,
-                findings: _findingsByCategory(
-                  audit,
-                  TranslationFindingCategory.ambiguity,
-                ),
-              ),
-            ],
-            const SizedBox(height: 8),
-            Text(l10n.verdictEngineerNotice, textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -781,11 +699,192 @@ final class _VerdictCard extends StatelessWidget {
   }
 }
 
-final class _SemanticProtocolEvidence extends StatelessWidget {
-  const _SemanticProtocolEvidence({required this.audit, required this.bundle});
+final class _ResultSection extends StatelessWidget {
+  const _ResultSection({
+    required this.title,
+    required this.entries,
+    this.audit,
+  });
+
+  final String title;
+  final List<MapEntry<String, String>> entries;
+  final TranslationAudit? audit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        for (final MapEntry<String, String> entry in entries) ...<Widget>[
+          const Divider(height: 24),
+          Text(entry.key, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          if (audit != null && _languageForSection(entry.key) != null)
+            _HighlightedSelectableText(
+              key: ValueKey<String>(
+                'translator-direct-${entry.key.toLowerCase()}',
+              ),
+              text: entry.value,
+              fragments: _problemFragmentsForLanguage(
+                audit!,
+                _languageForSection(entry.key)!,
+              ),
+            )
+          else
+            SelectableText(
+              entry.value,
+              key: ValueKey<String>(
+                'translator-section-${entry.key.toLowerCase()}',
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+final class _VerdictSummary extends StatelessWidget {
+  const _VerdictSummary({required this.audit});
 
   final TranslationAudit audit;
-  final TranslationBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+    final TranslationVerdict verdict = audit.verdict;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text(
+          l10n.automaticVerdict,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _verdictLabel(verdict),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 8),
+        Text(_verdictExplanation(l10n, verdict), textAlign: TextAlign.center),
+        if (audit.auditChallengerConflict) ...<Widget>[
+          const SizedBox(height: 8),
+          Text(l10n.auditChallengerConflict, textAlign: TextAlign.center),
+        ],
+        if (audit.exactChallengeProtocolFailed) ...<Widget>[
+          const SizedBox(height: 8),
+          Text(
+            l10n.exactChallengeProtocolFallback,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+final class _CompactAuditEvidence extends StatelessWidget {
+  const _CompactAuditEvidence({required this.audit});
+
+  final TranslationAudit audit;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+
+    if (!audit.usesSemanticProtocol) {
+      if (audit.findings.isEmpty) {
+        return Text(l10n.semanticProtocolFallback);
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          for (final TranslationFindingCategory category
+              in TranslationFindingCategory.values)
+            if (_findingsByCategory(audit, category).isNotEmpty)
+              _FindingGroup(
+                title: switch (category) {
+                  TranslationFindingCategory.meaning => l10n.meaning,
+                  TranslationFindingCategory.terminology => l10n.terminology,
+                  TranslationFindingCategory.style => l10n.canonicalStyle,
+                  TranslationFindingCategory.ambiguity => l10n.ambiguity,
+                },
+                findings: _findingsByCategory(audit, category),
+              ),
+        ],
+      );
+    }
+
+    final List<TranslationPairAudit> problemPairs = audit.pairAudits
+        .where(
+          (TranslationPairAudit item) =>
+              item.result != TranslationPairAuditResult.clear ||
+              item.issues.isNotEmpty,
+        )
+        .toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        if (audit.protocolFallback)
+          Text(l10n.semanticProtocolFallback)
+        else
+          for (final TranslationPairAudit pairAudit in problemPairs)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _CompactPairEvidence(audit: pairAudit),
+            ),
+        if (audit.candidateForExact &&
+            audit.exactChallenge == null) ...<Widget>[
+          Text(
+            l10n.independentExactChallenge,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          Text(l10n.semanticProtocolFallback),
+        ] else if (audit.exactChallenge != null &&
+            audit.exactChallenge!.result !=
+                ExactChallengeResult.clear) ...<Widget>[
+          if (problemPairs.isNotEmpty) const SizedBox(height: 4),
+          Text(
+            l10n.independentExactChallenge,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          if (audit.exactChallenge!.result ==
+              ExactChallengeResult.protocolFailure)
+            Text(l10n.exactChallengeProtocolFallback)
+          else ...<Widget>[
+            Text(
+              'RESULT · ${audit.exactChallenge!.result.code}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            for (final ExactChallengeDisqualifier item
+                in audit.exactChallenge!.disqualifiers)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _CompactChallengeEvidence(item: item),
+              ),
+          ],
+        ],
+        if (!audit.protocolFallback &&
+            problemPairs.isEmpty &&
+            !audit.candidateForExact)
+          Text(l10n.semanticProtocolFallback),
+      ],
+    );
+  }
+}
+
+final class _CompactPairEvidence extends StatelessWidget {
+  const _CompactPairEvidence({required this.audit});
+
+  final TranslationPairAudit audit;
 
   @override
   Widget build(BuildContext context) {
@@ -795,149 +894,226 @@ final class _SemanticProtocolEvidence extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          l10n.semanticPairAudit,
-          style: Theme.of(context).textTheme.titleMedium,
+          '${audit.pair.code} · ${audit.result.code}',
+          style: Theme.of(context).textTheme.titleSmall,
         ),
-        const SizedBox(height: 6),
-        if (audit.protocolFallback)
+        const SizedBox(height: 8),
+        if (audit.issues.isEmpty)
           Text(l10n.semanticProtocolFallback)
         else
-          for (final TranslationPairAudit pairAudit in audit.pairAudits)
+          for (final TranslationPairIssue issue in audit.issues)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _SemanticPairCard(audit: pairAudit, bundle: bundle),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _SemanticEvidenceBody(
+                pair: audit.pair,
+                atom: issue.atom,
+                status: issue.status,
+                left: issue.left,
+                right: issue.right,
+                reason: issue.reason,
+              ),
             ),
-        if (audit.candidateForExact) ...<Widget>[
-          const SizedBox(height: 8),
-          Text(
-            l10n.independentExactChallenge,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 6),
-          if (audit.exactChallenge == null)
-            Text(l10n.semanticProtocolFallback)
-          else if (audit.exactChallenge!.result ==
-              ExactChallengeResult.protocolFailure)
-            Text(l10n.exactChallengeProtocolFallback)
-          else ...<Widget>[
-            Text(
-              'RESULT · ${audit.exactChallenge!.result.code}',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            if (audit.exactChallenge!.disqualifiers.isEmpty) ...<Widget>[
-              const SizedBox(height: 4),
-              Text(l10n.noViolations),
-            ] else ...<Widget>[
-              const SizedBox(height: 8),
-              for (final ExactChallengeDisqualifier item
-                  in audit.exactChallenge!.disqualifiers)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _ChallengeDisqualifierCard(item: item, bundle: bundle),
-                ),
-            ],
-          ],
-        ],
       ],
     );
   }
 }
 
-final class _SemanticPairCard extends StatelessWidget {
-  const _SemanticPairCard({required this.audit, required this.bundle});
+final class _CompactChallengeEvidence extends StatelessWidget {
+  const _CompactChallengeEvidence({required this.item});
 
-  final TranslationPairAudit audit;
-  final TranslationBundle bundle;
+  final ExactChallengeDisqualifier item;
 
   @override
   Widget build(BuildContext context) {
-    final TranslationLanguage leftLanguage = audit.pair.leftLanguage;
-    final TranslationLanguage rightLanguage = audit.pair.rightLanguage;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              '${audit.pair.code} · ${audit.result.code}',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            SelectableText(
-              '${leftLanguage.code}: ${bundle.textFor(leftLanguage)}',
-            ),
-            const SizedBox(height: 4),
-            SelectableText(
-              '${rightLanguage.code}: ${bundle.textFor(rightLanguage)}',
-            ),
-            if (audit.issues.isNotEmpty) ...<Widget>[
-              const Divider(height: 20),
-              for (final TranslationPairIssue issue in audit.issues)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _SemanticEvidenceBody(
-                    pair: audit.pair,
-                    atom: issue.atom,
-                    status: issue.status,
-                    left: issue.left,
-                    right: issue.right,
-                    reason: issue.reason,
-                  ),
-                ),
-            ],
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          '${item.pair.code} · ${item.status.code}',
+          style: Theme.of(context).textTheme.titleSmall,
         ),
-      ),
+        const SizedBox(height: 8),
+        _SemanticEvidenceBody(
+          pair: item.pair,
+          atom: item.atom,
+          status: item.status,
+          left: item.left,
+          right: item.right,
+          reason: item.reason,
+        ),
+      ],
     );
   }
 }
 
-final class _ChallengeDisqualifierCard extends StatelessWidget {
-  const _ChallengeDisqualifierCard({required this.item, required this.bundle});
+final class _HighlightedSelectableText extends StatelessWidget {
+  const _HighlightedSelectableText({
+    super.key,
+    required this.text,
+    required this.fragments,
+  });
 
-  final ExactChallengeDisqualifier item;
-  final TranslationBundle bundle;
+  final String text;
+  final List<String> fragments;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              '${item.pair.code} · ${item.status.code}',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            SelectableText(
-              '${item.pair.leftLanguage.code}: '
-              '${bundle.textFor(item.pair.leftLanguage)}',
-            ),
-            const SizedBox(height: 4),
-            SelectableText(
-              '${item.pair.rightLanguage.code}: '
-              '${bundle.textFor(item.pair.rightLanguage)}',
-            ),
-            const Divider(height: 20),
-            _SemanticEvidenceBody(
-              pair: item.pair,
-              atom: item.atom,
-              status: item.status,
-              left: item.left,
-              right: item.right,
-              reason: item.reason,
-            ),
-          ],
+    final List<({int start, int end})> ranges = _highlightRanges(
+      text,
+      fragments,
+    );
+    if (ranges.isEmpty) {
+      return SelectableText(text);
+    }
+
+    final List<InlineSpan> spans = <InlineSpan>[];
+    int cursor = 0;
+    final TextStyle highlightStyle = TextStyle(
+      backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+      fontWeight: FontWeight.w600,
+    );
+
+    for (final ({int start, int end}) range in ranges) {
+      if (cursor < range.start) {
+        spans.add(TextSpan(text: text.substring(cursor, range.start)));
+      }
+      spans.add(
+        TextSpan(
+          text: text.substring(range.start, range.end),
+          style: highlightStyle,
         ),
-      ),
+      );
+      cursor = range.end;
+    }
+
+    if (cursor < text.length) {
+      spans.add(TextSpan(text: text.substring(cursor)));
+    }
+
+    return SelectableText.rich(
+      TextSpan(style: DefaultTextStyle.of(context).style, children: spans),
     );
   }
+}
+
+List<MapEntry<String, String>> _reverseEntries(TranslationBundle bundle) {
+  return <MapEntry<String, String>>[
+    MapEntry<String, String>('EN_TO_RU', bundle.enToRu!),
+    MapEntry<String, String>('TH_TO_RU', bundle.thToRu!),
+    MapEntry<String, String>('EN_TO_TH', bundle.enToTh!),
+    MapEntry<String, String>('TH_TO_EN', bundle.thToEn!),
+  ];
+}
+
+TranslationLanguage? _languageForSection(String section) {
+  return switch (section) {
+    'RU' => TranslationLanguage.ru,
+    'EN' => TranslationLanguage.en,
+    'TH' => TranslationLanguage.th,
+    _ => null,
+  };
+}
+
+List<String> _problemFragmentsForLanguage(
+  TranslationAudit audit,
+  TranslationLanguage language,
+) {
+  final Set<String> fragments = <String>{};
+
+  for (final TranslationPairAudit pairAudit in audit.pairAudits) {
+    for (final TranslationPairIssue issue in pairAudit.issues) {
+      if (pairAudit.pair.leftLanguage == language && issue.left != null) {
+        fragments.add(issue.left!);
+      }
+      if (pairAudit.pair.rightLanguage == language && issue.right != null) {
+        fragments.add(issue.right!);
+      }
+    }
+  }
+
+  for (final ExactChallengeDisqualifier item
+      in audit.exactChallenge?.disqualifiers ??
+          const <ExactChallengeDisqualifier>[]) {
+    if (item.pair.leftLanguage == language && item.left != null) {
+      fragments.add(item.left!);
+    }
+    if (item.pair.rightLanguage == language && item.right != null) {
+      fragments.add(item.right!);
+    }
+  }
+
+  return fragments
+      .where((String fragment) => fragment.isNotEmpty)
+      .toList(growable: false);
+}
+
+List<({int start, int end})> _highlightRanges(
+  String text,
+  List<String> fragments,
+) {
+  final List<({int start, int end})> ranges = <({int start, int end})>[];
+
+  for (final String fragment in fragments) {
+    int from = 0;
+    while (from < text.length) {
+      final int index = text.indexOf(fragment, from);
+      if (index < 0) {
+        break;
+      }
+      ranges.add((start: index, end: index + fragment.length));
+      from = index + fragment.length;
+    }
+  }
+
+  ranges.sort((a, b) {
+    final int byStart = a.start.compareTo(b.start);
+    return byStart != 0 ? byStart : b.end.compareTo(a.end);
+  });
+
+  final List<({int start, int end})> merged = <({int start, int end})>[];
+  for (final ({int start, int end}) range in ranges) {
+    if (merged.isEmpty || range.start > merged.last.end) {
+      merged.add(range);
+      continue;
+    }
+
+    final ({int start, int end}) previous = merged.removeLast();
+    merged.add((
+      start: previous.start,
+      end: range.end > previous.end ? range.end : previous.end,
+    ));
+  }
+
+  return merged;
+}
+
+bool _hasResultDiagnostics(TranslationAudit audit) {
+  if (!audit.usesSemanticProtocol ||
+      audit.protocolFallback ||
+      audit.findings.isNotEmpty) {
+    return true;
+  }
+  if (audit.pairAudits.any(
+    (TranslationPairAudit item) =>
+        item.result != TranslationPairAuditResult.clear ||
+        item.issues.isNotEmpty,
+  )) {
+    return true;
+  }
+  if (audit.candidateForExact && audit.exactChallenge == null) {
+    return true;
+  }
+  return audit.exactChallenge != null &&
+      audit.exactChallenge!.result != ExactChallengeResult.clear;
+}
+
+Color _verdictBackground(ColorScheme colors, TranslationVerdict verdict) {
+  return switch (verdict) {
+    TranslationVerdict.exact => colors.primaryContainer,
+    TranslationVerdict.equivalent => colors.secondaryContainer,
+    TranslationVerdict.needsReview => Colors.yellow.shade50,
+    TranslationVerdict.canonicalDrift => colors.errorContainer,
+  };
 }
 
 final class _SemanticEvidenceBody extends StatelessWidget {
@@ -985,61 +1161,6 @@ final class _SemanticEvidenceBody extends StatelessWidget {
           '${l10n.semanticIssueImpact(atomCode: atom.code, statusCode: status.code)}',
         ),
       ],
-    );
-  }
-}
-
-final class _BooleanEvidenceRow extends StatelessWidget {
-  const _BooleanEvidenceRow({
-    required this.label,
-    required this.value,
-    this.positiveMeansGood = true,
-  });
-
-  final String label;
-  final bool value;
-  final bool positiveMeansGood;
-
-  @override
-  Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
-    final bool good = positiveMeansGood ? value : !value;
-
-    return Row(
-      children: <Widget>[
-        Icon(good ? Icons.check_circle_outline : Icons.warning_amber, size: 20),
-        const SizedBox(width: 8),
-        Expanded(child: Text(label)),
-        Text(value ? l10n.yes : l10n.no),
-      ],
-    );
-  }
-}
-
-final class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.entries});
-
-  final String title;
-  final List<MapEntry<String, String>> entries;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            for (final MapEntry<String, String> entry in entries) ...<Widget>[
-              const Divider(height: 24),
-              Text(entry.key, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 6),
-              SelectableText(entry.value),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }
@@ -1212,6 +1333,29 @@ List<TranslationFinding> _findingsByCategory(
       .toList(growable: false);
 }
 
+String? _safeFailureDetail(TranslatorFailure failure) {
+  return switch (failure.code) {
+    TranslatorFailureCode.sourceTextEmpty ||
+    TranslatorFailureCode.accessKeyEmpty ||
+    TranslatorFailureCode.accessKeyInvalidCharacters ||
+    TranslatorFailureCode.missingRequiredSection ||
+    TranslatorFailureCode.emptyRequiredSection ||
+    TranslatorFailureCode.placeholderValue ||
+    TranslatorFailureCode.unexpectedSection ||
+    TranslatorFailureCode.invalidSectionOrder ||
+    TranslatorFailureCode.invalidSourceLanguage ||
+    TranslatorFailureCode.sourceTextMismatch ||
+    TranslatorFailureCode.malformedProviderResponse => failure.message,
+    TranslatorFailureCode.invalidAuditResponse ||
+    TranslatorFailureCode.unauthorized ||
+    TranslatorFailureCode.rateLimited ||
+    TranslatorFailureCode.serverFailure ||
+    TranslatorFailureCode.networkFailure ||
+    TranslatorFailureCode.timeout ||
+    TranslatorFailureCode.cancelled => null,
+  };
+}
+
 String _failureMessage(
   RegistryStudioLocalizations l10n,
   TranslatorFailureCode code,
@@ -1240,23 +1384,6 @@ String _failureMessage(
     TranslatorFailureCode.timeout => l10n.timeoutFailure,
     TranslatorFailureCode.cancelled => l10n.translationCancelled,
   };
-}
-
-String _failureTitle(
-  RegistryStudioLocalizations l10n,
-  TranslatorFailure failure, {
-  required bool incomplete,
-}) {
-  if (incomplete) {
-    return l10n.incompleteTranslation;
-  }
-  if (failure.code == TranslatorFailureCode.cancelled) {
-    return l10n.translationCancelled;
-  }
-  if (failure.stage == TranslatorFailureStage.validation) {
-    return l10n.checkInput;
-  }
-  return l10n.translatorTechnicalError;
 }
 
 String _verdictLabel(TranslationVerdict verdict) {

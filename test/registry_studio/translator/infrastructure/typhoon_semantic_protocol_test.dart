@@ -92,6 +92,241 @@ void main() {
     });
   });
 
+  group('EXACT capability v2 protocol', () {
+    test('parses reverse diagnostics without changing provider text', () {
+      final ReverseDiagnostics diagnostics =
+          TyphoonSemanticProtocol.parseReverseDiagnostics(
+            content: jsonEncode(<String, Object?>{
+              'EN_TO_RU': 'исполнитель завершит работу завтра',
+              'TH_TO_RU': 'работник закончит работу завтра',
+            }),
+          );
+
+      expect(diagnostics.enToRu, 'исполнитель завершит работу завтра');
+      expect(diagnostics.thToRu, 'работник закончит работу завтра');
+    });
+
+    test('rejects incomplete or extended reverse diagnostics', () {
+      for (final String content in <String>[
+        '{"EN_TO_RU":"текст"}',
+        '{"EN_TO_RU":"текст","TH_TO_RU":"текст","VERDICT":"EXACT"}',
+        '{"EN_TO_RU":"N/A","TH_TO_RU":"текст"}',
+      ]) {
+        expect(
+          () =>
+              TyphoonSemanticProtocol.parseReverseDiagnostics(content: content),
+          throwsA(isA<TyphoonSemanticProtocolException>()),
+        );
+      }
+    });
+
+    test(
+      'parses one-target atom evidence and assigns only local reason keys',
+      () {
+        final List<TranslationAtomAssessment> assessments =
+            TyphoonSemanticProtocol.parseAtomVerification(
+              content: jsonEncode(<String, Object?>{
+                'ASSESSMENTS': <Object?>[
+                  <String, Object?>{
+                    'ATOM': 'actor',
+                    'STATUS': 'S',
+                    'FRAGMENT': 'worker',
+                  },
+                  <String, Object?>{
+                    'ATOM': 'time',
+                    'STATUS': 'C',
+                    'FRAGMENT': 'tomorrow',
+                  },
+                  <String, Object?>{
+                    'ATOM': 'condition',
+                    'STATUS': 'U',
+                    'FRAGMENT': null,
+                  },
+                  <String, Object?>{
+                    'ATOM': 'polarity',
+                    'STATUS': 'X',
+                    'FRAGMENT': 'will',
+                  },
+                ],
+              }),
+              targetLanguage: TranslationLanguage.en,
+              directText: 'the worker will finish tomorrow',
+            );
+
+        expect(assessments, hasLength(4));
+        expect(
+          assessments[0].localReasonKey,
+          TranslationAtomReasonKey.preserved,
+        );
+        expect(
+          assessments[1].localReasonKey,
+          TranslationAtomReasonKey.contextualReview,
+        );
+        expect(
+          assessments[2].localReasonKey,
+          TranslationAtomReasonKey.unresolvedEvidence,
+        );
+        expect(
+          assessments[3].localReasonKey,
+          TranslationAtomReasonKey.semanticMismatch,
+        );
+        expect(
+          assessments.every(
+            (TranslationAtomAssessment item) =>
+                item.targetLanguage == TranslationLanguage.en,
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test('downgrades every unsupported fragment claim to unresolved', () {
+      final List<TranslationAtomAssessment> assessments =
+          TyphoonSemanticProtocol.parseAtomVerification(
+            content: jsonEncode(<String, Object?>{
+              'ASSESSMENTS': <Object?>[
+                <String, Object?>{
+                  'ATOM': 'action',
+                  'STATUS': 'S',
+                  'FRAGMENT': null,
+                },
+                <String, Object?>{
+                  'ATOM': 'object',
+                  'STATUS': 'C',
+                  'FRAGMENT': 'source-only fragment',
+                },
+                <String, Object?>{
+                  'ATOM': 'scope',
+                  'STATUS': 'X',
+                  'FRAGMENT': 7,
+                },
+              ],
+            }),
+            targetLanguage: TranslationLanguage.th,
+            directText: 'ดำเนินงานพรุ่งนี้',
+          );
+
+      expect(
+        assessments.map((TranslationAtomAssessment item) => item.status),
+        everyElement(TranslationAtomStatus.unresolved),
+      );
+      expect(
+        assessments.map(
+          (TranslationAtomAssessment item) => item.localReasonKey,
+        ),
+        everyElement(TranslationAtomReasonKey.unresolvedEvidence),
+      );
+      expect(
+        assessments.map(
+          (TranslationAtomAssessment item) => item.directFragment,
+        ),
+        everyElement(isNull),
+      );
+    });
+
+    test('applies only the narrow malformed item-boundary repair', () {
+      const String malformed =
+          '{"ASSESSMENTS":[{"ATOM":"actor","STATUS":"S",'
+          '"FRAGMENT":"worker"},"{"ATOM":"time","STATUS":"S",'
+          '"FRAGMENT":"tomorrow"}]}';
+
+      final List<TranslationAtomAssessment> repaired =
+          TyphoonSemanticProtocol.parseAtomVerification(
+            content: malformed,
+            targetLanguage: TranslationLanguage.en,
+            directText: 'worker tomorrow',
+          );
+
+      expect(repaired, hasLength(2));
+      expect(
+        () => TyphoonSemanticProtocol.parseAtomVerification(
+          content: '{"ASSESSMENTS":[{"ATOM":"actor",]}',
+          targetLanguage: TranslationLanguage.en,
+          directText: 'worker',
+        ),
+        throwsA(isA<TyphoonSemanticProtocolException>()),
+      );
+    });
+
+    test('rejects model verdicts reasons duplicates and canonical style', () {
+      final List<String> invalid = <String>[
+        jsonEncode(<String, Object?>{
+          'ASSESSMENTS': <Object?>[
+            <String, Object?>{
+              'ATOM': 'actor',
+              'STATUS': 'S',
+              'FRAGMENT': 'worker',
+              'REASON': 'preserved',
+            },
+          ],
+        }),
+        jsonEncode(<String, Object?>{
+          'ASSESSMENTS': <Object?>[
+            <String, Object?>{
+              'ATOM': 'actor',
+              'STATUS': 'S',
+              'FRAGMENT': 'worker',
+            },
+          ],
+          'VERDICT': 'EXACT',
+        }),
+        jsonEncode(<String, Object?>{
+          'ASSESSMENTS': <Object?>[
+            <String, Object?>{
+              'ATOM': 'actor',
+              'STATUS': 'S',
+              'FRAGMENT': 'worker',
+            },
+            <String, Object?>{
+              'ATOM': 'actor',
+              'STATUS': 'S',
+              'FRAGMENT': 'worker',
+            },
+          ],
+        }),
+        jsonEncode(<String, Object?>{
+          'ASSESSMENTS': <Object?>[
+            <String, Object?>{
+              'ATOM': 'canonical_style',
+              'STATUS': 'S',
+              'FRAGMENT': 'worker',
+            },
+          ],
+        }),
+      ];
+
+      for (final String content in invalid) {
+        expect(
+          () => TyphoonSemanticProtocol.parseAtomVerification(
+            content: content,
+            targetLanguage: TranslationLanguage.en,
+            directText: 'worker',
+          ),
+          throwsA(isA<TyphoonSemanticProtocolException>()),
+        );
+      }
+
+      expect(
+        () => TyphoonSemanticProtocol.parseAtomVerification(
+          content: '{"ASSESSMENTS":[]}',
+          targetLanguage: TranslationLanguage.en,
+          directText: 'worker',
+        ),
+        throwsA(isA<TyphoonSemanticProtocolException>()),
+      );
+      expect(
+        () => TyphoonSemanticProtocol.parseAtomVerification(
+          content:
+              '{"ASSESSMENTS":[{"ATOM":"actor","STATUS":"S",'
+              '"FRAGMENT":"worker"}]}',
+          targetLanguage: TranslationLanguage.ru,
+          directText: 'worker',
+        ),
+        throwsA(isA<TyphoonSemanticProtocolException>()),
+      );
+    });
+  });
+
   group('general audit protocol', () {
     test('parses three clear pairs', () {
       final List<TranslationPairAudit> audits =

@@ -61,11 +61,13 @@ void main() {
     });
   });
 
-  group('TyphoonTranslatorProvider', () {
-    test('non-exact result uses two calls and no reverse path', () async {
+  group('TyphoonTranslatorProvider EXACT capability flow', () {
+    test('uses exactly four nominal calls and a local EXACT verdict', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _translationResponse(),
-        _lexicalGapAuditResponse(),
+        _reverseDiagnosticsResponse(),
+        _supportedAssessmentResponse(TranslationLanguage.en),
+        _supportedAssessmentResponse(TranslationLanguage.th),
       ]);
       final TranslatorOperation operation = _provider(
         transport,
@@ -76,125 +78,51 @@ void main() {
       final TranslatorRunReport report = await operation.result;
       await progressDone;
 
-      expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(report.audit.verdict, TranslationVerdict.exact);
+      expect(
+        report.audit.exactCapability?.localVerdict,
+        ExactCapabilityVerdict.exact,
+      );
+      expect(report.audit.pairAudits, isEmpty);
+      expect(report.audit.exactChallenge, isNull);
+      expect(report.bundle.en, 'install the cooktop');
+      expect(report.bundle.th, 'ติดตั้งเตาไฟ');
       expect(report.bundle.hasReverseDiagnostics, isFalse);
-      expect(transport.callCount, 2);
+      expect(transport.callCount, 4);
       expect(stages, <TranslatorRunStage>[
         TranslatorRunStage.directTranslation,
+        TranslatorRunStage.reverseTranslation,
         TranslatorRunStage.audit,
       ]);
       _expectLockedSettings(transport.requestBodies);
 
-      final Map<String, Object?> auditUser = _userData(
-        transport.requestBodies[1],
-      );
-      expect(auditUser.keys.toSet(), <String>{'RU', 'EN', 'TH'});
-      expect(auditUser.keys, isNot(contains('SOURCE_TEXT')));
-      expect(auditUser.keys, isNot(contains('EN_TO_RU')));
+      expect(_userData(transport.requestBodies[1]), <String, Object?>{
+        'EN': 'install the cooktop',
+        'TH': 'ติดตั้งเตาไฟ',
+      });
+      expect(_userData(transport.requestBodies[2]), <String, Object?>{
+        'SOURCE_RU': 'установить варочную панель',
+        'TARGET_LANGUAGE': 'EN',
+        'TARGET_TEXT': 'install the cooktop',
+        'REVERSE_DIAGNOSTIC': 'установить варочную панель',
+      });
+      expect(_userData(transport.requestBodies[3]), <String, Object?>{
+        'SOURCE_RU': 'установить варочную панель',
+        'TARGET_LANGUAGE': 'TH',
+        'TARGET_TEXT': 'ติดตั้งเตาไฟ',
+        'REVERSE_DIAGNOSTIC': 'установить варочную панель',
+      });
     });
 
-    test(
-      'exact requires three calls and one global audit-blind challenger',
-      () async {
-        final _QueueTransport transport = _QueueTransport(<Object>[
-          _translationResponse(),
-          _clearAuditResponse(),
-          _challengeClear(),
-        ]);
-        final TranslatorOperation operation = _provider(
-          transport,
-        ).start(request: _request(), accessKey: 'test-key');
-        final List<TranslatorRunStage> stages = <TranslatorRunStage>[];
-        final Future<void> progressDone = operation.progress.forEach(
-          stages.add,
-        );
-
-        final TranslatorRunReport report = await operation.result;
-        await progressDone;
-
-        expect(report.audit.verdict, TranslationVerdict.exact);
-        expect(transport.callCount, 3);
-        expect(stages, <TranslatorRunStage>[
-          TranslatorRunStage.directTranslation,
-          TranslatorRunStage.audit,
-          TranslatorRunStage.exactCertification,
-        ]);
-        _expectLockedSettings(transport.requestBodies);
-
-        final Map<String, Object?> challenge = _userData(
-          transport.requestBodies[2],
-        );
-        expect(challenge.keys.toSet(), <String>{'RU', 'EN', 'TH'});
-        expect(challenge['RU'], 'установить варочную панель');
-        expect(challenge['EN'], 'install the cooktop');
-        expect(challenge['TH'], 'ติดตั้งเตาไฟ');
-      },
-    );
-
-    test('hard mismatch ends after audit with canonical drift', () async {
+    test('contextual assessment produces local NEEDS_REVIEW', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _translationResponse(),
-        _blockedAuditResponse(TranslationSemanticAtom.polarity),
-      ]);
-
-      final TranslatorRunReport report = await _provider(
-        transport,
-      ).start(request: _request(), accessKey: 'test-key').result;
-
-      expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
-      expect(transport.callCount, 2);
-    });
-
-    test('ambiguity evidence ends after audit with needs review', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(),
-        _ambiguityAuditResponse(),
-      ]);
-
-      final TranslatorRunReport report = await _provider(
-        transport,
-      ).start(request: _request(), accessKey: 'test-key').result;
-
-      expect(report.audit.verdict, TranslationVerdict.needsReview);
-      expect(transport.callCount, 2);
-    });
-
-    test('style-only mismatch ends after audit with equivalent', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(),
-        _styleOnlyAuditResponse(),
-      ]);
-
-      final TranslatorRunReport report = await _provider(
-        transport,
-      ).start(request: _request(), accessKey: 'test-key').result;
-
-      expect(report.audit.verdict, TranslationVerdict.equivalent);
-      expect(transport.callCount, 2);
-    });
-
-    test('malformed audit retries once and fails closed', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(),
-        '{"RU_EN":{}}',
-        'not-json',
-      ]);
-
-      final TranslatorRunReport report = await _provider(
-        transport,
-      ).start(request: _request(), accessKey: 'test-key').result;
-
-      expect(report.audit.protocolFallback, isTrue);
-      expect(report.audit.verdict, TranslationVerdict.needsReview);
-      expect(transport.callCount, 3);
-    });
-
-    test('malformed challenger retries once and fails closed', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(),
-        _clearAuditResponse(),
-        '{"RESULT":"CLEAR"}',
-        '{"RESULT":"BLOCKED","DISQUALIFIERS":[]}',
+        _reverseDiagnosticsResponse(),
+        _supportedAssessmentResponse(TranslationLanguage.en),
+        _assessmentResponse(
+          language: TranslationLanguage.th,
+          equipmentStatus: 'C',
+        ),
       ]);
 
       final TranslatorRunReport report = await _provider(
@@ -203,121 +131,135 @@ void main() {
 
       expect(report.audit.verdict, TranslationVerdict.needsReview);
       expect(
-        report.audit.exactChallenge?.result,
-        ExactChallengeResult.protocolFailure,
+        report.audit.exactCapability?.localVerdict,
+        ExactCapabilityVerdict.needsReview,
       );
       expect(transport.callCount, 4);
     });
 
-    test(
-      'global challenger evidence blocks exact and preserves explanation',
-      () async {
-        final _QueueTransport transport = _QueueTransport(<Object>[
-          _translationResponse(),
-          _clearAuditResponse(),
-          _challengeUnproven(),
-        ]);
-
-        final TranslatorRunReport report = await _provider(
-          transport,
-        ).start(request: _request(), accessKey: 'test-key').result;
-
-        expect(report.audit.verdict, TranslationVerdict.needsReview);
-        expect(report.audit.auditChallengerConflict, isTrue);
-        expect(transport.callCount, 3);
-        final ExactChallengeDisqualifier evidence =
-            report.audit.exactChallenge!.disqualifiers.single;
-        expect(evidence.pair, TranslationPair.enTh);
-        expect(evidence.atom, TranslationSemanticAtom.equipmentIdentity);
-        expect(evidence.left, 'cooktop');
-        expect(evidence.right, 'เตาไฟ');
-        expect(evidence.reason, 'exact equipment identity is not proven');
-      },
-    );
-
-    test('direct protocol retries once and then succeeds', () async {
+    test('contradicted assessment produces local BLOCKED', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
-        'not-json',
         _translationResponse(),
-        _lexicalGapAuditResponse(),
+        _reverseDiagnosticsResponse(),
+        _assessmentResponse(
+          language: TranslationLanguage.en,
+          equipmentStatus: 'X',
+        ),
+        _supportedAssessmentResponse(TranslationLanguage.th),
       ]);
 
       final TranslatorRunReport report = await _provider(
         transport,
       ).start(request: _request(), accessKey: 'test-key').result;
 
-      expect(report.bundle.en, 'install the cooktop');
+      expect(report.audit.verdict, TranslationVerdict.canonicalDrift);
+      expect(
+        report.audit.exactCapability?.localVerdict,
+        ExactCapabilityVerdict.blocked,
+      );
+      expect(transport.callCount, 4);
+    });
+
+    test('malformed reverse diagnostics retries and fails closed', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        'not-json',
+        '{"EN_TO_RU":"only one key"}',
+      ]);
+
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
       expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(report.audit.auditProtocolFailed, isTrue);
+      expect(report.audit.exactCapability?.protocolFailure, isTrue);
+      expect(report.audit.exactCapability?.reverseDiagnostics, isNull);
       expect(transport.callCount, 3);
     });
 
-    test('direct protocol fails after exactly one retry', () async {
+    test('malformed atom verification preserves reverse diagnostics', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        _reverseDiagnosticsResponse(),
         'not-json',
-        '{"SOURCE_LANGUAGE":"RU"}',
+        '{"ASSESSMENTS":[]}',
       ]);
 
-      await expectLater(
-        _provider(
-          transport,
-        ).start(request: _request(), accessKey: 'test-key').result,
-        throwsA(
-          isA<TranslatorProviderException>().having(
-            (TranslatorProviderException error) => error.failure.code,
-            'code',
-            TranslatorFailureCode.malformedProviderResponse,
-          ),
-        ),
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
+      expect(report.audit.auditProtocolFailed, isTrue);
+      expect(
+        report.audit.exactCapability?.reverseDiagnostics?.enToRu,
+        'установить варочную панель',
       );
-      expect(transport.callCount, 2);
+      expect(transport.callCount, 4);
+    });
+
+    test('different EN and TH atom sets fail closed locally', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        _translationResponse(),
+        _reverseDiagnosticsResponse(),
+        _supportedAssessmentResponse(TranslationLanguage.en),
+        _singleActionAssessmentResponse(TranslationLanguage.th),
+      ]);
+
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
+      expect(report.audit.auditProtocolFailed, isTrue);
+      expect(report.audit.verdict, TranslationVerdict.needsReview);
+      expect(transport.callCount, 4);
+    });
+
+    test('direct protocol retries once before the four-stage flow', () async {
+      final _QueueTransport transport = _QueueTransport(<Object>[
+        'not-json',
+        _translationResponse(),
+        _reverseDiagnosticsResponse(),
+        _supportedAssessmentResponse(TranslationLanguage.en),
+        _supportedAssessmentResponse(TranslationLanguage.th),
+      ]);
+
+      final TranslatorRunReport report = await _provider(
+        transport,
+      ).start(request: _request(), accessKey: 'test-key').result;
+
+      expect(report.audit.verdict, TranslationVerdict.exact);
+      expect(transport.callCount, 5);
     });
 
     test(
-      'preserves accepted provider bundle through audit, challenger and report',
+      'transport failure after direct translation preserves provider text',
       () async {
-        const String source = 'Маркер  RU — №17';
-        const String en = 'Provider  EN — #17';
-        const String th = 'ผู้ให้บริการ  TH — 17';
-
         final _QueueTransport transport = _QueueTransport(<Object>[
-          jsonEncode(<String, Object?>{
-            'SOURCE_LANGUAGE': 'RU',
-            'SOURCE_TEXT': source,
-            'RU': source,
-            'EN': en,
-            'TH': th,
-          }),
-          _clearAuditResponse(),
-          _challengeClear(),
+          _translationResponse(),
+          const TyphoonTransportException.timeout(),
         ]);
 
-        final TranslatorRunReport report = await _provider(transport)
-            .start(
-              request: TranslatorWorkRequest(
-                sourceText: source,
-                sourceLanguageHint: TranslationLanguage.ru,
-              ),
-              accessKey: 'test-key',
-            )
-            .result;
-
-        expect(report.bundle.sourceText, source);
-        expect(report.bundle.ru, source);
-        expect(report.bundle.en, en);
-        expect(report.bundle.th, th);
-        expect(transport.callCount, 3);
-
-        expect(_userData(transport.requestBodies[1]), <String, Object?>{
-          'RU': source,
-          'EN': en,
-          'TH': th,
-        });
-
-        expect(_userData(transport.requestBodies[2]), <String, Object?>{
-          'RU': source,
-          'EN': en,
-          'TH': th,
-        });
+        await expectLater(
+          _provider(
+            transport,
+          ).start(request: _request(), accessKey: 'test-key').result,
+          throwsA(
+            isA<TranslatorProviderException>()
+                .having(
+                  (TranslatorProviderException error) =>
+                      error.failure.partialBundle?.en,
+                  'partial EN',
+                  'install the cooktop',
+                )
+                .having(
+                  (TranslatorProviderException error) =>
+                      error.failure.partialBundle?.th,
+                  'partial TH',
+                  'ติดตั้งเตาไฟ',
+                ),
+          ),
+        );
       },
     );
 
@@ -375,152 +317,53 @@ String _translationResponse() {
   });
 }
 
-String _clearAuditResponse() {
-  return _auditResponse(<TranslationPair, Map<String, Object?>>{
-    for (final TranslationPair pair in TranslationPair.values)
-      pair: <String, Object?>{'RESULT': 'CLEAR', 'ISSUES': <Object?>[]},
+String _reverseDiagnosticsResponse() {
+  return jsonEncode(<String, Object?>{
+    'EN_TO_RU': 'установить варочную панель',
+    'TH_TO_RU': 'установить варочную панель',
   });
 }
 
-String _lexicalGapAuditResponse() {
-  return _auditResponse(<TranslationPair, Map<String, Object?>>{
-    TranslationPair.ruEn: <String, Object?>{
-      'RESULT': 'CLEAR',
-      'ISSUES': <Object?>[],
-    },
-    TranslationPair.ruTh: _issueResult(
-      pair: TranslationPair.ruTh,
-      result: 'UNPROVEN',
-      atom: TranslationSemanticAtom.equipmentIdentity,
-      status: 'U',
-      reason: 'broader Thai equipment term',
-    ),
-    TranslationPair.enTh: _issueResult(
-      pair: TranslationPair.enTh,
-      result: 'UNPROVEN',
-      atom: TranslationSemanticAtom.equipmentIdentity,
-      status: 'U',
-      reason: 'exact equipment identity is not proven',
-    ),
-  });
+String _supportedAssessmentResponse(TranslationLanguage language) {
+  return _assessmentResponse(language: language, equipmentStatus: 'S');
 }
 
-String _blockedAuditResponse(TranslationSemanticAtom atom) {
-  return _auditResponse(<TranslationPair, Map<String, Object?>>{
-    TranslationPair.ruEn: _issueResult(
-      pair: TranslationPair.ruEn,
-      result: 'BLOCKED',
-      atom: atom,
-      status: 'X',
-      reason: 'material semantic mismatch',
-    ),
-    TranslationPair.ruTh: _issueResult(
-      pair: TranslationPair.ruTh,
-      result: 'BLOCKED',
-      atom: atom,
-      status: 'X',
-      reason: 'material semantic mismatch',
-    ),
-    TranslationPair.enTh: <String, Object?>{
-      'RESULT': 'CLEAR',
-      'ISSUES': <Object?>[],
-    },
-  });
-}
-
-String _ambiguityAuditResponse() {
-  return _auditResponse(<TranslationPair, Map<String, Object?>>{
-    TranslationPair.ruEn: _issueResult(
-      pair: TranslationPair.ruEn,
-      result: 'UNPROVEN',
-      atom: TranslationSemanticAtom.ambiguity,
-      status: 'U',
-      reason: 'role interpretation is unresolved',
-    ),
-    TranslationPair.ruTh: <String, Object?>{
-      'RESULT': 'CLEAR',
-      'ISSUES': <Object?>[],
-    },
-    TranslationPair.enTh: <String, Object?>{
-      'RESULT': 'CLEAR',
-      'ISSUES': <Object?>[],
-    },
-  });
-}
-
-String _styleOnlyAuditResponse() {
-  return _auditResponse(<TranslationPair, Map<String, Object?>>{
-    TranslationPair.ruEn: _issueResult(
-      pair: TranslationPair.ruEn,
-      result: 'BLOCKED',
-      atom: TranslationSemanticAtom.canonicalStyle,
-      status: 'X',
-      reason: 'noncanonical service wording',
-    ),
-    TranslationPair.ruTh: <String, Object?>{
-      'RESULT': 'CLEAR',
-      'ISSUES': <Object?>[],
-    },
-    TranslationPair.enTh: <String, Object?>{
-      'RESULT': 'CLEAR',
-      'ISSUES': <Object?>[],
-    },
-  });
-}
-
-Map<String, Object?> _issueResult({
-  required TranslationPair pair,
-  required String result,
-  required TranslationSemanticAtom atom,
-  required String status,
-  required String reason,
+String _assessmentResponse({
+  required TranslationLanguage language,
+  required String equipmentStatus,
 }) {
-  final ({String left, String right}) fragments = _pairFragments(pair);
-  return <String, Object?>{
-    'RESULT': result,
-    'ISSUES': <Object?>[
+  final ({String action, String equipment}) fragments = switch (language) {
+    TranslationLanguage.en => (action: 'install', equipment: 'cooktop'),
+    TranslationLanguage.th => (action: 'ติดตั้ง', equipment: 'เตาไฟ'),
+    TranslationLanguage.ru => throw ArgumentError.value(language),
+  };
+
+  return jsonEncode(<String, Object?>{
+    'ASSESSMENTS': <Object?>[
       <String, Object?>{
-        'ATOM': atom.code,
-        'STATUS': status,
-        'LEFT': fragments.left,
-        'RIGHT': fragments.right,
-        'REASON': reason,
+        'ATOM': 'action',
+        'STATUS': 'S',
+        'FRAGMENT': fragments.action,
+      },
+      <String, Object?>{
+        'ATOM': 'equipment_identity',
+        'STATUS': equipmentStatus,
+        'FRAGMENT': fragments.equipment,
       },
     ],
-  };
-}
-
-({String left, String right}) _pairFragments(TranslationPair pair) {
-  return switch (pair) {
-    TranslationPair.ruEn => (left: 'варочную панель', right: 'cooktop'),
-    TranslationPair.ruTh => (left: 'варочную панель', right: 'เตาไฟ'),
-    TranslationPair.enTh => (left: 'cooktop', right: 'เตาไฟ'),
-  };
-}
-
-String _auditResponse(Map<TranslationPair, Map<String, Object?>> pairs) {
-  return jsonEncode(<String, Object?>{
-    'PAIR_RESULTS': <String, Object?>{
-      for (final TranslationPair pair in TranslationPair.values)
-        pair.code: pairs[pair],
-    },
   });
 }
 
-String _challengeClear() => '{"RESULT":"CLEAR","DISQUALIFIERS":[]}';
+String _singleActionAssessmentResponse(TranslationLanguage language) {
+  final String fragment = switch (language) {
+    TranslationLanguage.en => 'install',
+    TranslationLanguage.th => 'ติดตั้ง',
+    TranslationLanguage.ru => throw ArgumentError.value(language),
+  };
 
-String _challengeUnproven() {
   return jsonEncode(<String, Object?>{
-    'RESULT': 'UNPROVEN',
-    'DISQUALIFIERS': <Object?>[
-      <String, Object?>{
-        'PAIR': 'EN_TH',
-        'ATOM': 'equipment_identity',
-        'STATUS': 'U',
-        'LEFT': 'cooktop',
-        'RIGHT': 'เตาไฟ',
-        'REASON': 'exact equipment identity is not proven',
-      },
+    'ASSESSMENTS': <Object?>[
+      <String, Object?>{'ATOM': 'action', 'STATUS': 'S', 'FRAGMENT': fragment},
     ],
   });
 }
@@ -572,7 +415,7 @@ final class _QueueTransport implements TyphoonChatTransport {
   void close() {}
 }
 
-final class _TestPolicy implements TranslatorPolicy {
+final class _TestPolicy implements TranslatorPolicy, ExactCapabilityPolicy {
   const _TestPolicy();
 
   @override
@@ -584,7 +427,36 @@ final class _TestPolicy implements TranslatorPolicy {
   }
 
   @override
-  String buildAuditSystemPrompt() => 'audit';
+  String buildReverseDiagnosticsSystemPrompt() => 'reverse diagnostics';
+
+  @override
+  String buildReverseDiagnosticsUserPrompt({
+    required String en,
+    required String th,
+  }) {
+    return jsonEncode(<String, String>{'EN': en, 'TH': th});
+  }
+
+  @override
+  String buildAtomVerificationSystemPrompt() => 'atom verification';
+
+  @override
+  String buildAtomVerificationUserPrompt({
+    required String sourceRu,
+    required TranslationLanguage targetLanguage,
+    required String targetText,
+    required String reverseDiagnostic,
+  }) {
+    return jsonEncode(<String, String>{
+      'SOURCE_RU': sourceRu,
+      'TARGET_LANGUAGE': targetLanguage.code,
+      'TARGET_TEXT': targetText,
+      'REVERSE_DIAGNOSTIC': reverseDiagnostic,
+    });
+  }
+
+  @override
+  String buildAuditSystemPrompt() => 'legacy audit';
 
   @override
   String buildAuditUserPrompt({
@@ -596,7 +468,7 @@ final class _TestPolicy implements TranslatorPolicy {
   }
 
   @override
-  String buildExactChallengerSystemPrompt() => 'exact global';
+  String buildExactChallengerSystemPrompt() => 'legacy challenger';
 
   @override
   String buildExactChallengerUserPrompt({

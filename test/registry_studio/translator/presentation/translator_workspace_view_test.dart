@@ -9,62 +9,41 @@ import 'package:helpy_translator/registry_studio/translator/domain/translator_mo
 import 'package:helpy_translator/registry_studio/translator/presentation/translator_workspace_view.dart';
 
 void main() {
-  testWidgets('shows exactly eight visible sections and automatic verdict', (
+  testWidgets('shows translations once before verdict in one result card', (
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report();
-    final TranslatorWorkspaceController controller =
-        TranslatorWorkspaceController();
 
     await _pumpTranslator(
       tester,
-      controller: controller,
       provider: _SuccessProvider(report),
-      draftStore: _MemoryDraftStore(),
-      accessKeyStore: _MemoryAccessKeyStore(),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(
+          sourceText: report.request.sourceText,
+          sourceLanguageHint: TranslationLanguage.ru,
+          report: report,
+        ),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
     );
 
-    controller.openAccessKeyDialog();
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('translator-access-key-dialog-field')),
-      'test-key',
+    expect(
+      find.byKey(const ValueKey<String>('translator-result-card')),
+      findsOneWidget,
     );
-    await tester.tap(
-      find.byKey(const ValueKey<String>('translator-access-key-dialog-save')),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('translator-source-text-field')),
-      report.request.sourceText,
-    );
-
-    await tester.tap(
-      find.byKey(const ValueKey<String>('translator-run-button')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Автоматический вердикт перевода'), findsOneWidget);
+    expect(find.text('Переводы'), findsOneWidget);
+    expect(find.text('SOURCE TEXT'), findsNothing);
+    expect(find.text('RU'), findsOneWidget);
+    expect(find.text('EN'), findsOneWidget);
+    expect(find.text('TH'), findsOneWidget);
+    expect(find.text('Обратная проверка'), findsOneWidget);
     expect(find.text('EXACT'), findsOneWidget);
-    expect(find.text('SOURCE TEXT и прямые секции'), findsOneWidget);
-    expect(find.text('Обратные секции перевода'), findsOneWidget);
-    for (final String section in <String>[
-      'SOURCE TEXT',
-      'RU',
-      'EN',
-      'TH',
-      'EN_TO_RU',
-      'TH_TO_RU',
-      'EN_TO_TH',
-      'TH_TO_EN',
-    ]) {
-      expect(find.text(section), findsOneWidget);
-    }
-    expect(find.text('RU · SOURCE TEXT'), findsNothing);
-    expect(find.textContaining('→'), findsNothing);
-    expect(find.text('Аудит и диагностика'), findsOneWidget);
+    expect(find.text('Аудит и диагностика'), findsNothing);
+
+    expect(
+      tester.getTopLeft(find.text('Переводы')).dy,
+      lessThan(tester.getTopLeft(find.text('EXACT')).dy),
+    );
   });
 
   testWidgets('renders accepted provider bundle without rewriting', (
@@ -106,7 +85,7 @@ void main() {
     expect(find.text(th), findsOneWidget);
   });
 
-  testWidgets('new semantic report hides legacy reverse diagnostics', (
+  testWidgets('exact semantic report keeps successful diagnostics compact', (
     WidgetTester tester,
   ) async {
     final TranslatorRunReport report = _report(withReverse: false);
@@ -124,11 +103,14 @@ void main() {
       accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
     );
 
+    expect(find.text('Переводы'), findsOneWidget);
+    expect(find.text(report.bundle.en), findsOneWidget);
+    expect(find.text(report.bundle.th), findsOneWidget);
     expect(find.text('EXACT'), findsOneWidget);
-    expect(find.text('Попарный семантический аудит'), findsOneWidget);
-    expect(find.text('Независимый challenger EXACT'), findsOneWidget);
-    expect(find.text('Обратные секции перевода'), findsNothing);
-    expect(find.text('EN_TO_RU'), findsNothing);
+    expect(find.text('Обратная проверка'), findsNothing);
+    expect(find.text('Попарный семантический аудит'), findsNothing);
+    expect(find.text('Независимый challenger EXACT'), findsNothing);
+    expect(find.text('Аудит и диагностика'), findsNothing);
   });
 
   testWidgets(
@@ -192,6 +174,22 @@ void main() {
       );
       expect(find.textContaining('Пояснение:'), findsOneWidget);
       expect(find.textContaining('Влияние:'), findsOneWidget);
+
+      final Finder highlightedEnText = find.descendant(
+        of: find.byKey(const ValueKey<String>('translator-direct-en')),
+        matching: find.byType(SelectableText),
+      );
+      expect(highlightedEnText, findsOneWidget);
+
+      final SelectableText highlightedEn = tester.widget<SelectableText>(
+        highlightedEnText,
+      );
+      expect(
+        highlightedEn.textSpan!.children!.whereType<TextSpan>().any(
+          (TextSpan span) => span.style?.backgroundColor != null,
+        ),
+        isTrue,
+      );
     },
   );
 
@@ -929,6 +927,86 @@ void main() {
       },
     );
   }
+
+  testWidgets('FAILED uses the unified result card and concrete safe detail', (
+    WidgetTester tester,
+  ) async {
+    await _pumpTranslator(
+      tester,
+      provider: _FailureProvider(
+        TranslatorFailure(
+          stage: TranslatorFailureStage.directTranslation,
+          code: TranslatorFailureCode.malformedProviderResponse,
+          message: 'После повторной попытки отсутствует обязательное поле TH.',
+          completeness: TranslationCompleteness.translationIncomplete,
+        ),
+      ),
+      draftStore: _MemoryDraftStore(),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('translator-source-text-field')),
+      'Source text.',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-run-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('translator-result-card')),
+      findsOneWidget,
+    );
+    expect(find.text('FAILED'), findsOneWidget);
+    expect(find.text('Прямой перевод не получен.'), findsOneWidget);
+    expect(find.text('Подробности'), findsOneWidget);
+    expect(
+      find.text('После повторной попытки отсутствует обязательное поле TH.'),
+      findsOneWidget,
+    );
+    expect(find.text('Код ошибки: malformedProviderResponse'), findsOneWidget);
+  });
+
+  testWidgets('partial translations appear before FAILED in the same card', (
+    WidgetTester tester,
+  ) async {
+    final TranslationBundle bundle = _report(withReverse: false).bundle;
+
+    await _pumpTranslator(
+      tester,
+      provider: _FailureProvider(
+        TranslatorFailure(
+          stage: TranslatorFailureStage.transport,
+          code: TranslatorFailureCode.timeout,
+          message: 'Internal timeout detail.',
+          completeness: TranslationCompleteness.complete,
+          partialBundle: bundle,
+        ),
+      ),
+      draftStore: _MemoryDraftStore(),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('translator-source-text-field')),
+      'Source text.',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('translator-run-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Переводы'), findsOneWidget);
+    expect(find.text(bundle.en), findsOneWidget);
+    expect(find.text(bundle.th), findsOneWidget);
+    expect(find.text('FAILED'), findsOneWidget);
+    expect(find.text('Internal timeout detail.'), findsNothing);
+    expect(
+      tester.getTopLeft(find.text('Переводы')).dy,
+      lessThan(tester.getTopLeft(find.text('FAILED')).dy),
+    );
+  });
 
   for (final ({Locale locale, String message, String codeLabel}) localeCase
       in <({Locale locale, String message, String codeLabel})>[

@@ -240,39 +240,72 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     TranslationBundle? partialBundle;
 
     try {
+      final ExactCapabilityPolicy capabilityPolicy = _exactCapabilityPolicy;
       _emit(TranslatorRunStage.directTranslation);
       final TranslationBundle bundle = await _requestTranslation();
       partialBundle = bundle;
 
-      _emit(TranslatorRunStage.audit);
-      final List<TranslationPairAudit>? pairAudits = await _requestGeneralAudit(
-        bundle,
-      );
+      _emit(TranslatorRunStage.reverseTranslation);
+      final ReverseDiagnostics? reverseDiagnostics =
+          await _requestReverseDiagnostics(
+            bundle: bundle,
+            capabilityPolicy: capabilityPolicy,
+          );
 
-      if (pairAudits == null) {
-        return _report(
+      if (reverseDiagnostics == null) {
+        return _protocolFailureReport(bundle: bundle);
+      }
+
+      _emit(TranslatorRunStage.audit);
+      final List<TranslationAtomAssessment>? enAssessments =
+          await _requestAtomVerification(
+            bundle: bundle,
+            reverseDiagnostics: reverseDiagnostics,
+            targetLanguage: TranslationLanguage.en,
+            capabilityPolicy: capabilityPolicy,
+          );
+
+      if (enAssessments == null) {
+        return _protocolFailureReport(
           bundle: bundle,
-          audit: TranslationAudit(protocolFallback: true),
+          reverseDiagnostics: reverseDiagnostics,
         );
       }
 
-      final TranslationAudit auditCandidate = TranslationAudit(
-        pairAudits: pairAudits,
-      );
+      final List<TranslationAtomAssessment>? thAssessments =
+          await _requestAtomVerification(
+            bundle: bundle,
+            reverseDiagnostics: reverseDiagnostics,
+            targetLanguage: TranslationLanguage.th,
+            capabilityPolicy: capabilityPolicy,
+          );
 
-      if (!auditCandidate.candidateForExact) {
-        return _report(bundle: bundle, audit: auditCandidate);
+      if (thAssessments == null) {
+        return _protocolFailureReport(
+          bundle: bundle,
+          reverseDiagnostics: reverseDiagnostics,
+        );
       }
 
-      _emit(TranslatorRunStage.exactCertification);
-      final ExactChallenge challenge = await _requestExactChallenge(bundle);
+      final ExactCapabilityAssessment capability;
+      try {
+        capability = ExactCapabilityAssessment(
+          reverseDiagnostics: reverseDiagnostics,
+          assessments: <TranslationAtomAssessment>[
+            ...enAssessments,
+            ...thAssessments,
+          ],
+        );
+      } on ArgumentError {
+        return _protocolFailureReport(
+          bundle: bundle,
+          reverseDiagnostics: reverseDiagnostics,
+        );
+      }
 
       return _report(
         bundle: bundle,
-        audit: TranslationAudit(
-          pairAudits: pairAudits,
-          exactChallenge: challenge,
-        ),
+        audit: TranslationAudit(exactCapability: capability),
       );
     } on TranslatorProviderException {
       rethrow;
@@ -283,6 +316,18 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     } finally {
       await _close();
     }
+  }
+
+  ExactCapabilityPolicy get _exactCapabilityPolicy {
+    final Object currentPolicy = policy;
+    if (currentPolicy is ExactCapabilityPolicy) {
+      return currentPolicy;
+    }
+
+    throw StateError(
+      'TyphoonTranslatorProvider requires a policy implementing '
+      'ExactCapabilityPolicy.',
+    );
   }
 
   Future<TranslationBundle> _requestTranslation() async {
@@ -321,28 +366,26 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     throw StateError('Unreachable translation retry state.');
   }
 
-  Future<List<TranslationPairAudit>?> _requestGeneralAudit(
-    TranslationBundle bundle,
-  ) async {
-    final String systemPrompt = policy.buildAuditSystemPrompt();
-    final String userPrompt = policy.buildAuditUserPrompt(
-      ru: bundle.ru,
-      en: bundle.en,
-      th: bundle.th,
-    );
+  Future<ReverseDiagnostics?> _requestReverseDiagnostics({
+    required TranslationBundle bundle,
+    required ExactCapabilityPolicy capabilityPolicy,
+  }) async {
+    final String systemPrompt = capabilityPolicy
+        .buildReverseDiagnosticsSystemPrompt();
+    final String userPrompt = capabilityPolicy
+        .buildReverseDiagnosticsUserPrompt(en: bundle.en, th: bundle.th);
 
     for (int attempt = 0; attempt <= _protocolRetryMax; attempt += 1) {
       final String content = await _request(
         systemPrompt: attempt == 0
             ? systemPrompt
-            : _strictAuditRetryPrompt(systemPrompt),
+            : _strictReverseDiagnosticsRetryPrompt(systemPrompt),
         userPrompt: userPrompt,
       );
 
       try {
-        return TyphoonSemanticProtocol.parseGeneralAudit(
+        return TyphoonSemanticProtocol.parseReverseDiagnostics(
           content: content,
-          bundle: bundle,
         );
       } on TyphoonSemanticProtocolException {
         if (attempt == _protocolRetryMax) {
@@ -354,37 +397,66 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     return null;
   }
 
-  Future<ExactChallenge> _requestExactChallenge(
-    TranslationBundle bundle,
-  ) async {
-    final String systemPrompt = policy.buildExactChallengerSystemPrompt();
-    final String userPrompt = policy.buildExactChallengerUserPrompt(
-      ru: bundle.ru,
-      en: bundle.en,
-      th: bundle.th,
+  Future<List<TranslationAtomAssessment>?> _requestAtomVerification({
+    required TranslationBundle bundle,
+    required ReverseDiagnostics reverseDiagnostics,
+    required TranslationLanguage targetLanguage,
+    required ExactCapabilityPolicy capabilityPolicy,
+  }) async {
+    final String directText = bundle.textFor(targetLanguage);
+    final String reverseDiagnostic = switch (targetLanguage) {
+      TranslationLanguage.en => reverseDiagnostics.enToRu,
+      TranslationLanguage.th => reverseDiagnostics.thToRu,
+      TranslationLanguage.ru => throw StateError(
+        'Atom verification target must be EN or TH.',
+      ),
+    };
+
+    final String systemPrompt = capabilityPolicy
+        .buildAtomVerificationSystemPrompt();
+    final String userPrompt = capabilityPolicy.buildAtomVerificationUserPrompt(
+      sourceRu: bundle.ru,
+      targetLanguage: targetLanguage,
+      targetText: directText,
+      reverseDiagnostic: reverseDiagnostic,
     );
 
     for (int attempt = 0; attempt <= _protocolRetryMax; attempt += 1) {
       final String content = await _request(
         systemPrompt: attempt == 0
             ? systemPrompt
-            : _strictExactRetryPrompt(systemPrompt),
+            : _strictAtomVerificationRetryPrompt(systemPrompt),
         userPrompt: userPrompt,
       );
 
       try {
-        return TyphoonSemanticProtocol.parseExactChallenge(
+        return TyphoonSemanticProtocol.parseAtomVerification(
           content: content,
-          bundle: bundle,
+          targetLanguage: targetLanguage,
+          directText: directText,
         );
       } on TyphoonSemanticProtocolException {
         if (attempt == _protocolRetryMax) {
-          return ExactChallenge(result: ExactChallengeResult.protocolFailure);
+          return null;
         }
       }
     }
 
-    return ExactChallenge(result: ExactChallengeResult.protocolFailure);
+    return null;
+  }
+
+  TranslatorRunReport _protocolFailureReport({
+    required TranslationBundle bundle,
+    ReverseDiagnostics? reverseDiagnostics,
+  }) {
+    return _report(
+      bundle: bundle,
+      audit: TranslationAudit(
+        exactCapability: ExactCapabilityAssessment.protocolFailure(
+          reverseDiagnostics: reverseDiagnostics,
+        ),
+      ),
+    );
   }
 
   TranslatorRunReport _report({
@@ -458,28 +530,26 @@ values, placeholders, or unknown keys.
         .trim();
   }
 
-  static String _strictAuditRetryPrompt(String basePrompt) {
+  static String _strictReverseDiagnosticsRetryPrompt(String basePrompt) {
     return '''
 $basePrompt
 
 FINAL PROTOCOL RETRY:
-Return one JSON object with exactly PAIR_RESULTS. PAIR_RESULTS must contain
-exactly RU_EN, RU_TH and EN_TH. Every pair must contain exactly RESULT and
-ISSUES. Every issue must contain exactly ATOM, STATUS, LEFT, RIGHT and REASON.
-Use exact pair substrings or JSON null. Output no other text.
+Return exactly one JSON object with exactly EN_TO_RU and TH_TO_RU. Both values
+must be nonempty trimmed strings. Output no other text.
 '''
         .trim();
   }
 
-  static String _strictExactRetryPrompt(String basePrompt) {
+  static String _strictAtomVerificationRetryPrompt(String basePrompt) {
     return '''
 $basePrompt
 
 FINAL PROTOCOL RETRY:
-Return exactly one JSON object with RESULT and DISQUALIFIERS. Use CLEAR with
-[], BLOCKED with at least one X item, or UNPROVEN with only U items. Every item
-must contain exactly PAIR, ATOM, STATUS, LEFT, RIGHT and REASON. Output no
-other text.
+Return exactly one JSON object with exactly ASSESSMENTS. Each item must contain
+exactly ATOM, STATUS and FRAGMENT. Use only S, C, U or X. FRAGMENT must be an
+exact substring of TARGET_TEXT or JSON null. Output no verdict, reason or other
+text.
 '''
         .trim();
   }

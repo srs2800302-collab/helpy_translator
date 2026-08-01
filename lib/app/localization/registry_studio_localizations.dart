@@ -202,16 +202,13 @@ final class RegistryStudioLocalizations {
         'แต่ยังไม่ได้สร้างคำตัดสินอัตโนมัติ',
   );
 
-  String get directTranslation => _value(
-    ru: 'SOURCE TEXT и прямые секции',
-    en: 'SOURCE TEXT and direct sections',
-    th: 'SOURCE TEXT และส่วนการแปลโดยตรง',
-  );
+  String get directTranslation =>
+      _value(ru: 'Переводы', en: 'Translations', th: 'คำแปล');
 
   String get reverseCheck => _value(
-    ru: 'Обратные секции перевода',
-    en: 'Reverse translation sections',
-    th: 'ส่วนการแปลย้อนกลับ',
+    ru: 'Обратная проверка',
+    en: 'Reverse check',
+    th: 'การตรวจสอบย้อนกลับ',
   );
 
   String get automaticVerdict => _value(
@@ -219,6 +216,21 @@ final class RegistryStudioLocalizations {
     en: 'Automatic translation verdict',
     th: 'คำตัดสินการแปลอัตโนมัติ',
   );
+
+  String get failedWithoutTranslation => _value(
+    ru: 'Прямой перевод не получен.',
+    en: 'The direct translation was not obtained.',
+    th: 'ไม่ได้รับคำแปลโดยตรง',
+  );
+
+  String get failedWithPartialTranslation => _value(
+    ru: 'Переводы получены, но выполнение завершилось ошибкой.',
+    en: 'Translations were obtained, but the run ended with an error.',
+    th: 'ได้รับคำแปลแล้ว แต่การทำงานสิ้นสุดลงด้วยข้อผิดพลาด',
+  );
+
+  String get failureDetails =>
+      _value(ru: 'Подробности', en: 'Details', th: 'รายละเอียด');
 
   String get meaningPreserved => _value(
     ru: 'Смысл сохранён',
