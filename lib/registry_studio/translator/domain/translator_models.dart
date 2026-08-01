@@ -144,19 +144,20 @@ enum TranslationPairAuditResult {
   }
 }
 
-enum ExactCertificationResult {
+enum ExactChallengeResult {
   clear('CLEAR'),
-  notCertified('NOT_CERTIFIED'),
+  blocked('BLOCKED'),
+  unproven('UNPROVEN'),
   protocolFailure('PROTOCOL_FAILURE');
 
-  const ExactCertificationResult(this.code);
+  const ExactChallengeResult(this.code);
 
   final String code;
 
-  static ExactCertificationResult fromCode(String value) {
+  static ExactChallengeResult fromCode(String value) {
     final String normalized = value.trim().toUpperCase();
 
-    for (final ExactCertificationResult result in values) {
+    for (final ExactChallengeResult result in values) {
       if (result.code == normalized) {
         return result;
       }
@@ -165,7 +166,7 @@ enum ExactCertificationResult {
     throw ArgumentError.value(
       value,
       'value',
-      'Exact certification result is invalid.',
+      'Exact challenge result is invalid.',
     );
   }
 }
@@ -241,10 +242,10 @@ final class TranslationBundle extends Equatable {
     String? thToRu,
     String? enToTh,
     String? thToEn,
-  }) : sourceText = _requiredText(sourceText, 'sourceText'),
-       ru = _requiredText(ru, 'ru'),
-       en = _requiredText(en, 'en'),
-       th = _requiredText(th, 'th'),
+  }) : sourceText = _requiredExactText(sourceText, 'sourceText'),
+       ru = _requiredExactText(ru, 'ru'),
+       en = _requiredExactText(en, 'en'),
+       th = _requiredExactText(th, 'th'),
        enToRu = _optionalText(enToRu),
        thToRu = _optionalText(thToRu),
        enToTh = _optionalText(enToTh),
@@ -511,13 +512,34 @@ final class TranslationFinding extends Equatable {
 }
 
 final class TranslationPairIssue extends Equatable {
-  const TranslationPairIssue({required this.atom, required this.status});
+  TranslationPairIssue({
+    required this.atom,
+    required this.status,
+    String? left,
+    String? right,
+    required String reason,
+  }) : left = _optionalText(left),
+       right = _optionalText(right),
+       reason = _requiredText(reason, 'reason') {
+    if (this.left == null && this.right == null) {
+      throw ArgumentError(
+        'Translation pair issue must contain at least one evidence fragment.',
+      );
+    }
+    if (atom == TranslationSemanticAtom.ambiguity &&
+        status == TranslationIssueStatus.mismatch) {
+      throw ArgumentError('Unresolved ambiguity must use U rather than X.');
+    }
+  }
 
   final TranslationSemanticAtom atom;
   final TranslationIssueStatus status;
+  final String? left;
+  final String? right;
+  final String reason;
 
   @override
-  List<Object?> get props => <Object?>[atom, status];
+  List<Object?> get props => <Object?>[atom, status, left, right, reason];
 }
 
 final class TranslationPairAudit extends Equatable {
@@ -581,35 +603,105 @@ final class TranslationPairAudit extends Equatable {
   List<Object?> get props => <Object?>[pair, result, issues];
 }
 
-final class ExactPairCertification extends Equatable {
-  ExactPairCertification({
+final class ExactChallengeDisqualifier extends Equatable {
+  ExactChallengeDisqualifier({
     required this.pair,
+    required this.atom,
+    required this.status,
+    String? left,
+    String? right,
+    required String reason,
+  }) : left = _optionalText(left),
+       right = _optionalText(right),
+       reason = _requiredText(reason, 'reason') {
+    if (this.left == null && this.right == null) {
+      throw ArgumentError(
+        'Exact challenge disqualifier must contain evidence.',
+      );
+    }
+    if (atom == TranslationSemanticAtom.ambiguity &&
+        status == TranslationIssueStatus.mismatch) {
+      throw ArgumentError('Unresolved ambiguity must use U rather than X.');
+    }
+  }
+
+  final TranslationPair pair;
+  final TranslationSemanticAtom atom;
+  final TranslationIssueStatus status;
+  final String? left;
+  final String? right;
+  final String reason;
+
+  @override
+  List<Object?> get props => <Object?>[pair, atom, status, left, right, reason];
+}
+
+final class ExactChallenge extends Equatable {
+  ExactChallenge({
     required this.result,
-    this.atom,
-  }) {
+    Iterable<ExactChallengeDisqualifier> disqualifiers =
+        const <ExactChallengeDisqualifier>[],
+  }) : disqualifiers = List<ExactChallengeDisqualifier>.unmodifiable(
+         disqualifiers,
+       ) {
+    if (this.disqualifiers.length > 3) {
+      throw ArgumentError.value(
+        disqualifiers,
+        'disqualifiers',
+        'Exact challenge must contain at most three disqualifiers.',
+      );
+    }
+
+    final Set<(TranslationPair, TranslationSemanticAtom)> identities = this
+        .disqualifiers
+        .map((ExactChallengeDisqualifier item) => (item.pair, item.atom))
+        .toSet();
+    if (identities.length != this.disqualifiers.length) {
+      throw ArgumentError.value(
+        disqualifiers,
+        'disqualifiers',
+        'Exact challenge contains duplicate pair/atom evidence.',
+      );
+    }
+
+    final bool hasMismatch = this.disqualifiers.any(
+      (ExactChallengeDisqualifier item) =>
+          item.status == TranslationIssueStatus.mismatch,
+    );
+    final bool hasUnknown = this.disqualifiers.any(
+      (ExactChallengeDisqualifier item) =>
+          item.status == TranslationIssueStatus.unknown,
+    );
+
     switch (result) {
-      case ExactCertificationResult.clear:
-      case ExactCertificationResult.protocolFailure:
-        if (atom != null) {
+      case ExactChallengeResult.clear:
+        if (this.disqualifiers.isNotEmpty) {
+          throw ArgumentError('CLEAR challenge must have no disqualifiers.');
+        }
+      case ExactChallengeResult.blocked:
+        if (!hasMismatch) {
+          throw ArgumentError('BLOCKED challenge must contain at least one X.');
+        }
+      case ExactChallengeResult.unproven:
+        if (!hasUnknown || hasMismatch) {
           throw ArgumentError(
-            '${result.code} exact certification must not contain an atom.',
+            'UNPROVEN challenge must contain U items and no X items.',
           );
         }
-      case ExactCertificationResult.notCertified:
-        if (atom == null) {
+      case ExactChallengeResult.protocolFailure:
+        if (this.disqualifiers.isNotEmpty) {
           throw ArgumentError(
-            'NOT_CERTIFIED exact certification must contain an atom.',
+            'Protocol-failure challenge must not contain disqualifiers.',
           );
         }
     }
   }
 
-  final TranslationPair pair;
-  final ExactCertificationResult result;
-  final TranslationSemanticAtom? atom;
+  final ExactChallengeResult result;
+  final List<ExactChallengeDisqualifier> disqualifiers;
 
   @override
-  List<Object?> get props => <Object?>[pair, result, atom];
+  List<Object?> get props => <Object?>[result, disqualifiers];
 }
 
 final class TranslationAudit extends Equatable {
@@ -620,8 +712,7 @@ final class TranslationAudit extends Equatable {
     Iterable<String> styleFindings = const <String>[],
     Iterable<String> ambiguityFindings = const <String>[],
     Iterable<TranslationPairAudit> pairAudits = const <TranslationPairAudit>[],
-    Iterable<ExactPairCertification> exactCertifications =
-        const <ExactPairCertification>[],
+    this.exactChallenge,
     this.protocolFallback = false,
   }) : findings = _translationFindings(<TranslationFinding>[
          ...findings,
@@ -639,10 +730,9 @@ final class TranslationAudit extends Equatable {
            ambiguityFindings,
          ),
        ]),
-       pairAudits = _pairAudits(pairAudits),
-       exactCertifications = _exactCertifications(exactCertifications) {
+       pairAudits = _pairAudits(pairAudits) {
     final bool hasSemanticEvidence =
-        this.pairAudits.isNotEmpty || this.exactCertifications.isNotEmpty;
+        this.pairAudits.isNotEmpty || exactChallenge != null;
 
     if (protocolFallback && (this.findings.isNotEmpty || hasSemanticEvidence)) {
       throw ArgumentError(
@@ -656,22 +746,18 @@ final class TranslationAudit extends Equatable {
       );
     }
 
-    if (this.exactCertifications.isNotEmpty && !candidateForExact) {
-      throw ArgumentError(
-        'Exact certifications require three CLEAR pair audits.',
-      );
+    if (exactChallenge != null && !candidateForExact) {
+      throw ArgumentError('Exact challenge requires three CLEAR pair audits.');
     }
   }
 
   final List<TranslationFinding> findings;
   final List<TranslationPairAudit> pairAudits;
-  final List<ExactPairCertification> exactCertifications;
+  final ExactChallenge? exactChallenge;
   final bool protocolFallback;
 
   bool get usesSemanticProtocol =>
-      protocolFallback ||
-      pairAudits.isNotEmpty ||
-      exactCertifications.isNotEmpty;
+      protocolFallback || pairAudits.isNotEmpty || exactChallenge != null;
 
   bool get candidateForExact =>
       pairAudits.length == TranslationPair.values.length &&
@@ -679,6 +765,17 @@ final class TranslationAudit extends Equatable {
         (TranslationPairAudit audit) =>
             audit.result == TranslationPairAuditResult.clear,
       );
+
+  bool get auditProtocolFailed => protocolFallback;
+
+  bool get exactChallengeProtocolFailed =>
+      exactChallenge?.result == ExactChallengeResult.protocolFailure;
+
+  bool get auditChallengerConflict =>
+      candidateForExact &&
+      exactChallenge != null &&
+      exactChallenge!.result != ExactChallengeResult.clear &&
+      exactChallenge!.result != ExactChallengeResult.protocolFailure;
 
   List<String> get meaningFindings =>
       _displayFindings(TranslationFindingCategory.meaning);
@@ -779,11 +876,7 @@ final class TranslationAudit extends Equatable {
       }
 
       if (candidateForExact &&
-          exactCertifications.length == TranslationPair.values.length &&
-          exactCertifications.every(
-            (ExactPairCertification certification) =>
-                certification.result == ExactCertificationResult.clear,
-          )) {
+          exactChallenge?.result == ExactChallengeResult.clear) {
         return TranslationVerdict.exact;
       }
 
@@ -823,7 +916,7 @@ final class TranslationAudit extends Equatable {
   List<Object?> get props => <Object?>[
     findings,
     pairAudits,
-    exactCertifications,
+    exactChallenge,
     protocolFallback,
   ];
 }
@@ -870,6 +963,22 @@ final class TranslatorFailure extends Equatable {
     completeness,
     partialBundle,
   ];
+}
+
+String _requiredExactText(String value, String name) {
+  if (value.trim().isEmpty) {
+    throw ArgumentError.value(value, name, '$name must not be empty.');
+  }
+
+  if (value != value.trim()) {
+    throw ArgumentError.value(
+      value,
+      name,
+      '$name must not contain outer whitespace.',
+    );
+  }
+
+  return value;
 }
 
 String _requiredText(String value, String name) {
@@ -987,36 +1096,4 @@ List<TranslationPairAudit> _pairAudits(Iterable<TranslationPairAudit> values) {
         left.pair.index.compareTo(right.pair.index),
   );
   return List<TranslationPairAudit>.unmodifiable(normalized);
-}
-
-List<ExactPairCertification> _exactCertifications(
-  Iterable<ExactPairCertification> values,
-) {
-  final List<ExactPairCertification> normalized = values.toList(
-    growable: false,
-  );
-
-  if (normalized.isEmpty) {
-    return const <ExactPairCertification>[];
-  }
-
-  final Set<TranslationPair> pairs = normalized
-      .map((ExactPairCertification certification) => certification.pair)
-      .toSet();
-
-  if (normalized.length != TranslationPair.values.length ||
-      pairs.length != TranslationPair.values.length ||
-      !pairs.containsAll(TranslationPair.values)) {
-    throw ArgumentError.value(
-      values,
-      'exactCertifications',
-      'Exact certification must contain every translation pair exactly once.',
-    );
-  }
-
-  normalized.sort(
-    (ExactPairCertification left, ExactPairCertification right) =>
-        left.pair.index.compareTo(right.pair.index),
-  );
-  return List<ExactPairCertification>.unmodifiable(normalized);
 }

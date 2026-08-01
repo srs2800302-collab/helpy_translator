@@ -49,9 +49,7 @@ final class TyphoonSemanticProtocol {
       );
     }
 
-    if (missingKeys.length == 1 && missingKeys.single == sourceLanguage.code) {
-      root[sourceLanguage.code] = root['SOURCE_TEXT'];
-    } else if (missingKeys.isNotEmpty) {
+    if (missingKeys.isNotEmpty) {
       throw TyphoonSemanticProtocolException(
         'translation is missing required keys: ${missingKeys.join(', ')}.',
       );
@@ -106,46 +104,53 @@ final class TyphoonSemanticProtocol {
     }
   }
 
-  static List<TranslationPairAudit> parseGeneralAudit(String content) {
+  static List<TranslationPairAudit> parseGeneralAudit({
+    required String content,
+    required TranslationBundle bundle,
+  }) {
     final Map<String, Object?> root = _jsonObject(content, name: 'audit');
-    final Set<String> expectedKeys = TranslationPair.values
+    _requireExactKeys(root, const <String>{'PAIR_RESULTS'}, 'audit');
+
+    final Map<String, Object?> pairResults = _object(
+      root['PAIR_RESULTS'],
+      'audit.PAIR_RESULTS',
+    );
+    final Set<String> expectedPairs = TranslationPair.values
         .map((TranslationPair pair) => pair.code)
         .toSet();
-    _requireExactKeys(root, expectedKeys, 'audit');
+    _requireExactKeys(pairResults, expectedPairs, 'audit.PAIR_RESULTS');
 
-    final List<TranslationPairAudit> result = <TranslationPairAudit>[];
-
+    final List<TranslationPairAudit> audits = <TranslationPairAudit>[];
     for (final TranslationPair pair in TranslationPair.values) {
-      final String name = 'audit.${pair.code}';
-      final Map<String, Object?> pairObject = _object(root[pair.code], name);
+      final String name = 'audit.PAIR_RESULTS.${pair.code}';
+      final Map<String, Object?> pairObject = _object(
+        pairResults[pair.code],
+        name,
+      );
       _requireExactKeys(pairObject, const <String>{'RESULT', 'ISSUES'}, name);
 
       final String resultCode = _canonicalString(
         pairObject['RESULT'],
         '$name.RESULT',
       );
-      final TranslationPairAuditResult pairResult;
-
+      final TranslationPairAuditResult result;
       try {
-        pairResult = TranslationPairAuditResult.fromCode(resultCode);
+        result = TranslationPairAuditResult.fromCode(resultCode);
       } on ArgumentError catch (error) {
         throw TyphoonSemanticProtocolException(
           '$name.RESULT is invalid: ${error.message}',
         );
       }
-
-      if (pairResult.code != resultCode) {
+      if (result.code != resultCode) {
         throw TyphoonSemanticProtocolException(
           '$name.RESULT must use an uppercase canonical code.',
         );
       }
 
-      final Object? rawIssues = pairObject['ISSUES'];
-      if (rawIssues is! List<Object?>) {
-        throw TyphoonSemanticProtocolException(
-          '$name.ISSUES must be a JSON array.',
-        );
-      }
+      final List<Object?> rawIssues = _array(
+        pairObject['ISSUES'],
+        '$name.ISSUES',
+      );
       if (rawIssues.length > _maxAuditIssuesPerPair) {
         throw TyphoonSemanticProtocolException(
           '$name.ISSUES exceeds the $_maxAuditIssuesPerPair-item limit.',
@@ -154,12 +159,17 @@ final class TyphoonSemanticProtocol {
 
       final List<TranslationPairIssue> issues = <TranslationPairIssue>[
         for (int index = 0; index < rawIssues.length; index += 1)
-          _parseAuditIssue(rawIssues[index], name: '$name.ISSUES[$index]'),
+          _parsePairIssue(
+            rawIssues[index],
+            pair: pair,
+            bundle: bundle,
+            name: '$name.ISSUES[$index]',
+          ),
       ];
 
       try {
-        result.add(
-          TranslationPairAudit(pair: pair, result: pairResult, issues: issues),
+        audits.add(
+          TranslationPairAudit(pair: pair, result: result, issues: issues),
         );
       } on ArgumentError catch (error) {
         throw TyphoonSemanticProtocolException(
@@ -168,101 +178,233 @@ final class TyphoonSemanticProtocol {
       }
     }
 
-    return List<TranslationPairAudit>.unmodifiable(result);
+    return List<TranslationPairAudit>.unmodifiable(audits);
   }
 
-  static ExactPairCertification parseExactCertification({
+  static ExactChallenge parseExactChallenge({
     required String content,
-    required TranslationPair pair,
+    required TranslationBundle bundle,
   }) {
     final Map<String, Object?> root = _jsonObject(
       content,
-      name: 'exact certification',
+      name: 'exact challenge',
     );
     _requireExactKeys(root, const <String>{
       'RESULT',
-      'ATOM',
-    }, 'exact certification');
+      'DISQUALIFIERS',
+    }, 'exact challenge');
 
     final String resultCode = _canonicalString(
       root['RESULT'],
-      'exact certification.RESULT',
+      'exact challenge.RESULT',
     );
-
-    if (resultCode == ExactCertificationResult.clear.code) {
-      if (root['ATOM'] != null) {
-        throw const TyphoonSemanticProtocolException(
-          'CLEAR exact certification must use JSON null for ATOM.',
-        );
-      }
-
-      return ExactPairCertification(
-        pair: pair,
-        result: ExactCertificationResult.clear,
-      );
-    }
-
-    if (resultCode != ExactCertificationResult.notCertified.code) {
-      throw const TyphoonSemanticProtocolException(
-        'exact certification.RESULT must be CLEAR or NOT_CERTIFIED.',
-      );
-    }
-
-    final String atomCode = _canonicalString(
-      root['ATOM'],
-      'exact certification.ATOM',
-    );
-    final TranslationSemanticAtom atom;
-
+    final ExactChallengeResult result;
     try {
-      atom = TranslationSemanticAtom.fromCode(atomCode);
+      result = ExactChallengeResult.fromCode(resultCode);
     } on ArgumentError catch (error) {
       throw TyphoonSemanticProtocolException(
-        'exact certification.ATOM is invalid: ${error.message}',
+        'exact challenge.RESULT is invalid: ${error.message}',
       );
     }
-
-    if (atom.code != atomCode) {
+    if (result == ExactChallengeResult.protocolFailure ||
+        result.code != resultCode) {
       throw const TyphoonSemanticProtocolException(
-        'exact certification.ATOM must use a canonical lowercase code.',
+        'exact challenge.RESULT must be CLEAR, BLOCKED or UNPROVEN.',
       );
     }
 
-    return ExactPairCertification(
-      pair: pair,
-      result: ExactCertificationResult.notCertified,
-      atom: atom,
+    final List<Object?> rawItems = _array(
+      root['DISQUALIFIERS'],
+      'exact challenge.DISQUALIFIERS',
     );
+    if (rawItems.length > _maxChallengeDisqualifiers) {
+      throw TyphoonSemanticProtocolException(
+        'exact challenge.DISQUALIFIERS exceeds the '
+        '$_maxChallengeDisqualifiers-item limit.',
+      );
+    }
+
+    final List<ExactChallengeDisqualifier> disqualifiers =
+        <ExactChallengeDisqualifier>[
+          for (int index = 0; index < rawItems.length; index += 1)
+            _parseDisqualifier(
+              rawItems[index],
+              bundle: bundle,
+              name: 'exact challenge.DISQUALIFIERS[$index]',
+            ),
+        ];
+
+    try {
+      return ExactChallenge(result: result, disqualifiers: disqualifiers);
+    } on ArgumentError catch (error) {
+      throw TyphoonSemanticProtocolException(
+        'exact challenge is inconsistent: ${error.message}',
+      );
+    }
   }
 
-  static TranslationPairIssue _parseAuditIssue(
+  static TranslationPairIssue _parsePairIssue(
     Object? value, {
+    required TranslationPair pair,
+    required TranslationBundle bundle,
     required String name,
   }) {
     final Map<String, Object?> issue = _object(value, name);
-    _requireExactKeys(issue, const <String>{'ATOM', 'STATUS'}, name);
+    _requireExactKeys(issue, const <String>{
+      'ATOM',
+      'STATUS',
+      'LEFT',
+      'RIGHT',
+      'REASON',
+    }, name);
 
-    final String atomCode = _canonicalString(issue['ATOM'], '$name.ATOM');
-    final String statusCode = _canonicalString(issue['STATUS'], '$name.STATUS');
-    final TranslationSemanticAtom atom;
-    final TranslationIssueStatus status;
+    final TranslationSemanticAtom atom = _atom(issue['ATOM'], '$name.ATOM');
+    final TranslationIssueStatus status = _status(
+      issue['STATUS'],
+      '$name.STATUS',
+    );
+    final String? left = _fragment(
+      issue['LEFT'],
+      name: '$name.LEFT',
+      source: bundle.textFor(pair.leftLanguage),
+    );
+    final String? right = _fragment(
+      issue['RIGHT'],
+      name: '$name.RIGHT',
+      source: bundle.textFor(pair.rightLanguage),
+    );
 
     try {
-      atom = TranslationSemanticAtom.fromCode(atomCode);
-      status = TranslationIssueStatus.fromCode(statusCode);
+      return TranslationPairIssue(
+        atom: atom,
+        status: status,
+        left: left,
+        right: right,
+        reason: _reason(issue['REASON'], '$name.REASON'),
+      );
     } on ArgumentError catch (error) {
       throw TyphoonSemanticProtocolException(
-        '$name contains an invalid code: ${error.message}',
+        '$name is invalid: ${error.message}',
       );
     }
+  }
 
-    if (atom.code != atomCode || status.code != statusCode) {
+  static ExactChallengeDisqualifier _parseDisqualifier(
+    Object? value, {
+    required TranslationBundle bundle,
+    required String name,
+  }) {
+    final Map<String, Object?> item = _object(value, name);
+    _requireExactKeys(item, const <String>{
+      'PAIR',
+      'ATOM',
+      'STATUS',
+      'LEFT',
+      'RIGHT',
+      'REASON',
+    }, name);
+
+    final String pairCode = _canonicalString(item['PAIR'], '$name.PAIR');
+    final TranslationPair pair;
+    try {
+      pair = TranslationPair.fromCode(pairCode);
+    } on ArgumentError catch (error) {
       throw TyphoonSemanticProtocolException(
-        '$name must use canonical ATOM and STATUS codes.',
+        '$name.PAIR is invalid: ${error.message}',
+      );
+    }
+    if (pair.code != pairCode) {
+      throw TyphoonSemanticProtocolException(
+        '$name.PAIR must use an uppercase canonical code.',
       );
     }
 
-    return TranslationPairIssue(atom: atom, status: status);
+    try {
+      return ExactChallengeDisqualifier(
+        pair: pair,
+        atom: _atom(item['ATOM'], '$name.ATOM'),
+        status: _status(item['STATUS'], '$name.STATUS'),
+        left: _fragment(
+          item['LEFT'],
+          name: '$name.LEFT',
+          source: bundle.textFor(pair.leftLanguage),
+        ),
+        right: _fragment(
+          item['RIGHT'],
+          name: '$name.RIGHT',
+          source: bundle.textFor(pair.rightLanguage),
+        ),
+        reason: _reason(item['REASON'], '$name.REASON'),
+      );
+    } on ArgumentError catch (error) {
+      throw TyphoonSemanticProtocolException(
+        '$name is invalid: ${error.message}',
+      );
+    }
+  }
+
+  static TranslationSemanticAtom _atom(Object? value, String name) {
+    final String code = _canonicalString(value, name);
+    final TranslationSemanticAtom atom;
+    try {
+      atom = TranslationSemanticAtom.fromCode(code);
+    } on ArgumentError catch (error) {
+      throw TyphoonSemanticProtocolException(
+        '$name is invalid: ${error.message}',
+      );
+    }
+    if (atom.code != code) {
+      throw TyphoonSemanticProtocolException(
+        '$name must use a canonical lowercase atom code.',
+      );
+    }
+    return atom;
+  }
+
+  static TranslationIssueStatus _status(Object? value, String name) {
+    final String code = _canonicalString(value, name);
+    final TranslationIssueStatus status;
+    try {
+      status = TranslationIssueStatus.fromCode(code);
+    } on ArgumentError catch (error) {
+      throw TyphoonSemanticProtocolException(
+        '$name is invalid: ${error.message}',
+      );
+    }
+    if (status.code != code) {
+      throw TyphoonSemanticProtocolException(
+        '$name must use canonical X or U.',
+      );
+    }
+    return status;
+  }
+
+  static String? _fragment(
+    Object? value, {
+    required String name,
+    required String source,
+  }) {
+    if (value == null) {
+      return null;
+    }
+    final String fragment = _canonicalString(value, name);
+    if (!source.contains(fragment)) {
+      throw TyphoonSemanticProtocolException(
+        '$name must be an exact substring of its pair text.',
+      );
+    }
+    return fragment;
+  }
+
+  static String _reason(Object? value, String name) {
+    final String reason = _canonicalString(value, name);
+    final int wordCount = RegExp(r'\S+').allMatches(reason).length;
+    if (wordCount > _maxReasonWords) {
+      throw TyphoonSemanticProtocolException(
+        '$name exceeds the $_maxReasonWords-word limit.',
+      );
+    }
+    return reason;
   }
 
   static Map<String, Object?> _jsonObject(
@@ -270,7 +412,6 @@ final class TyphoonSemanticProtocol {
     required String name,
   }) {
     final String normalized = content.trim();
-
     if (normalized.isEmpty) {
       throw TyphoonSemanticProtocolException('$name response is empty.');
     }
@@ -283,7 +424,6 @@ final class TyphoonSemanticProtocol {
         '$name response is not valid JSON: ${error.message}',
       );
     }
-
     return _object(decoded, name);
   }
 
@@ -292,8 +432,14 @@ final class TyphoonSemanticProtocol {
         value.keys.any((Object? key) => key is! String)) {
       throw TyphoonSemanticProtocolException('$name must be a JSON object.');
     }
-
     return value.cast<String, Object?>();
+  }
+
+  static List<Object?> _array(Object? value, String name) {
+    if (value is! List<Object?>) {
+      throw TyphoonSemanticProtocolException('$name must be a JSON array.');
+    }
+    return value;
   }
 
   static void _requireExactKeys(
@@ -302,7 +448,6 @@ final class TyphoonSemanticProtocol {
     String name,
   ) {
     final Set<String> actual = value.keys.toSet();
-
     if (actual.length != expected.length || !actual.containsAll(expected)) {
       throw TyphoonSemanticProtocolException(
         '$name contains an invalid key set.',
@@ -316,29 +461,27 @@ final class TyphoonSemanticProtocol {
         '$name must be a nonempty string.',
       );
     }
-
     if (value != value.trim()) {
       throw TyphoonSemanticProtocolException(
         '$name must not contain outer whitespace.',
       );
     }
-
     return value;
   }
 
   static String _translationString(Object? value, String name) {
     final String result = _canonicalString(value, name);
-
     if (_placeholderValues.contains(result.toUpperCase())) {
       throw TyphoonSemanticProtocolException(
         '$name contains a placeholder value.',
       );
     }
-
     return result;
   }
 
   static const int _maxAuditIssuesPerPair = 2;
+  static const int _maxChallengeDisqualifiers = 3;
+  static const int _maxReasonWords = 18;
 
   static const Set<String> _placeholderValues = <String>{
     '-',

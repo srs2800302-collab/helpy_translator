@@ -23,30 +23,54 @@ void main() {
       expect(bundle.hasReverseDiagnostics, isFalse);
     });
 
-    test('recovers only the missing source-language section', () {
-      final TranslationBundle bundle = TyphoonSemanticProtocol.parseTranslation(
-        content: jsonEncode(<String, Object?>{
-          'SOURCE_LANGUAGE': 'TH',
-          'SOURCE_TEXT': 'อย่าติดตั้งเตาอบ',
-          'RU': 'не устанавливать духовку',
-          'EN': 'do not install the oven',
-        }),
-        expectedSourceText: 'อย่าติดตั้งเตาอบ',
+    test('rejects a missing source-language section', () {
+      expect(
+        () => TyphoonSemanticProtocol.parseTranslation(
+          content: jsonEncode(<String, Object?>{
+            'SOURCE_LANGUAGE': 'TH',
+            'SOURCE_TEXT': 'อย่าติดตั้งเตาอบ',
+            'RU': 'не устанавливать духовку',
+            'EN': 'do not install the oven',
+          }),
+          expectedSourceText: 'อย่าติดตั้งเตาอบ',
+        ),
+        throwsA(isA<TyphoonSemanticProtocolException>()),
       );
-
-      expect(bundle.th, 'อย่าติดตั้งเตาอบ');
     });
 
-    test('rejects missing target field and unknown key', () {
+    test('preserves accepted provider strings exactly', () {
+      const String source = 'Маркер  RU — №17';
+      const String en = 'Provider  EN — #17';
+      const String th = 'ผู้ให้บริการ  TH — 17';
+
+      final TranslationBundle bundle = TyphoonSemanticProtocol.parseTranslation(
+        content: jsonEncode(<String, Object?>{
+          'SOURCE_LANGUAGE': 'RU',
+          'SOURCE_TEXT': source,
+          'RU': source,
+          'EN': en,
+          'TH': th,
+        }),
+        expectedSourceText: source,
+      );
+
+      expect(bundle.sourceText, source);
+      expect(bundle.ru, source);
+      expect(bundle.en, en);
+      expect(bundle.th, th);
+    });
+
+    test('rejects changed source and unknown fields', () {
       expect(
         () => TyphoonSemanticProtocol.parseTranslation(
           content: jsonEncode(<String, Object?>{
             'SOURCE_LANGUAGE': 'RU',
-            'SOURCE_TEXT': 'текст',
-            'RU': 'текст',
-            'EN': 'text',
+            'SOURCE_TEXT': 'другой текст',
+            'RU': 'другой текст',
+            'EN': 'other text',
+            'TH': 'ข้อความอื่น',
           }),
-          expectedSourceText: 'текст',
+          expectedSourceText: 'исходный текст',
         ),
         throwsA(isA<TyphoonSemanticProtocolException>()),
       );
@@ -66,49 +90,20 @@ void main() {
         throwsA(isA<TyphoonSemanticProtocolException>()),
       );
     });
-
-    test('rejects changed source text and source-language section', () {
-      expect(
-        () => TyphoonSemanticProtocol.parseTranslation(
-          content: jsonEncode(<String, Object?>{
-            'SOURCE_LANGUAGE': 'RU',
-            'SOURCE_TEXT': 'другой текст',
-            'RU': 'другой текст',
-            'EN': 'other text',
-            'TH': 'ข้อความอื่น',
-          }),
-          expectedSourceText: 'исходный текст',
-        ),
-        throwsA(isA<TyphoonSemanticProtocolException>()),
-      );
-
-      expect(
-        () => TyphoonSemanticProtocol.parseTranslation(
-          content: jsonEncode(<String, Object?>{
-            'SOURCE_LANGUAGE': 'RU',
-            'SOURCE_TEXT': 'исходный текст',
-            'RU': 'переписанный текст',
-            'EN': 'source text',
-            'TH': 'ข้อความต้นฉบับ',
-          }),
-          expectedSourceText: 'исходный текст',
-        ),
-        throwsA(isA<TyphoonSemanticProtocolException>()),
-      );
-    });
   });
 
   group('general audit protocol', () {
     test('parses three clear pairs', () {
       final List<TranslationPairAudit> audits =
           TyphoonSemanticProtocol.parseGeneralAudit(
-            _auditJson(<String, Map<String, Object?>>{
+            content: _auditJson(<String, Map<String, Object?>>{
               for (final TranslationPair pair in TranslationPair.values)
                 pair.code: <String, Object?>{
                   'RESULT': 'CLEAR',
                   'ISSUES': <Object?>[],
                 },
             }),
+            bundle: _bundle(),
           );
 
       expect(audits, hasLength(3));
@@ -121,137 +116,190 @@ void main() {
       );
     });
 
-    test('parses lexical gap as unproven', () {
-      final List<TranslationPairAudit>
-      audits = TyphoonSemanticProtocol.parseGeneralAudit(
-        _auditJson(<String, Map<String, Object?>>{
-          'RU_EN': <String, Object?>{'RESULT': 'CLEAR', 'ISSUES': <Object?>[]},
-          'RU_TH': <String, Object?>{
-            'RESULT': 'UNPROVEN',
-            'ISSUES': <Object?>[
-              <String, Object?>{'ATOM': 'equipment_identity', 'STATUS': 'U'},
-            ],
-          },
-          'EN_TH': <String, Object?>{
-            'RESULT': 'UNPROVEN',
-            'ISSUES': <Object?>[
-              <String, Object?>{'ATOM': 'equipment_identity', 'STATUS': 'U'},
-            ],
-          },
-        }),
-      );
+    test('preserves lexical-gap evidence and short reason', () {
+      final List<TranslationPairAudit> audits =
+          TyphoonSemanticProtocol.parseGeneralAudit(
+            content: _auditJson(<String, Map<String, Object?>>{
+              'RU_EN': <String, Object?>{
+                'RESULT': 'CLEAR',
+                'ISSUES': <Object?>[],
+              },
+              'RU_TH': <String, Object?>{
+                'RESULT': 'UNPROVEN',
+                'ISSUES': <Object?>[
+                  <String, Object?>{
+                    'ATOM': 'equipment_identity',
+                    'STATUS': 'U',
+                    'LEFT': 'варочную панель',
+                    'RIGHT': 'เตาไฟ',
+                    'REASON': 'broader Thai equipment term',
+                  },
+                ],
+              },
+              'EN_TH': <String, Object?>{
+                'RESULT': 'UNPROVEN',
+                'ISSUES': <Object?>[
+                  <String, Object?>{
+                    'ATOM': 'equipment_identity',
+                    'STATUS': 'U',
+                    'LEFT': 'cooktop',
+                    'RIGHT': 'เตาไฟ',
+                    'REASON': 'exact equipment identity is not proven',
+                  },
+                ],
+              },
+            }),
+            bundle: _bundle(),
+          );
 
-      expect(audits[1].result, TranslationPairAuditResult.unproven);
-      expect(
-        audits[1].issues.single.atom,
-        TranslationSemanticAtom.equipmentIdentity,
-      );
+      final TranslationPairIssue issue = audits[1].issues.single;
+      expect(issue.atom, TranslationSemanticAtom.equipmentIdentity);
+      expect(issue.status, TranslationIssueStatus.unknown);
+      expect(issue.left, 'варочную панель');
+      expect(issue.right, 'เตาไฟ');
+      expect(issue.reason, 'broader Thai equipment term');
     });
 
-    test('rejects inconsistent and oversized issue sets', () {
+    test('rejects non-substring evidence and ambiguity X', () {
       expect(
         () => TyphoonSemanticProtocol.parseGeneralAudit(
-          _auditJson(<String, Map<String, Object?>>{
-            'RU_EN': <String, Object?>{
-              'RESULT': 'CLEAR',
-              'ISSUES': <Object?>[
-                <String, Object?>{'ATOM': 'action', 'STATUS': 'X'},
-              ],
-            },
-            'RU_TH': <String, Object?>{
-              'RESULT': 'CLEAR',
-              'ISSUES': <Object?>[],
-            },
-            'EN_TH': <String, Object?>{
-              'RESULT': 'CLEAR',
-              'ISSUES': <Object?>[],
-            },
-          }),
-        ),
-        throwsA(isA<TyphoonSemanticProtocolException>()),
-      );
-
-      expect(
-        () => TyphoonSemanticProtocol.parseGeneralAudit(
-          _auditJson(<String, Map<String, Object?>>{
+          content: _auditJson(<String, Map<String, Object?>>{
             'RU_EN': <String, Object?>{
               'RESULT': 'BLOCKED',
               'ISSUES': <Object?>[
-                <String, Object?>{'ATOM': 'action', 'STATUS': 'X'},
-                <String, Object?>{'ATOM': 'object', 'STATUS': 'X'},
-                <String, Object?>{'ATOM': 'scope', 'STATUS': 'X'},
+                <String, Object?>{
+                  'ATOM': 'object',
+                  'STATUS': 'X',
+                  'LEFT': 'несуществующий фрагмент',
+                  'RIGHT': 'cooktop',
+                  'REASON': 'different objects',
+                },
               ],
             },
-            'RU_TH': <String, Object?>{
-              'RESULT': 'CLEAR',
-              'ISSUES': <Object?>[],
-            },
-            'EN_TH': <String, Object?>{
-              'RESULT': 'CLEAR',
-              'ISSUES': <Object?>[],
-            },
+            'RU_TH': _clearPair(),
+            'EN_TH': _clearPair(),
           }),
+          bundle: _bundle(),
         ),
         throwsA(isA<TyphoonSemanticProtocolException>()),
       );
-    });
 
-    test('rejects fragments and model verdict fields', () {
       expect(
         () => TyphoonSemanticProtocol.parseGeneralAudit(
-          jsonEncode(<String, Object?>{
+          content: _auditJson(<String, Map<String, Object?>>{
             'RU_EN': <String, Object?>{
-              'RESULT': 'CLEAR',
-              'ISSUES': <Object?>[],
-              'REASON': 'same',
+              'RESULT': 'BLOCKED',
+              'ISSUES': <Object?>[
+                <String, Object?>{
+                  'ATOM': 'ambiguity',
+                  'STATUS': 'X',
+                  'LEFT': 'варочную панель',
+                  'RIGHT': 'cooktop',
+                  'REASON': 'unresolved reading',
+                },
+              ],
             },
-            'RU_TH': <String, Object?>{
-              'RESULT': 'CLEAR',
-              'ISSUES': <Object?>[],
-            },
-            'EN_TH': <String, Object?>{
-              'RESULT': 'CLEAR',
-              'ISSUES': <Object?>[],
-            },
+            'RU_TH': _clearPair(),
+            'EN_TH': _clearPair(),
           }),
+          bundle: _bundle(),
         ),
         throwsA(isA<TyphoonSemanticProtocolException>()),
       );
     });
   });
 
-  group('exact certification protocol', () {
-    test('parses clear and not-certified responses', () {
-      final ExactPairCertification clear =
-          TyphoonSemanticProtocol.parseExactCertification(
-            content: '{"RESULT":"CLEAR","ATOM":null}',
-            pair: TranslationPair.ruEn,
-          );
-      final ExactPairCertification blocked =
-          TyphoonSemanticProtocol.parseExactCertification(
-            content: '{"RESULT":"NOT_CERTIFIED","ATOM":"modality"}',
-            pair: TranslationPair.ruTh,
+  group('global exact challenger protocol', () {
+    test('parses clear and evidence-bearing unproven responses', () {
+      final ExactChallenge clear = TyphoonSemanticProtocol.parseExactChallenge(
+        content: '{"RESULT":"CLEAR","DISQUALIFIERS":[]}',
+        bundle: _bundle(),
+      );
+      final ExactChallenge unproven =
+          TyphoonSemanticProtocol.parseExactChallenge(
+            content: jsonEncode(<String, Object?>{
+              'RESULT': 'UNPROVEN',
+              'DISQUALIFIERS': <Object?>[
+                <String, Object?>{
+                  'PAIR': 'EN_TH',
+                  'ATOM': 'equipment_identity',
+                  'STATUS': 'U',
+                  'LEFT': 'cooktop',
+                  'RIGHT': 'เตาไฟ',
+                  'REASON': 'exact equipment identity is not proven',
+                },
+              ],
+            }),
+            bundle: _bundle(),
           );
 
-      expect(clear.result, ExactCertificationResult.clear);
-      expect(clear.atom, isNull);
-      expect(blocked.result, ExactCertificationResult.notCertified);
-      expect(blocked.atom, TranslationSemanticAtom.modality);
+      expect(clear.result, ExactChallengeResult.clear);
+      expect(clear.disqualifiers, isEmpty);
+      expect(unproven.result, ExactChallengeResult.unproven);
+      expect(unproven.disqualifiers.single.pair, TranslationPair.enTh);
+      expect(
+        unproven.disqualifiers.single.atom,
+        TranslationSemanticAtom.equipmentIdentity,
+      );
     });
 
-    test('rejects missing atom, unknown pair output and explanations', () {
+    test('rejects unknown pair, invalid fragment and verbose reason', () {
       expect(
-        () => TyphoonSemanticProtocol.parseExactCertification(
-          content: '{"RESULT":"NOT_CERTIFIED","ATOM":null}',
-          pair: TranslationPair.enTh,
+        () => TyphoonSemanticProtocol.parseExactChallenge(
+          content: jsonEncode(<String, Object?>{
+            'RESULT': 'BLOCKED',
+            'DISQUALIFIERS': <Object?>[
+              <String, Object?>{
+                'PAIR': 'EN_RU',
+                'ATOM': 'object',
+                'STATUS': 'X',
+                'LEFT': 'cooktop',
+                'RIGHT': 'варочную панель',
+                'REASON': 'different objects',
+              },
+            ],
+          }),
+          bundle: _bundle(),
         ),
         throwsA(isA<TyphoonSemanticProtocolException>()),
       );
 
       expect(
-        () => TyphoonSemanticProtocol.parseExactCertification(
-          content: '{"RESULT":"CLEAR","ATOM":null,"REASON":"looks correct"}',
-          pair: TranslationPair.enTh,
+        () => TyphoonSemanticProtocol.parseExactChallenge(
+          content: jsonEncode(<String, Object?>{
+            'RESULT': 'UNPROVEN',
+            'DISQUALIFIERS': <Object?>[
+              <String, Object?>{
+                'PAIR': 'RU_TH',
+                'ATOM': 'equipment_identity',
+                'STATUS': 'U',
+                'LEFT': 'варочную панель',
+                'RIGHT': 'เตาอบ',
+                'REASON': 'identity not proven',
+              },
+            ],
+          }),
+          bundle: _bundle(),
+        ),
+        throwsA(isA<TyphoonSemanticProtocolException>()),
+      );
+
+      expect(
+        () => TyphoonSemanticProtocol.parseExactChallenge(
+          content: jsonEncode(<String, Object?>{
+            'RESULT': 'UNPROVEN',
+            'DISQUALIFIERS': <Object?>[
+              <String, Object?>{
+                'PAIR': 'RU_TH',
+                'ATOM': 'equipment_identity',
+                'STATUS': 'U',
+                'LEFT': 'варочную панель',
+                'RIGHT': 'เตาไฟ',
+                'REASON': List<String>.filled(19, 'word').join(' '),
+              },
+            ],
+          }),
+          bundle: _bundle(),
         ),
         throwsA(isA<TyphoonSemanticProtocolException>()),
       );
@@ -259,9 +307,20 @@ void main() {
   });
 }
 
+TranslationBundle _bundle() {
+  return TranslationBundle(
+    sourceLanguage: TranslationLanguage.ru,
+    sourceText: 'установить варочную панель',
+    ru: 'установить варочную панель',
+    en: 'install the cooktop',
+    th: 'ติดตั้งเตาไฟ',
+  );
+}
+
+Map<String, Object?> _clearPair() {
+  return <String, Object?>{'RESULT': 'CLEAR', 'ISSUES': <Object?>[]};
+}
+
 String _auditJson(Map<String, Map<String, Object?>> pairs) {
-  return jsonEncode(<String, Object?>{
-    for (final TranslationPair pair in TranslationPair.values)
-      pair.code: pairs[pair.code],
-  });
+  return jsonEncode(<String, Object?>{'PAIR_RESULTS': pairs});
 }

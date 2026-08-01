@@ -13,12 +13,12 @@ abstract interface class TranslatorPolicy {
     required String th,
   });
 
-  String buildExactChallengerSystemPrompt(TranslationPair pair);
+  String buildExactChallengerSystemPrompt();
 
   String buildExactChallengerUserPrompt({
-    required TranslationPair pair,
-    required String leftText,
-    required String rightText,
+    required String ru,
+    required String en,
+    required String th,
   });
 }
 

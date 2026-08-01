@@ -280,6 +280,83 @@ final class RegistryStudioLocalizations {
     th: 'ไม่ได้รับหลักฐานแบบมีโครงสร้าง จึงต้องตรวจสอบ',
   );
 
+  String get exactVerdictExplanation => _value(
+    ru:
+        'Все три языковые пары получили CLEAR в общем аудите; независимый '
+        'challenger также вернул CLEAR. Поэтому приложение выдало EXACT.',
+    en:
+        'All three language pairs were CLEAR in the general audit, and the '
+        'independent challenger also returned CLEAR. The application therefore '
+        'issued EXACT.',
+    th: 'คู่ภาษาทั้งสามได้ผล CLEAR จากการตรวจสอบทั่วไป และ challenger อิสระก็ให้ผล CLEAR แอปจึงออกผล EXACT',
+  );
+
+  String get equivalentVerdictExplanation => _value(
+    ru:
+        'Практический смысл сохранён; обнаружено только отклонение '
+        'канонического стиля.',
+    en:
+        'Practical meaning is preserved; only a canonical-style deviation '
+        'was found.',
+    th: 'ความหมายเชิงปฏิบัติยังคงเดิม พบเพียงความแตกต่างด้านรูปแบบมาตรฐาน',
+  );
+
+  String get needsReviewVerdictExplanation => _value(
+    ru:
+        'Точное практическое соответствие не доказано или независимая '
+        'проверка нашла основание для сомнения.',
+    en:
+        'Exact practical identity was not proven, or the independent check '
+        'found a reason for doubt.',
+    th: 'ยังพิสูจน์ความตรงกันเชิงปฏิบัติไม่ได้ หรือการตรวจสอบอิสระพบเหตุให้สงสัย',
+  );
+
+  String get canonicalDriftVerdictExplanation => _value(
+    ru:
+        'Общий аудит подтвердил смысловое расхождение, способное изменить '
+        'исполнение или приёмку задания.',
+    en:
+        'The general audit confirmed a semantic mismatch that may change '
+        'task execution or acceptance.',
+    th: 'การตรวจสอบทั่วไปยืนยันความคลาดเคลื่อนทางความหมายที่อาจเปลี่ยนการปฏิบัติงานหรือการยอมรับงาน',
+  );
+
+  String get auditChallengerConflict => _value(
+    ru:
+        'Общий аудит дал три CLEAR, но независимый challenger не подтвердил '
+        'EXACT. Итог безопасно понижен до NEEDS REVIEW.',
+    en:
+        'The general audit returned three CLEAR results, but the independent '
+        'challenger did not certify EXACT. The result was safely downgraded '
+        'to NEEDS REVIEW.',
+    th: 'การตรวจสอบทั่วไปให้ผล CLEAR ทั้งสามคู่ แต่ challenger อิสระไม่รับรอง EXACT จึงลดผลเป็น NEEDS REVIEW อย่างปลอดภัย',
+  );
+
+  String get exactChallengeProtocolFallback => _value(
+    ru:
+        'Независимый challenger дважды нарушил протокол. EXACT запрещён; '
+        'требуется ручная проверка.',
+    en:
+        'The independent challenger violated the protocol twice. EXACT is '
+        'forbidden; manual review is required.',
+    th: 'challenger อิสระละเมิดโปรโตคอลสองครั้ง จึงห้าม EXACT และต้องตรวจสอบด้วยตนเอง',
+  );
+
+  String get independentExactChallenge => _value(
+    ru: 'Независимый challenger EXACT',
+    en: 'Independent EXACT challenger',
+    th: 'challenger EXACT อิสระ',
+  );
+
+  String get modelEvidenceReason => _value(
+    ru: 'Краткое обоснование модели',
+    en: 'Model evidence reason',
+    th: 'เหตุผลหลักฐานจากโมเดล',
+  );
+
+  String get evidenceExplanation =>
+      _value(ru: 'Пояснение', en: 'Explanation', th: 'คำอธิบาย');
+
   String semanticAtomLabel(String code) {
     return switch (code) {
       'action' => _value(ru: 'Действие', en: 'Action', th: 'การกระทำ'),

@@ -10,27 +10,30 @@ void main() {
       expect(audit.usesSemanticProtocol, isFalse);
     });
 
-    test('exact requires three clear audits and three clear challengers', () {
+    test('EXACT requires three audit CLEAR and one global challenge CLEAR', () {
       final TranslationAudit audit = _semanticAudit(
-        exactResults: <ExactCertificationResult>[
-          ExactCertificationResult.clear,
-          ExactCertificationResult.clear,
-          ExactCertificationResult.clear,
-        ],
+        challenge: ExactChallenge(result: ExactChallengeResult.clear),
       );
 
       expect(audit.candidateForExact, isTrue);
       expect(audit.verdict, TranslationVerdict.exact);
     });
 
-    test('three clear audits without certification require review', () {
+    test('three audit CLEAR without challenger requires review', () {
       final TranslationAudit audit = _semanticAudit();
 
       expect(audit.candidateForExact, isTrue);
       expect(audit.verdict, TranslationVerdict.needsReview);
     });
 
-    test('one unknown atom requires review and blocks challengers', () {
+    test('lexical-gap evidence requires review and preserves explanation', () {
+      final TranslationPairIssue issue = TranslationPairIssue(
+        atom: TranslationSemanticAtom.equipmentIdentity,
+        status: TranslationIssueStatus.unknown,
+        left: 'варочная панель',
+        right: 'เตาไฟ',
+        reason: 'broader Thai equipment term',
+      );
       final TranslationAudit audit = TranslationAudit(
         pairAudits: <TranslationPairAudit>[
           TranslationPairAudit(
@@ -40,29 +43,27 @@ void main() {
           TranslationPairAudit(
             pair: TranslationPair.ruTh,
             result: TranslationPairAuditResult.unproven,
-            issues: const <TranslationPairIssue>[
-              TranslationPairIssue(
-                atom: TranslationSemanticAtom.equipmentIdentity,
-                status: TranslationIssueStatus.unknown,
-              ),
-            ],
+            issues: <TranslationPairIssue>[issue],
           ),
           TranslationPairAudit(
             pair: TranslationPair.enTh,
             result: TranslationPairAuditResult.unproven,
-            issues: const <TranslationPairIssue>[
+            issues: <TranslationPairIssue>[
               TranslationPairIssue(
                 atom: TranslationSemanticAtom.equipmentIdentity,
                 status: TranslationIssueStatus.unknown,
+                left: 'cooktop',
+                right: 'เตาไฟ',
+                reason: 'identity is not proven',
               ),
             ],
           ),
         ],
       );
 
-      expect(audit.candidateForExact, isFalse);
       expect(audit.verdict, TranslationVerdict.needsReview);
       expect(audit.terminologyPreserved, isFalse);
+      expect(issue.reason, 'broader Thai equipment term');
     });
 
     test('hard mismatch has priority and produces canonical drift', () {
@@ -71,22 +72,19 @@ void main() {
           TranslationPairAudit(
             pair: TranslationPair.ruEn,
             result: TranslationPairAuditResult.blocked,
-            issues: const <TranslationPairIssue>[
+            issues: <TranslationPairIssue>[
               TranslationPairIssue(
                 atom: TranslationSemanticAtom.polarity,
                 status: TranslationIssueStatus.mismatch,
+                left: 'не устанавливать',
+                right: 'install',
+                reason: 'negative action became positive',
               ),
             ],
           ),
           TranslationPairAudit(
             pair: TranslationPair.ruTh,
-            result: TranslationPairAuditResult.blocked,
-            issues: const <TranslationPairIssue>[
-              TranslationPairIssue(
-                atom: TranslationSemanticAtom.polarity,
-                status: TranslationIssueStatus.mismatch,
-              ),
-            ],
+            result: TranslationPairAuditResult.clear,
           ),
           TranslationPairAudit(
             pair: TranslationPair.enTh,
@@ -96,34 +94,6 @@ void main() {
       );
 
       expect(audit.verdict, TranslationVerdict.canonicalDrift);
-      expect(audit.meaningPreserved, isFalse);
-    });
-
-    test('ambiguity evidence requires review even when marked X', () {
-      final TranslationAudit audit = TranslationAudit(
-        pairAudits: <TranslationPairAudit>[
-          TranslationPairAudit(
-            pair: TranslationPair.ruEn,
-            result: TranslationPairAuditResult.blocked,
-            issues: const <TranslationPairIssue>[
-              TranslationPairIssue(
-                atom: TranslationSemanticAtom.ambiguity,
-                status: TranslationIssueStatus.mismatch,
-              ),
-            ],
-          ),
-          TranslationPairAudit(
-            pair: TranslationPair.ruTh,
-            result: TranslationPairAuditResult.clear,
-          ),
-          TranslationPairAudit(
-            pair: TranslationPair.enTh,
-            result: TranslationPairAuditResult.clear,
-          ),
-        ],
-      );
-
-      expect(audit.verdict, TranslationVerdict.needsReview);
     });
 
     test('style-only mismatch produces equivalent', () {
@@ -132,10 +102,13 @@ void main() {
           TranslationPairAudit(
             pair: TranslationPair.ruEn,
             result: TranslationPairAuditResult.blocked,
-            issues: const <TranslationPairIssue>[
+            issues: <TranslationPairIssue>[
               TranslationPairIssue(
                 atom: TranslationSemanticAtom.canonicalStyle,
                 status: TranslationIssueStatus.mismatch,
+                left: 'мастер',
+                right: 'service professional',
+                reason: 'noncanonical service wording',
               ),
             ],
           ),
@@ -153,130 +126,74 @@ void main() {
       expect(audit.verdict, TranslationVerdict.equivalent);
     });
 
-    test('not-certified challenger requires review', () {
+    test('global challenger BLOCKED or UNPROVEN requires review', () {
+      for (final ExactChallenge challenge in <ExactChallenge>[
+        ExactChallenge(
+          result: ExactChallengeResult.blocked,
+          disqualifiers: <ExactChallengeDisqualifier>[
+            ExactChallengeDisqualifier(
+              pair: TranslationPair.enTh,
+              atom: TranslationSemanticAtom.equipmentIdentity,
+              status: TranslationIssueStatus.mismatch,
+              left: 'cooktop',
+              right: 'เตาไฟ',
+              reason: 'different equipment types',
+            ),
+          ],
+        ),
+        ExactChallenge(
+          result: ExactChallengeResult.unproven,
+          disqualifiers: <ExactChallengeDisqualifier>[
+            ExactChallengeDisqualifier(
+              pair: TranslationPair.enTh,
+              atom: TranslationSemanticAtom.equipmentIdentity,
+              status: TranslationIssueStatus.unknown,
+              left: 'cooktop',
+              right: 'เตาไฟ',
+              reason: 'identity is not proven',
+            ),
+          ],
+        ),
+      ]) {
+        final TranslationAudit audit = _semanticAudit(challenge: challenge);
+        expect(audit.verdict, TranslationVerdict.needsReview);
+        expect(audit.auditChallengerConflict, isTrue);
+      }
+    });
+
+    test('challenger protocol failure requires review', () {
       final TranslationAudit audit = _semanticAudit(
-        exactResults: <ExactCertificationResult>[
-          ExactCertificationResult.clear,
-          ExactCertificationResult.notCertified,
-          ExactCertificationResult.clear,
-        ],
-        blockedAtom: TranslationSemanticAtom.modality,
+        challenge: ExactChallenge(result: ExactChallengeResult.protocolFailure),
       );
 
       expect(audit.verdict, TranslationVerdict.needsReview);
+      expect(audit.exactChallengeProtocolFailed, isTrue);
     });
 
-    test('protocol fallback always requires review', () {
+    test('ambiguity X is rejected and ambiguity U requires review', () {
       expect(
-        TranslationAudit(protocolFallback: true).verdict,
-        TranslationVerdict.needsReview,
-      );
-    });
-
-    test('pair result invariants reject inconsistent issue sets', () {
-      expect(
-        () => TranslationPairAudit(
-          pair: TranslationPair.ruEn,
-          result: TranslationPairAuditResult.clear,
-          issues: const <TranslationPairIssue>[
-            TranslationPairIssue(
-              atom: TranslationSemanticAtom.action,
-              status: TranslationIssueStatus.mismatch,
-            ),
-          ],
+        () => TranslationPairIssue(
+          atom: TranslationSemanticAtom.ambiguity,
+          status: TranslationIssueStatus.mismatch,
+          left: 'мастер',
+          right: 'master',
+          reason: 'ambiguous role',
         ),
         throwsArgumentError,
       );
 
-      expect(
-        () => TranslationPairAudit(
-          pair: TranslationPair.ruEn,
-          result: TranslationPairAuditResult.unproven,
-          issues: const <TranslationPairIssue>[
-            TranslationPairIssue(
-              atom: TranslationSemanticAtom.action,
-              status: TranslationIssueStatus.mismatch,
-            ),
-          ],
-        ),
-        throwsArgumentError,
+      final TranslationPairIssue issue = TranslationPairIssue(
+        atom: TranslationSemanticAtom.ambiguity,
+        status: TranslationIssueStatus.unknown,
+        left: 'мастер',
+        right: 'master',
+        reason: 'role interpretation is unresolved',
       );
+      expect(issue.status, TranslationIssueStatus.unknown);
     });
 
-    test('semantic audit requires every pair exactly once', () {
-      expect(
-        () => TranslationAudit(
-          pairAudits: <TranslationPairAudit>[
-            TranslationPairAudit(
-              pair: TranslationPair.ruEn,
-              result: TranslationPairAuditResult.clear,
-            ),
-          ],
-        ),
-        throwsArgumentError,
-      );
-    });
-
-    test('pair audit rejects more than two issues', () {
-      expect(
-        () => TranslationPairAudit(
-          pair: TranslationPair.ruEn,
-          result: TranslationPairAuditResult.blocked,
-          issues: const <TranslationPairIssue>[
-            TranslationPairIssue(
-              atom: TranslationSemanticAtom.action,
-              status: TranslationIssueStatus.mismatch,
-            ),
-            TranslationPairIssue(
-              atom: TranslationSemanticAtom.objectIdentity,
-              status: TranslationIssueStatus.mismatch,
-            ),
-            TranslationPairIssue(
-              atom: TranslationSemanticAtom.scope,
-              status: TranslationIssueStatus.mismatch,
-            ),
-          ],
-        ),
-        throwsArgumentError,
-      );
-    });
-
-    test('rejects mixed and inconsistent semantic evidence', () {
-      final List<TranslationPairAudit> clearAudits = <TranslationPairAudit>[
-        for (final TranslationPair pair in TranslationPair.values)
-          TranslationPairAudit(
-            pair: pair,
-            result: TranslationPairAuditResult.clear,
-          ),
-      ];
-      final List<TranslationPairAudit> nonExactAudits = <TranslationPairAudit>[
-        TranslationPairAudit(
-          pair: TranslationPair.ruEn,
-          result: TranslationPairAuditResult.unproven,
-          issues: const <TranslationPairIssue>[
-            TranslationPairIssue(
-              atom: TranslationSemanticAtom.modality,
-              status: TranslationIssueStatus.unknown,
-            ),
-          ],
-        ),
-        TranslationPairAudit(
-          pair: TranslationPair.ruTh,
-          result: TranslationPairAuditResult.clear,
-        ),
-        TranslationPairAudit(
-          pair: TranslationPair.enTh,
-          result: TranslationPairAuditResult.clear,
-        ),
-      ];
-      final List<ExactPairCertification> clearCertifications =
-          <ExactPairCertification>[
-            for (final TranslationPair pair in TranslationPair.values)
-              ExactPairCertification(
-                pair: pair,
-                result: ExactCertificationResult.clear,
-              ),
-          ];
+    test('semantic audit rejects mixed or inconsistent evidence', () {
+      final List<TranslationPairAudit> clearAudits = _clearAudits();
 
       expect(
         () => TranslationAudit(
@@ -290,14 +207,88 @@ void main() {
         ),
         throwsArgumentError,
       );
+
       expect(
         () => TranslationAudit(protocolFallback: true, pairAudits: clearAudits),
         throwsArgumentError,
       );
+
       expect(
         () => TranslationAudit(
-          pairAudits: nonExactAudits,
-          exactCertifications: clearCertifications,
+          pairAudits: <TranslationPairAudit>[
+            TranslationPairAudit(
+              pair: TranslationPair.ruEn,
+              result: TranslationPairAuditResult.unproven,
+              issues: <TranslationPairIssue>[
+                TranslationPairIssue(
+                  atom: TranslationSemanticAtom.modality,
+                  status: TranslationIssueStatus.unknown,
+                  left: 'должен',
+                  right: 'should',
+                  reason: 'obligation strength is uncertain',
+                ),
+              ],
+            ),
+            TranslationPairAudit(
+              pair: TranslationPair.ruTh,
+              result: TranslationPairAuditResult.clear,
+            ),
+            TranslationPairAudit(
+              pair: TranslationPair.enTh,
+              result: TranslationPairAuditResult.clear,
+            ),
+          ],
+          exactChallenge: ExactChallenge(result: ExactChallengeResult.clear),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('pair audit enforces issue limit and result consistency', () {
+      expect(
+        () => TranslationPairAudit(
+          pair: TranslationPair.ruEn,
+          result: TranslationPairAuditResult.clear,
+          issues: <TranslationPairIssue>[
+            TranslationPairIssue(
+              atom: TranslationSemanticAtom.action,
+              status: TranslationIssueStatus.mismatch,
+              left: 'установить',
+              right: 'remove',
+              reason: 'opposite actions',
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+
+      expect(
+        () => TranslationPairAudit(
+          pair: TranslationPair.ruEn,
+          result: TranslationPairAuditResult.blocked,
+          issues: <TranslationPairIssue>[
+            TranslationPairIssue(
+              atom: TranslationSemanticAtom.action,
+              status: TranslationIssueStatus.mismatch,
+              left: 'a',
+              right: 'a',
+              reason: 'one',
+            ),
+            TranslationPairIssue(
+              atom: TranslationSemanticAtom.objectIdentity,
+              status: TranslationIssueStatus.mismatch,
+              left: 'b',
+              right: 'b',
+              reason: 'two',
+            ),
+            TranslationPairIssue(
+              atom: TranslationSemanticAtom.scope,
+              status: TranslationIssueStatus.mismatch,
+              left: 'c',
+              right: 'c',
+              reason: 'three',
+            ),
+          ],
         ),
         throwsArgumentError,
       );
@@ -484,37 +475,21 @@ void main() {
   });
 }
 
-TranslationAudit _semanticAudit({
-  List<ExactCertificationResult> exactResults =
-      const <ExactCertificationResult>[],
-  TranslationSemanticAtom blockedAtom = TranslationSemanticAtom.modality,
-}) {
+TranslationAudit _semanticAudit({ExactChallenge? challenge}) {
   return TranslationAudit(
-    pairAudits: <TranslationPairAudit>[
-      for (final TranslationPair pair in TranslationPair.values)
-        TranslationPairAudit(
-          pair: pair,
-          result: TranslationPairAuditResult.clear,
-        ),
-    ],
-    exactCertifications: exactResults.isEmpty
-        ? const <ExactPairCertification>[]
-        : <ExactPairCertification>[
-            for (
-              int index = 0;
-              index < TranslationPair.values.length;
-              index += 1
-            )
-              ExactPairCertification(
-                pair: TranslationPair.values[index],
-                result: exactResults[index],
-                atom:
-                    exactResults[index] == ExactCertificationResult.notCertified
-                    ? blockedAtom
-                    : null,
-              ),
-          ],
+    pairAudits: _clearAudits(),
+    exactChallenge: challenge,
   );
+}
+
+List<TranslationPairAudit> _clearAudits() {
+  return <TranslationPairAudit>[
+    for (final TranslationPair pair in TranslationPair.values)
+      TranslationPairAudit(
+        pair: pair,
+        result: TranslationPairAuditResult.clear,
+      ),
+  ];
 }
 
 TranslationBundle _bundle({bool withReverse = false}) {

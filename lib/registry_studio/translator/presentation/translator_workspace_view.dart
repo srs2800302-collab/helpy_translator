@@ -695,6 +695,22 @@ final class _VerdictCard extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
+            const SizedBox(height: 8),
+            Text(
+              _verdictExplanation(l10n, verdict),
+              textAlign: TextAlign.center,
+            ),
+            if (audit.auditChallengerConflict) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(l10n.auditChallengerConflict, textAlign: TextAlign.center),
+            ],
+            if (audit.exactChallengeProtocolFailed) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(
+                l10n.exactChallengeProtocolFallback,
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 16),
             if (!audit.usesSemanticProtocol &&
                 audit.findings.isNotEmpty) ...<Widget>[
@@ -794,19 +810,33 @@ final class _SemanticProtocolEvidence extends StatelessWidget {
         if (audit.candidateForExact) ...<Widget>[
           const SizedBox(height: 8),
           Text(
-            l10n.exactCertification,
+            l10n.independentExactChallenge,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 6),
-          if (audit.exactCertifications.isEmpty)
+          if (audit.exactChallenge == null)
             Text(l10n.semanticProtocolFallback)
-          else
-            for (final ExactPairCertification certification
-                in audit.exactCertifications)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(_exactCertificationSummary(certification)),
-              ),
+          else if (audit.exactChallenge!.result ==
+              ExactChallengeResult.protocolFailure)
+            Text(l10n.exactChallengeProtocolFallback)
+          else ...<Widget>[
+            Text(
+              'RESULT · ${audit.exactChallenge!.result.code}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            if (audit.exactChallenge!.disqualifiers.isEmpty) ...<Widget>[
+              const SizedBox(height: 4),
+              Text(l10n.noViolations),
+            ] else ...<Widget>[
+              const SizedBox(height: 8),
+              for (final ExactChallengeDisqualifier item
+                  in audit.exactChallenge!.disqualifiers)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _ChallengeDisqualifierCard(item: item, bundle: bundle),
+                ),
+            ],
+          ],
         ],
       ],
     );
@@ -821,7 +851,6 @@ final class _SemanticPairCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final RegistryStudioLocalizations l10n = context.rsL10n;
     final TranslationLanguage leftLanguage = audit.pair.leftLanguage;
     final TranslationLanguage rightLanguage = audit.pair.rightLanguage;
 
@@ -837,27 +866,125 @@ final class _SemanticPairCard extends StatelessWidget {
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
-            Text('${leftLanguage.code}: ${bundle.textFor(leftLanguage)}'),
+            SelectableText(
+              '${leftLanguage.code}: ${bundle.textFor(leftLanguage)}',
+            ),
             const SizedBox(height: 4),
-            Text('${rightLanguage.code}: ${bundle.textFor(rightLanguage)}'),
+            SelectableText(
+              '${rightLanguage.code}: ${bundle.textFor(rightLanguage)}',
+            ),
             if (audit.issues.isNotEmpty) ...<Widget>[
               const Divider(height: 20),
               for (final TranslationPairIssue issue in audit.issues)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    '${l10n.semanticAtomLabel(issue.atom.code)} '
-                    '· ${issue.status.code}\n'
-                    '${l10n.evidenceReason}: '
-                    '${l10n.semanticIssueExplanation(atomCode: issue.atom.code, statusCode: issue.status.code)}\n'
-                    '${l10n.evidenceImpact}: '
-                    '${l10n.semanticIssueImpact(atomCode: issue.atom.code, statusCode: issue.status.code)}',
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _SemanticEvidenceBody(
+                    pair: audit.pair,
+                    atom: issue.atom,
+                    status: issue.status,
+                    left: issue.left,
+                    right: issue.right,
+                    reason: issue.reason,
                   ),
                 ),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+final class _ChallengeDisqualifierCard extends StatelessWidget {
+  const _ChallengeDisqualifierCard({required this.item, required this.bundle});
+
+  final ExactChallengeDisqualifier item;
+  final TranslationBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              '${item.pair.code} · ${item.status.code}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            SelectableText(
+              '${item.pair.leftLanguage.code}: '
+              '${bundle.textFor(item.pair.leftLanguage)}',
+            ),
+            const SizedBox(height: 4),
+            SelectableText(
+              '${item.pair.rightLanguage.code}: '
+              '${bundle.textFor(item.pair.rightLanguage)}',
+            ),
+            const Divider(height: 20),
+            _SemanticEvidenceBody(
+              pair: item.pair,
+              atom: item.atom,
+              status: item.status,
+              left: item.left,
+              right: item.right,
+              reason: item.reason,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _SemanticEvidenceBody extends StatelessWidget {
+  const _SemanticEvidenceBody({
+    required this.pair,
+    required this.atom,
+    required this.status,
+    required this.left,
+    required this.right,
+    required this.reason,
+  });
+
+  final TranslationPair pair;
+  final TranslationSemanticAtom atom;
+  final TranslationIssueStatus status;
+  final String? left;
+  final String? right;
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          '${l10n.semanticAtomLabel(atom.code)} · ${status.code}',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 6),
+        SelectableText('${pair.leftLanguage.code}: ${left ?? '∅'}'),
+        const SizedBox(height: 4),
+        SelectableText('${pair.rightLanguage.code}: ${right ?? '∅'}'),
+        const SizedBox(height: 8),
+        Text('${l10n.modelEvidenceReason}: $reason'),
+        const SizedBox(height: 6),
+        Text(
+          '${l10n.evidenceExplanation}: '
+          '${l10n.semanticIssueExplanation(atomCode: atom.code, statusCode: status.code)}',
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${l10n.evidenceImpact}: '
+          '${l10n.semanticIssueImpact(atomCode: atom.code, statusCode: status.code)}',
+        ),
+      ],
     );
   }
 }
@@ -1132,18 +1259,24 @@ String _failureTitle(
   return l10n.translatorTechnicalError;
 }
 
-String _exactCertificationSummary(ExactPairCertification certification) {
-  final String atom = certification.atom?.code ?? '';
-  return '${certification.pair.code}: ${certification.result.code}'
-      '${atom.isEmpty ? '' : ' · $atom'}';
-}
-
 String _verdictLabel(TranslationVerdict verdict) {
   return switch (verdict) {
     TranslationVerdict.exact => 'EXACT',
     TranslationVerdict.equivalent => 'EQUIVALENT',
     TranslationVerdict.needsReview => 'NEEDS REVIEW',
     TranslationVerdict.canonicalDrift => 'CANONICAL DRIFT',
+  };
+}
+
+String _verdictExplanation(
+  RegistryStudioLocalizations l10n,
+  TranslationVerdict verdict,
+) {
+  return switch (verdict) {
+    TranslationVerdict.exact => l10n.exactVerdictExplanation,
+    TranslationVerdict.equivalent => l10n.equivalentVerdictExplanation,
+    TranslationVerdict.needsReview => l10n.needsReviewVerdictExplanation,
+    TranslationVerdict.canonicalDrift => l10n.canonicalDriftVerdictExplanation,
   };
 }
 

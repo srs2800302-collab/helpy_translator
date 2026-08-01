@@ -67,6 +67,45 @@ void main() {
     expect(find.text('Аудит и диагностика'), findsOneWidget);
   });
 
+  testWidgets('renders accepted provider bundle without rewriting', (
+    WidgetTester tester,
+  ) async {
+    const String source = 'Маркер  RU — №17';
+    const String en = 'Provider  EN — #17';
+    const String th = 'ผู้ให้บริการ  TH — 17';
+
+    final TranslatorWorkRequest request = TranslatorWorkRequest(
+      sourceText: source,
+      sourceLanguageHint: TranslationLanguage.ru,
+    );
+
+    final TranslatorRunReport report = TranslatorRunReport(
+      request: request,
+      bundle: TranslationBundle(
+        sourceLanguage: TranslationLanguage.ru,
+        sourceText: source,
+        ru: source,
+        en: en,
+        th: th,
+      ),
+      audit: TranslationAudit(protocolFallback: true),
+      createdAt: DateTime.utc(2026, 8, 1, 2),
+    );
+
+    await _pumpTranslator(
+      tester,
+      provider: _SuccessProvider(report),
+      draftStore: _MemoryDraftStore(
+        draft: TranslatorDraft(sourceText: source, report: report),
+      ),
+      accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+    );
+
+    expect(find.text(source), findsWidgets);
+    expect(find.text(en), findsOneWidget);
+    expect(find.text(th), findsOneWidget);
+  });
+
   testWidgets('new semantic report hides legacy reverse diagnostics', (
     WidgetTester tester,
   ) async {
@@ -87,10 +126,74 @@ void main() {
 
     expect(find.text('EXACT'), findsOneWidget);
     expect(find.text('Попарный семантический аудит'), findsOneWidget);
-    expect(find.text('Сертификация EXACT'), findsOneWidget);
+    expect(find.text('Независимый challenger EXACT'), findsOneWidget);
     expect(find.text('Обратные секции перевода'), findsNothing);
     expect(find.text('EN_TO_RU'), findsNothing);
   });
+
+  testWidgets(
+    'global challenger conflict shows fragments, reason, explanation and impact',
+    (WidgetTester tester) async {
+      final TranslatorRunReport report = _report(
+        audit: TranslationAudit(
+          pairAudits: <TranslationPairAudit>[
+            for (final TranslationPair pair in TranslationPair.values)
+              TranslationPairAudit(
+                pair: pair,
+                result: TranslationPairAuditResult.clear,
+              ),
+          ],
+          exactChallenge: ExactChallenge(
+            result: ExactChallengeResult.unproven,
+            disqualifiers: <ExactChallengeDisqualifier>[
+              ExactChallengeDisqualifier(
+                pair: TranslationPair.enTh,
+                atom: TranslationSemanticAtom.equipmentIdentity,
+                status: TranslationIssueStatus.unknown,
+                left: 'equipment',
+                right: 'อุปกรณ์',
+                reason: 'exact equipment identity is not proven',
+              ),
+            ],
+          ),
+        ),
+        withReverse: false,
+      );
+
+      await _pumpTranslator(
+        tester,
+        provider: _SuccessProvider(report),
+        draftStore: _MemoryDraftStore(
+          draft: TranslatorDraft(
+            sourceText: report.request.sourceText,
+            sourceLanguageHint: TranslationLanguage.ru,
+            report: report,
+          ),
+        ),
+        accessKeyStore: _MemoryAccessKeyStore(value: 'saved-key'),
+      );
+
+      expect(find.text('NEEDS REVIEW'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'Общий аудит дал три CLEAR, но независимый challenger',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('EN_TH · U'), findsOneWidget);
+      expect(find.text('EN: equipment'), findsOneWidget);
+      expect(find.text('TH: อุปกรณ์'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'Краткое обоснование модели: '
+          'exact equipment identity is not proven',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Пояснение:'), findsOneWidget);
+      expect(find.textContaining('Влияние:'), findsOneWidget);
+    },
+  );
 
   testWidgets('clear audit without certification shows fail-closed evidence', (
     WidgetTester tester,
@@ -122,7 +225,7 @@ void main() {
     );
 
     expect(find.text('NEEDS REVIEW'), findsOneWidget);
-    expect(find.text('Сертификация EXACT'), findsOneWidget);
+    expect(find.text('Независимый challenger EXACT'), findsOneWidget);
     expect(
       find.text(
         'Структурированное доказательство не получено. Требуется проверка.',
@@ -206,10 +309,13 @@ void main() {
           TranslationPairAudit(
             pair: TranslationPair.ruEn,
             result: TranslationPairAuditResult.blocked,
-            issues: const <TranslationPairIssue>[
+            issues: <TranslationPairIssue>[
               TranslationPairIssue(
                 atom: TranslationSemanticAtom.canonicalStyle,
                 status: TranslationIssueStatus.mismatch,
+                left: 'Фотография установленного оборудования.',
+                right: 'Photo of the installed equipment.',
+                reason: 'noncanonical service wording',
               ),
             ],
           ),
@@ -264,11 +370,14 @@ void main() {
         pairAudits: <TranslationPairAudit>[
           TranslationPairAudit(
             pair: TranslationPair.ruEn,
-            result: TranslationPairAuditResult.blocked,
-            issues: const <TranslationPairIssue>[
+            result: TranslationPairAuditResult.unproven,
+            issues: <TranslationPairIssue>[
               TranslationPairIssue(
                 atom: TranslationSemanticAtom.ambiguity,
-                status: TranslationIssueStatus.mismatch,
+                status: TranslationIssueStatus.unknown,
+                left: 'оборудования',
+                right: 'equipment',
+                reason: 'equipment reference is context-dependent',
               ),
             ],
           ),
@@ -956,13 +1065,7 @@ TranslationAudit _exactAudit() {
           result: TranslationPairAuditResult.clear,
         ),
     ],
-    exactCertifications: <ExactPairCertification>[
-      for (final TranslationPair pair in TranslationPair.values)
-        ExactPairCertification(
-          pair: pair,
-          result: ExactCertificationResult.clear,
-        ),
-    ],
+    exactChallenge: ExactChallenge(result: ExactChallengeResult.clear),
   );
 }
 

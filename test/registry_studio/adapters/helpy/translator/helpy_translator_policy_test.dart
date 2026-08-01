@@ -7,21 +7,24 @@ import 'package:helpy_translator/registry_studio/translator/domain/translator_mo
 void main() {
   const HelpyTranslatorPolicy policy = HelpyTranslatorPolicy();
 
-  test('direct prompt locks five-key JSON and forbids verdicts', () {
+  test('direct prompt locks five-key JSON and translation-only behavior', () {
     final String prompt = policy.buildDirectSystemPrompt();
 
-    expect(prompt, contains('"SOURCE_LANGUAGE"'));
-    expect(prompt, contains('"SOURCE_TEXT"'));
-    expect(prompt, contains('"RU"'));
-    expect(prompt, contains('"EN"'));
-    expect(prompt, contains('"TH"'));
-    expect(prompt, contains('exactly these five keys'));
-    expect(prompt, contains('Do not add explanations'));
+    for (final String key in <String>[
+      'SOURCE_LANGUAGE',
+      'SOURCE_TEXT',
+      'RU',
+      'EN',
+      'TH',
+    ]) {
+      expect(prompt, contains('"$key"'));
+    }
+    expect(prompt, contains('A lexical gap is allowed'));
+    expect(prompt, contains('Do not audit or output a verdict'));
     expect(prompt, isNot(contains('EN_TO_RU')));
-    expect(prompt, isNot(contains('findings')));
   });
 
-  test('direct user prompt serializes source text as JSON data', () {
+  test('direct user prompt serializes input as JSON data', () {
     final Map<String, Object?> prompt =
         jsonDecode(
               policy.buildDirectUserPrompt(
@@ -41,26 +44,23 @@ void main() {
     });
   });
 
-  test('audit prompt defines compact fail-closed three-pair contract', () {
+  test('audit prompt matches laboratory evidence contract', () {
     final String prompt = policy.buildAuditSystemPrompt();
 
+    expect(prompt, contains('PAIR_RESULTS'));
     expect(prompt, contains('RU_EN'));
     expect(prompt, contains('RU_TH'));
     expect(prompt, contains('EN_TH'));
-    expect(prompt, contains('"CLEAR"'));
-    expect(prompt, contains('"BLOCKED"'));
-    expect(prompt, contains('"UNPROVEN"'));
-    expect(prompt, contains('"X"'));
-    expect(prompt, contains('"U"'));
-    expect(prompt, contains('at most two objects'));
-    expect(prompt, contains('never ambiguity/X'));
-    expect(prompt, contains('Do not output translations'));
+    expect(prompt, contains('CLEAR: exact identity is positively established'));
+    expect(prompt, contains('Not disproved'));
+    expect(prompt, contains('LEFT, RIGHT and REASON'));
+    expect(prompt, contains('at most 18 words'));
+    expect(prompt, contains('Unresolved ambiguity is U'));
     expect(prompt, isNot(contains('correct_variant')));
-    expect(prompt, contains('application verdict'));
     expect(prompt, isNot(contains('"VERDICT"')));
   });
 
-  test('audit user prompt contains only the translated JSON bundle', () {
+  test('audit user prompt contains only RU EN TH', () {
     final Map<String, Object?> prompt =
         jsonDecode(
               policy.buildAuditUserPrompt(
@@ -78,30 +78,29 @@ void main() {
     });
   });
 
-  test('exact challenger is pair-specific and has two outcomes', () {
-    final String system = policy.buildExactChallengerSystemPrompt(
-      TranslationPair.ruTh,
-    );
-    final String user = policy.buildExactChallengerUserPrompt(
-      pair: TranslationPair.ruTh,
-      leftText: 'варочная панель',
-      rightText: 'เตาไฟ',
-    );
+  test('exact challenger is global, audit-blind and evidence-bearing', () {
+    final String system = policy.buildExactChallengerSystemPrompt();
+    final Map<String, Object?> user =
+        jsonDecode(
+              policy.buildExactChallengerUserPrompt(
+                ru: 'установить варочную панель',
+                en: 'install the cooktop',
+                th: 'ติดตั้งเตาไฟ',
+              ),
+            )
+            as Map<String, Object?>;
 
-    expect(system, contains('RU_TH'));
-    expect(system, contains('"RESULT":"CLEAR"'));
-    expect(system, contains('"RESULT":"NOT_CERTIFIED"'));
-    expect(system, contains('surface difference alone'));
+    expect(system, contains('You never receive the general audit'));
+    expect(system, contains('RU_EN, RU_TH and EN_TH'));
+    expect(system, contains('RESULT and DISQUALIFIERS'));
+    expect(system, contains('BLOCKED'));
+    expect(system, contains('UNPROVEN'));
+    expect(system, contains('LEFT, RIGHT and REASON'));
     expect(system, isNot(contains('CANONICAL_DRIFT')));
-
-    final Map<String, Object?> userData =
-        jsonDecode(user) as Map<String, Object?>;
-    expect(userData, <String, Object?>{
-      'PAIR': 'RU_TH',
-      'LEFT_LANGUAGE': 'RU',
-      'LEFT_TEXT': 'варочная панель',
-      'RIGHT_LANGUAGE': 'TH',
-      'RIGHT_TEXT': 'เตาไฟ',
+    expect(user, <String, Object?>{
+      'RU': 'установить варочную панель',
+      'EN': 'install the cooktop',
+      'TH': 'ติดตั้งเตาไฟ',
     });
   });
 }

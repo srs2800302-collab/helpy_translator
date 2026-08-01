@@ -265,14 +265,13 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
       }
 
       _emit(TranslatorRunStage.exactCertification);
-      final List<ExactPairCertification> certifications =
-          await _requestExactCertifications(bundle);
+      final ExactChallenge challenge = await _requestExactChallenge(bundle);
 
       return _report(
         bundle: bundle,
         audit: TranslationAudit(
           pairAudits: pairAudits,
-          exactCertifications: certifications,
+          exactChallenge: challenge,
         ),
       );
     } on TranslatorProviderException {
@@ -341,7 +340,10 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
       );
 
       try {
-        return TyphoonSemanticProtocol.parseGeneralAudit(content);
+        return TyphoonSemanticProtocol.parseGeneralAudit(
+          content: content,
+          bundle: bundle,
+        );
       } on TyphoonSemanticProtocolException {
         if (attempt == _protocolRetryMax) {
           return null;
@@ -352,49 +354,37 @@ final class _TyphoonTranslatorOperation implements TranslatorOperation {
     return null;
   }
 
-  Future<List<ExactPairCertification>> _requestExactCertifications(
+  Future<ExactChallenge> _requestExactChallenge(
     TranslationBundle bundle,
   ) async {
-    final List<ExactPairCertification> result = <ExactPairCertification>[];
+    final String systemPrompt = policy.buildExactChallengerSystemPrompt();
+    final String userPrompt = policy.buildExactChallengerUserPrompt(
+      ru: bundle.ru,
+      en: bundle.en,
+      th: bundle.th,
+    );
 
-    for (final TranslationPair pair in TranslationPair.values) {
-      final String systemPrompt = policy.buildExactChallengerSystemPrompt(pair);
-      final String userPrompt = policy.buildExactChallengerUserPrompt(
-        pair: pair,
-        leftText: bundle.textFor(pair.leftLanguage),
-        rightText: bundle.textFor(pair.rightLanguage),
+    for (int attempt = 0; attempt <= _protocolRetryMax; attempt += 1) {
+      final String content = await _request(
+        systemPrompt: attempt == 0
+            ? systemPrompt
+            : _strictExactRetryPrompt(systemPrompt),
+        userPrompt: userPrompt,
       );
 
-      ExactPairCertification? certification;
-
-      for (int attempt = 0; attempt <= _protocolRetryMax; attempt += 1) {
-        final String content = await _request(
-          systemPrompt: attempt == 0
-              ? systemPrompt
-              : _strictExactRetryPrompt(systemPrompt, pair),
-          userPrompt: userPrompt,
+      try {
+        return TyphoonSemanticProtocol.parseExactChallenge(
+          content: content,
+          bundle: bundle,
         );
-
-        try {
-          certification = TyphoonSemanticProtocol.parseExactCertification(
-            content: content,
-            pair: pair,
-          );
-          break;
-        } on TyphoonSemanticProtocolException {
-          if (attempt == _protocolRetryMax) {
-            certification = ExactPairCertification(
-              pair: pair,
-              result: ExactCertificationResult.protocolFailure,
-            );
-          }
+      } on TyphoonSemanticProtocolException {
+        if (attempt == _protocolRetryMax) {
+          return ExactChallenge(result: ExactChallengeResult.protocolFailure);
         }
       }
-
-      result.add(certification!);
     }
 
-    return List<ExactPairCertification>.unmodifiable(result);
+    return ExactChallenge(result: ExactChallengeResult.protocolFailure);
   }
 
   TranslatorRunReport _report({
@@ -473,23 +463,23 @@ values, placeholders, or unknown keys.
 $basePrompt
 
 FINAL PROTOCOL RETRY:
-Return one JSON object with exactly RU_EN, RU_TH, and EN_TH. Every pair must
-contain exactly RESULT and ISSUES. ISSUES must be an array of at most two
-objects with exactly ATOM and STATUS. Output no other text.
+Return one JSON object with exactly PAIR_RESULTS. PAIR_RESULTS must contain
+exactly RU_EN, RU_TH and EN_TH. Every pair must contain exactly RESULT and
+ISSUES. Every issue must contain exactly ATOM, STATUS, LEFT, RIGHT and REASON.
+Use exact pair substrings or JSON null. Output no other text.
 '''
         .trim();
   }
 
-  static String _strictExactRetryPrompt(
-    String basePrompt,
-    TranslationPair pair,
-  ) {
+  static String _strictExactRetryPrompt(String basePrompt) {
     return '''
 $basePrompt
 
-FINAL PROTOCOL RETRY FOR ${pair.code}:
-Return exactly {"RESULT":"CLEAR","ATOM":null} or
-{"RESULT":"NOT_CERTIFIED","ATOM":"<canonical_atom>"} and no other text.
+FINAL PROTOCOL RETRY:
+Return exactly one JSON object with RESULT and DISQUALIFIERS. Use CLEAR with
+[], BLOCKED with at least one X item, or UNPROVEN with only U items. Every item
+must contain exactly PAIR, ATOM, STATUS, LEFT, RIGHT and REASON. Output no
+other text.
 '''
         .trim();
   }

@@ -93,62 +93,43 @@ void main() {
       expect(auditUser.keys, isNot(contains('EN_TO_RU')));
     });
 
-    test('exact requires five calls and three isolated challengers', () async {
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        _translationResponse(),
-        _clearAuditResponse(),
-        _exactClear(),
-        _exactClear(),
-        _exactClear(),
-      ]);
-      final TranslatorOperation operation = _provider(
-        transport,
-      ).start(request: _request(), accessKey: 'test-key');
-      final List<TranslatorRunStage> stages = <TranslatorRunStage>[];
-      final Future<void> progressDone = operation.progress.forEach(stages.add);
+    test(
+      'exact requires three calls and one global audit-blind challenger',
+      () async {
+        final _QueueTransport transport = _QueueTransport(<Object>[
+          _translationResponse(),
+          _clearAuditResponse(),
+          _challengeClear(),
+        ]);
+        final TranslatorOperation operation = _provider(
+          transport,
+        ).start(request: _request(), accessKey: 'test-key');
+        final List<TranslatorRunStage> stages = <TranslatorRunStage>[];
+        final Future<void> progressDone = operation.progress.forEach(
+          stages.add,
+        );
 
-      final TranslatorRunReport report = await operation.result;
-      await progressDone;
+        final TranslatorRunReport report = await operation.result;
+        await progressDone;
 
-      expect(report.audit.verdict, TranslationVerdict.exact);
-      expect(transport.callCount, 5);
-      expect(stages, <TranslatorRunStage>[
-        TranslatorRunStage.directTranslation,
-        TranslatorRunStage.audit,
-        TranslatorRunStage.exactCertification,
-      ]);
-      _expectLockedSettings(transport.requestBodies);
+        expect(report.audit.verdict, TranslationVerdict.exact);
+        expect(transport.callCount, 3);
+        expect(stages, <TranslatorRunStage>[
+          TranslatorRunStage.directTranslation,
+          TranslatorRunStage.audit,
+          TranslatorRunStage.exactCertification,
+        ]);
+        _expectLockedSettings(transport.requestBodies);
 
-      final Map<String, Object?> ruEn = _userData(transport.requestBodies[2]);
-      final Map<String, Object?> ruTh = _userData(transport.requestBodies[3]);
-      final Map<String, Object?> enTh = _userData(transport.requestBodies[4]);
-
-      const Set<String> challengerKeys = <String>{
-        'PAIR',
-        'LEFT_LANGUAGE',
-        'LEFT_TEXT',
-        'RIGHT_LANGUAGE',
-        'RIGHT_TEXT',
-      };
-      expect(ruEn.keys.toSet(), challengerKeys);
-      expect(ruTh.keys.toSet(), challengerKeys);
-      expect(enTh.keys.toSet(), challengerKeys);
-
-      expect(ruEn, containsPair('PAIR', 'RU_EN'));
-      expect(ruEn, containsPair('LEFT_LANGUAGE', 'RU'));
-      expect(ruEn, containsPair('RIGHT_LANGUAGE', 'EN'));
-      expect(ruEn.values, isNot(contains('TH')));
-
-      expect(ruTh, containsPair('PAIR', 'RU_TH'));
-      expect(ruTh, containsPair('LEFT_LANGUAGE', 'RU'));
-      expect(ruTh, containsPair('RIGHT_LANGUAGE', 'TH'));
-      expect(ruTh.values, isNot(contains('EN')));
-
-      expect(enTh, containsPair('PAIR', 'EN_TH'));
-      expect(enTh, containsPair('LEFT_LANGUAGE', 'EN'));
-      expect(enTh, containsPair('RIGHT_LANGUAGE', 'TH'));
-      expect(enTh.values, isNot(contains('RU')));
-    });
+        final Map<String, Object?> challenge = _userData(
+          transport.requestBodies[2],
+        );
+        expect(challenge.keys.toSet(), <String>{'RU', 'EN', 'TH'});
+        expect(challenge['RU'], 'установить варочную панель');
+        expect(challenge['EN'], 'install the cooktop');
+        expect(challenge['TH'], 'ติดตั้งเตาไฟ');
+      },
+    );
 
     test('hard mismatch ends after audit with canonical drift', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
@@ -167,7 +148,7 @@ void main() {
     test('ambiguity evidence ends after audit with needs review', () async {
       final _QueueTransport transport = _QueueTransport(<Object>[
         _translationResponse(),
-        _blockedAuditResponse(TranslationSemanticAtom.ambiguity),
+        _ambiguityAuditResponse(),
       ]);
 
       final TranslatorRunReport report = await _provider(
@@ -213,9 +194,7 @@ void main() {
         _translationResponse(),
         _clearAuditResponse(),
         '{"RESULT":"CLEAR"}',
-        '{"RESULT":"CLEAR"}',
-        _exactClear(),
-        _exactClear(),
+        '{"RESULT":"BLOCKED","DISQUALIFIERS":[]}',
       ]);
 
       final TranslatorRunReport report = await _provider(
@@ -224,21 +203,19 @@ void main() {
 
       expect(report.audit.verdict, TranslationVerdict.needsReview);
       expect(
-        report.audit.exactCertifications.first.result,
-        ExactCertificationResult.protocolFailure,
+        report.audit.exactChallenge?.result,
+        ExactChallengeResult.protocolFailure,
       );
-      expect(transport.callCount, 6);
+      expect(transport.callCount, 4);
     });
 
     test(
-      'not-certified challenger blocks exact but all pairs still run',
+      'global challenger evidence blocks exact and preserves explanation',
       () async {
         final _QueueTransport transport = _QueueTransport(<Object>[
           _translationResponse(),
           _clearAuditResponse(),
-          _exactClear(),
-          _exactNotCertified(TranslationSemanticAtom.modality),
-          _exactClear(),
+          _challengeUnproven(),
         ]);
 
         final TranslatorRunReport report = await _provider(
@@ -246,11 +223,15 @@ void main() {
         ).start(request: _request(), accessKey: 'test-key').result;
 
         expect(report.audit.verdict, TranslationVerdict.needsReview);
-        expect(transport.callCount, 5);
-        expect(
-          report.audit.exactCertifications[1].atom,
-          TranslationSemanticAtom.modality,
-        );
+        expect(report.audit.auditChallengerConflict, isTrue);
+        expect(transport.callCount, 3);
+        final ExactChallengeDisqualifier evidence =
+            report.audit.exactChallenge!.disqualifiers.single;
+        expect(evidence.pair, TranslationPair.enTh);
+        expect(evidence.atom, TranslationSemanticAtom.equipmentIdentity);
+        expect(evidence.left, 'cooktop');
+        expect(evidence.right, 'เตาไฟ');
+        expect(evidence.reason, 'exact equipment identity is not proven');
       },
     );
 
@@ -291,31 +272,54 @@ void main() {
       expect(transport.callCount, 2);
     });
 
-    test('recovers a missing Thai source field only', () async {
-      final String sourceText = 'อย่าติดตั้งเตาอบ';
-      final _QueueTransport transport = _QueueTransport(<Object>[
-        jsonEncode(<String, Object?>{
-          'SOURCE_LANGUAGE': 'TH',
-          'SOURCE_TEXT': sourceText,
-          'RU': 'не устанавливать духовку',
-          'EN': 'do not install the oven',
-        }),
-        _lexicalGapAuditResponse(),
-      ]);
+    test(
+      'preserves accepted provider bundle through audit, challenger and report',
+      () async {
+        const String source = 'Маркер  RU — №17';
+        const String en = 'Provider  EN — #17';
+        const String th = 'ผู้ให้บริการ  TH — 17';
 
-      final TranslatorRunReport report = await _provider(transport)
-          .start(
-            request: TranslatorWorkRequest(
-              sourceText: sourceText,
-              sourceLanguageHint: TranslationLanguage.th,
-            ),
-            accessKey: 'test-key',
-          )
-          .result;
+        final _QueueTransport transport = _QueueTransport(<Object>[
+          jsonEncode(<String, Object?>{
+            'SOURCE_LANGUAGE': 'RU',
+            'SOURCE_TEXT': source,
+            'RU': source,
+            'EN': en,
+            'TH': th,
+          }),
+          _clearAuditResponse(),
+          _challengeClear(),
+        ]);
 
-      expect(report.bundle.th, sourceText);
-      expect(transport.callCount, 2);
-    });
+        final TranslatorRunReport report = await _provider(transport)
+            .start(
+              request: TranslatorWorkRequest(
+                sourceText: source,
+                sourceLanguageHint: TranslationLanguage.ru,
+              ),
+              accessKey: 'test-key',
+            )
+            .result;
+
+        expect(report.bundle.sourceText, source);
+        expect(report.bundle.ru, source);
+        expect(report.bundle.en, en);
+        expect(report.bundle.th, th);
+        expect(transport.callCount, 3);
+
+        expect(_userData(transport.requestBodies[1]), <String, Object?>{
+          'RU': source,
+          'EN': en,
+          'TH': th,
+        });
+
+        expect(_userData(transport.requestBodies[2]), <String, Object?>{
+          'RU': source,
+          'EN': en,
+          'TH': th,
+        });
+      },
+    );
 
     test('rejects empty and whitespace-containing access keys', () async {
       await expectLater(
@@ -384,15 +388,39 @@ String _lexicalGapAuditResponse() {
       'RESULT': 'CLEAR',
       'ISSUES': <Object?>[],
     },
-    TranslationPair.ruTh: _unproven(TranslationSemanticAtom.equipmentIdentity),
-    TranslationPair.enTh: _unproven(TranslationSemanticAtom.equipmentIdentity),
+    TranslationPair.ruTh: _issueResult(
+      pair: TranslationPair.ruTh,
+      result: 'UNPROVEN',
+      atom: TranslationSemanticAtom.equipmentIdentity,
+      status: 'U',
+      reason: 'broader Thai equipment term',
+    ),
+    TranslationPair.enTh: _issueResult(
+      pair: TranslationPair.enTh,
+      result: 'UNPROVEN',
+      atom: TranslationSemanticAtom.equipmentIdentity,
+      status: 'U',
+      reason: 'exact equipment identity is not proven',
+    ),
   });
 }
 
 String _blockedAuditResponse(TranslationSemanticAtom atom) {
   return _auditResponse(<TranslationPair, Map<String, Object?>>{
-    TranslationPair.ruEn: _blocked(atom),
-    TranslationPair.ruTh: _blocked(atom),
+    TranslationPair.ruEn: _issueResult(
+      pair: TranslationPair.ruEn,
+      result: 'BLOCKED',
+      atom: atom,
+      status: 'X',
+      reason: 'material semantic mismatch',
+    ),
+    TranslationPair.ruTh: _issueResult(
+      pair: TranslationPair.ruTh,
+      result: 'BLOCKED',
+      atom: atom,
+      status: 'X',
+      reason: 'material semantic mismatch',
+    ),
     TranslationPair.enTh: <String, Object?>{
       'RESULT': 'CLEAR',
       'ISSUES': <Object?>[],
@@ -400,9 +428,15 @@ String _blockedAuditResponse(TranslationSemanticAtom atom) {
   });
 }
 
-String _styleOnlyAuditResponse() {
+String _ambiguityAuditResponse() {
   return _auditResponse(<TranslationPair, Map<String, Object?>>{
-    TranslationPair.ruEn: _blocked(TranslationSemanticAtom.canonicalStyle),
+    TranslationPair.ruEn: _issueResult(
+      pair: TranslationPair.ruEn,
+      result: 'UNPROVEN',
+      atom: TranslationSemanticAtom.ambiguity,
+      status: 'U',
+      reason: 'role interpretation is unresolved',
+    ),
     TranslationPair.ruTh: <String, Object?>{
       'RESULT': 'CLEAR',
       'ISSUES': <Object?>[],
@@ -414,37 +448,80 @@ String _styleOnlyAuditResponse() {
   });
 }
 
-Map<String, Object?> _blocked(TranslationSemanticAtom atom) {
+String _styleOnlyAuditResponse() {
+  return _auditResponse(<TranslationPair, Map<String, Object?>>{
+    TranslationPair.ruEn: _issueResult(
+      pair: TranslationPair.ruEn,
+      result: 'BLOCKED',
+      atom: TranslationSemanticAtom.canonicalStyle,
+      status: 'X',
+      reason: 'noncanonical service wording',
+    ),
+    TranslationPair.ruTh: <String, Object?>{
+      'RESULT': 'CLEAR',
+      'ISSUES': <Object?>[],
+    },
+    TranslationPair.enTh: <String, Object?>{
+      'RESULT': 'CLEAR',
+      'ISSUES': <Object?>[],
+    },
+  });
+}
+
+Map<String, Object?> _issueResult({
+  required TranslationPair pair,
+  required String result,
+  required TranslationSemanticAtom atom,
+  required String status,
+  required String reason,
+}) {
+  final ({String left, String right}) fragments = _pairFragments(pair);
   return <String, Object?>{
-    'RESULT': 'BLOCKED',
+    'RESULT': result,
     'ISSUES': <Object?>[
-      <String, Object?>{'ATOM': atom.code, 'STATUS': 'X'},
+      <String, Object?>{
+        'ATOM': atom.code,
+        'STATUS': status,
+        'LEFT': fragments.left,
+        'RIGHT': fragments.right,
+        'REASON': reason,
+      },
     ],
   };
 }
 
-Map<String, Object?> _unproven(TranslationSemanticAtom atom) {
-  return <String, Object?>{
-    'RESULT': 'UNPROVEN',
-    'ISSUES': <Object?>[
-      <String, Object?>{'ATOM': atom.code, 'STATUS': 'U'},
-    ],
+({String left, String right}) _pairFragments(TranslationPair pair) {
+  return switch (pair) {
+    TranslationPair.ruEn => (left: 'варочную панель', right: 'cooktop'),
+    TranslationPair.ruTh => (left: 'варочную панель', right: 'เตาไฟ'),
+    TranslationPair.enTh => (left: 'cooktop', right: 'เตาไฟ'),
   };
 }
 
 String _auditResponse(Map<TranslationPair, Map<String, Object?>> pairs) {
   return jsonEncode(<String, Object?>{
-    for (final TranslationPair pair in TranslationPair.values)
-      pair.code: pairs[pair],
+    'PAIR_RESULTS': <String, Object?>{
+      for (final TranslationPair pair in TranslationPair.values)
+        pair.code: pairs[pair],
+    },
   });
 }
 
-String _exactClear() => '{"RESULT":"CLEAR","ATOM":null}';
+String _challengeClear() => '{"RESULT":"CLEAR","DISQUALIFIERS":[]}';
 
-String _exactNotCertified(TranslationSemanticAtom atom) {
+String _challengeUnproven() {
   return jsonEncode(<String, Object?>{
-    'RESULT': 'NOT_CERTIFIED',
-    'ATOM': atom.code,
+    'RESULT': 'UNPROVEN',
+    'DISQUALIFIERS': <Object?>[
+      <String, Object?>{
+        'PAIR': 'EN_TH',
+        'ATOM': 'equipment_identity',
+        'STATUS': 'U',
+        'LEFT': 'cooktop',
+        'RIGHT': 'เตาไฟ',
+        'REASON': 'exact equipment identity is not proven',
+      },
+    ],
   });
 }
 
@@ -519,22 +596,14 @@ final class _TestPolicy implements TranslatorPolicy {
   }
 
   @override
-  String buildExactChallengerSystemPrompt(TranslationPair pair) {
-    return 'exact ${pair.code}';
-  }
+  String buildExactChallengerSystemPrompt() => 'exact global';
 
   @override
   String buildExactChallengerUserPrompt({
-    required TranslationPair pair,
-    required String leftText,
-    required String rightText,
+    required String ru,
+    required String en,
+    required String th,
   }) {
-    return jsonEncode(<String, String>{
-      'PAIR': pair.code,
-      'LEFT_LANGUAGE': pair.leftLanguage.code,
-      'LEFT_TEXT': leftText,
-      'RIGHT_LANGUAGE': pair.rightLanguage.code,
-      'RIGHT_TEXT': rightText,
-    });
+    return jsonEncode(<String, String>{'RU': ru, 'EN': en, 'TH': th});
   }
 }
