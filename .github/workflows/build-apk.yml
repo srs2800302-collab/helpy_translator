@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - registry-studio/modular-rebuild
+      - registry-studio/stage3-clean-rebuild
 
 jobs:
   build:
