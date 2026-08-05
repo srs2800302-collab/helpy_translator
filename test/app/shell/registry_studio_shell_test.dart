@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/app/bootstrap/registry_studio_application.dart';
+import 'package:helpy_translator/app/localization/registry_studio_locale_store.dart';
 import 'package:helpy_translator/app/shell/registry_studio_shell.dart';
 import 'package:helpy_translator/registry_studio/core/domain/evidence/source_evidence.dart';
 import 'package:helpy_translator/registry_studio/core/domain/value_objects/registry_path.dart';
@@ -2139,6 +2140,9 @@ void main() {
           registrySnapshotRevisionLoader: loader,
           registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
           registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+          translatorWorkspace: const SizedBox(
+            key: ValueKey<String>('translator-workspace'),
+          ),
         ),
       );
 
@@ -2216,7 +2220,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('Перевод и проверка формулировок RU / EN / TH'),
+        find.byKey(const ValueKey<String>('translator-workspace')),
         findsOneWidget,
       );
     },
@@ -4062,6 +4066,78 @@ void main() {
     expect(find.text('Найдено: 1'), findsOneWidget);
     expect(find.text('Результаты поиска · 1 из 2'), findsOneWidget);
   });
+
+  testWidgets('switches and persists RU EN TH locale from shared app bar', (
+    WidgetTester tester,
+  ) async {
+    final _QueuedRegistrySnapshotLoader loader = _QueuedRegistrySnapshotLoader(
+      <Future<RegistrySnapshot> Function()>[() async => snapshot],
+    );
+    final _MemoryRegistryStudioLocaleStore localeStore =
+        _MemoryRegistryStudioLocaleStore();
+
+    await tester.pumpWidget(
+      RegistryStudioApplication(
+        registrySnapshotLoader: loader,
+        registrySnapshotRefreshLoader: loader,
+        registrySnapshotRevisionLoader: loader,
+        registryRevisionStateStore: _MemoryRegistryRevisionStateStore(),
+        registryAnalysisHistoryStore: _MemoryRegistryAnalysisHistoryStore(),
+        localeStore: localeStore,
+        translatorWorkspace: const SizedBox.shrink(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('registry-studio-language-app-bar-button'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Сменить язык интерфейса'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('registry-studio-language-app-bar-button'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-studio-language-en')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(localeStore.languageCode, 'en');
+    expect(find.byTooltip('Change interface language'), findsOneWidget);
+
+    await tester.tap(find.text('Translator').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('translator-access-key-app-bar-button'),
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('registry-studio-language-app-bar-button'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registry-studio-language-th')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(localeStore.languageCode, 'th');
+    expect(find.byTooltip('เปลี่ยนภาษาของอินเทอร์เฟซ'), findsOneWidget);
+  });
 }
 
 final class _QueuedRegistrySnapshotLoader
@@ -4160,5 +4236,18 @@ final class _MemoryRegistryRevisionStateStore
   Future<void> saveRevisionState(RegistryRevisionState state) async {
     saveCount += 1;
     this.state = state;
+  }
+}
+
+final class _MemoryRegistryStudioLocaleStore
+    implements RegistryStudioLocaleStore {
+  String? languageCode;
+
+  @override
+  Future<String?> loadLanguageCode() async => languageCode;
+
+  @override
+  Future<void> saveLanguageCode(String languageCode) async {
+    this.languageCode = languageCode;
   }
 }
