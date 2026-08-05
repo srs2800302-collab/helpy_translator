@@ -71,7 +71,7 @@ final class ConservativeHonestyAssessmentPolicy
 
     if (observations.isEmpty) {
       return MatrixAssessment(
-        verdict: MatrixVerdict.noCriticalDriftDetected,
+        verdict: MatrixVerdict.indeterminate,
         observations: observations,
         limitations: limitations,
       );

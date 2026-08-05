@@ -50,7 +50,7 @@ void main() {
         expect(scenario.result.routes, hasLength(6));
         expect(
           scenario.result.assessment.verdict,
-          MatrixVerdict.noCriticalDriftDetected,
+          MatrixVerdict.acceptableVariation,
         );
       }
     },
@@ -114,6 +114,7 @@ Future<_BudgetScenario> _runScenario({
             for (int index = 0; index < routes.length; index += 1)
               if (terminologyIssue && index == problemIndex)
                 <String, Object?>{
+                  'route': (routes[index] as Map<String, dynamic>)['route'],
                   'judgment': 'DIFFERENT_MEANING',
                   'difference': <String, Object?>{
                     'difference_type': 'TERMINOLOGY_CHANGE',
@@ -129,6 +130,7 @@ Future<_BudgetScenario> _runScenario({
                 }
               else
                 <String, Object?>{
+                  'route': (routes[index] as Map<String, dynamic>)['route'],
                   'judgment': 'SAME_MEANING',
                   'difference': null,
                   'limitations': <Object>[],

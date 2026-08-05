@@ -124,7 +124,7 @@ void main() {
   });
 
   test(
-    'clean route-by-route prototype audit returns no observations',
+    'clean route-by-route prototype audit preserves all six results',
     () async {
       final List<TranslationRouteResult> routes = _matrixResults(
         sourceLanguage: TranslationLanguage.english,
@@ -155,7 +155,24 @@ void main() {
       expect(requestCount, 1);
       expect(systemPrompt, contains('compare only that route'));
       expect(systemPrompt, contains('exactly six entries'));
-      expect(report.observations, isEmpty);
+      expect(systemPrompt, contains('"route": "<copy the exact route id>"'));
+      expect(systemPrompt, isNot(contains('"judgment": "SAME_MEANING"')));
+      expect(report.observations, hasLength(6));
+      expect(
+        report.observations.map(
+          (SemanticObservation observation) => observation.routeId,
+        ),
+        routes.map((TranslationRouteResult route) => route.route.id),
+      );
+      expect(
+        report.observations.every(
+          (SemanticObservation observation) =>
+              observation.preservation == MeaningPreservation.preserved &&
+              observation.verificationStatus ==
+                  ObservationVerificationStatus.confirmed,
+        ),
+        isTrue,
+      );
       expect(report.limitations, isEmpty);
     },
   );
@@ -203,16 +220,29 @@ void main() {
     );
 
     expect(report.limitations, isEmpty);
-    expect(report.observations, hasLength(1));
-    expect(report.observations.single.routeId, problem.route.id);
-    expect(report.observations.single.dimension, SemanticDimension.specificity);
+    expect(report.observations, hasLength(6));
+    final SemanticObservation problemObservation = report.observations
+        .singleWhere(
+          (SemanticObservation observation) =>
+              observation.routeId == problem.route.id,
+        );
+    expect(problemObservation.dimension, SemanticDimension.specificity);
+    expect(problemObservation.preservation, MeaningPreservation.altered);
     expect(
-      report.observations.single.preservation,
-      MeaningPreservation.altered,
+      problemObservation.verificationStatus,
+      ObservationVerificationStatus.confirmed,
     );
     expect(
-      report.observations.single.verificationStatus,
-      ObservationVerificationStatus.confirmed,
+      report.observations
+          .where(
+            (SemanticObservation observation) =>
+                observation.routeId != problem.route.id,
+          )
+          .every(
+            (SemanticObservation observation) =>
+                observation.preservation == MeaningPreservation.preserved,
+          ),
+      isTrue,
     );
   });
 
@@ -260,12 +290,14 @@ void main() {
       );
 
       expect(report.limitations, isEmpty);
-      expect(report.observations, hasLength(1));
-      expect(report.observations.single.dimension, SemanticDimension.object);
-      expect(
-        report.observations.single.preservation,
-        MeaningPreservation.altered,
-      );
+      expect(report.observations, hasLength(6));
+      final SemanticObservation problemObservation = report.observations
+          .singleWhere(
+            (SemanticObservation observation) =>
+                observation.routeId == problem.route.id,
+          );
+      expect(problemObservation.dimension, SemanticDimension.object);
+      expect(problemObservation.preservation, MeaningPreservation.altered);
     },
   );
 
@@ -301,8 +333,66 @@ void main() {
     );
 
     expect(requestCount, 2);
-    expect(report.observations, isEmpty);
+    expect(report.observations, hasLength(6));
+    expect(
+      report.observations.every(
+        (SemanticObservation observation) =>
+            observation.preservation == MeaningPreservation.preserved,
+      ),
+      isTrue,
+    );
     expect(report.limitations, isEmpty);
+  });
+
+  test('prototype audit route mismatch is never accepted as clean', () async {
+    final List<TranslationRouteResult> routes = _matrixResults(
+      sourceLanguage: TranslationLanguage.english,
+      sourceText: 'Source',
+    );
+    int requestCount = 0;
+
+    final MockClient httpClient = MockClient((http.Request request) async {
+      requestCount += 1;
+
+      return _chatResponse(
+        jsonEncode(
+          _auditResponse(
+            routes,
+            replacements: <int, Map<String, Object?>>{
+              1: <String, Object?>{
+                'route': routes.first.route.id,
+                ..._sameMeaningAudit(),
+              },
+            },
+          ),
+        ),
+      );
+    });
+    final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
+      chatClient: TyphoonChatClient(config: config, httpClient: httpClient),
+      config: config,
+    );
+    addTearDown(gateway.close);
+
+    final report = await gateway.auditPrototypeMatrix(
+      apiKey: 'secret',
+      originalSourceText: 'Source',
+      originalSourceLanguage: TranslationLanguage.english,
+      routes: routes,
+    );
+
+    expect(requestCount, 2);
+    expect(report.limitations, <String>['AUDIT_RESPONSE_INVALID']);
+    expect(report.observations, hasLength(6));
+    final SemanticObservation mismatchedRouteObservation = report.observations
+        .singleWhere(
+          (SemanticObservation observation) =>
+              observation.routeId == routes[1].route.id,
+        );
+    expect(
+      mismatchedRouteObservation.verificationStatus,
+      ObservationVerificationStatus.unverifiable,
+    );
   });
 
   test('two invalid prototype audits become an indeterminate report', () async {
@@ -383,11 +473,27 @@ void main() {
 
     expect(requestCount, 2);
     expect(report.limitations, <String>['AUDIT_RESPONSE_INVALID']);
-    expect(report.observations, hasLength(1));
-    expect(report.observations.single.routeId, routes[2].route.id);
+    expect(report.observations, hasLength(6));
+    final SemanticObservation malformedObservation = report.observations
+        .singleWhere(
+          (SemanticObservation observation) =>
+              observation.routeId == routes[2].route.id,
+        );
     expect(
-      report.observations.single.verificationStatus,
+      malformedObservation.verificationStatus,
       ObservationVerificationStatus.unverifiable,
+    );
+    expect(
+      report.observations
+          .where(
+            (SemanticObservation observation) =>
+                observation.routeId != routes[2].route.id,
+          )
+          .every(
+            (SemanticObservation observation) =>
+                observation.preservation == MeaningPreservation.preserved,
+          ),
+      isTrue,
     );
   });
 }
@@ -400,7 +506,10 @@ Map<String, Object> _auditResponse(
   return <String, Object>{
     'route_audits': <Object>[
       for (int index = 0; index < routes.length; index += 1)
-        replacements[index] ?? _sameMeaningAudit(),
+        <String, Object?>{
+          'route': routes[index].route.id,
+          ...(replacements[index] ?? _sameMeaningAudit()),
+        },
     ],
   };
 }

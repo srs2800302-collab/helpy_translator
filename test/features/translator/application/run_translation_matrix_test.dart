@@ -65,7 +65,7 @@ void main() {
     expect(gateway.prototypeAuditCalls, 1);
     expect(gateway.batchCalls, 0);
     expect(gateway.regularAuditCalls, 0);
-    expect(result.assessment.verdict, MatrixVerdict.noCriticalDriftDetected);
+    expect(result.assessment.verdict, MatrixVerdict.acceptableVariation);
     expect(result.toJson()['audit_coverage'], 'prototype');
     expect(progress.last.stage, TranslatorProgressStage.completed);
     expect(progress.last.completedSteps, 2);
@@ -74,9 +74,13 @@ void main() {
 
   test('confirmed primary meaning drift remains unreliable', () async {
     gateway.prototypeAuditReports.add(
-      const SemanticAuditReport(
+      SemanticAuditReport(
         observations: <SemanticObservation>[
-          SemanticObservation(
+          _preservedObservation(
+            routeId: 'RU_TO_EN',
+            role: TranslationRouteRole.primary,
+          ),
+          const SemanticObservation(
             routeId: 'RU_TO_TH',
             routeRole: TranslationRouteRole.primary,
             relation: SemanticRelation.substitution,
@@ -86,8 +90,24 @@ void main() {
             sourceExcerpt: 'панель',
             targetExcerpt: 'เตา',
           ),
+          _preservedObservation(
+            routeId: 'EN_TO_RU',
+            role: TranslationRouteRole.crossCheck,
+          ),
+          _preservedObservation(
+            routeId: 'EN_TO_TH',
+            role: TranslationRouteRole.crossCheck,
+          ),
+          _preservedObservation(
+            routeId: 'TH_TO_RU',
+            role: TranslationRouteRole.crossCheck,
+          ),
+          _preservedObservation(
+            routeId: 'TH_TO_EN',
+            role: TranslationRouteRole.crossCheck,
+          ),
         ],
-        limitations: <String>[],
+        limitations: const <String>[],
       ),
     );
 
@@ -126,6 +146,75 @@ void main() {
 
     expect(gateway.prototypeTranslationCalls, 1);
     expect(gateway.prototypeAuditCalls, 0);
+  });
+
+  test('incomplete audit coverage is rejected before assessment', () async {
+    gateway.prototypeAuditReports.add(
+      const SemanticAuditReport(
+        observations: <SemanticObservation>[],
+        limitations: <String>[],
+      ),
+    );
+
+    await expectLater(
+      useCase(
+        sourceText: 'Source',
+        sourceLanguageSelection: SourceLanguageSelection.english,
+        cancellationSignal: TranslatorCancellationSignal(),
+        onProgress: (_) {},
+      ),
+      throwsA(
+        isA<TranslatorException>().having(
+          (TranslatorException error) => error.kind,
+          'kind',
+          TranslatorFailureKind.invalidResponse,
+        ),
+      ),
+    );
+
+    expect(gateway.prototypeTranslationCalls, 1);
+    expect(gateway.prototypeAuditCalls, 1);
+  });
+
+  test('duplicate audit route identifiers are rejected', () async {
+    gateway.prototypeAuditReports.add(
+      SemanticAuditReport(
+        observations: List<SemanticObservation>.generate(
+          6,
+          (_) => const SemanticObservation(
+            routeId: 'EN_TO_RU',
+            routeRole: TranslationRouteRole.primary,
+            relation: SemanticRelation.wordingVariation,
+            dimension: SemanticDimension.proposition,
+            preservation: MeaningPreservation.preserved,
+            verificationStatus: ObservationVerificationStatus.confirmed,
+            sourceExcerpt: 'Source',
+            targetExcerpt: 'Перевод',
+          ),
+          growable: false,
+        ),
+        limitations: const <String>[],
+      ),
+    );
+
+    await expectLater(
+      useCase(
+        sourceText: 'Source',
+        sourceLanguageSelection: SourceLanguageSelection.english,
+        cancellationSignal: TranslatorCancellationSignal(),
+        onProgress: (_) {},
+      ),
+      throwsA(
+        isA<TranslatorException>().having(
+          (TranslatorException error) => error.kind,
+          'kind',
+          TranslatorFailureKind.invalidResponse,
+        ),
+      ),
+    );
+
+    expect(gateway.prototypeTranslationCalls, 1);
+    expect(gateway.prototypeAuditCalls, 1);
   });
 
   test('automatic mixed-language input fails without provider calls', () async {
@@ -201,6 +290,22 @@ void main() {
     expect(gateway.prototypeTranslationCalls, 0);
     expect(gateway.prototypeAuditCalls, 0);
   });
+}
+
+SemanticObservation _preservedObservation({
+  required String routeId,
+  required TranslationRouteRole role,
+}) {
+  return SemanticObservation(
+    routeId: routeId,
+    routeRole: role,
+    relation: SemanticRelation.wordingVariation,
+    dimension: SemanticDimension.proposition,
+    preservation: MeaningPreservation.preserved,
+    verificationStatus: ObservationVerificationStatus.confirmed,
+    sourceExcerpt: '$routeId-source',
+    targetExcerpt: '$routeId-target',
+  );
 }
 
 final class _ThrowingApiKeyStore implements TranslatorApiKeyStore {
@@ -345,9 +450,21 @@ final class _RecordingGateway implements TranslatorGateway {
     prototypeAuditCalls += 1;
 
     if (prototypeAuditReports.isEmpty) {
-      return const SemanticAuditReport(
-        observations: <SemanticObservation>[],
-        limitations: <String>[],
+      return SemanticAuditReport(
+        observations: <SemanticObservation>[
+          for (final TranslationRouteResult route in routes)
+            SemanticObservation(
+              routeId: route.route.id,
+              routeRole: route.route.role,
+              relation: SemanticRelation.wordingVariation,
+              dimension: SemanticDimension.proposition,
+              preservation: MeaningPreservation.preserved,
+              verificationStatus: ObservationVerificationStatus.confirmed,
+              sourceExcerpt: route.sourceText,
+              targetExcerpt: route.translatedText,
+            ),
+        ],
+        limitations: const <String>[],
       );
     }
 

@@ -9,7 +9,7 @@ void main() {
   const ConservativeHonestyAssessmentPolicy policy =
       ConservativeHonestyAssessmentPolicy();
 
-  test('empty valid report does not claim absolute equivalence', () {
+  test('empty report is indeterminate and never green', () {
     final MatrixAssessment result = policy.assess(
       const SemanticAuditReport(
         observations: <SemanticObservation>[],
@@ -17,7 +17,7 @@ void main() {
       ),
     );
 
-    expect(result.verdict, MatrixVerdict.noCriticalDriftDetected);
+    expect(result.verdict, MatrixVerdict.indeterminate);
   });
 
   test('confirmed critical primary drift is unreliable', () {

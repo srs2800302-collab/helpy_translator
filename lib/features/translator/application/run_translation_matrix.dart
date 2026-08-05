@@ -1,5 +1,6 @@
 import '../domain/entities/language_detection_result.dart';
 import '../domain/entities/semantic_audit_report.dart';
+import '../domain/entities/semantic_observation.dart';
 import '../domain/entities/translation_language.dart';
 import '../domain/entities/translation_matrix_result.dart';
 import '../domain/entities/translation_route.dart';
@@ -132,6 +133,8 @@ final class RunTranslationMatrix {
     );
 
     cancellationSignal.throwIfCancelled();
+
+    _validatePrototypeAuditReport(routes: routeResults, report: auditReport);
 
     final assessment = assessmentPolicy.assess(auditReport);
 
@@ -284,6 +287,46 @@ final class RunTranslationMatrix {
           'primary translation as its source text.',
         );
       }
+    }
+  }
+
+  static void _validatePrototypeAuditReport({
+    required List<TranslationRouteResult> routes,
+    required SemanticAuditReport report,
+  }) {
+    if (report.observations.length != routes.length) {
+      throw const TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'The audit did not return one result for every translation route.',
+      );
+    }
+
+    final Map<String, TranslationRouteRole> expectedRolesByRouteId =
+        <String, TranslationRouteRole>{
+          for (final TranslationRouteResult route in routes)
+            route.route.id: route.route.role,
+        };
+    final Set<String> seenRouteIds = <String>{};
+
+    for (final SemanticObservation observation in report.observations) {
+      final TranslationRouteRole? expectedRole =
+          expectedRolesByRouteId[observation.routeId];
+
+      if (expectedRole == null ||
+          !seenRouteIds.add(observation.routeId) ||
+          observation.routeRole != expectedRole) {
+        throw const TranslatorException(
+          TranslatorFailureKind.invalidResponse,
+          'The audit returned inconsistent translation-route coverage.',
+        );
+      }
+    }
+
+    if (seenRouteIds.length != expectedRolesByRouteId.length) {
+      throw const TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'The audit omitted one or more translation routes.',
+      );
     }
   }
 
