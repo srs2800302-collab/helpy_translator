@@ -12,9 +12,12 @@ import 'typhoon_translator_config.dart';
 ///
 /// The source-side analyst never receives target text. The target-side analyst
 /// never receives source text. The pairwise judge receives source/target pairs
-/// but never receives either analyst's frames. A fifth provider call is made
-/// only when those three signals disagree, and that call can only confirm
-/// drift or leave the route unresolved; it can never upgrade a route to green.
+/// but never receives either analyst's frames. These roles are data-isolated,
+/// not model-independent: the current application configuration uses the same
+/// API-verified model for every pass with a different prompt and input view.
+/// A fifth provider call is made only when the three signals disagree, and that
+/// call can only confirm drift or leave the route unresolved; it can never
+/// upgrade a route to green.
 final class BlindSemanticAuditPipeline {
   BlindSemanticAuditPipeline({
     required TyphoonChatClient chatClient,
@@ -50,7 +53,7 @@ final class BlindSemanticAuditPipeline {
         apiKey: apiKey,
         routes: routes,
         side: _FrameSide.source,
-        model: _config.auditModel,
+        model: _config.model,
         systemPrompt: _sourceFrameSystemPrompt,
       );
       final _FramePass targetPass = await _runFramePass(
@@ -63,7 +66,7 @@ final class BlindSemanticAuditPipeline {
       final _PairPass pairPass = await _runPairPass(
         apiKey: apiKey,
         routes: routes,
-        model: _config.auditModel,
+        model: _config.model,
         systemPrompt: _pairJudgeSystemPrompt,
       );
 

@@ -124,9 +124,13 @@ void main() {
       );
 
       expect(requestBodies, hasLength(3));
-      expect(requestBodies[0]['model'], config.auditModel);
+      expect(requestBodies[0]['model'], config.model);
       expect(requestBodies[1]['model'], config.model);
-      expect(requestBodies[2]['model'], config.auditModel);
+      expect(requestBodies[2]['model'], config.model);
+      expect(
+        requestBodies.map((Map<String, dynamic> body) => body['model']),
+        everyElement(config.model),
+      );
       expect(report.observations, hasLength(6));
       expect(
         report.observations.every(

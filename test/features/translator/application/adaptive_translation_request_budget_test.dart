@@ -17,6 +17,12 @@ import 'package:helpy_translator/features/translator/domain/services/source_lang
 import 'package:helpy_translator/features/translator/domain/services/translation_route_planner.dart';
 
 void main() {
+  test('all blind consensus roles use the live provider model', () {
+    const TyphoonTranslatorConfig config = TyphoonTranslatorConfig();
+
+    expect(config.model, 'typhoon-v2.5-30b-a3b-instruct');
+  });
+
   test(
     'blind consensus workflow uses four provider calls for RU EN and TH',
     () async {
@@ -43,6 +49,10 @@ void main() {
         );
 
         expect(scenario.requestCount, 4);
+        expect(
+          scenario.requestModels,
+          everyElement('typhoon-v2.5-30b-a3b-instruct'),
+        );
         expect(
           scenario.result.auditCoverage,
           TranslationAuditCoverage.blindConsensus,
@@ -79,6 +89,10 @@ void main() {
         );
 
         expect(scenario.requestCount, 5);
+        expect(
+          scenario.requestModels,
+          everyElement('typhoon-v2.5-30b-a3b-instruct'),
+        );
         expect(scenario.result.routes, hasLength(6));
         expect(
           scenario.result.assessment.verdict,
@@ -97,11 +111,20 @@ Future<_BudgetScenario> _runScenario({
 }) async {
   const TyphoonTranslatorConfig config = TyphoonTranslatorConfig();
   int requestCount = 0;
+  final List<String> requestModels = <String>[];
 
   final MockClient httpClient = MockClient((http.Request request) async {
     requestCount += 1;
     final Map<String, dynamic> body =
         jsonDecode(request.body) as Map<String, dynamic>;
+    final Object? rawModel = body['model'];
+
+    if (rawModel is! String || rawModel.isEmpty) {
+      throw StateError('Provider request model is missing.');
+    }
+
+    requestModels.add(rawModel);
+
     final String prompt = _systemPrompt(body);
     final Map<String, dynamic> payload = _userDataFromBody(body);
 
@@ -160,7 +183,11 @@ Future<_BudgetScenario> _runScenario({
       onProgress: (_) {},
     );
 
-    return _BudgetScenario(result: result, requestCount: requestCount);
+    return _BudgetScenario(
+      result: result,
+      requestCount: requestCount,
+      requestModels: List<String>.unmodifiable(requestModels),
+    );
   } finally {
     gateway.close();
   }
@@ -313,10 +340,15 @@ final class _StaticApiKeyStore implements TranslatorApiKeyStore {
 }
 
 final class _BudgetScenario {
-  const _BudgetScenario({required this.result, required this.requestCount});
+  const _BudgetScenario({
+    required this.result,
+    required this.requestCount,
+    required this.requestModels,
+  });
 
   final TranslationMatrixResult result;
   final int requestCount;
+  final List<String> requestModels;
 }
 
 final class _SourceCase {

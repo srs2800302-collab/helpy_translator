@@ -39,7 +39,7 @@ void main() {
   });
 
   test(
-    'blind consensus disclosure states isolation and provider limitation',
+    'blind consensus disclosure states one-model isolation and provider limitation',
     () {
       const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
         Locale('ru'),
@@ -58,21 +58,27 @@ void main() {
       );
       expect(ruDisclosure, contains('дополнительная слепая проверка'));
       expect(ruDisclosure, contains('не видят выводы друг друга'));
-      expect(ruDisclosure, contains('одного API-провайдера'));
+      expect(
+        ruDisclosure,
+        contains('одну и ту же модель одного API-провайдера'),
+      );
       expect(ruDisclosure, contains('не независимая экспертиза'));
 
       final String enDisclosure = en.auditPassDisclosure;
       expect(enDisclosure, contains('three isolated automated requests'));
       expect(enDisclosure, contains('an additional blind check'));
       expect(enDisclosure, contains("do not see one another's conclusions"));
-      expect(enDisclosure, contains('one API provider'));
+      expect(enDisclosure, contains('the same model from one API provider'));
       expect(enDisclosure, contains('not an independent review'));
 
       final String thDisclosure = th.auditPassDisclosure;
       expect(thDisclosure, contains('คำขออัตโนมัติที่แยกจากกันสามรายการ'));
       expect(thDisclosure, contains('ตรวจสอบเฉพาะเส้นทางที่ขัดแย้งเพิ่มเติม'));
       expect(thDisclosure, contains('ผู้ตรวจสอบไม่เห็นผลของกันและกัน'));
-      expect(thDisclosure, contains('ผู้ให้บริการ API รายเดียวกัน'));
+      expect(
+        thDisclosure,
+        contains('โมเดลเดียวกันจากผู้ให้บริการ API รายเดียวกัน'),
+      );
       expect(thDisclosure, contains('ไม่ใช่การตรวจสอบโดยผู้เชี่ยวชาญอิสระ'));
     },
   );

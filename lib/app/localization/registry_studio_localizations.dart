@@ -276,19 +276,20 @@ final class RegistryStudioLocalizations {
         'анализ источников, анализ переводов и попарное сравнение. При '
         'расхождении выполняется дополнительная слепая проверка только '
         'спорных маршрутов. Проверки не видят выводы друг друга, но используют '
-        'одного API-провайдера; это не независимая экспертиза.',
+        'одну и ту же модель одного API-провайдера; это не независимая '
+        'экспертиза.',
     en:
         'The matrix is checked by three isolated automated requests: source '
         'analysis, target analysis, and pairwise comparison. If they disagree, '
         'an additional blind check runs only for disputed routes. The checks '
-        'do not see one another\'s conclusions, but they use one API provider; '
-        'this is not an independent review.',
+        'do not see one another\'s conclusions, but they use the same model '
+        'from one API provider; this is not an independent review.',
     th:
         'ระบบตรวจสอบเมทริกซ์ด้วยคำขออัตโนมัติที่แยกจากกันสามรายการ: '
         'วิเคราะห์ต้นฉบับ วิเคราะห์คำแปล และเปรียบเทียบเป็นคู่ '
         'หากผลไม่ตรงกัน ระบบจะตรวจสอบเฉพาะเส้นทางที่ขัดแย้งเพิ่มเติม '
-        'ผู้ตรวจสอบไม่เห็นผลของกันและกัน แต่ใช้ผู้ให้บริการ API รายเดียวกัน '
-        'จึงไม่ใช่การตรวจสอบโดยผู้เชี่ยวชาญอิสระ',
+        'ผู้ตรวจสอบไม่เห็นผลของกันและกัน แต่ใช้โมเดลเดียวกันจากผู้ให้บริการ '
+        'API รายเดียวกัน จึงไม่ใช่การตรวจสอบโดยผู้เชี่ยวชาญอิสระ',
   );
 
   String primaryObservationCount(int count) => _value(
