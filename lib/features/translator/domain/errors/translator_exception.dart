@@ -12,11 +12,15 @@ enum TranslatorFailureKind {
 }
 
 final class TranslatorException implements Exception {
-  const TranslatorException(this.kind, this.message);
+  const TranslatorException(this.kind, this.message, {this.statusCode});
 
   final TranslatorFailureKind kind;
   final String message;
+  final int? statusCode;
 
   @override
-  String toString() => 'TranslatorException(${kind.name}): $message';
+  String toString() {
+    final String status = statusCode == null ? '' : ', status=$statusCode';
+    return 'TranslatorException(${kind.name}$status): $message';
+  }
 }

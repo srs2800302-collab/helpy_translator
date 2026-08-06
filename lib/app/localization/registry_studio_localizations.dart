@@ -272,24 +272,27 @@ final class RegistryStudioLocalizations {
 
   String get auditPassDisclosure => _value(
     ru:
-        'Матрица проверена тремя изолированными автоматическими запросами: '
-        'анализ источников, анализ переводов и попарное сравнение. При '
-        'расхождении выполняется дополнительная слепая проверка только '
-        'спорных маршрутов. Проверки не видят выводы друг друга, но используют '
-        'одну и ту же модель одного API-провайдера; это не независимая '
-        'экспертиза.',
+        'После одного запроса матрицы выполняются пять изолированных '
+        'доказательных проверок: анализ источников, анализ переводов, '
+        'поиск контрпримера, двустороннее сопоставление атомов и нейтральная '
+        'проверка доказательств. Допускается только один общий повтор при '
+        'временной сетевой ошибке: максимум семь API-вызовов вместе с '
+        'переводом. Роли используют одну и ту же модель одного '
+        'API-провайдера; это не независимая экспертиза.',
     en:
-        'The matrix is checked by three isolated automated requests: source '
-        'analysis, target analysis, and pairwise comparison. If they disagree, '
-        'an additional blind check runs only for disputed routes. The checks '
-        'do not see one another\'s conclusions, but they use the same model '
-        'from one API provider; this is not an independent review.',
+        'After one matrix request, five isolated evidence checks run: source '
+        'analysis, target analysis, counterexample search, bidirectional atom '
+        'mapping, and neutral evidence verification. Only one shared retry is '
+        'allowed for a transient network failure: at most seven API calls '
+        'including translation. The roles use the same model from one API '
+        'provider; this is not an independent review.',
     th:
-        'ระบบตรวจสอบเมทริกซ์ด้วยคำขออัตโนมัติที่แยกจากกันสามรายการ: '
-        'วิเคราะห์ต้นฉบับ วิเคราะห์คำแปล และเปรียบเทียบเป็นคู่ '
-        'หากผลไม่ตรงกัน ระบบจะตรวจสอบเฉพาะเส้นทางที่ขัดแย้งเพิ่มเติม '
-        'ผู้ตรวจสอบไม่เห็นผลของกันและกัน แต่ใช้โมเดลเดียวกันจากผู้ให้บริการ '
-        'API รายเดียวกัน จึงไม่ใช่การตรวจสอบโดยผู้เชี่ยวชาญอิสระ',
+        'หลังคำขอเมทริกซ์หนึ่งครั้ง ระบบจะตรวจสอบหลักฐานแบบแยกข้อมูลห้ารอบ: '
+        'วิเคราะห์ต้นฉบับ วิเคราะห์คำแปล ค้นหาตัวอย่างโต้แย้ง '
+        'จับคู่อะตอมสองทิศทาง และตรวจสอบหลักฐานอย่างเป็นกลาง '
+        'อนุญาตให้ลองซ้ำร่วมกันได้เพียงหนึ่งครั้งเมื่อเกิดข้อผิดพลาดชั่วคราว '
+        'รวมแล้วไม่เกินเจ็ดคำขอ API รวมการแปล ทุกบทบาทใช้โมเดลเดียวกันจาก'
+        'ผู้ให้บริการ API รายเดียวกัน จึงไม่ใช่การตรวจสอบอิสระ',
   );
 
   String primaryObservationCount(int count) => _value(
@@ -470,30 +473,36 @@ final class RegistryStudioLocalizations {
       'confirmed' => switch (preservationName) {
         'preserved' => _value(
           ru:
-              'Семантические профили источника и перевода совпали, а слепой '
-              'парный аудитор не нашёл конкретного расхождения по '
-              'характеристике «$dimension». Это согласие автоматических '
-              'проверок, а не доказательство абсолютной эквивалентности.',
+              'Атомарные профили полностью сопоставлены по характеристике '
+              '«$dimension», проверка контрпримера не подтвердила расхождение, '
+              'а нейтральный проверяющий подтвердил доказательный контракт. '
+              'Это согласие автоматических ролей одной модели, а не '
+              'доказательство абсолютной эквивалентности.',
           en:
-              'The source and target semantic profiles matched, and the blind '
-              'pair judge found no concrete difference in $dimension. This is '
-              'agreement between automated checks, not proof of absolute '
-              'equivalence.',
+              'The atomic profiles were fully mapped for $dimension, the '
+              'counterexample check did not establish a difference, and the '
+              'neutral verifier confirmed the evidence contract. This is '
+              'agreement between automated roles of one model, not proof of '
+              'absolute equivalence.',
           th:
-              'โปรไฟล์ความหมายของต้นฉบับและคำแปลตรงกัน และผู้ตรวจสอบคู่แบบ '
-              'ไม่เห็นผลอื่นไม่พบความแตกต่างที่ชัดเจนในมิติ $dimension '
-              'นี่คือความสอดคล้องของการตรวจสอบอัตโนมัติ '
+              'โปรไฟล์เชิงอะตอมถูกจับคู่ครบถ้วนในมิติ $dimension '
+              'การตรวจสอบตัวอย่างโต้แย้งไม่ยืนยันความแตกต่าง '
+              'และผู้ตรวจสอบเป็นกลางยืนยันสัญญาหลักฐาน '
+              'นี่คือความสอดคล้องของบทบาทอัตโนมัติจากโมเดลเดียว '
               'ไม่ใช่หลักฐานความเทียบเท่าอย่างสมบูรณ์',
         ),
         'altered' => _value(
           ru:
-              'Изолированные проверки согласованно зафиксировали изменение '
-              'смысла в характеристике «$dimension».',
+              'Контрпример, неполное двустороннее сопоставление атомов и '
+              'нейтральная проверка согласованно подтвердили изменение смысла '
+              'в характеристике «$dimension».',
           en:
-              'The isolated checks consistently detected a meaning change in '
-              '$dimension.',
+              'A counterexample, incomplete bidirectional atom mapping, and '
+              'neutral verification consistently confirmed a meaning change '
+              'in $dimension.',
           th:
-              'การตรวจสอบที่แยกจากกันตรวจพบตรงกันว่า '
+              'ตัวอย่างโต้แย้ง การจับคู่อะตอมสองทิศทางที่ไม่ครบถ้วน '
+              'และการตรวจสอบเป็นกลางยืนยันตรงกันว่า '
               'ความหมายเปลี่ยนไปในมิติ $dimension',
         ),
         _ => _value(
@@ -701,6 +710,95 @@ final class RegistryStudioLocalizations {
         th:
             'โปรไฟล์ความหมายอย่างน้อยหนึ่งรายการมีค่าที่ไม่ทราบ '
             'ระบบจึงไม่อนุญาตผลเชิงบวก',
+      ),
+      'SEMANTIC_ANALYSIS_UNRESOLVED' => _value(
+        ru:
+            'Атомарный анализ источника или перевода содержит неизвестные '
+            'или недостаточно обоснованные элементы.',
+        en:
+            'The source or target atomic analysis contains unknown or '
+            'insufficiently grounded elements.',
+        th:
+            'การวิเคราะห์เชิงอะตอมของต้นฉบับหรือคำแปลมีองค์ประกอบที่ไม่ทราบ '
+            'หรือมีหลักฐานไม่เพียงพอ',
+      ),
+      'AUDIT_EVIDENCE_CONFLICT' => _value(
+        ru:
+            'Поиск контрпримера, двустороннее сопоставление и проверка '
+            'доказательств дали несовместимые результаты.',
+        en:
+            'The counterexample search, bidirectional mapping, and evidence '
+            'verification produced incompatible results.',
+        th:
+            'การค้นหาตัวอย่างโต้แย้ง การจับคู่สองทิศทาง '
+            'และการตรวจสอบหลักฐานให้ผลที่ไม่สอดคล้องกัน',
+      ),
+      'AUDIT_VERIFIER_UNRESOLVED' => _value(
+        ru:
+            'Нейтральный проверяющий не смог подтвердить или отклонить '
+            'предоставленные доказательства.',
+        en:
+            'The neutral verifier could not support or reject the supplied '
+            'evidence.',
+        th: 'ผู้ตรวจสอบเป็นกลางไม่สามารถยืนยันหรือปฏิเสธหลักฐานที่ให้มาได้',
+      ),
+      'AUDIT_EVIDENCE_CONTRACT_REJECTED' => _value(
+        ru:
+            'Ответ проверяющего нарушил доказательный контракт и не '
+            'использован для положительного или отрицательного вывода.',
+        en:
+            'The verifier response violated the evidence contract and was not '
+            'used for a positive or negative conclusion.',
+        th:
+            'คำตอบของผู้ตรวจสอบไม่เป็นไปตามสัญญาหลักฐาน '
+            'จึงไม่ถูกใช้เพื่อสรุปผลเชิงบวกหรือเชิงลบ',
+      ),
+      'AUDIT_PROVIDER_HTTP_400' => _value(
+        ru:
+            'Сервис аудита отклонил запрос с HTTP 400. Повтор не выполнялся, '
+            'поскольку ошибка не является временной.',
+        en:
+            'The audit service rejected the request with HTTP 400. It was not '
+            'retried because the failure is not transient.',
+        th:
+            'บริการตรวจสอบปฏิเสธคำขอด้วย HTTP 400 '
+            'ระบบไม่ลองซ้ำเพราะไม่ใช่ข้อผิดพลาดชั่วคราว',
+      ),
+      'AUDIT_PROVIDER_HTTP_500' => _value(
+        ru:
+            'Сервис аудита продолжил возвращать HTTP 500 после единственного '
+            'разрешённого повтора.',
+        en:
+            'The audit service continued to return HTTP 500 after the single '
+            'allowed retry.',
+        th: 'บริการตรวจสอบยังคงส่ง HTTP 500 หลังการลองซ้ำที่อนุญาตหนึ่งครั้ง',
+      ),
+      'AUDIT_PROVIDER_HTTP_502' => _value(
+        ru:
+            'Сервис аудита продолжил возвращать HTTP 502 после единственного '
+            'разрешённого повтора.',
+        en:
+            'The audit service continued to return HTTP 502 after the single '
+            'allowed retry.',
+        th: 'บริการตรวจสอบยังคงส่ง HTTP 502 หลังการลองซ้ำที่อนุญาตหนึ่งครั้ง',
+      ),
+      'AUDIT_PROVIDER_HTTP_503' => _value(
+        ru:
+            'Сервис аудита продолжил возвращать HTTP 503 после единственного '
+            'разрешённого повтора.',
+        en:
+            'The audit service continued to return HTTP 503 after the single '
+            'allowed retry.',
+        th: 'บริการตรวจสอบยังคงส่ง HTTP 503 หลังการลองซ้ำที่อนุญาตหนึ่งครั้ง',
+      ),
+      'AUDIT_PROVIDER_HTTP_504' => _value(
+        ru:
+            'Сервис аудита продолжил возвращать HTTP 504 после единственного '
+            'разрешённого повтора.',
+        en:
+            'The audit service continued to return HTTP 504 after the single '
+            'allowed retry.',
+        th: 'บริการตรวจสอบยังคงส่ง HTTP 504 หลังการลองซ้ำที่อนุญาตหนึ่งครั้ง',
       ),
       'AUDIT_TRANSPORT_FAILURE' => _value(
         ru:

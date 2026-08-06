@@ -143,16 +143,18 @@ final class TyphoonChatClient {
     }
 
     if (statusCode == 401 || statusCode == 403) {
-      throw const TranslatorException(
+      throw TranslatorException(
         TranslatorFailureKind.authorization,
         'Typhoon API rejected the API key.',
+        statusCode: statusCode,
       );
     }
 
     if (statusCode == 429) {
-      throw const TranslatorException(
+      throw TranslatorException(
         TranslatorFailureKind.rateLimited,
         'Typhoon API rate limit was exceeded.',
+        statusCode: statusCode,
       );
     }
 
@@ -160,12 +162,14 @@ final class TyphoonChatClient {
       throw TranslatorException(
         TranslatorFailureKind.provider,
         'Typhoon API server error ($statusCode).',
+        statusCode: statusCode,
       );
     }
 
     throw TranslatorException(
       TranslatorFailureKind.provider,
       'Typhoon API request failed with status $statusCode.',
+      statusCode: statusCode,
     );
   }
 }

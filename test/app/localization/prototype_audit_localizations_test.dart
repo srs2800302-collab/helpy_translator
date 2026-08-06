@@ -38,48 +38,66 @@ void main() {
     );
   });
 
-  test(
-    'blind consensus disclosure states one-model isolation and provider limitation',
-    () {
-      const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
-        Locale('ru'),
-      );
-      const RegistryStudioLocalizations en = RegistryStudioLocalizations(
-        Locale('en'),
-      );
-      const RegistryStudioLocalizations th = RegistryStudioLocalizations(
-        Locale('th'),
-      );
+  test('disclosure states the fixed six-plus-one call contract', () {
+    const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
+      Locale('ru'),
+    );
+    const RegistryStudioLocalizations en = RegistryStudioLocalizations(
+      Locale('en'),
+    );
+    const RegistryStudioLocalizations th = RegistryStudioLocalizations(
+      Locale('th'),
+    );
 
-      final String ruDisclosure = ru.auditPassDisclosure;
-      expect(
-        ruDisclosure,
-        contains('тремя изолированными автоматическими запросами'),
-      );
-      expect(ruDisclosure, contains('дополнительная слепая проверка'));
-      expect(ruDisclosure, contains('не видят выводы друг друга'));
-      expect(
-        ruDisclosure,
-        contains('одну и ту же модель одного API-провайдера'),
-      );
-      expect(ruDisclosure, contains('не независимая экспертиза'));
+    expect(ru.auditPassDisclosure, contains('пять изолированных'));
+    expect(ru.auditPassDisclosure, contains('максимум семь API-вызовов'));
+    expect(
+      ru.auditPassDisclosure,
+      contains('одну и ту же модель одного API-провайдера'),
+    );
+    expect(ru.auditPassDisclosure, contains('не независимая экспертиза'));
 
-      final String enDisclosure = en.auditPassDisclosure;
-      expect(enDisclosure, contains('three isolated automated requests'));
-      expect(enDisclosure, contains('an additional blind check'));
-      expect(enDisclosure, contains("do not see one another's conclusions"));
-      expect(enDisclosure, contains('the same model from one API provider'));
-      expect(enDisclosure, contains('not an independent review'));
+    expect(en.auditPassDisclosure, contains('five isolated evidence checks'));
+    expect(en.auditPassDisclosure, contains('at most seven API calls'));
+    expect(
+      en.auditPassDisclosure,
+      contains('same model from one API provider'),
+    );
+    expect(en.auditPassDisclosure, contains('not an independent review'));
 
-      final String thDisclosure = th.auditPassDisclosure;
-      expect(thDisclosure, contains('คำขออัตโนมัติที่แยกจากกันสามรายการ'));
-      expect(thDisclosure, contains('ตรวจสอบเฉพาะเส้นทางที่ขัดแย้งเพิ่มเติม'));
-      expect(thDisclosure, contains('ผู้ตรวจสอบไม่เห็นผลของกันและกัน'));
-      expect(
-        thDisclosure,
-        contains('โมเดลเดียวกันจากผู้ให้บริการ API รายเดียวกัน'),
-      );
-      expect(thDisclosure, contains('ไม่ใช่การตรวจสอบโดยผู้เชี่ยวชาญอิสระ'));
-    },
-  );
+    expect(th.auditPassDisclosure, contains('แยกข้อมูลห้ารอบ'));
+    expect(th.auditPassDisclosure, contains('ไม่เกินเจ็ดคำขอ API'));
+    expect(
+      th.auditPassDisclosure,
+      contains('โมเดลเดียวกันจากผู้ให้บริการ API รายเดียวกัน'),
+    );
+    expect(th.auditPassDisclosure, contains('ไม่ใช่การตรวจสอบอิสระ'));
+  });
+
+  test('new evidence limitations are localized', () {
+    const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
+      Locale('ru'),
+    );
+    const RegistryStudioLocalizations en = RegistryStudioLocalizations(
+      Locale('en'),
+    );
+    const RegistryStudioLocalizations th = RegistryStudioLocalizations(
+      Locale('th'),
+    );
+
+    const List<String> codes = <String>[
+      'SEMANTIC_ANALYSIS_UNRESOLVED',
+      'AUDIT_EVIDENCE_CONFLICT',
+      'AUDIT_VERIFIER_UNRESOLVED',
+      'AUDIT_EVIDENCE_CONTRACT_REJECTED',
+      'AUDIT_PROVIDER_HTTP_400',
+      'AUDIT_PROVIDER_HTTP_503',
+    ];
+
+    for (final String code in codes) {
+      expect(ru.auditLimitationLabel(code), isNot(contains(code)));
+      expect(en.auditLimitationLabel(code), isNot(contains(code)));
+      expect(th.auditLimitationLabel(code), isNot(contains(code)));
+    }
+  });
 }

@@ -35,10 +35,13 @@ abstract interface class TranslatorGateway {
     required List<TranslationRouteResult> routes,
   });
 
-  /// Blind multi-auditor verification of the complete matrix.
+  /// Evidence-based verification of the complete matrix.
   ///
-  /// The concrete gateway performs isolated source-side, target-side, and
-  /// pairwise checks and may run one additional conflict-only check.
+  /// The Typhoon implementation performs five isolated audit calls after the
+  /// matrix translation: source analysis, target analysis, adversarial
+  /// challenge, equivalence defense, and neutral evidence verification.
+  /// One transient retry is shared by the complete audit, so a user run is
+  /// bounded to seven provider calls including translation.
   Future<SemanticAuditReport> auditPrototypeMatrix({
     required String apiKey,
     required String originalSourceText,
