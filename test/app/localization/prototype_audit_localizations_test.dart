@@ -3,37 +3,77 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/app/localization/registry_studio_localizations.dart';
 
 void main() {
-  test('prototype audit coverage is localized for all interface languages', () {
+  test('audit coverage is localized for prototype and blind consensus', () {
+    const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
+      Locale('ru'),
+    );
+    const RegistryStudioLocalizations en = RegistryStudioLocalizations(
+      Locale('en'),
+    );
+    const RegistryStudioLocalizations th = RegistryStudioLocalizations(
+      Locale('th'),
+    );
+
     expect(
-      const RegistryStudioLocalizations(
-        Locale('ru'),
-      ).auditCoverageLabel('prototype', 6),
+      ru.auditCoverageLabel('prototype', 6),
       'Прототипная проверка — 6 маршрутов',
     );
+    expect(en.auditCoverageLabel('prototype', 6), 'Prototype audit — 6 routes');
     expect(
-      const RegistryStudioLocalizations(
-        Locale('en'),
-      ).auditCoverageLabel('prototype', 6),
-      'Prototype audit — 6 routes',
+      th.auditCoverageLabel('prototype', 6),
+      'การตรวจสอบแบบต้นแบบ — 6 เส้นทาง',
+    );
+
+    expect(
+      ru.auditCoverageLabel('blindConsensus', 6),
+      'Слепая согласованная проверка — 6 маршрутов',
     );
     expect(
-      const RegistryStudioLocalizations(
-        Locale('th'),
-      ).auditCoverageLabel('prototype', 6),
-      'การตรวจสอบแบบต้นแบบ — 6 เส้นทาง',
+      en.auditCoverageLabel('blindConsensus', 6),
+      'Blind consensus audit — 6 routes',
+    );
+    expect(
+      th.auditCoverageLabel('blindConsensus', 6),
+      'การตรวจสอบแบบแยกข้อมูล — 6 เส้นทาง',
     );
   });
 
   test(
-    'prototype audit disclosure states retry and non-independent review',
+    'blind consensus disclosure states isolation and provider limitation',
     () {
-      final String disclosure = const RegistryStudioLocalizations(
+      const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
         Locale('ru'),
-      ).auditPassDisclosure;
+      );
+      const RegistryStudioLocalizations en = RegistryStudioLocalizations(
+        Locale('en'),
+      );
+      const RegistryStudioLocalizations th = RegistryStudioLocalizations(
+        Locale('th'),
+      );
 
-      expect(disclosure, contains('отдельным запросом'));
-      expect(disclosure, contains('может быть повторён один раз'));
-      expect(disclosure, contains('не независимая экспертиза'));
+      final String ruDisclosure = ru.auditPassDisclosure;
+      expect(
+        ruDisclosure,
+        contains('тремя изолированными автоматическими запросами'),
+      );
+      expect(ruDisclosure, contains('дополнительная слепая проверка'));
+      expect(ruDisclosure, contains('не видят выводы друг друга'));
+      expect(ruDisclosure, contains('одного API-провайдера'));
+      expect(ruDisclosure, contains('не независимая экспертиза'));
+
+      final String enDisclosure = en.auditPassDisclosure;
+      expect(enDisclosure, contains('three isolated automated requests'));
+      expect(enDisclosure, contains('an additional blind check'));
+      expect(enDisclosure, contains("do not see one another's conclusions"));
+      expect(enDisclosure, contains('one API provider'));
+      expect(enDisclosure, contains('not an independent review'));
+
+      final String thDisclosure = th.auditPassDisclosure;
+      expect(thDisclosure, contains('คำขออัตโนมัติที่แยกจากกันสามรายการ'));
+      expect(thDisclosure, contains('ตรวจสอบเฉพาะเส้นทางที่ขัดแย้งเพิ่มเติม'));
+      expect(thDisclosure, contains('ผู้ตรวจสอบไม่เห็นผลของกันและกัน'));
+      expect(thDisclosure, contains('ผู้ให้บริการ API รายเดียวกัน'));
+      expect(thDisclosure, contains('ไม่ใช่การตรวจสอบโดยผู้เชี่ยวชาญอิสระ'));
     },
   );
 }
