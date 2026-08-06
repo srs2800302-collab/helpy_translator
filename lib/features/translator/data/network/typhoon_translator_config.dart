@@ -2,18 +2,21 @@ final class TyphoonTranslatorConfig {
   const TyphoonTranslatorConfig({
     this.baseUrl = 'https://api.opentyphoon.ai/v1',
     this.model = 'typhoon-v2.5-30b-a3b-instruct',
+    this.auditModel = 'typhoon-v2.1-12b-instruct',
     this.requestTimeout = const Duration(seconds: 90),
     this.translationMaxTokens = 2048,
     this.auditMaxTokens = 4096,
     this.auditVerificationMaxTokens = 3072,
   }) : assert(baseUrl != ''),
        assert(model != ''),
+       assert(auditModel != ''),
        assert(translationMaxTokens > 0),
        assert(auditMaxTokens > 0),
        assert(auditVerificationMaxTokens > 0);
 
   final String baseUrl;
   final String model;
+  final String auditModel;
   final Duration requestTimeout;
   final int translationMaxTokens;
   final int auditMaxTokens;

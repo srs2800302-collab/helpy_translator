@@ -21,13 +21,22 @@ final class TyphoonChatClient {
     required String systemPrompt,
     required String userContent,
     required int maxTokens,
+    String? model,
   }) async {
     final String normalizedApiKey = apiKey.trim();
+    final String selectedModel = (model ?? _config.model).trim();
 
     if (normalizedApiKey.isEmpty) {
       throw const TranslatorException(
         TranslatorFailureKind.missingApiKey,
         'Typhoon API key is not configured.',
+      );
+    }
+
+    if (selectedModel.isEmpty) {
+      throw const TranslatorException(
+        TranslatorFailureKind.validation,
+        'Typhoon model identifier is empty.',
       );
     }
 
@@ -43,7 +52,7 @@ final class TyphoonChatClient {
               'Accept': 'application/json',
             },
             body: jsonEncode(<String, Object>{
-              'model': _config.model,
+              'model': selectedModel,
               'messages': <Map<String, String>>[
                 <String, String>{'role': 'system', 'content': systemPrompt},
                 <String, String>{'role': 'user', 'content': userContent},

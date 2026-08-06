@@ -215,6 +215,11 @@ final class RegistryStudioLocalizations {
         en: 'Prototype audit — $routeCount routes',
         th: 'การตรวจสอบแบบต้นแบบ — $routeCount เส้นทาง',
       ),
+      'blindConsensus' => _value(
+        ru: 'Слепая согласованная проверка — $routeCount маршрутов',
+        en: 'Blind consensus audit — $routeCount routes',
+        th: 'การตรวจสอบแบบแยกข้อมูล — $routeCount เส้นทาง',
+      ),
       _ => _value(
         ru: 'Расширенная проверка — $routeCount маршрутов',
         en: 'Expanded audit — $routeCount routes',
@@ -267,18 +272,23 @@ final class RegistryStudioLocalizations {
 
   String get auditPassDisclosure => _value(
     ru:
-        'Вся матрица переводов проверена отдельным запросом к той же модели. '
-        'При неверном формате аудит может быть повторён один раз. Это '
-        'автоматическая оценка, а не независимая экспертиза.',
+        'Матрица проверена тремя изолированными автоматическими запросами: '
+        'анализ источников, анализ переводов и попарное сравнение. При '
+        'расхождении выполняется дополнительная слепая проверка только '
+        'спорных маршрутов. Проверки не видят выводы друг друга, но используют '
+        'одного API-провайдера; это не независимая экспертиза.',
     en:
-        'The complete translation matrix was checked by a separate request '
-        'to the same model. If the response format is invalid, the audit may '
-        'be retried once. This is an automated assessment, not an '
-        'independent review.',
+        'The matrix is checked by three isolated automated requests: source '
+        'analysis, target analysis, and pairwise comparison. If they disagree, '
+        'an additional blind check runs only for disputed routes. The checks '
+        'do not see one another\'s conclusions, but they use one API provider; '
+        'this is not an independent review.',
     th:
-        'ระบบตรวจสอบเมทริกซ์คำแปลทั้งหมดด้วยคำขอแยกไปยังโมเดลเดียวกัน '
-        'หากรูปแบบคำตอบไม่ถูกต้อง ระบบอาจลองตรวจสอบซ้ำอีกหนึ่งครั้ง '
-        'นี่คือการประเมินอัตโนมัติ ไม่ใช่การตรวจสอบอิสระ',
+        'ระบบตรวจสอบเมทริกซ์ด้วยคำขออัตโนมัติที่แยกจากกันสามรายการ: '
+        'วิเคราะห์ต้นฉบับ วิเคราะห์คำแปล และเปรียบเทียบเป็นคู่ '
+        'หากผลไม่ตรงกัน ระบบจะตรวจสอบเฉพาะเส้นทางที่ขัดแย้งเพิ่มเติม '
+        'ผู้ตรวจสอบไม่เห็นผลของกันและกัน แต่ใช้ผู้ให้บริการ API รายเดียวกัน '
+        'จึงไม่ใช่การตรวจสอบโดยผู้เชี่ยวชาญอิสระ',
   );
 
   String primaryObservationCount(int count) => _value(
@@ -300,9 +310,9 @@ final class RegistryStudioLocalizations {
   );
 
   String preservedObservationCount(int count) => _value(
-    ru: 'Локально сохранено в маршрутах: $count',
-    en: 'Locally preserved within routes: $count',
-    th: 'คงความหมายไว้เฉพาะภายในเส้นทาง: $count',
+    ru: 'Автоматические проверки согласованы для маршрутов: $count',
+    en: 'Automated checks agree for routes: $count',
+    th: 'การตรวจสอบอัตโนมัติเห็นพ้องกันในเส้นทาง: $count',
   );
 
   String observationRelationLabel(String relationName) {
@@ -431,9 +441,9 @@ final class RegistryStudioLocalizations {
   String meaningPreservationLabel(String preservationName) {
     return switch (preservationName) {
       'preserved' => _value(
-        ru: 'Смысл сохранён',
-        en: 'Meaning preserved',
-        th: 'ความหมายยังคงเดิม',
+        ru: 'Проверки согласованы',
+        en: 'Checks agree',
+        th: 'ผลการตรวจสอบสอดคล้องกัน',
       ),
       'altered' => _value(
         ru: 'Смысл изменён',
@@ -455,61 +465,66 @@ final class RegistryStudioLocalizations {
     required bool isCrossCheck,
   }) {
     final String dimension = observationDimensionLabel(dimensionName);
-
     final String finding = switch (verificationStatusName) {
       'confirmed' => switch (preservationName) {
         'preserved' => _value(
           ru:
-              'Оба прохода совпали: различие относится к характеристике '
-              '«$dimension», но изменение смысла не подтверждено.',
+              'Семантические профили источника и перевода совпали, а слепой '
+              'парный аудитор не нашёл конкретного расхождения по '
+              'характеристике «$dimension». Это согласие автоматических '
+              'проверок, а не доказательство абсолютной эквивалентности.',
           en:
-              'Both passes agreed: the difference concerns $dimension, '
-              'but altered meaning was not confirmed.',
+              'The source and target semantic profiles matched, and the blind '
+              'pair judge found no concrete difference in $dimension. This is '
+              'agreement between automated checks, not proof of absolute '
+              'equivalence.',
           th:
-              'การตรวจสอบทั้งสองรอบเห็นพ้องกันว่า ความแตกต่างเกี่ยวข้องกับ '
-              '$dimension แต่ยังไม่ยืนยันว่าความหมายเปลี่ยนไป',
+              'โปรไฟล์ความหมายของต้นฉบับและคำแปลตรงกัน และผู้ตรวจสอบคู่แบบ '
+              'ไม่เห็นผลอื่นไม่พบความแตกต่างที่ชัดเจนในมิติ $dimension '
+              'นี่คือความสอดคล้องของการตรวจสอบอัตโนมัติ '
+              'ไม่ใช่หลักฐานความเทียบเท่าอย่างสมบูรณ์',
         ),
         'altered' => _value(
           ru:
-              'Оба прохода совпали: в характеристике «$dimension» '
-              'зафиксировано изменение смысла.',
+              'Изолированные проверки согласованно зафиксировали изменение '
+              'смысла в характеристике «$dimension».',
           en:
-              'Both passes agreed that meaning changed in the $dimension '
-              'dimension.',
+              'The isolated checks consistently detected a meaning change in '
+              '$dimension.',
           th:
-              'การตรวจสอบทั้งสองรอบเห็นพ้องกันว่า ความหมายเปลี่ยนไปในมิติ '
-              '$dimension',
+              'การตรวจสอบที่แยกจากกันตรวจพบตรงกันว่า '
+              'ความหมายเปลี่ยนไปในมิติ $dimension',
         ),
         _ => _value(
           ru:
-              'Даже при совпадении проходов сохранность смысла по '
-              'характеристике «$dimension» не установлена.',
+              'Даже при совпадении автоматических проверок сохранность смысла '
+              'по характеристике «$dimension» не установлена.',
           en:
-              'Even with pass agreement, meaning preservation for '
-              '$dimension was not established.',
+              'Even with agreement between automated checks, meaning '
+              'preservation for $dimension was not established.',
           th:
-              'แม้ผลทั้งสองรอบตรงกัน แต่ยังไม่สามารถยืนยันการคงความหมาย '
-              'ในมิติ $dimension ได้',
+              'แม้ผลการตรวจสอบอัตโนมัติตรงกัน '
+              'แต่ยังไม่สามารถยืนยันการคงความหมายในมิติ $dimension ได้',
         ),
       },
       'conflict' => _value(
         ru:
-            'Два прохода дали разные фактические описания. Система не '
-            'выбирает более мягкий или более жёсткий вариант.',
+            'Изолированные проверки дали разные выводы. Система не выбирает '
+            'более благоприятный результат; маршрут остаётся неопределённым.',
         en:
-            'The two passes produced different factual descriptions. '
-            'The system does not choose the softer or harsher result.',
+            'The isolated checks disagreed. The system does not select the '
+            'more favorable result; the route remains indeterminate.',
         th:
-            'การตรวจสอบสองรอบให้ข้อเท็จจริงต่างกัน ระบบไม่เลือกผลที่ '
-            'เบากว่าหรือรุนแรงกว่า',
+            'การตรวจสอบที่แยกจากกันให้ผลไม่ตรงกัน '
+            'ระบบไม่เลือกผลที่เป็นประโยชน์กว่า '
+            'เส้นทางนี้จึงยังไม่สามารถสรุปได้',
       ),
       _ => _value(
-        ru: 'Наблюдение не удалось подтвердить по показанным данным.',
-        en: 'The observation could not be verified from the shown evidence.',
-        th: 'ไม่สามารถยืนยันข้อสังเกตจากหลักฐานที่แสดงได้',
+        ru: 'Одну или несколько слепых проверок завершить не удалось.',
+        en: 'One or more blind checks could not be completed.',
+        th: 'ไม่สามารถดำเนินการตรวจสอบแบบแยกข้อมูลอย่างน้อยหนึ่งรายการได้',
       ),
     };
-
     final String routeNote = isCrossCheck
         ? _value(
             ru:
@@ -535,7 +550,6 @@ final class RegistryStudioLocalizations {
                 'นี่คือเส้นทางหลัก ข้อสังเกตเกี่ยวข้องกับคำแปล '
                 'โดยตรงจากข้อความของผู้ใช้',
           );
-
     return '$finding $routeNote';
   }
 
@@ -547,32 +561,34 @@ final class RegistryStudioLocalizations {
     return switch (statusName) {
       'confirmed' => _value(
         ru:
-            'Второй проход вернул тот же фактический набор: '
-            '$candidateTuple. Это та же модель, а не независимая экспертиза.',
+            'Слепые проверки согласованы: $candidateTuple. Они используют '
+            'одного API-провайдера и не являются независимой экспертизой.',
         en:
-            'The second pass returned the same factual tuple: '
-            '$candidateTuple. It is the same model, not an independent review.',
+            'The blind checks agree: $candidateTuple. They use one API '
+            'provider and are not an independent review.',
         th:
-            'การตรวจสอบรอบที่สองให้ชุดข้อเท็จจริงเดียวกัน: '
-            '$candidateTuple แต่ยังเป็นโมเดลเดียวกัน ไม่ใช่ผู้ประเมินอิสระ',
+            'ผลการตรวจสอบแบบแยกข้อมูลสอดคล้องกัน: $candidateTuple '
+            'การตรวจสอบทั้งหมดใช้ผู้ให้บริการ API รายเดียวกัน '
+            'จึงไม่ใช่การตรวจสอบอิสระ',
       ),
       'conflict' => _value(
         ru:
-            'Первый проход: $candidateTuple. Второй проход: '
-            '${verifierTuple ?? 'UNKNOWN'}. Конфликт сохранён как '
-            'неопределённость.',
+            'Изолированные проверки расходятся: $candidateTuple и '
+            '${verifierTuple ?? 'UNKNOWN'}. Конфликт не повышается до '
+            'положительного результата.',
         en:
-            'First pass: $candidateTuple. Second pass: '
-            '${verifierTuple ?? 'UNKNOWN'}. The conflict remains uncertainty.',
+            'The isolated checks disagree: $candidateTuple and '
+            '${verifierTuple ?? 'UNKNOWN'}. The conflict cannot be upgraded '
+            'to a positive result.',
         th:
-            'รอบแรก: $candidateTuple รอบที่สอง: '
-            '${verifierTuple ?? 'UNKNOWN'} ระบบเก็บความขัดแย้งไว้เป็น '
-            'ความไม่แน่นอน',
+            'ผลการตรวจสอบที่แยกจากกันไม่ตรงกัน: $candidateTuple และ '
+            '${verifierTuple ?? 'UNKNOWN'} ระบบจะไม่ยกระดับความขัดแย้งนี้ '
+            'เป็นผลเชิงบวก',
       ),
       _ => _value(
-        ru: 'Второй проход не смог подтвердить фактический набор.',
-        en: 'The second pass could not verify the factual tuple.',
-        th: 'การตรวจสอบรอบที่สองไม่สามารถยืนยันชุดข้อเท็จจริงได้',
+        ru: 'Одна или несколько слепых проверок не подтвердили маршрут.',
+        en: 'One or more blind checks did not verify the route.',
+        th: 'การตรวจสอบแบบแยกข้อมูลอย่างน้อยหนึ่งรายการไม่ยืนยันเส้นทางนี้',
       ),
     };
   }
@@ -652,6 +668,39 @@ final class RegistryStudioLocalizations {
             'ผลการตรวจสอบอิสระสองรอบไม่ตรงกัน '
             'ข้อสังเกตที่ขัดแย้งจึงไม่ได้รับการยืนยันและถูกทำเครื่องหมายว่าไม่แน่นอน',
       ),
+      'AUDIT_SIGNALS_DISAGREE' => _value(
+        ru:
+            'Изолированные проверки дали разные выводы. Положительный '
+            'результат заблокирован.',
+        en:
+            'The isolated checks produced different conclusions. A positive '
+            'result was blocked.',
+        th:
+            'การตรวจสอบที่แยกจากกันให้ข้อสรุปไม่ตรงกัน '
+            'ระบบจึงปิดกั้นผลเชิงบวก',
+      ),
+      'AUDIT_CONFLICT_UNRESOLVED' => _value(
+        ru:
+            'Дополнительная слепая проверка не разрешила конфликт. Маршрут '
+            'остаётся неопределённым.',
+        en:
+            'The additional blind check did not resolve the conflict. The '
+            'route remains indeterminate.',
+        th:
+            'การตรวจสอบแบบแยกข้อมูลเพิ่มเติมไม่สามารถแก้ข้อขัดแย้งได้ '
+            'เส้นทางนี้จึงยังไม่สามารถสรุปได้',
+      ),
+      'SEMANTIC_FRAME_UNKNOWN' => _value(
+        ru:
+            'Один из семантических профилей содержит неизвестное значение. '
+            'Положительный результат запрещён.',
+        en:
+            'One semantic profile contains an unknown value. A positive '
+            'result is not allowed.',
+        th:
+            'โปรไฟล์ความหมายอย่างน้อยหนึ่งรายการมีค่าที่ไม่ทราบ '
+            'ระบบจึงไม่อนุญาตผลเชิงบวก',
+      ),
       'AUDIT_TRANSPORT_FAILURE' => _value(
         ru:
             'Связь с сервисом аудита прервалась. Завершённые переводы '
@@ -713,9 +762,9 @@ final class RegistryStudioLocalizations {
         th: 'ไม่พบความคลาดเคลื่อนร้ายแรง',
       ),
       'acceptableVariation' => _value(
-        ru: 'Допустимое различие формы',
-        en: 'Acceptable wording variation',
-        th: 'ความแตกต่างของถ้อยคำที่ยอมรับได้',
+        ru: 'Автоматические проверки согласованы',
+        en: 'Automated checks agree',
+        th: 'ผลการตรวจสอบอัตโนมัติสอดคล้องกัน',
       ),
       'reviewRequired' => _value(
         ru: 'Требуется проверка пользователя',
@@ -788,9 +837,9 @@ final class RegistryStudioLocalizations {
   );
 
   String get translatorPlaceholderDescription => _value(
-    ru: 'Честный перевод и проверка расхождений RU / EN / TH',
-    en: 'Honest translation and drift analysis for RU / EN / TH',
-    th: 'การแปลอย่างตรงไปตรงมาและการตรวจสอบความคลาดเคลื่อน RU / EN / TH',
+    ru: 'Перевод и проверка расхождений RU / EN / TH',
+    en: 'Translation and drift analysis for RU / EN / TH',
+    th: 'การแปลและการตรวจสอบความคลาดเคลื่อน RU / EN / TH',
   );
 }
 

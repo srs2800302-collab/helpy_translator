@@ -134,7 +134,10 @@ final class RunTranslationMatrix {
 
     cancellationSignal.throwIfCancelled();
 
-    _validatePrototypeAuditReport(routes: routeResults, report: auditReport);
+    _validateBlindConsensusAuditReport(
+      routes: routeResults,
+      report: auditReport,
+    );
 
     final assessment = assessmentPolicy.assess(auditReport);
 
@@ -152,7 +155,7 @@ final class RunTranslationMatrix {
       routes: List<TranslationRouteResult>.unmodifiable(routeResults),
       assessment: assessment,
       createdAt: clock(),
-      auditCoverage: TranslationAuditCoverage.prototype,
+      auditCoverage: TranslationAuditCoverage.blindConsensus,
     );
   }
 
@@ -163,7 +166,7 @@ final class RunTranslationMatrix {
     if (routes.length != 6) {
       throw const TranslatorException(
         TranslatorFailureKind.validation,
-        'The prototype matrix requires exactly six translation routes.',
+        'The blind-consensus matrix requires exactly six translation routes.',
       );
     }
 
@@ -191,7 +194,7 @@ final class RunTranslationMatrix {
         )) {
       throw const TranslatorException(
         TranslatorFailureKind.validation,
-        'The prototype matrix requires two source-language primary routes.',
+        'The blind-consensus matrix requires two source-language primary routes.',
       );
     }
 
@@ -219,7 +222,7 @@ final class RunTranslationMatrix {
         )) {
       throw const TranslatorException(
         TranslatorFailureKind.validation,
-        'The prototype matrix requires four cross-check routes derived from '
+        'The blind-consensus matrix requires four cross-check routes derived from '
         'the two primary translations.',
       );
     }
@@ -234,7 +237,7 @@ final class RunTranslationMatrix {
     if (results.length != routes.length) {
       throw const TranslatorException(
         TranslatorFailureKind.invalidResponse,
-        'The provider returned an incomplete prototype matrix.',
+        'The provider returned an incomplete blind-consensus matrix.',
       );
     }
 
@@ -256,7 +259,7 @@ final class RunTranslationMatrix {
           result.translatedText.trim().isEmpty) {
         throw const TranslatorException(
           TranslatorFailureKind.invalidResponse,
-          'The provider returned an inconsistent prototype matrix.',
+          'The provider returned an inconsistent blind-consensus matrix.',
         );
       }
 
@@ -290,7 +293,7 @@ final class RunTranslationMatrix {
     }
   }
 
-  static void _validatePrototypeAuditReport({
+  static void _validateBlindConsensusAuditReport({
     required List<TranslationRouteResult> routes,
     required SemanticAuditReport report,
   }) {

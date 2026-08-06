@@ -48,7 +48,7 @@ void main() {
 
     expect(result.sourceText, exactSource);
     expect(result.sourceLanguage, TranslationLanguage.english);
-    expect(result.auditCoverage, TranslationAuditCoverage.prototype);
+    expect(result.auditCoverage, TranslationAuditCoverage.blindConsensus);
     expect(result.routes, hasLength(6));
     expect(
       result.routes.map((TranslationRouteResult result) => result.route.id),
@@ -66,7 +66,7 @@ void main() {
     expect(gateway.batchCalls, 0);
     expect(gateway.regularAuditCalls, 0);
     expect(result.assessment.verdict, MatrixVerdict.acceptableVariation);
-    expect(result.toJson()['audit_coverage'], 'prototype');
+    expect(result.toJson()['audit_coverage'], 'blindConsensus');
     expect(progress.last.stage, TranslatorProgressStage.completed);
     expect(progress.last.completedSteps, 2);
     expect(progress.last.totalSteps, 2);
@@ -118,7 +118,7 @@ void main() {
       onProgress: (_) {},
     );
 
-    expect(result.auditCoverage, TranslationAuditCoverage.prototype);
+    expect(result.auditCoverage, TranslationAuditCoverage.blindConsensus);
     expect(result.routes, hasLength(6));
     expect(result.assessment.verdict, MatrixVerdict.unreliable);
     expect(gateway.prototypeTranslationCalls, 1);

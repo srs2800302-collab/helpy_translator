@@ -4,7 +4,7 @@ import 'matrix_assessment.dart';
 import 'translation_language.dart';
 import 'translation_route_result.dart';
 
-enum TranslationAuditCoverage { base, expanded, prototype }
+enum TranslationAuditCoverage { base, expanded, prototype, blindConsensus }
 
 final class TranslationMatrixResult extends Equatable {
   const TranslationMatrixResult({

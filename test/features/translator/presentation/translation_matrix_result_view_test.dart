@@ -224,7 +224,10 @@ void main() {
     await _toggleResultCard(tester, result);
 
     expect(find.text('Итоговая оценка матрицы'), findsOneWidget);
-    expect(find.text('Локально сохранено в маршрутах: 1'), findsOneWidget);
+    expect(
+      find.text('Автоматические проверки согласованы для маршрутов: 1'),
+      findsOneWidget,
+    );
     expect(find.text('Final matrix assessment'), findsNothing);
     expect(find.text('Смысл сохранён: 1'), findsNothing);
   });
@@ -368,6 +371,36 @@ void main() {
     expect(find.text('Expanded audit — 6 routes'), findsOneWidget);
   });
 
+  testWidgets('shows blind consensus coverage and honest disclosure', (
+    WidgetTester tester,
+  ) async {
+    final TranslationMatrixResult result = TranslationMatrixResult(
+      sourceText: 'Source',
+      sourceLanguage: TranslationLanguage.english,
+      routes: const <TranslationRouteResult>[],
+      assessment: const MatrixAssessment(
+        verdict: MatrixVerdict.acceptableVariation,
+        observations: <SemanticObservation>[],
+        limitations: <String>[],
+      ),
+      createdAt: DateTime.utc(2026, 8, 6),
+      auditCoverage: TranslationAuditCoverage.blindConsensus,
+    );
+
+    await tester.pumpWidget(
+      _TestApp(child: TranslationMatrixResultView(result: result)),
+    );
+    await _toggleResultCard(tester, result);
+
+    expect(find.text('Blind consensus audit — 0 routes'), findsOneWidget);
+    expect(find.text('Automated checks agree'), findsOneWidget);
+    expect(
+      find.textContaining('three isolated automated requests'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('one API provider'), findsOneWidget);
+  });
+
   testWidgets('does not describe an empty observation list as proof', (
     WidgetTester tester,
   ) async {
@@ -437,7 +470,7 @@ void main() {
       await _toggleResultCard(tester, result);
 
       expect(find.text('Requires attention: 1'), findsOneWidget);
-      expect(find.text('Locally preserved within routes: 1'), findsOneWidget);
+      expect(find.text('Automated checks agree for routes: 1'), findsOneWidget);
       expect(find.text('RU_TO_EN · Cross-check translation'), findsOneWidget);
       expect(find.text('source-token → target-token'), findsOneWidget);
       expect(find.textContaining('does not by itself prove'), findsNothing);
@@ -567,8 +600,14 @@ void main() {
     );
     await _toggleResultCard(tester, result);
 
-    expect(find.textContaining('First pass:'), findsNothing);
-    expect(find.textContaining('Second pass:'), findsNothing);
+    expect(
+      find.textContaining('does not select the more favorable result'),
+      findsNothing,
+    );
+    expect(
+      find.textContaining('cannot be upgraded to a positive result'),
+      findsNothing,
+    );
 
     final Finder disagreementTile = find.byKey(
       const ValueKey<String>('translator-observation-attention-EN_TO_TH-0'),
@@ -577,10 +616,20 @@ void main() {
     await tester.tap(disagreementTile);
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('First pass:'), findsOneWidget);
-    expect(find.textContaining('Second pass:'), findsOneWidget);
     expect(
-      find.textContaining('does not choose the softer or harsher'),
+      find.textContaining('does not select the more favorable result'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('cannot be upgraded to a positive result'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('SUBSTITUTION / OBJECT / ALTERED'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('SCOPE_CHANGE / SPECIFICITY / UNKNOWN'),
       findsOneWidget,
     );
   });

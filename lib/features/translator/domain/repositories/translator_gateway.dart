@@ -35,7 +35,10 @@ abstract interface class TranslatorGateway {
     required List<TranslationRouteResult> routes,
   });
 
-  /// Prototype-compatible single-pass audit of the complete matrix.
+  /// Blind multi-auditor verification of the complete matrix.
+  ///
+  /// The concrete gateway performs isolated source-side, target-side, and
+  /// pairwise checks and may run one additional conflict-only check.
   Future<SemanticAuditReport> auditPrototypeMatrix({
     required String apiKey,
     required String originalSourceText,

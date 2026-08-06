@@ -9,8 +9,8 @@ import 'package:helpy_translator/features/translator/data/network/typhoon_chat_c
 import 'package:helpy_translator/features/translator/data/network/typhoon_translator_config.dart';
 import 'package:helpy_translator/features/translator/data/network/typhoon_translator_gateway.dart';
 import 'package:helpy_translator/features/translator/domain/entities/matrix_assessment.dart';
-import 'package:helpy_translator/features/translator/domain/entities/translation_matrix_result.dart';
 import 'package:helpy_translator/features/translator/domain/entities/translation_language.dart';
+import 'package:helpy_translator/features/translator/domain/entities/translation_matrix_result.dart';
 import 'package:helpy_translator/features/translator/domain/repositories/translator_api_key_store.dart';
 import 'package:helpy_translator/features/translator/domain/services/honesty_assessment_policy.dart';
 import 'package:helpy_translator/features/translator/domain/services/source_language_detector.dart';
@@ -18,7 +18,7 @@ import 'package:helpy_translator/features/translator/domain/services/translation
 
 void main() {
   test(
-    'prototype workflow uses exactly two provider calls for RU EN and TH',
+    'blind consensus workflow uses four provider calls for RU EN and TH',
     () async {
       const List<_SourceCase> cases = <_SourceCase>[
         _SourceCase(
@@ -42,10 +42,10 @@ void main() {
           terminologyIssue: false,
         );
 
-        expect(scenario.requestCount, 2);
+        expect(scenario.requestCount, 4);
         expect(
           scenario.result.auditCoverage,
-          TranslationAuditCoverage.prototype,
+          TranslationAuditCoverage.blindConsensus,
         );
         expect(scenario.result.routes, hasLength(6));
         expect(
@@ -56,17 +56,38 @@ void main() {
     },
   );
 
-  test('prototype terminology warning still uses exactly two calls', () async {
-    final _BudgetScenario scenario = await _runScenario(
-      sourceText: 'варочная панель',
-      sourceLanguageSelection: SourceLanguageSelection.russian,
-      terminologyIssue: true,
-    );
+  test(
+    'specificity loss is never green for RU EN or TH source language',
+    () async {
+      const List<_SourceCase> cases = <_SourceCase>[
+        _SourceCase(
+          text: 'варочная панель',
+          selection: SourceLanguageSelection.russian,
+        ),
+        _SourceCase(
+          text: 'cooktop',
+          selection: SourceLanguageSelection.english,
+        ),
+        _SourceCase(text: 'เตาไฟ', selection: SourceLanguageSelection.thai),
+      ];
 
-    expect(scenario.requestCount, 2);
-    expect(scenario.result.routes, hasLength(6));
-    expect(scenario.result.assessment.verdict, MatrixVerdict.reviewRequired);
-  });
+      for (final _SourceCase sourceCase in cases) {
+        final _BudgetScenario scenario = await _runScenario(
+          sourceText: sourceCase.text,
+          sourceLanguageSelection: sourceCase.selection,
+          terminologyIssue: true,
+        );
+
+        expect(scenario.requestCount, 5);
+        expect(scenario.result.routes, hasLength(6));
+        expect(
+          scenario.result.assessment.verdict,
+          MatrixVerdict.unreliable,
+          reason: sourceCase.selection.name,
+        );
+      }
+    },
+  );
 }
 
 Future<_BudgetScenario> _runScenario({
@@ -78,69 +99,43 @@ Future<_BudgetScenario> _runScenario({
   int requestCount = 0;
 
   final MockClient httpClient = MockClient((http.Request request) async {
-    final Map<String, dynamic> userData = _userData(request);
     requestCount += 1;
+    final Map<String, dynamic> body =
+        jsonDecode(request.body) as Map<String, dynamic>;
+    final String prompt = _systemPrompt(body);
+    final Map<String, dynamic> payload = _userDataFromBody(body);
 
-    if (userData.containsKey('required_routes')) {
+    if (payload.containsKey('required_routes')) {
       final List<dynamic> requiredRoutes =
-          userData['required_routes'] as List<dynamic>;
-      final Map<String, String> translations = <String, String>{};
-
-      for (final dynamic rawRoute in requiredRoutes) {
-        final Map<String, dynamic> route = rawRoute as Map<String, dynamic>;
-        final String routeId = route['route'] as String;
-        translations[routeId] = '$routeId-result';
-      }
-
-      return _chatResponse(
-        jsonEncode(<String, Object>{'translations': translations}),
-      );
-    }
-
-    if (userData.containsKey('routes')) {
-      final List<dynamic> routes = userData['routes'] as List<dynamic>;
-      final int problemIndex = routes.indexWhere(
-        (dynamic rawRoute) =>
-            (rawRoute as Map<String, dynamic>)['role'] == 'primary',
-      );
-
-      if (problemIndex < 0) {
-        throw StateError('Audit payload contains no primary route.');
-      }
+          payload['required_routes'] as List<dynamic>;
 
       return _chatResponse(
         jsonEncode(<String, Object>{
-          'route_audits': <Object>[
-            for (int index = 0; index < routes.length; index += 1)
-              if (terminologyIssue && index == problemIndex)
-                <String, Object?>{
-                  'route': (routes[index] as Map<String, dynamic>)['route'],
-                  'judgment': 'DIFFERENT_MEANING',
-                  'difference': <String, Object?>{
-                    'difference_type': 'TERMINOLOGY_CHANGE',
-                    'source_excerpt':
-                        (routes[index] as Map<String, dynamic>)['source_text'],
-                    'target_excerpt':
-                        (routes[index]
-                            as Map<String, dynamic>)['translated_text'],
-                    'source_fact': 'The source uses the required term.',
-                    'target_fact': 'The translation uses a broader term.',
-                  },
-                  'limitations': <Object>[],
-                }
-              else
-                <String, Object?>{
-                  'route': (routes[index] as Map<String, dynamic>)['route'],
-                  'judgment': 'SAME_MEANING',
-                  'difference': null,
-                  'limitations': <Object>[],
+          'translations': terminologyIssue
+              ? _cooktopTranslations(requiredRoutes)
+              : <String, String>{
+                  for (final dynamic rawRoute in requiredRoutes)
+                    ((rawRoute as Map<String, dynamic>)['route'] as String):
+                        '${rawRoute['route']}-result',
                 },
-          ],
         }),
       );
     }
 
-    throw StateError('Unexpected provider payload: ${userData.keys}.');
+    if (prompt.contains('source-side semantic analyst S') ||
+        prompt.contains('target-side semantic analyst T')) {
+      return _chatResponse(_frameResponse(payload, terminologyIssue));
+    }
+
+    if (prompt.contains('blind bilingual pair judge P')) {
+      return _chatResponse(_sameMeaningResponse(payload));
+    }
+
+    if (prompt.contains('blind conflict judge C')) {
+      return _chatResponse(_differentMeaningResponse(payload));
+    }
+
+    throw StateError('Unexpected provider payload: ${payload.keys}.');
   });
 
   final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
@@ -155,7 +150,7 @@ Future<_BudgetScenario> _runScenario({
       languageDetector: const ScriptSourceLanguageDetector(),
       routePlanner: const CompleteThreeLanguageRoutePlanner(),
       assessmentPolicy: const ConservativeHonestyAssessmentPolicy(),
-      clock: () => DateTime.utc(2026, 8, 5),
+      clock: () => DateTime.utc(2026, 8, 6),
     );
 
     final TranslationMatrixResult result = await useCase(
@@ -171,13 +166,121 @@ Future<_BudgetScenario> _runScenario({
   }
 }
 
-Map<String, dynamic> _userData(http.Request request) {
-  final Map<String, dynamic> body =
-      jsonDecode(request.body) as Map<String, dynamic>;
+Map<String, String> _cooktopTranslations(List<dynamic> requiredRoutes) {
+  const Map<String, String> values = <String, String>{
+    'RU_TO_EN': 'cooktop',
+    'RU_TO_TH': 'เตาไฟ',
+    'EN_TO_RU': 'варочная панель',
+    'EN_TO_TH': 'เตาไฟ',
+    'TH_TO_RU': 'варочная панель',
+    'TH_TO_EN': 'cooktop',
+  };
+
+  return <String, String>{
+    for (final dynamic rawRoute in requiredRoutes)
+      ((rawRoute as Map<String, dynamic>)['route'] as String):
+          values[rawRoute['route']]!,
+  };
+}
+
+String _frameResponse(Map<String, dynamic> payload, bool terminologyIssue) {
+  final List<dynamic> items = payload['items'] as List<dynamic>;
+
+  return jsonEncode(<String, Object>{
+    'frames': <Object>[
+      for (final dynamic rawItem in items)
+        _frame(
+          rawItem as Map<String, dynamic>,
+          terminologyIssue: terminologyIssue,
+        ),
+    ],
+  });
+}
+
+Map<String, Object> _frame(
+  Map<String, dynamic> item, {
+  required bool terminologyIssue,
+}) {
+  final String text = item['text'] as String;
+  final bool genericStove = terminologyIssue && text == 'เตาไฟ';
+  final String concept = terminologyIssue
+      ? (genericStove ? 'GENERIC_STOVE' : 'COOKTOP')
+      : 'MESSAGE';
+
+  return <String, Object>{
+    'route': item['route'] as String,
+    'core_concepts': <String>[concept],
+    'specificity': terminologyIssue
+        ? (genericStove ? 'GENERAL' : 'EXACT_TERM')
+        : 'ABSTRACT',
+    'attributes': <Object>[],
+    'negation': 'NOT_APPLICABLE',
+    'modality': 'NOT_APPLICABLE',
+    'quantities': <Object>[],
+    'time_references': <Object>[],
+    'conditions': <Object>[],
+    'actors': <Object>[],
+    'objects': <String>[concept],
+    'directions': <Object>[],
+    'causes': <Object>[],
+    'restrictions': <Object>[],
+    'ambiguities': <Object>[],
+  };
+}
+
+String _sameMeaningResponse(Map<String, dynamic> payload) {
+  final List<dynamic> routes = payload['routes'] as List<dynamic>;
+
+  return jsonEncode(<String, Object>{
+    'route_audits': <Object>[
+      for (final dynamic rawRoute in routes)
+        <String, Object?>{
+          'route': (rawRoute as Map<String, dynamic>)['route'],
+          'judgment': 'SAME_MEANING',
+          'difference_type': null,
+          'source_excerpt': null,
+          'target_excerpt': null,
+          'source_fact': null,
+          'target_fact': null,
+          'limitations': <Object>[],
+        },
+    ],
+  });
+}
+
+String _differentMeaningResponse(Map<String, dynamic> payload) {
+  final List<dynamic> routes = payload['routes'] as List<dynamic>;
+
+  return jsonEncode(<String, Object>{
+    'route_audits': <Object>[
+      for (final dynamic rawRoute in routes)
+        <String, Object?>{
+          'route': (rawRoute as Map<String, dynamic>)['route'],
+          'judgment': 'DIFFERENT_MEANING',
+          'difference_type': 'SPECIFICITY_CHANGE',
+          'source_excerpt': rawRoute['source_text'],
+          'target_excerpt': rawRoute['translated_text'],
+          'source_fact': 'The source names one object class.',
+          'target_fact': 'The target names a different object class.',
+          'limitations': <Object>[],
+        },
+    ],
+  });
+}
+
+Map<String, dynamic> _userDataFromBody(Map<String, dynamic> body) {
   final List<dynamic> messages = body['messages'] as List<dynamic>;
   final Map<String, dynamic> userMessage = messages[1] as Map<String, dynamic>;
 
   return jsonDecode(userMessage['content'] as String) as Map<String, dynamic>;
+}
+
+String _systemPrompt(Map<String, dynamic> body) {
+  final List<dynamic> messages = body['messages'] as List<dynamic>;
+  final Map<String, dynamic> systemMessage =
+      messages[0] as Map<String, dynamic>;
+
+  return systemMessage['content'] as String;
 }
 
 http.Response _chatResponse(String content) {

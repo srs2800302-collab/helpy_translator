@@ -128,6 +128,52 @@ void main() {
     expect(result.verdict, MatrixVerdict.indeterminate);
   });
 
+  test('confirmed primary drift is not softened by another limitation', () {
+    final MatrixAssessment result = policy.assess(
+      SemanticAuditReport(
+        observations: <SemanticObservation>[
+          _observation(
+            role: TranslationRouteRole.primary,
+            relation: SemanticRelation.substitution,
+            dimension: SemanticDimension.specificity,
+            preservation: MeaningPreservation.altered,
+          ),
+        ],
+        limitations: const <String>['AUDIT_CONFLICT_UNRESOLVED'],
+      ),
+    );
+
+    expect(result.verdict, MatrixVerdict.unreliable);
+  });
+
+  test('confirmed cross-check drift is not hidden by uncertainty', () {
+    final MatrixAssessment result = policy.assess(
+      SemanticAuditReport(
+        observations: <SemanticObservation>[
+          _observation(
+            role: TranslationRouteRole.crossCheck,
+            relation: SemanticRelation.substitution,
+            dimension: SemanticDimension.terminology,
+            preservation: MeaningPreservation.altered,
+          ),
+          _observation(
+            routeId: 'TH_TO_EN',
+            role: TranslationRouteRole.primary,
+            relation: SemanticRelation.unknown,
+            dimension: SemanticDimension.unknown,
+            preservation: MeaningPreservation.unknown,
+            verificationStatus: ObservationVerificationStatus.unverifiable,
+            sourceExcerpt: null,
+            targetExcerpt: null,
+          ),
+        ],
+        limitations: const <String>[],
+      ),
+    );
+
+    expect(result.verdict, MatrixVerdict.reviewRequired);
+  });
+
   test('all critical semantic dimensions obey the same primary rule', () {
     const Set<SemanticDimension> criticalDimensions = <SemanticDimension>{
       SemanticDimension.proposition,
@@ -142,6 +188,8 @@ void main() {
       SemanticDimension.cause,
       SemanticDimension.restriction,
       SemanticDimension.ambiguity,
+      SemanticDimension.terminology,
+      SemanticDimension.specificity,
     };
 
     for (final SemanticDimension dimension in criticalDimensions) {
@@ -250,7 +298,7 @@ void main() {
     }
   });
 
-  test('adding uncertainty cannot improve a verdict', () {
+  test('adding uncertainty cannot erase confirmed drift', () {
     final MatrixAssessment review = policy.assess(
       SemanticAuditReport(
         observations: <SemanticObservation>[
@@ -285,7 +333,7 @@ void main() {
     );
 
     expect(review.verdict, MatrixVerdict.reviewRequired);
-    expect(withUncertainty.verdict, MatrixVerdict.indeterminate);
+    expect(withUncertainty.verdict, MatrixVerdict.reviewRequired);
   });
 }
 

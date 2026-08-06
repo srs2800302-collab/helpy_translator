@@ -35,6 +35,8 @@ final class ConservativeHonestyAssessmentPolicy
     SemanticDimension.cause,
     SemanticDimension.restriction,
     SemanticDimension.ambiguity,
+    SemanticDimension.terminology,
+    SemanticDimension.specificity,
   };
 
   @override
@@ -45,16 +47,14 @@ final class ConservativeHonestyAssessmentPolicy
       report.limitations,
     );
 
-    if (limitations.isNotEmpty ||
-        observations.any(_isUnverifiableOrInconsistent)) {
-      return MatrixAssessment(
-        verdict: MatrixVerdict.indeterminate,
-        observations: observations,
-        limitations: limitations,
-      );
-    }
+    final List<SemanticObservation> confirmedObservations = observations
+        .where(
+          (SemanticObservation observation) =>
+              !_isUnverifiableOrInconsistent(observation),
+        )
+        .toList(growable: false);
 
-    final bool containsCriticalPrimaryDrift = observations.any(
+    final bool containsCriticalPrimaryDrift = confirmedObservations.any(
       (SemanticObservation observation) =>
           observation.routeRole == TranslationRouteRole.primary &&
           observation.preservation == MeaningPreservation.altered &&
@@ -69,15 +69,7 @@ final class ConservativeHonestyAssessmentPolicy
       );
     }
 
-    if (observations.isEmpty) {
-      return MatrixAssessment(
-        verdict: MatrixVerdict.indeterminate,
-        observations: observations,
-        limitations: limitations,
-      );
-    }
-
-    final bool containsAlteredMeaning = observations.any(
+    final bool containsAlteredMeaning = confirmedObservations.any(
       (SemanticObservation observation) =>
           observation.preservation == MeaningPreservation.altered,
     );
@@ -85,6 +77,16 @@ final class ConservativeHonestyAssessmentPolicy
     if (containsAlteredMeaning) {
       return MatrixAssessment(
         verdict: MatrixVerdict.reviewRequired,
+        observations: observations,
+        limitations: limitations,
+      );
+    }
+
+    if (limitations.isNotEmpty ||
+        confirmedObservations.length != observations.length ||
+        observations.isEmpty) {
+      return MatrixAssessment(
+        verdict: MatrixVerdict.indeterminate,
         observations: observations,
         limitations: limitations,
       );
