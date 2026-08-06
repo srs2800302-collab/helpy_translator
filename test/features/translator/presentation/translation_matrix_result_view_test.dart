@@ -395,10 +395,14 @@ void main() {
     expect(find.text('Blind consensus audit — 0 routes'), findsOneWidget);
     expect(find.text('Automated checks agree'), findsOneWidget);
     expect(
-      find.textContaining('three isolated automated requests'),
+      find.textContaining('five isolated evidence checks'),
       findsOneWidget,
     );
-    expect(find.textContaining('one API provider'), findsOneWidget);
+    expect(find.textContaining('at most seven API calls'), findsOneWidget);
+    expect(
+      find.textContaining('same model from one API provider'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('does not describe an empty observation list as proof', (
