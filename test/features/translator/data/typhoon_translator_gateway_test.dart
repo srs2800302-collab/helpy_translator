@@ -798,7 +798,7 @@ void main() {
   );
 
   test(
-    'audit prompts use matrix context with route-grounded judgments',
+    'audit uses equivalence judge A and counterexample challenger B',
     () async {
       final List<String> systemPrompts = <String>[];
       final List<Map<String, dynamic>> payloads = <Map<String, dynamic>>[];
@@ -806,10 +806,12 @@ void main() {
       final MockClient httpClient = MockClient((http.Request request) async {
         systemPrompts.add(_systemPrompt(request));
         payloads.add(_userData(request));
+
         return _auditResponse(<Map<String, Object?>>[
           _routeAudit(judgment: 'SAME_MEANING'),
         ]);
       });
+
       final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
         chatClient: TyphoonChatClient(config: config, httpClient: httpClient),
         config: config,
@@ -854,31 +856,44 @@ void main() {
         expect(prompt, contains('original_source_language'));
         expect(prompt, contains('original_source_text'));
         expect(prompt, contains('complete translation matrix'));
-        expect(prompt, contains('not a majority vote'));
-        expect(prompt, contains('If role is "primary":'));
-        expect(prompt, contains('If role is "crossCheck":'));
-        expect(prompt, contains('lineage-supported sense'));
-        expect(prompt, contains('alternative dictionary sense'));
-        expect(prompt, contains('same real-world participant'));
-        expect(prompt, contains('truth conditions'));
         expect(prompt, contains('source_text'));
         expect(prompt, contains('translated_text'));
         expect(prompt, contains('SAME_MEANING'));
         expect(prompt, contains('DIFFERENT_MEANING'));
-        expect(prompt, contains('counterexample'));
-        expect(prompt, contains('Different words are not evidence'));
-        expect(prompt, contains('one strongest'));
-        expect(prompt, contains('Do not invent context, products'));
-        expect(prompt, isNot(contains('"observations"')));
-        expect(prompt, isNot(contains('LEXICAL_CHOICE')));
         expect(prompt, contains('TERMINOLOGY_CHANGE'));
         expect(prompt, contains('SPECIFICITY_CHANGE'));
+        expect(prompt, isNot(contains('"observations"')));
+        expect(prompt, isNot(contains('LEXICAL_CHOICE')));
         expect(prompt, isNot(contains('UNRELIABLE')));
       }
 
-      expect(systemPrompts[0], contains('judge A'));
-      expect(systemPrompts[1], contains('judge B'));
-      expect(systemPrompts[1], contains('no findings from another judge'));
+      final String judgeA = systemPrompts[0];
+      final String challengerB = systemPrompts[1];
+
+      expect(judgeA, contains('direct translation judge A'));
+      expect(judgeA, contains('sibling routes'));
+      expect(judgeA, contains('not a majority vote'));
+      expect(judgeA, contains('counterexample test'));
+
+      expect(judgeA, isNot(contains('counterexample challenger')));
+
+      expect(challengerB, contains('counterexample challenger'));
+      expect(challengerB, contains('Try to falsify semantic equivalence'));
+      expect(challengerB, contains('no findings from another judge'));
+      expect(challengerB, contains('not a majority vote'));
+      expect(challengerB, contains('alternative dictionary sense'));
+      expect(challengerB, contains('is not a valid counterexample'));
+      expect(challengerB, contains('same real-world participant'));
+      expect(
+        challengerB,
+        contains('If your own source_fact and target_fact describe compatible'),
+      );
+      expect(
+        challengerB,
+        contains('no concrete counterexample survives scrutiny'),
+      );
+
+      expect(judgeA, isNot(equals(challengerB)));
     },
   );
 }
