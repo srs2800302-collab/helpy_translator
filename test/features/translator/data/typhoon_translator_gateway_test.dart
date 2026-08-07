@@ -421,53 +421,57 @@ void main() {
     expect(report.limitations, <String>['AUDIT_PASSES_DISAGREE']);
   });
 
-  test('different factual proofs cannot confirm the same label', () async {
-    int requestIndex = 0;
-    final MockClient httpClient = MockClient((http.Request request) async {
-      final bool firstPass = requestIndex == 0;
-      requestIndex += 1;
+  test(
+    'different factual prose confirms the same grounded structural finding',
+    () async {
+      int requestIndex = 0;
+      final MockClient httpClient = MockClient((http.Request request) async {
+        final bool firstPass = requestIndex == 0;
+        requestIndex += 1;
 
-      return _auditResponse(<Map<String, Object?>>[
-        _routeAudit(
-          judgment: 'DIFFERENT_MEANING',
-          difference: _difference(
-            differenceType: 'OBJECT_CHANGE',
-            sourceExcerpt: 'source-token',
-            targetExcerpt: 'target-token',
-            sourceFact: firstPass
-                ? 'The source refers to a cooktop.'
-                : 'The source refers to a cooking device.',
-            targetFact: firstPass
-                ? 'The translation refers to an oven.'
-                : 'The translation refers to a different appliance.',
+        return _auditResponse(<Map<String, Object?>>[
+          _routeAudit(
+            judgment: 'DIFFERENT_MEANING',
+            difference: _difference(
+              differenceType: 'OBJECT_CHANGE',
+              sourceExcerpt: 'source-token',
+              targetExcerpt: 'target-token',
+              sourceFact: firstPass
+                  ? 'The source refers to a cooktop.'
+                  : 'The source refers to a cooking device.',
+              targetFact: firstPass
+                  ? 'The translation refers to an oven.'
+                  : 'The translation refers to a different appliance.',
+            ),
           ),
-        ),
-      ]);
-    });
-    final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
-      chatClient: TyphoonChatClient(config: config, httpClient: httpClient),
-      config: config,
-    );
-    addTearDown(gateway.close);
+        ]);
+      });
+      final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
+        chatClient: TyphoonChatClient(config: config, httpClient: httpClient),
+        config: config,
+      );
+      addTearDown(gateway.close);
 
-    final SemanticAuditReport report = await gateway.auditMatrix(
-      apiKey: 'secret',
-      originalSourceText: 'source-token',
-      originalSourceLanguage: TranslationLanguage.english,
-      routes: _singleEnglishToThaiRoute,
-    );
+      final SemanticAuditReport report = await gateway.auditMatrix(
+        apiKey: 'secret',
+        originalSourceText: 'source-token',
+        originalSourceLanguage: TranslationLanguage.english,
+        routes: _singleEnglishToThaiRoute,
+      );
 
-    expect(report.limitations, <String>['AUDIT_PASSES_DISAGREE']);
-    expect(report.observations, hasLength(2));
-    expect(
-      report.observations.every(
-        (SemanticObservation observation) =>
-            observation.verificationStatus ==
-            ObservationVerificationStatus.unverifiable,
-      ),
-      isTrue,
-    );
-  });
+      expect(report.limitations, isEmpty);
+      final SemanticObservation observation = report.observations.single;
+      expect(observation.relation, SemanticRelation.substitution);
+      expect(observation.dimension, SemanticDimension.object);
+      expect(observation.preservation, MeaningPreservation.altered);
+      expect(
+        observation.verificationStatus,
+        ObservationVerificationStatus.confirmed,
+      );
+      expect(observation.sourceExcerpt, 'source-token');
+      expect(observation.targetExcerpt, 'target-token');
+    },
+  );
 
   test('UNSURE produces one unverified route result', () async {
     final MockClient httpClient = MockClient((http.Request request) async {
@@ -793,53 +797,75 @@ void main() {
     },
   );
 
-  test('audit prompts request only direct pair meaning judgments', () async {
-    final List<String> systemPrompts = <String>[];
-    final List<Map<String, dynamic>> payloads = <Map<String, dynamic>>[];
+  test(
+    'audit prompts use matrix context with route-grounded judgments',
+    () async {
+      final List<String> systemPrompts = <String>[];
+      final List<Map<String, dynamic>> payloads = <Map<String, dynamic>>[];
 
-    final MockClient httpClient = MockClient((http.Request request) async {
-      systemPrompts.add(_systemPrompt(request));
-      payloads.add(_userData(request));
-      return _auditResponse(<Map<String, Object?>>[
-        _routeAudit(judgment: 'SAME_MEANING'),
-      ]);
-    });
-    final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
-      chatClient: TyphoonChatClient(config: config, httpClient: httpClient),
-      config: config,
-    );
-    addTearDown(gateway.close);
+      final MockClient httpClient = MockClient((http.Request request) async {
+        systemPrompts.add(_systemPrompt(request));
+        payloads.add(_userData(request));
+        return _auditResponse(<Map<String, Object?>>[
+          _routeAudit(judgment: 'SAME_MEANING'),
+        ]);
+      });
+      final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
+        chatClient: TyphoonChatClient(config: config, httpClient: httpClient),
+        config: config,
+      );
+      addTearDown(gateway.close);
 
-    await gateway.auditMatrix(
-      apiKey: 'secret',
-      originalSourceText: 'source-token',
-      originalSourceLanguage: TranslationLanguage.english,
-      routes: _singleEnglishToThaiRoute,
-    );
+      await gateway.auditMatrix(
+        apiKey: 'secret',
+        originalSourceText: 'source-token',
+        originalSourceLanguage: TranslationLanguage.english,
+        routes: _singleEnglishToThaiRoute,
+      );
 
-    expect(systemPrompts, hasLength(2));
-    expect(payloads[0], payloads[1]);
+      expect(systemPrompts, hasLength(2));
+      expect(payloads, hasLength(2));
+      expect(payloads[0], payloads[1]);
 
-    for (final String prompt in systemPrompts) {
-      expect(prompt, contains('source_text'));
-      expect(prompt, contains('translated_text'));
-      expect(prompt, contains('SAME_MEANING'));
-      expect(prompt, contains('DIFFERENT_MEANING'));
-      expect(prompt, contains('counterexample'));
-      expect(prompt, contains('Different words are not evidence'));
-      expect(prompt, contains('one strongest'));
-      expect(prompt, contains('Do not invent context, products'));
-      expect(prompt, isNot(contains('"observations"')));
-      expect(prompt, isNot(contains('LEXICAL_CHOICE')));
-      expect(prompt, contains('TERMINOLOGY_CHANGE'));
-      expect(prompt, contains('SPECIFICITY_CHANGE'));
-      expect(prompt, isNot(contains('UNRELIABLE')));
-    }
+      final Map<String, dynamic> payload = payloads[0];
 
-    expect(systemPrompts[0], contains('judge A'));
-    expect(systemPrompts[1], contains('judge B'));
-    expect(systemPrompts[1], contains('no findings from another judge'));
-  });
+      expect(payload.keys.toSet(), <String>{
+        'original_source_language',
+        'original_source_text',
+        'routes',
+      });
+      expect(
+        payload['original_source_language'],
+        TranslationLanguage.english.code,
+      );
+      expect(payload['original_source_text'], 'source-token');
+      expect(payload['routes'], hasLength(_singleEnglishToThaiRoute.length));
+
+      for (final String prompt in systemPrompts) {
+        expect(prompt, contains('original_source_language'));
+        expect(prompt, contains('original_source_text'));
+        expect(prompt, contains('complete translation matrix'));
+        expect(prompt, contains('not a majority vote'));
+        expect(prompt, contains('source_text'));
+        expect(prompt, contains('translated_text'));
+        expect(prompt, contains('SAME_MEANING'));
+        expect(prompt, contains('DIFFERENT_MEANING'));
+        expect(prompt, contains('counterexample'));
+        expect(prompt, contains('Different words are not evidence'));
+        expect(prompt, contains('one strongest'));
+        expect(prompt, contains('Do not invent context, products'));
+        expect(prompt, isNot(contains('"observations"')));
+        expect(prompt, isNot(contains('LEXICAL_CHOICE')));
+        expect(prompt, contains('TERMINOLOGY_CHANGE'));
+        expect(prompt, contains('SPECIFICITY_CHANGE'));
+        expect(prompt, isNot(contains('UNRELIABLE')));
+      }
+
+      expect(systemPrompts[0], contains('judge A'));
+      expect(systemPrompts[1], contains('judge B'));
+      expect(systemPrompts[1], contains('no findings from another judge'));
+    },
+  );
 }
 
 Map<String, dynamic> _userData(http.Request request) {
