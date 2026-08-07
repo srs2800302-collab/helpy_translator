@@ -11,12 +11,16 @@ import 'package:helpy_translator/features/translator/domain/entities/translation
 import 'package:helpy_translator/features/translator/presentation/widgets/translation_matrix_result_view.dart';
 
 void main() {
+  const RegistryStudioLocalizations englishL10n = RegistryStudioLocalizations(
+    RegistryStudioLocalizations.english,
+  );
+
   final Map<MatrixVerdict, Color> expectedColors = <MatrixVerdict, Color>{
     MatrixVerdict.noCriticalDriftDetected: Colors.green.shade50,
     MatrixVerdict.acceptableVariation: Colors.lightGreen.shade50,
     MatrixVerdict.reviewRequired: Colors.yellow.shade50,
     MatrixVerdict.unreliable: Colors.red.shade50,
-    MatrixVerdict.indeterminate: Colors.red.shade50,
+    MatrixVerdict.indeterminate: Colors.blueGrey.shade50,
   };
 
   for (final MapEntry<MatrixVerdict, Color> entry in expectedColors.entries) {
@@ -368,10 +372,13 @@ void main() {
     );
     await _toggleResultCard(tester, expandedResult);
 
-    expect(find.text('Expanded audit — 6 routes'), findsOneWidget);
+    expect(
+      find.text(englishL10n.auditCoverageLabel('expanded', 6)),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('shows blind consensus coverage and honest disclosure', (
+  testWidgets('shows current eight-call disclosure', (
     WidgetTester tester,
   ) async {
     final TranslationMatrixResult result = TranslationMatrixResult(
@@ -384,7 +391,7 @@ void main() {
         limitations: <String>[],
       ),
       createdAt: DateTime.utc(2026, 8, 6),
-      auditCoverage: TranslationAuditCoverage.blindConsensus,
+      auditCoverage: TranslationAuditCoverage.expanded,
     );
 
     await tester.pumpWidget(
@@ -392,13 +399,10 @@ void main() {
     );
     await _toggleResultCard(tester, result);
 
-    expect(find.text('Blind consensus audit — 0 routes'), findsOneWidget);
+    expect(find.text('Route-isolated audit — 0 routes'), findsOneWidget);
     expect(find.text('Automated checks agree'), findsOneWidget);
-    expect(
-      find.textContaining('five isolated evidence checks'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('at most seven API calls'), findsOneWidget);
+    expect(find.textContaining('six separate translations'), findsOneWidget);
+    expect(find.textContaining('eight API calls'), findsOneWidget);
     expect(
       find.textContaining('same model from one API provider'),
       findsOneWidget,
@@ -573,6 +577,19 @@ void main() {
   testWidgets('shows disagreement only after opening observation details', (
     WidgetTester tester,
   ) async {
+    final String disagreementEvidence = englishL10n
+        .observationEvidenceExplanation(
+          preservationName: 'altered',
+          dimensionName: 'object',
+          verificationStatusName: 'conflict',
+          isCrossCheck: false,
+        );
+    final String disagreementVerification = englishL10n
+        .observationVerificationLabel(
+          statusName: 'conflict',
+          candidateTuple: 'SUBSTITUTION / OBJECT / ALTERED',
+          verifierTuple: 'SCOPE_CHANGE / SPECIFICITY / UNKNOWN',
+        );
     final TranslationMatrixResult result = TranslationMatrixResult(
       sourceText: 'Source statement.',
       sourceLanguage: TranslationLanguage.english,
@@ -604,14 +621,9 @@ void main() {
     );
     await _toggleResultCard(tester, result);
 
-    expect(
-      find.textContaining('does not select the more favorable result'),
-      findsNothing,
-    );
-    expect(
-      find.textContaining('cannot be upgraded to a positive result'),
-      findsNothing,
-    );
+    expect(find.text('Audit needs attention'), findsOneWidget);
+    expect(find.text(disagreementEvidence), findsNothing);
+    expect(find.text(disagreementVerification), findsNothing);
 
     final Finder disagreementTile = find.byKey(
       const ValueKey<String>('translator-observation-attention-EN_TO_TH-0'),
@@ -620,20 +632,46 @@ void main() {
     await tester.tap(disagreementTile);
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('does not select the more favorable result'),
-      findsOneWidget,
-    );
-    expect(
-      find.textContaining('cannot be upgraded to a positive result'),
-      findsOneWidget,
-    );
+    expect(find.text(disagreementEvidence), findsOneWidget);
+    expect(find.text(disagreementVerification), findsOneWidget);
     expect(
       find.textContaining('SUBSTITUTION / OBJECT / ALTERED'),
       findsOneWidget,
     );
     expect(
       find.textContaining('SCOPE_CHANGE / SPECIFICITY / UNKNOWN'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows pass-specific failure as neutral attention', (
+    WidgetTester tester,
+  ) async {
+    final TranslationMatrixResult result = TranslationMatrixResult(
+      sourceText: 'Source statement.',
+      sourceLanguage: TranslationLanguage.english,
+      routes: const <TranslationRouteResult>[],
+      assessment: const MatrixAssessment(
+        verdict: MatrixVerdict.indeterminate,
+        observations: <SemanticObservation>[],
+        limitations: <String>['AUDIT_PASS_B_PROVIDER_FAILURE'],
+      ),
+      createdAt: DateTime.utc(2026, 8, 7),
+    );
+
+    await tester.pumpWidget(
+      _TestApp(child: TranslationMatrixResultView(result: result)),
+    );
+
+    expect(find.text('Audit needs attention'), findsOneWidget);
+    expect(find.text('Result cannot be confirmed'), findsNothing);
+
+    await _toggleResultCard(tester, result);
+
+    expect(
+      find.textContaining(
+        'Isolated pass B did not complete: the provider failed the request',
+      ),
       findsOneWidget,
     );
   });

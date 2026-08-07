@@ -89,24 +89,14 @@ final class RunTranslationMatrix {
 
     cancellationSignal.throwIfCancelled();
 
-    onProgress(
-      TranslatorProgress(
-        stage: TranslatorProgressStage.translating,
-        completedSteps: 0,
-        totalSteps: _workflowStepCount,
-        currentRouteId: routes
-            .map((TranslationRoute route) => route.id)
-            .join(' + '),
-      ),
+    final List<TranslationRouteResult> routeResults = await _translateRoutes(
+      apiKey: apiKey,
+      originalSourceText: sourceText,
+      originalSourceLanguage: sourceLanguage,
+      routes: routes,
+      cancellationSignal: cancellationSignal,
+      onProgress: onProgress,
     );
-
-    final List<TranslationRouteResult> routeResults = await gateway
-        .translatePrototypeMatrix(
-          apiKey: apiKey,
-          originalSourceText: sourceText,
-          originalSourceLanguage: sourceLanguage,
-          routes: List<TranslationRoute>.unmodifiable(routes),
-        );
 
     cancellationSignal.throwIfCancelled();
 
@@ -125,7 +115,7 @@ final class RunTranslationMatrix {
       ),
     );
 
-    final SemanticAuditReport auditReport = await gateway.auditPrototypeMatrix(
+    final SemanticAuditReport auditReport = await gateway.auditMatrix(
       apiKey: apiKey,
       originalSourceText: sourceText,
       originalSourceLanguage: sourceLanguage,
@@ -134,10 +124,7 @@ final class RunTranslationMatrix {
 
     cancellationSignal.throwIfCancelled();
 
-    _validateBlindConsensusAuditReport(
-      routes: routeResults,
-      report: auditReport,
-    );
+    _validateAuditReport(routes: routeResults, report: auditReport);
 
     final assessment = assessmentPolicy.assess(auditReport);
 
@@ -155,8 +142,107 @@ final class RunTranslationMatrix {
       routes: List<TranslationRouteResult>.unmodifiable(routeResults),
       assessment: assessment,
       createdAt: clock(),
-      auditCoverage: TranslationAuditCoverage.blindConsensus,
+      auditCoverage: TranslationAuditCoverage.expanded,
     );
+  }
+
+  Future<List<TranslationRouteResult>> _translateRoutes({
+    required String apiKey,
+    required String originalSourceText,
+    required TranslationLanguage originalSourceLanguage,
+    required List<TranslationRoute> routes,
+    required TranslatorCancellationSignal cancellationSignal,
+    required TranslatorProgressCallback onProgress,
+  }) async {
+    final List<TranslationRoute> primaryRoutes = routes
+        .where(
+          (TranslationRoute route) =>
+              route.role == TranslationRouteRole.primary,
+        )
+        .toList(growable: false);
+    final List<TranslationRoute> crossCheckRoutes = routes
+        .where(
+          (TranslationRoute route) =>
+              route.role == TranslationRouteRole.crossCheck,
+        )
+        .toList(growable: false);
+
+    final Map<TranslationLanguage, String> sourceTexts =
+        <TranslationLanguage, String>{
+          originalSourceLanguage: originalSourceText,
+        };
+
+    final Map<String, TranslationRouteResult> resultsByRouteId =
+        <String, TranslationRouteResult>{};
+
+    for (final TranslationRoute route in <TranslationRoute>[
+      ...primaryRoutes,
+      ...crossCheckRoutes,
+    ]) {
+      cancellationSignal.throwIfCancelled();
+
+      final String? routeSourceText = sourceTexts[route.source];
+
+      if (routeSourceText == null || routeSourceText.trim().isEmpty) {
+        throw TranslatorException(
+          TranslatorFailureKind.validation,
+          'Route ${route.id} has no completed source translation.',
+        );
+      }
+
+      onProgress(
+        TranslatorProgress(
+          stage: TranslatorProgressStage.translating,
+          completedSteps: 0,
+          totalSteps: _workflowStepCount,
+          currentRouteId: route.id,
+        ),
+      );
+
+      final String translatedText = await gateway.translate(
+        apiKey: apiKey,
+        sourceLanguage: route.source,
+        targetLanguage: route.target,
+        sourceText: routeSourceText,
+      );
+
+      cancellationSignal.throwIfCancelled();
+
+      if (translatedText.trim().isEmpty) {
+        throw TranslatorException(
+          TranslatorFailureKind.invalidResponse,
+          'Route ${route.id} returned an empty translation.',
+        );
+      }
+
+      resultsByRouteId[route.id] = TranslationRouteResult(
+        route: route,
+        sourceText: routeSourceText,
+        translatedText: translatedText,
+      );
+
+      if (route.role == TranslationRouteRole.primary) {
+        sourceTexts[route.target] = translatedText;
+      }
+    }
+
+    final List<TranslationRouteResult> orderedResults =
+        <TranslationRouteResult>[];
+
+    for (final TranslationRoute route in routes) {
+      final TranslationRouteResult? result = resultsByRouteId[route.id];
+
+      if (result == null) {
+        throw TranslatorException(
+          TranslatorFailureKind.invalidResponse,
+          'Route ${route.id} has no completed translation result.',
+        );
+      }
+
+      orderedResults.add(result);
+    }
+
+    return List<TranslationRouteResult>.unmodifiable(orderedResults);
   }
 
   static void _validateRoutePlan({
@@ -166,7 +252,7 @@ final class RunTranslationMatrix {
     if (routes.length != 6) {
       throw const TranslatorException(
         TranslatorFailureKind.validation,
-        'The blind-consensus matrix requires exactly six translation routes.',
+        'The translation matrix requires exactly six translation routes.',
       );
     }
 
@@ -194,7 +280,7 @@ final class RunTranslationMatrix {
         )) {
       throw const TranslatorException(
         TranslatorFailureKind.validation,
-        'The blind-consensus matrix requires two source-language primary routes.',
+        'The translation matrix requires two source-language primary routes.',
       );
     }
 
@@ -222,7 +308,7 @@ final class RunTranslationMatrix {
         )) {
       throw const TranslatorException(
         TranslatorFailureKind.validation,
-        'The blind-consensus matrix requires four cross-check routes derived from '
+        'The translation matrix requires four cross-check routes derived from '
         'the two primary translations.',
       );
     }
@@ -237,7 +323,7 @@ final class RunTranslationMatrix {
     if (results.length != routes.length) {
       throw const TranslatorException(
         TranslatorFailureKind.invalidResponse,
-        'The provider returned an incomplete blind-consensus matrix.',
+        'The provider returned an incomplete translation matrix.',
       );
     }
 
@@ -259,7 +345,7 @@ final class RunTranslationMatrix {
           result.translatedText.trim().isEmpty) {
         throw const TranslatorException(
           TranslatorFailureKind.invalidResponse,
-          'The provider returned an inconsistent blind-consensus matrix.',
+          'The provider returned an inconsistent translation matrix.',
         );
       }
 
@@ -293,7 +379,7 @@ final class RunTranslationMatrix {
     }
   }
 
-  static void _validateBlindConsensusAuditReport({
+  static void _validateAuditReport({
     required List<TranslationRouteResult> routes,
     required SemanticAuditReport report,
   }) {

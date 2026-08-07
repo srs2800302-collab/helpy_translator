@@ -367,7 +367,7 @@ final class _TranslationMatrixResultViewState
       MatrixVerdict.acceptableVariation => '🟢',
       MatrixVerdict.reviewRequired => '🟡',
       MatrixVerdict.unreliable => '🔴',
-      MatrixVerdict.indeterminate => '❌',
+      MatrixVerdict.indeterminate => '⚪',
     };
   }
 
@@ -377,7 +377,7 @@ final class _TranslationMatrixResultViewState
       MatrixVerdict.acceptableVariation => Colors.lightGreen.shade50,
       MatrixVerdict.reviewRequired => Colors.yellow.shade50,
       MatrixVerdict.unreliable => Colors.red.shade50,
-      MatrixVerdict.indeterminate => Colors.red.shade50,
+      MatrixVerdict.indeterminate => Colors.blueGrey.shade50,
     };
   }
 }

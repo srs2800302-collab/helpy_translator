@@ -38,7 +38,7 @@ void main() {
     );
   });
 
-  test('disclosure states the fixed six-plus-one call contract', () {
+  test('disclosure states the current eight-call audit contract', () {
     const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
       Locale('ru'),
     );
@@ -49,29 +49,53 @@ void main() {
       Locale('th'),
     );
 
-    expect(ru.auditPassDisclosure, contains('пять изолированных'));
-    expect(ru.auditPassDisclosure, contains('максимум семь API-вызовов'));
     expect(
       ru.auditPassDisclosure,
-      contains('одну и ту же модель одного API-провайдера'),
+      contains('шесть отдельных переводов и две изолированные проверки'),
     );
-    expect(ru.auditPassDisclosure, contains('не независимая экспертиза'));
+    expect(ru.auditPassDisclosure, contains('восемь API-вызовов'));
+    expect(ru.auditPassDisclosure, contains('максимум девять API-вызовов'));
+    expect(
+      ru.auditPassDisclosure,
+      contains('одну модель одного API-провайдера'),
+    );
+    expect(
+      ru.auditPassDisclosure,
+      contains('не являются независимой экспертизой'),
+    );
+    expect(
+      ru.auditPassDisclosure,
+      contains('Ошибка одного прохода не удаляет выводы другого'),
+    );
 
-    expect(en.auditPassDisclosure, contains('five isolated evidence checks'));
-    expect(en.auditPassDisclosure, contains('at most seven API calls'));
+    expect(
+      en.auditPassDisclosure,
+      contains('six separate translations and two isolated audits'),
+    );
+    expect(en.auditPassDisclosure, contains('eight API calls'));
+    expect(en.auditPassDisclosure, contains('at most nine API calls'));
     expect(
       en.auditPassDisclosure,
       contains('same model from one API provider'),
     );
     expect(en.auditPassDisclosure, contains('not an independent review'));
+    expect(
+      en.auditPassDisclosure,
+      contains('A failure in one pass does not erase the other pass findings'),
+    );
 
-    expect(th.auditPassDisclosure, contains('แยกข้อมูลห้ารอบ'));
-    expect(th.auditPassDisclosure, contains('ไม่เกินเจ็ดคำขอ API'));
+    expect(th.auditPassDisclosure, contains('การแปลแยกกันหกครั้ง'));
+    expect(th.auditPassDisclosure, contains('คำขอ API แปดครั้ง'));
+    expect(th.auditPassDisclosure, contains('รวมสูงสุดเก้าคำขอ API'));
     expect(
       th.auditPassDisclosure,
       contains('โมเดลเดียวกันจากผู้ให้บริการ API รายเดียวกัน'),
     );
     expect(th.auditPassDisclosure, contains('ไม่ใช่การตรวจสอบอิสระ'));
+    expect(
+      th.auditPassDisclosure,
+      contains('ความล้มเหลวของรอบหนึ่งจะไม่ลบผลของอีกรอบ'),
+    );
   });
 
   test('new evidence limitations are localized', () {

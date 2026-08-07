@@ -31,11 +31,11 @@ void main() {
       languageDetector: const ScriptSourceLanguageDetector(),
       routePlanner: const CompleteThreeLanguageRoutePlanner(),
       assessmentPolicy: const ConservativeHonestyAssessmentPolicy(),
-      clock: () => DateTime.utc(2026, 8, 5),
+      clock: () => DateTime.utc(2026, 8, 7),
     );
   });
 
-  test('prototype workflow uses one matrix call and one audit call', () async {
+  test('uses six route calls and the current audit boundary', () async {
     const String exactSource = '  Send it after confirmation.  ';
     final List<TranslatorProgress> progress = <TranslatorProgress>[];
 
@@ -48,10 +48,10 @@ void main() {
 
     expect(result.sourceText, exactSource);
     expect(result.sourceLanguage, TranslationLanguage.english);
-    expect(result.auditCoverage, TranslationAuditCoverage.blindConsensus);
+    expect(result.auditCoverage, TranslationAuditCoverage.expanded);
     expect(result.routes, hasLength(6));
     expect(
-      result.routes.map((TranslationRouteResult result) => result.route.id),
+      result.routes.map((TranslationRouteResult route) => route.route.id),
       <String>[
         'EN_TO_RU',
         'EN_TO_TH',
@@ -61,19 +61,26 @@ void main() {
         'TH_TO_EN',
       ],
     );
-    expect(gateway.prototypeTranslationCalls, 1);
-    expect(gateway.prototypeAuditCalls, 1);
+    expect(gateway.translateCalls, 6);
     expect(gateway.batchCalls, 0);
-    expect(gateway.regularAuditCalls, 0);
+    expect(gateway.auditCalls, 1);
     expect(result.assessment.verdict, MatrixVerdict.acceptableVariation);
-    expect(result.toJson()['audit_coverage'], 'blindConsensus');
+    expect(result.toJson()['audit_coverage'], 'expanded');
+    expect(gateway.translationInputs, <String>[
+      'EN_TO_RU::$exactSource',
+      'EN_TO_TH::$exactSource',
+      'RU_TO_EN::EN_TO_RU::$exactSource',
+      'RU_TO_TH::EN_TO_RU::$exactSource',
+      'TH_TO_RU::EN_TO_TH::$exactSource',
+      'TH_TO_EN::EN_TO_TH::$exactSource',
+    ]);
     expect(progress.last.stage, TranslatorProgressStage.completed);
     expect(progress.last.completedSteps, 2);
     expect(progress.last.totalSteps, 2);
   });
 
-  test('confirmed primary meaning drift remains unreliable', () async {
-    gateway.prototypeAuditReports.add(
+  test('confirmed critical primary drift remains unreliable', () async {
+    gateway.auditReports.add(
       SemanticAuditReport(
         observations: <SemanticObservation>[
           _preservedObservation(
@@ -118,15 +125,15 @@ void main() {
       onProgress: (_) {},
     );
 
-    expect(result.auditCoverage, TranslationAuditCoverage.blindConsensus);
+    expect(result.auditCoverage, TranslationAuditCoverage.expanded);
     expect(result.routes, hasLength(6));
     expect(result.assessment.verdict, MatrixVerdict.unreliable);
-    expect(gateway.prototypeTranslationCalls, 1);
-    expect(gateway.prototypeAuditCalls, 1);
+    expect(gateway.translateCalls, 6);
+    expect(gateway.auditCalls, 1);
   });
 
-  test('incomplete provider matrix is rejected before audit', () async {
-    gateway.returnIncompletePrototypeMatrix = true;
+  test('empty route translation is rejected before audit', () async {
+    gateway.emptyTranslationCall = 6;
 
     await expectLater(
       useCase(
@@ -144,12 +151,12 @@ void main() {
       ),
     );
 
-    expect(gateway.prototypeTranslationCalls, 1);
-    expect(gateway.prototypeAuditCalls, 0);
+    expect(gateway.translateCalls, 6);
+    expect(gateway.auditCalls, 0);
   });
 
   test('incomplete audit coverage is rejected before assessment', () async {
-    gateway.prototypeAuditReports.add(
+    gateway.auditReports.add(
       const SemanticAuditReport(
         observations: <SemanticObservation>[],
         limitations: <String>[],
@@ -172,12 +179,12 @@ void main() {
       ),
     );
 
-    expect(gateway.prototypeTranslationCalls, 1);
-    expect(gateway.prototypeAuditCalls, 1);
+    expect(gateway.translateCalls, 6);
+    expect(gateway.auditCalls, 1);
   });
 
   test('duplicate audit route identifiers are rejected', () async {
-    gateway.prototypeAuditReports.add(
+    gateway.auditReports.add(
       SemanticAuditReport(
         observations: List<SemanticObservation>.generate(
           6,
@@ -189,7 +196,7 @@ void main() {
             preservation: MeaningPreservation.preserved,
             verificationStatus: ObservationVerificationStatus.confirmed,
             sourceExcerpt: 'Source',
-            targetExcerpt: 'Перевод',
+            targetExcerpt: 'Translation',
           ),
           growable: false,
         ),
@@ -213,8 +220,8 @@ void main() {
       ),
     );
 
-    expect(gateway.prototypeTranslationCalls, 1);
-    expect(gateway.prototypeAuditCalls, 1);
+    expect(gateway.translateCalls, 6);
+    expect(gateway.auditCalls, 1);
   });
 
   test('automatic mixed-language input fails without provider calls', () async {
@@ -234,8 +241,8 @@ void main() {
       ),
     );
 
-    expect(gateway.prototypeTranslationCalls, 0);
-    expect(gateway.prototypeAuditCalls, 0);
+    expect(gateway.translateCalls, 0);
+    expect(gateway.auditCalls, 0);
   });
 
   test('missing key fails before provider calls', () async {
@@ -257,8 +264,8 @@ void main() {
       ),
     );
 
-    expect(gateway.prototypeTranslationCalls, 0);
-    expect(gateway.prototypeAuditCalls, 0);
+    expect(gateway.translateCalls, 0);
+    expect(gateway.auditCalls, 0);
   });
 
   test('secure-storage failure is reported before provider calls', () async {
@@ -268,7 +275,7 @@ void main() {
       languageDetector: const ScriptSourceLanguageDetector(),
       routePlanner: const CompleteThreeLanguageRoutePlanner(),
       assessmentPolicy: const ConservativeHonestyAssessmentPolicy(),
-      clock: () => DateTime.utc(2026, 8, 5),
+      clock: () => DateTime.utc(2026, 8, 7),
     );
 
     await expectLater(
@@ -287,8 +294,8 @@ void main() {
       ),
     );
 
-    expect(gateway.prototypeTranslationCalls, 0);
-    expect(gateway.prototypeAuditCalls, 0);
+    expect(gateway.translateCalls, 0);
+    expect(gateway.auditCalls, 0);
   });
 }
 
@@ -343,14 +350,13 @@ final class _MemoryApiKeyStore implements TranslatorApiKeyStore {
 }
 
 final class _RecordingGateway implements TranslatorGateway {
-  int prototypeTranslationCalls = 0;
-  int prototypeAuditCalls = 0;
+  int translateCalls = 0;
   int batchCalls = 0;
-  int regularAuditCalls = 0;
-  bool returnIncompletePrototypeMatrix = false;
+  int auditCalls = 0;
+  int? emptyTranslationCall;
 
-  final List<SemanticAuditReport> prototypeAuditReports =
-      <SemanticAuditReport>[];
+  final List<String> translationInputs = <String>[];
+  final List<SemanticAuditReport> auditReports = <SemanticAuditReport>[];
 
   @override
   Future<String> translate({
@@ -359,7 +365,15 @@ final class _RecordingGateway implements TranslatorGateway {
     required TranslationLanguage targetLanguage,
     required String sourceText,
   }) async {
-    return '${sourceLanguage.code}_TO_${targetLanguage.code}::$sourceText';
+    translateCalls += 1;
+    final String routeId = '${sourceLanguage.code}_TO_${targetLanguage.code}';
+    translationInputs.add('$routeId::$sourceText');
+
+    if (emptyTranslationCall == translateCalls) {
+      return '   ';
+    }
+
+    return '$routeId::$sourceText';
   }
 
   @override
@@ -379,96 +393,34 @@ final class _RecordingGateway implements TranslatorGateway {
   }
 
   @override
-  Future<List<TranslationRouteResult>> translatePrototypeMatrix({
-    required String apiKey,
-    required String originalSourceText,
-    required TranslationLanguage originalSourceLanguage,
-    required List<TranslationRoute> routes,
-  }) async {
-    prototypeTranslationCalls += 1;
-
-    final Map<TranslationLanguage, String> sourceTexts =
-        <TranslationLanguage, String>{
-          originalSourceLanguage: originalSourceText,
-        };
-    final Map<String, String> translatedByRoute = <String, String>{};
-
-    for (final TranslationRoute route in routes) {
-      if (route.role != TranslationRouteRole.primary) {
-        continue;
-      }
-
-      final String translatedText = '${route.id}::$originalSourceText';
-      translatedByRoute[route.id] = translatedText;
-      sourceTexts[route.target] = translatedText;
-    }
-
-    final List<TranslationRouteResult> results = <TranslationRouteResult>[];
-
-    for (final TranslationRoute route in routes) {
-      final String routeSourceText = sourceTexts[route.source]!;
-      final String translatedText =
-          translatedByRoute[route.id] ?? '${route.id}::$routeSourceText';
-
-      results.add(
-        TranslationRouteResult(
-          route: route,
-          sourceText: routeSourceText,
-          translatedText: translatedText,
-        ),
-      );
-    }
-
-    if (returnIncompletePrototypeMatrix) {
-      return results.take(results.length - 1).toList(growable: false);
-    }
-
-    return List<TranslationRouteResult>.unmodifiable(results);
-  }
-
-  @override
   Future<SemanticAuditReport> auditMatrix({
     required String apiKey,
     required String originalSourceText,
     required TranslationLanguage originalSourceLanguage,
     required List<TranslationRouteResult> routes,
   }) async {
-    regularAuditCalls += 1;
-    return const SemanticAuditReport(
-      observations: <SemanticObservation>[],
-      limitations: <String>[],
-    );
-  }
+    auditCalls += 1;
 
-  @override
-  Future<SemanticAuditReport> auditPrototypeMatrix({
-    required String apiKey,
-    required String originalSourceText,
-    required TranslationLanguage originalSourceLanguage,
-    required List<TranslationRouteResult> routes,
-  }) async {
-    prototypeAuditCalls += 1;
-
-    if (prototypeAuditReports.isEmpty) {
-      return SemanticAuditReport(
-        observations: <SemanticObservation>[
-          for (final TranslationRouteResult route in routes)
-            SemanticObservation(
-              routeId: route.route.id,
-              routeRole: route.route.role,
-              relation: SemanticRelation.wordingVariation,
-              dimension: SemanticDimension.proposition,
-              preservation: MeaningPreservation.preserved,
-              verificationStatus: ObservationVerificationStatus.confirmed,
-              sourceExcerpt: route.sourceText,
-              targetExcerpt: route.translatedText,
-            ),
-        ],
-        limitations: const <String>[],
-      );
+    if (auditReports.isNotEmpty) {
+      return auditReports.removeAt(0);
     }
 
-    return prototypeAuditReports.removeAt(0);
+    return SemanticAuditReport(
+      observations: <SemanticObservation>[
+        for (final TranslationRouteResult route in routes)
+          SemanticObservation(
+            routeId: route.route.id,
+            routeRole: route.route.role,
+            relation: SemanticRelation.wordingVariation,
+            dimension: SemanticDimension.proposition,
+            preservation: MeaningPreservation.preserved,
+            verificationStatus: ObservationVerificationStatus.confirmed,
+            sourceExcerpt: route.sourceText,
+            targetExcerpt: route.translatedText,
+          ),
+      ],
+      limitations: const <String>[],
+    );
   }
 
   @override

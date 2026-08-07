@@ -7,9 +7,9 @@ abstract interface class TranslationRoutePlanner {
 
 /// Complete three-language route universe.
 ///
-/// The application orchestrator executes the source-centered four-route base
-/// subset first and adds the remaining two cross-language routes only when
-/// the audit requires expanded coverage.
+/// The application executes two primary routes from the original source
+/// language, then four cross-check routes whose source text is the exact
+/// completed primary translation returned by the provider.
 final class CompleteThreeLanguageRoutePlanner
     implements TranslationRoutePlanner {
   const CompleteThreeLanguageRoutePlanner();

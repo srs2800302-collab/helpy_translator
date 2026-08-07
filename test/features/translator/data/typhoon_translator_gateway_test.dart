@@ -273,7 +273,20 @@ void main() {
 
         expect(requestCount, 2);
         expect(payloads[0], payloads[1]);
-        expect(report.observations, isEmpty);
+        expect(report.observations, hasLength(1));
+
+        final SemanticObservation observation = report.observations.single;
+
+        expect(observation.routeId, auditCase.route.route.id);
+        expect(observation.relation, SemanticRelation.wordingVariation);
+        expect(observation.dimension, SemanticDimension.proposition);
+        expect(observation.preservation, MeaningPreservation.preserved);
+        expect(
+          observation.verificationStatus,
+          ObservationVerificationStatus.confirmed,
+        );
+        expect(observation.sourceExcerpt, auditCase.route.sourceText);
+        expect(observation.targetExcerpt, auditCase.route.translatedText);
         expect(report.limitations, isEmpty);
       } finally {
         gateway.close();
@@ -557,12 +570,24 @@ void main() {
       );
 
       expect(report.limitations, <String>['AUDIT_EVIDENCE_NOT_GROUNDED']);
-      expect(report.observations, hasLength(1));
-      expect(report.observations.single.routeId, 'EN_TO_RU');
+      expect(report.observations, hasLength(2));
+
+      final SemanticObservation rejected = report.observations.singleWhere(
+        (SemanticObservation observation) => observation.routeId == 'EN_TO_RU',
+      );
+      final SemanticObservation preserved = report.observations.singleWhere(
+        (SemanticObservation observation) => observation.routeId == 'EN_TO_TH',
+      );
+
       expect(
-        report.observations.single.verificationStatus,
+        rejected.verificationStatus,
         ObservationVerificationStatus.unverifiable,
       );
+      expect(
+        preserved.verificationStatus,
+        ObservationVerificationStatus.confirmed,
+      );
+      expect(preserved.preservation, MeaningPreservation.preserved);
     },
   );
 
@@ -591,8 +616,24 @@ void main() {
     );
 
     expect(report.limitations, <String>['AUDIT_RESPONSE_INVALID']);
-    expect(report.observations, hasLength(1));
-    expect(report.observations.single.routeId, 'EN_TO_RU');
+    expect(report.observations, hasLength(2));
+
+    final SemanticObservation malformed = report.observations.singleWhere(
+      (SemanticObservation observation) => observation.routeId == 'EN_TO_RU',
+    );
+    final SemanticObservation preserved = report.observations.singleWhere(
+      (SemanticObservation observation) => observation.routeId == 'EN_TO_TH',
+    );
+
+    expect(
+      malformed.verificationStatus,
+      ObservationVerificationStatus.unverifiable,
+    );
+    expect(
+      preserved.verificationStatus,
+      ObservationVerificationStatus.confirmed,
+    );
+    expect(preserved.preservation, MeaningPreservation.preserved);
   });
 
   test('cross-check-only expansion uses two direct pair judgments', () async {
@@ -618,12 +659,90 @@ void main() {
     );
 
     expect(requestCount, 2);
-    expect(report.observations, isEmpty);
+    expect(report.observations, hasLength(2));
+    expect(
+      report.observations.every(
+        (SemanticObservation observation) =>
+            observation.verificationStatus ==
+                ObservationVerificationStatus.confirmed &&
+            observation.preservation == MeaningPreservation.preserved &&
+            observation.relation == SemanticRelation.wordingVariation,
+      ),
+      isTrue,
+    );
     expect(report.limitations, isEmpty);
   });
 
   test(
-    'provider failure in either judgment marks every route unverified',
+    'one failed audit pass preserves grounded evidence from the other pass',
+    () async {
+      const List<({int failedRequest, String limitation})> cases =
+          <({int failedRequest, String limitation})>[
+            (failedRequest: 1, limitation: 'AUDIT_PASS_A_RESPONSE_INVALID'),
+            (failedRequest: 2, limitation: 'AUDIT_PASS_B_RESPONSE_INVALID'),
+          ];
+
+      for (final ({int failedRequest, String limitation}) auditCase in cases) {
+        int requestCount = 0;
+
+        final MockClient httpClient = MockClient((http.Request request) async {
+          requestCount += 1;
+
+          if (requestCount == auditCase.failedRequest) {
+            return _chatResponse('{"unexpected":[]}');
+          }
+
+          return _auditResponse(<Map<String, Object?>>[
+            _routeAudit(
+              judgment: 'DIFFERENT_MEANING',
+              difference: _difference(
+                differenceType: 'SPECIFICITY_CHANGE',
+                sourceExcerpt: 'source-token',
+                targetExcerpt: 'target-token',
+                sourceFact: 'The source is more specific.',
+                targetFact: 'The translation is broader.',
+              ),
+            ),
+          ]);
+        });
+
+        final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
+          chatClient: TyphoonChatClient(config: config, httpClient: httpClient),
+          config: config,
+        );
+
+        try {
+          final SemanticAuditReport report = await gateway.auditMatrix(
+            apiKey: 'secret',
+            originalSourceText: 'source-token',
+            originalSourceLanguage: TranslationLanguage.english,
+            routes: _singleEnglishToThaiRoute,
+          );
+
+          expect(requestCount, 2);
+          expect(report.limitations, contains(auditCase.limitation));
+          expect(report.limitations, contains('AUDIT_PASSES_DISAGREE'));
+
+          final SemanticObservation observation = report.observations.single;
+
+          expect(observation.relation, SemanticRelation.substitution);
+          expect(observation.dimension, SemanticDimension.specificity);
+          expect(observation.preservation, MeaningPreservation.altered);
+          expect(
+            observation.verificationStatus,
+            ObservationVerificationStatus.unverifiable,
+          );
+          expect(observation.sourceExcerpt, 'source-token');
+          expect(observation.targetExcerpt, 'target-token');
+        } finally {
+          gateway.close();
+        }
+      }
+    },
+  );
+
+  test(
+    'provider failure in pass B consumes one shared retry and preserves pass A',
     () async {
       int requestCount = 0;
       final MockClient httpClient = MockClient((http.Request request) async {
@@ -657,8 +776,11 @@ void main() {
         routes: _twoPrimaryRoutes,
       );
 
-      expect(requestCount, 2);
-      expect(report.limitations, <String>['AUDIT_PROVIDER_FAILURE']);
+      expect(requestCount, 3);
+      expect(report.limitations, <String>[
+        'AUDIT_PASS_B_PROVIDER_FAILURE',
+        'AUDIT_PASSES_DISAGREE',
+      ]);
       expect(report.observations, hasLength(_twoPrimaryRoutes.length));
       expect(
         report.observations.every(
@@ -709,7 +831,8 @@ void main() {
       expect(prompt, contains('Do not invent context, products'));
       expect(prompt, isNot(contains('"observations"')));
       expect(prompt, isNot(contains('LEXICAL_CHOICE')));
-      expect(prompt, isNot(contains('TERMINOLOGY')));
+      expect(prompt, contains('TERMINOLOGY_CHANGE'));
+      expect(prompt, contains('SPECIFICITY_CHANGE'));
       expect(prompt, isNot(contains('UNRELIABLE')));
     }
 
