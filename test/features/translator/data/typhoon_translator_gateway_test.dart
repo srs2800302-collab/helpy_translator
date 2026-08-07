@@ -841,11 +841,26 @@ void main() {
       expect(payload['original_source_text'], 'source-token');
       expect(payload['routes'], hasLength(_singleEnglishToThaiRoute.length));
 
+      final List<dynamic> routePayloads = payload['routes'] as List<dynamic>;
+
+      for (final dynamic rawRoute in routePayloads) {
+        final Map<String, dynamic> route = rawRoute as Map<String, dynamic>;
+
+        expect(route, contains('role'));
+        expect(route['role'], anyOf('primary', 'crossCheck'));
+      }
+
       for (final String prompt in systemPrompts) {
         expect(prompt, contains('original_source_language'));
         expect(prompt, contains('original_source_text'));
         expect(prompt, contains('complete translation matrix'));
         expect(prompt, contains('not a majority vote'));
+        expect(prompt, contains('If role is "primary":'));
+        expect(prompt, contains('If role is "crossCheck":'));
+        expect(prompt, contains('lineage-supported sense'));
+        expect(prompt, contains('alternative dictionary sense'));
+        expect(prompt, contains('same real-world participant'));
+        expect(prompt, contains('truth conditions'));
         expect(prompt, contains('source_text'));
         expect(prompt, contains('translated_text'));
         expect(prompt, contains('SAME_MEANING'));
