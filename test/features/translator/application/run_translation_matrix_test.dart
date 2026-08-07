@@ -183,7 +183,69 @@ void main() {
     expect(gateway.auditCalls, 1);
   });
 
-  test('duplicate audit route identifiers are rejected', () async {
+  test(
+    'multiple observations for one route are valid when all routes are covered',
+    () async {
+      gateway.auditReports.add(
+        SemanticAuditReport(
+          observations: <SemanticObservation>[
+            _preservedObservation(
+              routeId: 'EN_TO_RU',
+              role: TranslationRouteRole.primary,
+            ),
+            _preservedObservation(
+              routeId: 'EN_TO_RU',
+              role: TranslationRouteRole.primary,
+            ),
+            _preservedObservation(
+              routeId: 'EN_TO_TH',
+              role: TranslationRouteRole.primary,
+            ),
+            _preservedObservation(
+              routeId: 'RU_TO_EN',
+              role: TranslationRouteRole.crossCheck,
+            ),
+            _preservedObservation(
+              routeId: 'RU_TO_TH',
+              role: TranslationRouteRole.crossCheck,
+            ),
+            _preservedObservation(
+              routeId: 'TH_TO_RU',
+              role: TranslationRouteRole.crossCheck,
+            ),
+            _preservedObservation(
+              routeId: 'TH_TO_EN',
+              role: TranslationRouteRole.crossCheck,
+            ),
+          ],
+          limitations: const <String>[],
+        ),
+      );
+
+      final TranslationMatrixResult result = await useCase(
+        sourceText: 'Source',
+        sourceLanguageSelection: SourceLanguageSelection.english,
+        cancellationSignal: TranslatorCancellationSignal(),
+        onProgress: (_) {},
+      );
+
+      expect(result.routes, hasLength(6));
+      expect(result.assessment.observations, hasLength(7));
+      expect(
+        result.assessment.observations
+            .where(
+              (SemanticObservation observation) =>
+                  observation.routeId == 'EN_TO_RU',
+            )
+            .length,
+        2,
+      );
+      expect(gateway.translateCalls, 6);
+      expect(gateway.auditCalls, 1);
+    },
+  );
+
+  test('repeated observations cannot replace missing audit routes', () async {
     gateway.auditReports.add(
       SemanticAuditReport(
         observations: List<SemanticObservation>.generate(

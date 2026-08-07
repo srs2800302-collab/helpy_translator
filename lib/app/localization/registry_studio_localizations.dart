@@ -272,26 +272,23 @@ final class RegistryStudioLocalizations {
 
   String get auditPassDisclosure => _value(
     ru:
-        'Обычный запуск выполняет шесть отдельных переводов и две '
-        'изолированные проверки готовой матрицы: восемь API-вызовов. '
-        'Только для временной ошибки соединения, ограничения запросов или '
-        'HTTP 5xx разрешён один общий повтор: максимум девять API-вызовов. '
-        'Обе проверки используют одну модель одного API-провайдера и не '
-        'являются независимой экспертизой. Ошибка одного прохода не удаляет '
-        'выводы другого.',
+        'Запуск выполняет шесть отдельных переводов и две изолированные '
+        'проверки готовой матрицы: максимум восемь API-вызовов. '
+        'Автоматические повторы запросов не выполняются. Обе проверки '
+        'используют одну модель одного API-провайдера и не являются '
+        'независимой экспертизой. Ошибка одного прохода не удаляет выводы '
+        'другого.',
     en:
-        'A normal run performs six separate translations and two isolated '
-        'audits of the completed matrix: eight API calls. One shared retry is '
-        'allowed only for a transient transport, rate-limit, or HTTP 5xx '
-        'failure: at most nine API calls. Both audits use the same model from '
-        'one API provider and are not an independent review. A failure in one '
-        'pass does not erase the other pass findings.',
+        'A run performs six separate translations and two isolated audits of '
+        'the completed matrix: at most eight API calls. Requests are never '
+        'retried automatically. Both audits use the same model from one API '
+        'provider and are not an independent review. A failure in one pass '
+        'does not erase the other pass findings.',
     th:
-        'การทำงานปกติประกอบด้วยการแปลแยกกันหกครั้งและการตรวจสอบเมทริกซ์ที่เสร็จแล้ว'
-        'แบบแยกกันสองรอบ รวมเป็นคำขอ API แปดครั้ง อนุญาตให้ลองซ้ำร่วมกันได้หนึ่งครั้ง'
-        'เฉพาะข้อผิดพลาดชั่วคราวจากการเชื่อมต่อ ขีดจำกัดคำขอ หรือ HTTP 5xx '
-        'รวมสูงสุดเก้าคำขอ API การตรวจสอบทั้งสองใช้โมเดลเดียวกันจากผู้ให้บริการ '
-        'API รายเดียวกัน จึงไม่ใช่การตรวจสอบอิสระ '
+        'การทำงานหนึ่งครั้งประกอบด้วยการแปลแยกกันหกครั้งและการตรวจสอบเมทริกซ์'
+        'ที่เสร็จแล้วแบบแยกกันสองรอบ รวมสูงสุดแปดคำขอ API '
+        'ระบบจะไม่ลองคำขอซ้ำโดยอัตโนมัติ การตรวจสอบทั้งสองใช้โมเดลเดียวกันจาก'
+        'ผู้ให้บริการ API รายเดียวกัน จึงไม่ใช่การตรวจสอบอิสระ '
         'ความล้มเหลวของรอบหนึ่งจะไม่ลบผลของอีกรอบ',
   );
 

@@ -742,7 +742,7 @@ void main() {
   );
 
   test(
-    'provider failure in pass B consumes one shared retry and preserves pass A',
+    'provider failure in pass B is not retried and preserves pass A',
     () async {
       int requestCount = 0;
       final MockClient httpClient = MockClient((http.Request request) async {
@@ -776,7 +776,7 @@ void main() {
         routes: _twoPrimaryRoutes,
       );
 
-      expect(requestCount, 3);
+      expect(requestCount, 2);
       expect(report.limitations, <String>[
         'AUDIT_PASS_B_PROVIDER_FAILURE',
         'AUDIT_PASSES_DISAGREE',

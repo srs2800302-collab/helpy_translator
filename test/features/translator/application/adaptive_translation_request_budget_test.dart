@@ -69,19 +69,27 @@ void main() {
     }
   });
 
-  test('one shared transient audit retry raises total to nine', () async {
-    final _Scenario scenario = await _runScenario(
-      sourceCase: _normalCases[1],
-      transientAuditFailures: 1,
-    );
+  test(
+    'transient audit failure is not retried and total stays eight',
+    () async {
+      final _Scenario scenario = await _runScenario(
+        sourceCase: _normalCases[1],
+        transientAuditFailures: 1,
+      );
 
-    expect(scenario.requestCount, 9);
-    expect(scenario.auditAttemptCount, 3);
-    expect(
-      scenario.result.assessment.verdict,
-      MatrixVerdict.acceptableVariation,
-    );
-  });
+      expect(scenario.requestCount, 8);
+      expect(scenario.auditAttemptCount, 2);
+      expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
+      expect(
+        scenario.result.assessment.limitations,
+        contains('AUDIT_PASS_A_PROVIDER_FAILURE'),
+      );
+      expect(
+        scenario.result.assessment.limitations,
+        contains('AUDIT_PASSES_DISAGREE'),
+      );
+    },
+  );
 
   test('malformed audit JSON is not retried', () async {
     final _Scenario scenario = await _runScenario(
@@ -117,22 +125,22 @@ void main() {
     );
   });
 
-  test('repeated transient failure consumes only one shared retry', () async {
+  test('two transient audit failures still never exceed eight', () async {
     final _Scenario scenario = await _runScenario(
       sourceCase: _normalCases[1],
       transientAuditFailures: 2,
     );
 
-    expect(scenario.requestCount, 9);
-    expect(scenario.auditAttemptCount, 3);
+    expect(scenario.requestCount, 8);
+    expect(scenario.auditAttemptCount, 2);
     expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
     expect(
       scenario.result.assessment.limitations,
-      anyElement(startsWith('AUDIT_PASS_A_')),
+      contains('AUDIT_PASS_A_PROVIDER_FAILURE'),
     );
     expect(
       scenario.result.assessment.limitations,
-      contains('AUDIT_PASSES_DISAGREE'),
+      contains('AUDIT_PASS_B_PROVIDER_FAILURE'),
     );
   });
 }
@@ -156,9 +164,7 @@ Future<_Scenario> _runScenario({
   bool malformedFirstAudit = false,
   bool firstAuditHttp400 = false,
 }) async {
-  const TyphoonTranslatorConfig config = TyphoonTranslatorConfig(
-    auditRetryDelay: Duration.zero,
-  );
+  const TyphoonTranslatorConfig config = TyphoonTranslatorConfig();
 
   int requestCount = 0;
   int auditAttemptCount = 0;

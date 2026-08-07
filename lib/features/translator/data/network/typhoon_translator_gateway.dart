@@ -166,8 +166,6 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
       routes: routes,
     );
 
-    final _AuditRetryBudget retryBudget = _AuditRetryBudget();
-
     final _IndependentAuditPass firstPass =
         await _runIndependentAuditPassSafely(
           apiKey: apiKey,
@@ -175,7 +173,6 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
           systemPrompt: _auditFirstPassSystemPrompt,
           maxTokens: _config.auditMaxTokens,
           failurePrefix: 'AUDIT_PASS_A',
-          retryBudget: retryBudget,
         );
     final _IndependentAuditPass secondPass =
         await _runIndependentAuditPassSafely(
@@ -184,7 +181,6 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
           systemPrompt: _auditSecondPassSystemPrompt,
           maxTokens: _config.auditVerificationMaxTokens,
           failurePrefix: 'AUDIT_PASS_B',
-          retryBudget: retryBudget,
         );
 
     return _reconcileIndependentAuditPasses(
@@ -234,15 +230,14 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
     required String systemPrompt,
     required int maxTokens,
     required String failurePrefix,
-    required _AuditRetryBudget retryBudget,
   }) async {
     try {
-      return await _runIndependentAuditPassWithRetry(
+      return await _runIndependentAuditPass(
         apiKey: apiKey,
         routes: routes,
         systemPrompt: systemPrompt,
         maxTokens: maxTokens,
-        retryBudget: retryBudget,
+        materializePreservedRoutes: true,
       );
     } on TranslatorException catch (error) {
       final String? limitation = _auditPassFailureLimitation(
@@ -258,38 +253,6 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
         routes: routes,
         limitation: limitation,
       );
-    }
-  }
-
-  Future<_IndependentAuditPass> _runIndependentAuditPassWithRetry({
-    required String apiKey,
-    required List<TranslationRouteResult> routes,
-    required String systemPrompt,
-    required int maxTokens,
-    required _AuditRetryBudget retryBudget,
-  }) async {
-    Future<_IndependentAuditPass> attempt() {
-      return _runIndependentAuditPass(
-        apiKey: apiKey,
-        routes: routes,
-        systemPrompt: systemPrompt,
-        maxTokens: maxTokens,
-        materializePreservedRoutes: true,
-      );
-    }
-
-    try {
-      return await attempt();
-    } on TranslatorException catch (error) {
-      if (!_isTransientAuditFailure(error) || !retryBudget.claim()) {
-        rethrow;
-      }
-
-      if (_config.auditRetryDelay != Duration.zero) {
-        await Future<void>.delayed(_config.auditRetryDelay);
-      }
-
-      return attempt();
     }
   }
 
@@ -1109,16 +1072,6 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
     }
   }
 
-  static bool _isTransientAuditFailure(TranslatorException error) {
-    return switch (error.kind) {
-      TranslatorFailureKind.transport ||
-      TranslatorFailureKind.rateLimited => true,
-      TranslatorFailureKind.provider =>
-        error.statusCode != null && error.statusCode! >= 500,
-      _ => false,
-    };
-  }
-
   static String? _auditPassFailureLimitation({
     required String failurePrefix,
     required TranslatorFailureKind kind,
@@ -1363,19 +1316,6 @@ final class _CandidateRouteAudit {
   final List<_ObservationCandidate> candidates;
   final bool routeUnverifiable;
   final List<String> limitations;
-}
-
-final class _AuditRetryBudget {
-  bool _claimed = false;
-
-  bool claim() {
-    if (_claimed) {
-      return false;
-    }
-
-    _claimed = true;
-    return true;
-  }
 }
 
 final class _IndependentAuditPass {

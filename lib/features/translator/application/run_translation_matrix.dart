@@ -383,13 +383,6 @@ final class RunTranslationMatrix {
     required List<TranslationRouteResult> routes,
     required SemanticAuditReport report,
   }) {
-    if (report.observations.length != routes.length) {
-      throw const TranslatorException(
-        TranslatorFailureKind.invalidResponse,
-        'The audit did not return one result for every translation route.',
-      );
-    }
-
     final Map<String, TranslationRouteRole> expectedRolesByRouteId =
         <String, TranslationRouteRole>{
           for (final TranslationRouteResult route in routes)
@@ -401,14 +394,14 @@ final class RunTranslationMatrix {
       final TranslationRouteRole? expectedRole =
           expectedRolesByRouteId[observation.routeId];
 
-      if (expectedRole == null ||
-          !seenRouteIds.add(observation.routeId) ||
-          observation.routeRole != expectedRole) {
+      if (expectedRole == null || observation.routeRole != expectedRole) {
         throw const TranslatorException(
           TranslatorFailureKind.invalidResponse,
           'The audit returned inconsistent translation-route coverage.',
         );
       }
+
+      seenRouteIds.add(observation.routeId);
     }
 
     if (seenRouteIds.length != expectedRolesByRouteId.length) {
