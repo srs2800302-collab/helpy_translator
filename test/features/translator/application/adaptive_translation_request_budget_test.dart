@@ -171,8 +171,6 @@ Future<_Scenario> _run({
                     'target_excerpt':
                         (routes[index]
                             as Map<String, dynamic>)['translated_text'],
-                    'source_fact': 'The source states one object.',
-                    'target_fact': 'The target states another object.',
                   },
                   'limitations': <Object>[],
                 }
