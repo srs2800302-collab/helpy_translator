@@ -77,6 +77,55 @@ void main() {
     expect(result.verdict, MatrixVerdict.reviewRequired);
   });
 
+  test(
+    'grounded incompatibility converts indeterminate matrix to review required',
+    () {
+      final MatrixAssessment result = policy.apply(
+        matrixAssessment: MatrixAssessment(
+          verdict: MatrixVerdict.indeterminate,
+          observations: const [],
+          limitations: const <String>['AUDIT_EVIDENCE_NOT_GROUNDED'],
+        ),
+        linguistReport: _report(const <PrimaryLinguistAssessment>[
+          PrimaryLinguistAssessment(
+            routeId: 'RU_TO_TH',
+            targetLanguage: TranslationLanguage.thai,
+            status: PrimaryLinguistStatus.incompatible,
+            sourceExcerpt: 'source object',
+            targetExcerpt: 'target object',
+            limitations: <String>[],
+          ),
+        ]),
+      );
+
+      expect(result.verdict, MatrixVerdict.reviewRequired);
+      expect(result.limitations, contains('AUDIT_EVIDENCE_NOT_GROUNDED'));
+    },
+  );
+
+  test('grounded incompatibility cannot replace unreliable matrix verdict', () {
+    final MatrixAssessment result = policy.apply(
+      matrixAssessment: MatrixAssessment(
+        verdict: MatrixVerdict.unreliable,
+        observations: const [],
+        limitations: const <String>['AUDIT_PASS_A_RESPONSE_INVALID'],
+      ),
+      linguistReport: _report(const <PrimaryLinguistAssessment>[
+        PrimaryLinguistAssessment(
+          routeId: 'RU_TO_TH',
+          targetLanguage: TranslationLanguage.thai,
+          status: PrimaryLinguistStatus.incompatible,
+          sourceExcerpt: 'source object',
+          targetExcerpt: 'target object',
+          limitations: <String>[],
+        ),
+      ]),
+    );
+
+    expect(result.verdict, MatrixVerdict.unreliable);
+    expect(result.limitations, contains('AUDIT_PASS_A_RESPONSE_INVALID'));
+  });
+
   test('report-level limitation makes positive verdict indeterminate', () {
     final MatrixAssessment result = policy.apply(
       matrixAssessment: _matrix(MatrixVerdict.acceptableVariation),

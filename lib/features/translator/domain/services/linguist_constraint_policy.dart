@@ -101,11 +101,12 @@ final class ConservativeLinguistConstraintPolicy
 
     final MatrixVerdict verdict;
 
-    if (hasUncertainty && _isPositive(matrixAssessment.verdict)) {
-      verdict = MatrixVerdict.indeterminate;
-    } else if (hasCompleteIncompatibility &&
-        _isPositive(matrixAssessment.verdict)) {
+    if (matrixAssessment.verdict == MatrixVerdict.unreliable) {
+      verdict = MatrixVerdict.unreliable;
+    } else if (hasCompleteIncompatibility) {
       verdict = MatrixVerdict.reviewRequired;
+    } else if (hasUncertainty && _isPositive(matrixAssessment.verdict)) {
+      verdict = MatrixVerdict.indeterminate;
     } else {
       verdict = matrixAssessment.verdict;
     }
