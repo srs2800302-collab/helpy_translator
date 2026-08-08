@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:helpy_translator/app/localization/registry_studio_localizations.dart';
 import 'package:helpy_translator/features/translator/domain/entities/matrix_assessment.dart';
+import 'package:helpy_translator/features/translator/domain/entities/primary_linguist_report.dart';
 import 'package:helpy_translator/features/translator/domain/entities/semantic_observation.dart';
 import 'package:helpy_translator/features/translator/domain/entities/translation_language.dart';
 import 'package:helpy_translator/features/translator/domain/entities/translation_matrix_result.dart';
@@ -399,12 +401,12 @@ void main() {
     );
     await _toggleResultCard(tester, result);
 
-    expect(find.text('Route-isolated audit — 0 routes'), findsOneWidget);
+    expect(find.text('Completed-matrix audit — 0 routes'), findsOneWidget);
     expect(find.text('Automated checks agree'), findsOneWidget);
     expect(find.textContaining('six separate translations'), findsOneWidget);
     expect(find.textContaining('eight API calls'), findsOneWidget);
     expect(
-      find.textContaining('same model from one API provider'),
+      find.textContaining('same model from the same API provider'),
       findsOneWidget,
     );
   });
@@ -574,74 +576,106 @@ void main() {
     expect(find.text('condition-a'), findsOneWidget);
   });
 
-  testWidgets('shows disagreement only after opening observation details', (
+  testWidgets('shows primary Linguist evidence separately and copies it', (
     WidgetTester tester,
   ) async {
-    final String disagreementEvidence = englishL10n
-        .observationEvidenceExplanation(
-          preservationName: 'altered',
-          dimensionName: 'object',
-          verificationStatusName: 'conflict',
-          isCrossCheck: false,
-        );
-    final String disagreementVerification = englishL10n
-        .observationVerificationLabel(
-          statusName: 'conflict',
-          candidateTuple: 'SUBSTITUTION / OBJECT / ALTERED',
-          verifierTuple: 'SCOPE_CHANGE / SPECIFICITY / UNKNOWN',
-        );
+    String? copiedText;
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (
+          MethodCall call,
+        ) async {
+          if (call.method == 'Clipboard.setData') {
+            final Map<Object?, Object?> arguments =
+                call.arguments as Map<Object?, Object?>;
+            copiedText = arguments['text'] as String?;
+          }
+
+          return null;
+        });
+
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
     final TranslationMatrixResult result = TranslationMatrixResult(
-      sourceText: 'Source statement.',
+      sourceText: 'The bank closes tomorrow.',
       sourceLanguage: TranslationLanguage.english,
       routes: const <TranslationRouteResult>[],
       assessment: const MatrixAssessment(
-        verdict: MatrixVerdict.indeterminate,
-        observations: <SemanticObservation>[
-          SemanticObservation(
-            routeId: 'EN_TO_TH',
-            routeRole: TranslationRouteRole.primary,
-            relation: SemanticRelation.substitution,
-            dimension: SemanticDimension.object,
-            preservation: MeaningPreservation.altered,
-            verificationStatus: ObservationVerificationStatus.conflict,
-            sourceExcerpt: 'source-token',
-            targetExcerpt: 'target-token',
-            verifierRelation: SemanticRelation.scopeChange,
-            verifierDimension: SemanticDimension.specificity,
-            verifierPreservation: MeaningPreservation.unknown,
-          ),
-        ],
+        verdict: MatrixVerdict.reviewRequired,
+        observations: <SemanticObservation>[],
         limitations: <String>[],
       ),
-      createdAt: DateTime.utc(2026, 8, 5),
+      linguistReport: const PrimaryLinguistReport(
+        assessments: <PrimaryLinguistAssessment>[
+          PrimaryLinguistAssessment(
+            routeId: 'EN_TO_RU',
+            targetLanguage: TranslationLanguage.russian,
+            status: PrimaryLinguistStatus.incompatible,
+            sourceExcerpt: 'bank',
+            targetExcerpt: 'берег',
+            limitations: <String>['CANDIDATE_SENSE_RISK'],
+          ),
+          PrimaryLinguistAssessment(
+            routeId: 'EN_TO_TH',
+            targetLanguage: TranslationLanguage.thai,
+            status: PrimaryLinguistStatus.compatible,
+            sourceExcerpt: null,
+            targetExcerpt: null,
+            limitations: <String>[],
+          ),
+        ],
+        limitations: <String>['LINGUIST_SCOPE_LIMITED'],
+      ),
+      createdAt: DateTime.utc(2026, 8, 8),
     );
 
     await tester.pumpWidget(
       _TestApp(child: TranslationMatrixResultView(result: result)),
     );
+
     await _toggleResultCard(tester, result);
 
-    expect(find.text('Audit needs attention'), findsOneWidget);
-    expect(find.text(disagreementEvidence), findsNothing);
-    expect(find.text(disagreementVerification), findsNothing);
-
-    final Finder disagreementTile = find.byKey(
-      const ValueKey<String>('translator-observation-attention-EN_TO_TH-0'),
-    );
-    await tester.ensureVisible(disagreementTile);
-    await tester.tap(disagreementTile);
-    await tester.pumpAndSettle();
-
-    expect(find.text(disagreementEvidence), findsOneWidget);
-    expect(find.text(disagreementVerification), findsOneWidget);
     expect(
-      find.textContaining('SUBSTITUTION / OBJECT / ALTERED'),
+      find.byKey(const ValueKey<String>('translator-primary-linguist-section')),
+      findsOneWidget,
+    );
+    expect(find.text('Separate Linguist review'), findsOneWidget);
+    expect(
+      find.textContaining('COMPATIBLE is not proof of equivalence'),
       findsOneWidget,
     );
     expect(
-      find.textContaining('SCOPE_CHANGE / SPECIFICITY / UNKNOWN'),
+      find.byKey(
+        const ValueKey<String>('translator-primary-linguist-EN_TO_RU'),
+      ),
       findsOneWidget,
     );
+    expect(find.text('EN_TO_RU · RU · Incompatible'), findsOneWidget);
+    expect(find.text('EN_TO_TH · TH · Compatible — not proof'), findsOneWidget);
+    expect(find.text('bank'), findsOneWidget);
+    expect(find.text('берег'), findsOneWidget);
+    expect(find.text('• Limitation: CANDIDATE_SENSE_RISK'), findsOneWidget);
+    expect(find.text('• Limitation: LINGUIST_SCOPE_LIMITED'), findsOneWidget);
+
+    final Finder copyButton = find.byKey(
+      const ValueKey<String>('translator-copy-all-button'),
+    );
+
+    await tester.ensureVisible(copyButton);
+    await tester.tap(copyButton);
+    await tester.pump();
+
+    expect(copiedText, isNotNull);
+    expect(copiedText, contains('PRIMARY LINGUIST:'));
+    expect(copiedText, contains('EN_TO_RU [RU]'));
+    expect(copiedText, contains('STATUS: INCOMPATIBLE'));
+    expect(copiedText, contains('SOURCE: bank'));
+    expect(copiedText, contains('TARGET: берег'));
+    expect(copiedText, contains('CANDIDATE_SENSE_RISK'));
+    expect(copiedText, contains('LINGUIST_SCOPE_LIMITED'));
   });
 
   testWidgets('shows pass-specific failure as neutral attention', (
@@ -654,7 +688,7 @@ void main() {
       assessment: const MatrixAssessment(
         verdict: MatrixVerdict.indeterminate,
         observations: <SemanticObservation>[],
-        limitations: <String>['AUDIT_PASS_B_PROVIDER_FAILURE'],
+        limitations: <String>['AUDIT_PASS_A_PROVIDER_FAILURE'],
       ),
       createdAt: DateTime.utc(2026, 8, 7),
     );
@@ -670,7 +704,7 @@ void main() {
 
     expect(
       find.textContaining(
-        'Isolated pass B did not complete: the provider failed the request',
+        'Isolated pass A did not complete: the provider failed the request',
       ),
       findsOneWidget,
     );

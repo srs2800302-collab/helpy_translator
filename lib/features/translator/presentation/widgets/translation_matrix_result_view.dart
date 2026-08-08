@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../app/localization/registry_studio_localizations.dart';
 import '../../domain/entities/matrix_assessment.dart';
+import '../../domain/entities/primary_linguist_report.dart';
 import '../../domain/entities/semantic_observation.dart';
 import '../../domain/entities/translation_matrix_result.dart';
 import '../../domain/entities/translation_route.dart';
@@ -155,6 +156,13 @@ final class _TranslationMatrixResultViewState
             _RouteSection(route: route),
             if (route != result.routes.last) const Divider(height: 24),
           ],
+          if (_hasPrimaryLinguistEvidence(result.linguistReport)) ...<Widget>[
+            const Divider(height: 28),
+            _buildPrimaryLinguistSection(
+              context: context,
+              report: result.linguistReport,
+            ),
+          ],
           const Divider(height: 28),
           Align(
             alignment: Alignment.centerLeft,
@@ -247,6 +255,82 @@ final class _TranslationMatrixResultViewState
     );
   }
 
+  static bool _hasPrimaryLinguistEvidence(PrimaryLinguistReport report) {
+    return report.assessments.isNotEmpty || report.limitations.isNotEmpty;
+  }
+
+  static Widget _buildPrimaryLinguistSection({
+    required BuildContext context,
+    required PrimaryLinguistReport report,
+  }) {
+    final RegistryStudioLocalizations l10n = context.rsL10n;
+
+    return Column(
+      key: const ValueKey<String>('translator-primary-linguist-section'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          l10n.primaryLinguistReview,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.primaryLinguistScopeNote,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        if (report.assessments.isEmpty) ...<Widget>[
+          const SizedBox(height: 8),
+          Text(l10n.primaryLinguistNoAssessments),
+        ],
+        for (final PrimaryLinguistAssessment assessment
+            in report.assessments) ...<Widget>[
+          const SizedBox(height: 12),
+          SelectableText(
+            '${assessment.routeId} · '
+            '${assessment.targetLanguage.code} · '
+            '${l10n.primaryLinguistStatusLabel(assessment.status.name)}',
+            key: ValueKey<String>(
+              'translator-primary-linguist-${assessment.routeId}',
+            ),
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          if (assessment.sourceExcerpt != null) ...<Widget>[
+            const SizedBox(height: 6),
+            _TextSection(
+              label: l10n.sourceExcerpt,
+              value: assessment.sourceExcerpt!,
+            ),
+          ],
+          if (assessment.targetExcerpt != null) ...<Widget>[
+            const SizedBox(height: 6),
+            _TextSection(
+              label: l10n.targetExcerpt,
+              value: assessment.targetExcerpt!,
+            ),
+          ],
+          for (final String limitation in assessment.limitations) ...<Widget>[
+            const SizedBox(height: 4),
+            SelectableText(
+              '• ${l10n.primaryLinguistLimitationLabel(limitation)}',
+            ),
+          ],
+        ],
+        if (report.limitations.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 12),
+          Text(
+            l10n.primaryLinguistLimitations,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 4),
+          for (final String limitation in report.limitations)
+            SelectableText(
+              '• ${l10n.primaryLinguistLimitationLabel(limitation)}',
+            ),
+        ],
+      ],
+    );
+  }
+
   static bool _requiresAttention(SemanticObservation observation) {
     return observation.preservation != MeaningPreservation.preserved ||
         observation.verificationStatus !=
@@ -300,6 +384,54 @@ final class _TranslationMatrixResultViewState
         ..writeln();
     }
 
+    if (_hasPrimaryLinguistEvidence(result.linguistReport)) {
+      buffer
+        ..writeln('PRIMARY LINGUIST:')
+        ..writeln();
+
+      if (result.linguistReport.assessments.isEmpty) {
+        buffer.writeln('ASSESSMENTS: NONE');
+      }
+
+      for (final PrimaryLinguistAssessment assessment
+          in result.linguistReport.assessments) {
+        buffer
+          ..writeln(
+            '${assessment.routeId} '
+            '[${assessment.targetLanguage.code}]',
+          )
+          ..writeln('STATUS: ${assessment.status.code}');
+
+        if (assessment.sourceExcerpt != null) {
+          buffer.writeln('SOURCE: ${assessment.sourceExcerpt}');
+        }
+
+        if (assessment.targetExcerpt != null) {
+          buffer.writeln('TARGET: ${assessment.targetExcerpt}');
+        }
+
+        if (assessment.limitations.isNotEmpty) {
+          buffer.writeln('LIMITATIONS:');
+
+          for (final String limitation in assessment.limitations) {
+            buffer.writeln('- $limitation');
+          }
+        }
+
+        buffer.writeln();
+      }
+
+      if (result.linguistReport.limitations.isNotEmpty) {
+        buffer.writeln('REPORT LIMITATIONS:');
+
+        for (final String limitation in result.linguistReport.limitations) {
+          buffer.writeln('- $limitation');
+        }
+
+        buffer.writeln();
+      }
+    }
+
     buffer
       ..writeln('FINAL MATRIX ASSESSMENT:')
       ..writeln(result.assessment.verdict.name);
@@ -313,10 +445,6 @@ final class _TranslationMatrixResultViewState
           ..writeln('${observation.routeId} [${observation.routeRole.name}]')
           ..writeln('CANDIDATE: ${_tuple(observation)}')
           ..writeln('VERIFICATION: ${observation.verificationStatus.name}');
-
-        if (observation.hasVerifierTuple) {
-          buffer.writeln('VERIFIER: ${_verifierTuple(observation)}');
-        }
 
         if (observation.sourceExcerpt != null) {
           buffer.writeln('SOURCE: ${observation.sourceExcerpt}');
@@ -347,18 +475,6 @@ final class _TranslationMatrixResultViewState
     return '${observation.relation.code} / '
         '${observation.dimension.code} / '
         '${observation.preservation.code}';
-  }
-
-  static String? _verifierTuple(SemanticObservation observation) {
-    final SemanticRelation? relation = observation.verifierRelation;
-    final SemanticDimension? dimension = observation.verifierDimension;
-    final MeaningPreservation? preservation = observation.verifierPreservation;
-
-    if (relation == null || dimension == null || preservation == null) {
-      return null;
-    }
-
-    return '${relation.code} / ${dimension.code} / ${preservation.code}';
   }
 
   static String _verdictIcon(MatrixVerdict verdict) {
@@ -479,15 +595,6 @@ final class _ObservationTile extends StatelessWidget {
         '${observation.relation.code} / '
         '${observation.dimension.code} / '
         '${observation.preservation.code}';
-    final String? verifierTuple =
-        observation.verifierRelation == null ||
-            observation.verifierDimension == null ||
-            observation.verifierPreservation == null
-        ? null
-        : '${observation.verifierRelation!.code} / '
-              '${observation.verifierDimension!.code} / '
-              '${observation.verifierPreservation!.code}';
-
     return ExpansionTile(
       key: tileKey,
       initiallyExpanded: false,
@@ -531,7 +638,6 @@ final class _ObservationTile extends StatelessWidget {
             l10n.observationVerificationLabel(
               statusName: observation.verificationStatus.name,
               candidateTuple: candidateTuple,
-              verifierTuple: verifierTuple,
             ),
             style: Theme.of(context).textTheme.bodySmall,
           ),

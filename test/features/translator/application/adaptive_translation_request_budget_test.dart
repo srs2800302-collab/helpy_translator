@@ -13,6 +13,7 @@ import 'package:helpy_translator/features/translator/domain/entities/translation
 import 'package:helpy_translator/features/translator/domain/entities/translation_matrix_result.dart';
 import 'package:helpy_translator/features/translator/domain/repositories/translator_api_key_store.dart';
 import 'package:helpy_translator/features/translator/domain/services/honesty_assessment_policy.dart';
+import 'package:helpy_translator/features/translator/domain/services/linguist_constraint_policy.dart';
 import 'package:helpy_translator/features/translator/domain/services/source_language_detector.dart';
 import 'package:helpy_translator/features/translator/domain/services/translation_route_planner.dart';
 
@@ -21,155 +22,108 @@ typedef _SourceCase = ({String text, SourceLanguageSelection selection});
 typedef _Scenario = ({
   TranslationMatrixResult result,
   int requestCount,
-  int auditAttemptCount,
-  List<String> requestModels,
+  int auditCalls,
+  int linguistCalls,
 });
 
 void main() {
-  test('current workflow uses only the API-verified model', () {
-    const TyphoonTranslatorConfig config = TyphoonTranslatorConfig();
-
-    expect(config.model, 'typhoon-v2.5-30b-a3b-instruct');
-    expect(config.model, isNot(contains('v2.1')));
-  });
-
-  test('normal RU EN and TH runs use exactly eight provider calls', () async {
-    for (final _SourceCase sourceCase in _normalCases) {
-      final _Scenario scenario = await _runScenario(sourceCase: sourceCase);
-
-      expect(scenario.requestCount, 8, reason: sourceCase.selection.name);
-      expect(scenario.auditAttemptCount, 2);
-      expect(
-        scenario.requestModels,
-        everyElement('typhoon-v2.5-30b-a3b-instruct'),
-      );
-      expect(scenario.result.auditCoverage, TranslationAuditCoverage.expanded);
-      expect(scenario.result.routes, hasLength(6));
-      expect(
-        scenario.result.assessment.verdict,
-        MatrixVerdict.acceptableVariation,
-      );
-    }
-  });
-
-  test('specificity loss is non-green for RU EN and TH source', () async {
-    for (final _SourceCase sourceCase in _specificityCases) {
-      final _Scenario scenario = await _runScenario(
-        sourceCase: sourceCase,
-        terminologyIssue: true,
-      );
-
-      expect(scenario.requestCount, 8, reason: sourceCase.selection.name);
-      expect(scenario.auditAttemptCount, 2);
-      expect(
-        scenario.result.assessment.verdict,
-        MatrixVerdict.unreliable,
-        reason: sourceCase.selection.name,
-      );
-    }
-  });
-
   test(
-    'transient audit failure is not retried and total stays eight',
+    'RU EN TH production runs use exactly six translations one audit and one linguist call',
     () async {
-      final _Scenario scenario = await _runScenario(
-        sourceCase: _normalCases[1],
-        transientAuditFailures: 1,
-      );
+      for (final _SourceCase sourceCase in _cases) {
+        final _Scenario scenario = await _run(sourceCase: sourceCase);
 
-      expect(scenario.requestCount, 8);
-      expect(scenario.auditAttemptCount, 2);
-      expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
-      expect(
-        scenario.result.assessment.limitations,
-        contains('AUDIT_PASS_A_PROVIDER_FAILURE'),
-      );
-      expect(
-        scenario.result.assessment.limitations,
-        contains('AUDIT_PASSES_DISAGREE'),
-      );
+        expect(scenario.requestCount, 8, reason: sourceCase.selection.name);
+        expect(scenario.auditCalls, 1);
+        expect(scenario.linguistCalls, 1);
+        expect(scenario.result.routes, hasLength(6));
+        expect(scenario.result.linguistReport.assessments, hasLength(2));
+      }
     },
   );
 
-  test('malformed audit JSON is not retried', () async {
-    final _Scenario scenario = await _runScenario(
-      sourceCase: _normalCases[1],
-      malformedFirstAudit: true,
+  test('single audit failure is not retried and total remains eight', () async {
+    final _Scenario scenario = await _run(
+      sourceCase: _cases.first,
+      failAudit: true,
     );
 
     expect(scenario.requestCount, 8);
-    expect(scenario.auditAttemptCount, 2);
-    expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
-    expect(
-      scenario.result.assessment.limitations,
-      contains('AUDIT_PASS_A_RESPONSE_INVALID'),
-    );
-    expect(
-      scenario.result.assessment.limitations,
-      contains('AUDIT_PASSES_DISAGREE'),
-    );
-  });
-
-  test('HTTP 400 audit failure is not retried', () async {
-    final _Scenario scenario = await _runScenario(
-      sourceCase: _normalCases[1],
-      firstAuditHttp400: true,
-    );
-
-    expect(scenario.requestCount, 8);
-    expect(scenario.auditAttemptCount, 2);
-    expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
-    expect(
-      scenario.result.assessment.limitations,
-      anyElement(startsWith('AUDIT_PASS_A_')),
-    );
-  });
-
-  test('two transient audit failures still never exceed eight', () async {
-    final _Scenario scenario = await _runScenario(
-      sourceCase: _normalCases[1],
-      transientAuditFailures: 2,
-    );
-
-    expect(scenario.requestCount, 8);
-    expect(scenario.auditAttemptCount, 2);
+    expect(scenario.auditCalls, 1);
+    expect(scenario.linguistCalls, 1);
     expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
     expect(
       scenario.result.assessment.limitations,
       contains('AUDIT_PASS_A_PROVIDER_FAILURE'),
     );
+  });
+
+  test('linguist failure is not retried and total remains eight', () async {
+    final _Scenario scenario = await _run(
+      sourceCase: _cases[1],
+      failLinguist: true,
+    );
+
+    expect(scenario.requestCount, 8);
+    expect(scenario.auditCalls, 1);
+    expect(scenario.linguistCalls, 1);
+    expect(scenario.result.routes, hasLength(6));
+    expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
     expect(
       scenario.result.assessment.limitations,
-      contains('AUDIT_PASS_B_PROVIDER_FAILURE'),
+      contains('LINGUIST_PROVIDER_FAILURE'),
     );
+  });
+
+  test('grounded Audit A drift cannot become green', () async {
+    final _Scenario scenario = await _run(
+      sourceCase: _cases.first,
+      auditDrift: true,
+    );
+
+    expect(scenario.requestCount, 8);
+    expect(scenario.auditCalls, 1);
+    expect(scenario.linguistCalls, 1);
+    expect(scenario.result.assessment.verdict, MatrixVerdict.reviewRequired);
+  });
+
+  test('grounded linguist incompatibility cannot become green', () async {
+    final _Scenario scenario = await _run(
+      sourceCase: _cases.first,
+      linguistDrift: true,
+    );
+
+    expect(scenario.requestCount, 8);
+    expect(scenario.auditCalls, 1);
+    expect(scenario.linguistCalls, 1);
+    expect(scenario.result.assessment.verdict, MatrixVerdict.reviewRequired);
   });
 }
 
-const List<_SourceCase> _normalCases = <_SourceCase>[
-  (text: 'варочная панель', selection: SourceLanguageSelection.russian),
-  (text: 'cooktop', selection: SourceLanguageSelection.english),
-  (text: 'เตาปรุงอาหารแบบฝัง', selection: SourceLanguageSelection.thai),
+const List<_SourceCase> _cases = <_SourceCase>[
+  (
+    text: 'мастер может приехать завтра',
+    selection: SourceLanguageSelection.russian,
+  ),
+  (
+    text: 'The technician can come tomorrow',
+    selection: SourceLanguageSelection.english,
+  ),
+  (text: 'ช่างสามารถมาได้พรุ่งนี้', selection: SourceLanguageSelection.thai),
 ];
 
-const List<_SourceCase> _specificityCases = <_SourceCase>[
-  (text: 'варочная панель', selection: SourceLanguageSelection.russian),
-  (text: 'cooktop', selection: SourceLanguageSelection.english),
-  (text: 'เตาไฟ', selection: SourceLanguageSelection.thai),
-];
-
-Future<_Scenario> _runScenario({
+Future<_Scenario> _run({
   required _SourceCase sourceCase,
-  bool terminologyIssue = false,
-  int transientAuditFailures = 0,
-  bool malformedFirstAudit = false,
-  bool firstAuditHttp400 = false,
+  bool failAudit = false,
+  bool failLinguist = false,
+  bool auditDrift = false,
+  bool linguistDrift = false,
 }) async {
   const TyphoonTranslatorConfig config = TyphoonTranslatorConfig();
 
   int requestCount = 0;
-  int auditAttemptCount = 0;
-
-  final List<String> requestModels = <String>[];
+  int auditCalls = 0;
+  int linguistCalls = 0;
 
   final MockClient httpClient = MockClient((http.Request request) async {
     requestCount += 1;
@@ -177,61 +131,113 @@ Future<_Scenario> _runScenario({
     final Map<String, dynamic> body =
         jsonDecode(request.body) as Map<String, dynamic>;
 
-    final Object? rawModel = body['model'];
-
-    if (rawModel is! String || rawModel.isEmpty) {
-      throw StateError('Provider request model is missing.');
-    }
-
-    requestModels.add(rawModel);
-
-    final Map<String, dynamic> payload = _userPayload(body);
+    final Map<String, dynamic> payload = _payload(body);
 
     if (payload.containsKey('source_language') &&
         payload.containsKey('target_language')) {
-      final String routeId =
-          '${payload['source_language']}_TO_'
-          '${payload['target_language']}';
-
-      return _chatResponse(
+      return _chat(
         jsonEncode(<String, Object>{
-          'translation': _translationForRoute(
-            routeId,
-            terminologyIssue: terminologyIssue,
-          ),
+          'translation': 'translation-$requestCount',
         }),
       );
     }
 
-    auditAttemptCount += 1;
+    if (payload.containsKey('routes')) {
+      auditCalls += 1;
 
-    if (auditAttemptCount <= transientAuditFailures) {
-      return http.Response(
-        'temporary provider failure',
-        503,
-        headers: const <String, String>{
-          'content-type': 'text/plain; charset=utf-8',
-        },
+      if (failAudit) {
+        return http.Response(
+          'provider failure',
+          503,
+          headers: const <String, String>{
+            'content-type': 'text/plain; charset=utf-8',
+          },
+        );
+      }
+
+      final List<dynamic> routes = payload['routes'] as List<dynamic>;
+
+      return _chat(
+        jsonEncode(<String, Object>{
+          'route_audits': <Object>[
+            for (int index = 0; index < routes.length; index += 1)
+              if (auditDrift && index == 0)
+                <String, Object?>{
+                  'judgment': 'DIFFERENT_MEANING',
+                  'difference': <String, Object?>{
+                    'difference_type': 'OBJECT_CHANGE',
+                    'source_excerpt':
+                        (routes[index] as Map<String, dynamic>)['source_text'],
+                    'target_excerpt':
+                        (routes[index]
+                            as Map<String, dynamic>)['translated_text'],
+                    'source_fact': 'The source states one object.',
+                    'target_fact': 'The target states another object.',
+                  },
+                  'limitations': <Object>[],
+                }
+              else
+                <String, Object?>{
+                  'judgment': 'SAME_MEANING',
+                  'difference': null,
+                  'limitations': <Object>[],
+                },
+          ],
+        }),
       );
     }
 
-    if (malformedFirstAudit && auditAttemptCount == 1) {
-      return _chatResponse('{"unexpected":[]}');
-    }
+    if (payload.containsKey('primary_routes')) {
+      linguistCalls += 1;
 
-    if (firstAuditHttp400 && auditAttemptCount == 1) {
-      return http.Response(
-        'bad request',
-        400,
-        headers: const <String, String>{
-          'content-type': 'text/plain; charset=utf-8',
-        },
+      if (failLinguist) {
+        return http.Response(
+          'provider failure',
+          503,
+          headers: const <String, String>{
+            'content-type': 'text/plain; charset=utf-8',
+          },
+        );
+      }
+
+      final List<dynamic> routes = payload['primary_routes'] as List<dynamic>;
+
+      return _chat(
+        jsonEncode(<String, Object>{
+          'assessments': <Object>[
+            for (int index = 0; index < routes.length; index += 1)
+              if (linguistDrift && index == 0)
+                <String, Object?>{
+                  'route': (routes[index] as Map<String, dynamic>)['route'],
+                  'target_language':
+                      (routes[index]
+                          as Map<String, dynamic>)['target_language'],
+                  'status': 'INCOMPATIBLE',
+                  'source_excerpt': sourceCase.text.substring(0, 1),
+                  'target_excerpt':
+                      ((routes[index]
+                                  as Map<String, dynamic>)['translated_text']
+                              as String)
+                          .substring(0, 1),
+                  'limitations': <Object>[],
+                }
+              else
+                <String, Object?>{
+                  'route': (routes[index] as Map<String, dynamic>)['route'],
+                  'target_language':
+                      (routes[index]
+                          as Map<String, dynamic>)['target_language'],
+                  'status': 'COMPATIBLE',
+                  'source_excerpt': null,
+                  'target_excerpt': null,
+                  'limitations': <Object>[],
+                },
+          ],
+        }),
       );
     }
 
-    return _chatResponse(
-      _auditResponse(payload, terminologyIssue: terminologyIssue),
-    );
+    throw StateError('Unexpected payload');
   });
 
   final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
@@ -241,12 +247,14 @@ Future<_Scenario> _runScenario({
 
   try {
     final RunTranslationMatrix useCase = RunTranslationMatrix(
-      apiKeyStore: const _StaticApiKeyStore(),
+      apiKeyStore: const _ApiKeyStore(),
       gateway: gateway,
+      primaryLinguistGateway: gateway,
       languageDetector: const ScriptSourceLanguageDetector(),
       routePlanner: const CompleteThreeLanguageRoutePlanner(),
       assessmentPolicy: const ConservativeHonestyAssessmentPolicy(),
-      clock: () => DateTime.utc(2026, 8, 7),
+      linguistConstraintPolicy: const ConservativeLinguistConstraintPolicy(),
+      clock: () => DateTime.utc(2026, 8, 8),
     );
 
     final TranslationMatrixResult result = await useCase(
@@ -259,96 +267,22 @@ Future<_Scenario> _runScenario({
     return (
       result: result,
       requestCount: requestCount,
-      auditAttemptCount: auditAttemptCount,
-      requestModels: List<String>.unmodifiable(requestModels),
+      auditCalls: auditCalls,
+      linguistCalls: linguistCalls,
     );
   } finally {
     gateway.close();
   }
 }
 
-String _translationForRoute(String routeId, {required bool terminologyIssue}) {
-  final String thaiTerm = terminologyIssue ? 'เตาไฟ' : 'เตาปรุงอาหารแบบฝัง';
-
-  return <String, String>{
-    'RU_TO_EN': 'cooktop',
-    'RU_TO_TH': thaiTerm,
-    'EN_TO_RU': 'варочная панель',
-    'EN_TO_TH': thaiTerm,
-    'TH_TO_RU': 'варочная панель',
-    'TH_TO_EN': 'cooktop',
-  }[routeId]!;
-}
-
-String _auditResponse(
-  Map<String, dynamic> payload, {
-  required bool terminologyIssue,
-}) {
-  final List<dynamic> routes = payload['routes'] as List<dynamic>;
-
-  return jsonEncode(<String, Object>{
-    'route_audits': <Object>[
-      for (final dynamic rawRoute in routes)
-        _routeAudit(
-          rawRoute as Map<String, dynamic>,
-          terminologyIssue: terminologyIssue,
-        ),
-    ],
-  });
-}
-
-Map<String, Object?> _routeAudit(
-  Map<String, dynamic> route, {
-  required bool terminologyIssue,
-}) {
-  final String sourceText = route['source_text'] as String;
-
-  final String translatedText = route['translated_text'] as String;
-
-  final bool sourceIsGeneric = sourceText == 'เตาไฟ';
-
-  final bool targetIsGeneric = translatedText == 'เตาไฟ';
-
-  final bool mismatch = terminologyIssue && sourceIsGeneric != targetIsGeneric;
-
-  if (!mismatch) {
-    return <String, Object?>{
-      'judgment': 'SAME_MEANING',
-      'difference': null,
-      'limitations': <Object>[],
-    };
-  }
-
-  return <String, Object?>{
-    'judgment': 'DIFFERENT_MEANING',
-    'difference': <String, Object?>{
-      'difference_type': 'SPECIFICITY_CHANGE',
-      'source_excerpt': sourceText,
-      'target_excerpt': translatedText,
-      'source_fact': sourceIsGeneric
-          ? 'The source denotes a broader class '
-                'of cooking appliance.'
-          : 'The source denotes a specific '
-                'built-in cooking surface.',
-      'target_fact': targetIsGeneric
-          ? 'The target denotes a broader class '
-                'of cooking appliance.'
-          : 'The target denotes a specific '
-                'built-in cooking surface.',
-    },
-    'limitations': <Object>[],
-  };
-}
-
-Map<String, dynamic> _userPayload(Map<String, dynamic> body) {
+Map<String, dynamic> _payload(Map<String, dynamic> body) {
   final List<dynamic> messages = body['messages'] as List<dynamic>;
 
-  final Map<String, dynamic> userMessage = messages[1] as Map<String, dynamic>;
-
-  return jsonDecode(userMessage['content'] as String) as Map<String, dynamic>;
+  return jsonDecode((messages[1] as Map<String, dynamic>)['content'] as String)
+      as Map<String, dynamic>;
 }
 
-http.Response _chatResponse(String content) {
+http.Response _chat(String content) {
   return http.Response(
     jsonEncode(<String, Object>{
       'choices': <Object>[
@@ -366,8 +300,8 @@ http.Response _chatResponse(String content) {
   );
 }
 
-final class _StaticApiKeyStore implements TranslatorApiKeyStore {
-  const _StaticApiKeyStore();
+final class _ApiKeyStore implements TranslatorApiKeyStore {
+  const _ApiKeyStore();
 
   @override
   Future<String?> read() async => 'secret';

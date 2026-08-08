@@ -38,7 +38,7 @@ void main() {
     );
   });
 
-  test('disclosure states the hard eight-call maximum', () {
+  test('disclosure states the active eight-call topology', () {
     const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
       Locale('ru'),
     );
@@ -50,34 +50,21 @@ void main() {
     );
 
     expect(ru.auditPassDisclosure, contains('максимум восемь API-вызовов'));
-    expect(
-      ru.auditPassDisclosure,
-      contains('Автоматические повторы запросов не выполняются'),
-    );
-    expect(
-      ru.auditPassDisclosure,
-      contains('одну модель одного API-провайдера'),
-    );
-    expect(
-      ru.auditPassDisclosure,
-      contains('не являются независимой экспертизой'),
-    );
+    expect(ru.auditPassDisclosure, contains('одну проверку готовой матрицы'));
+    expect(ru.auditPassDisclosure, contains('лингвистом'));
+    expect(ru.auditPassDisclosure, contains('не получают выводы друг друга'));
 
     expect(en.auditPassDisclosure, contains('at most eight API calls'));
-    expect(en.auditPassDisclosure, contains('never retried automatically'));
     expect(
       en.auditPassDisclosure,
-      contains('same model from one API provider'),
+      contains('one audit of the completed matrix'),
     );
-    expect(en.auditPassDisclosure, contains('not an independent review'));
+    expect(en.auditPassDisclosure, contains('one separate Linguist review'));
+    expect(en.auditPassDisclosure, contains('do not receive each'));
+    expect(en.auditPassDisclosure, contains('never retried automatically'));
 
     expect(th.auditPassDisclosure, contains('รวมสูงสุดแปดคำขอ API'));
-    expect(th.auditPassDisclosure, contains('ไม่ลองคำขอซ้ำโดยอัตโนมัติ'));
-    expect(
-      th.auditPassDisclosure,
-      contains('โมเดลเดียวกันจากผู้ให้บริการ API รายเดียวกัน'),
-    );
-    expect(th.auditPassDisclosure, contains('ไม่ใช่การตรวจสอบอิสระ'));
+    expect(th.auditPassDisclosure, contains('ไม่มีการลองคำขอซ้ำโดยอัตโนมัติ'));
   });
 
   test('new evidence limitations are localized', () {

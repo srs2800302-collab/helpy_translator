@@ -1,18 +1,21 @@
 import 'dart:convert';
 
 import '../../domain/entities/semantic_audit_report.dart';
+import '../../domain/entities/primary_linguist_report.dart';
 import '../../domain/entities/semantic_observation.dart';
 import '../../domain/entities/translation_batch_request.dart';
 import '../../domain/entities/translation_language.dart';
 import '../../domain/entities/translation_route.dart';
 import '../../domain/entities/translation_route_result.dart';
 import '../../domain/errors/translator_exception.dart';
+import '../../domain/repositories/primary_linguist_gateway.dart';
 import '../../domain/repositories/translator_gateway.dart';
 import 'strict_json_object_parser.dart';
 import 'typhoon_chat_client.dart';
 import 'typhoon_translator_config.dart';
 
-final class TyphoonTranslatorGateway implements TranslatorGateway {
+final class TyphoonTranslatorGateway
+    implements TranslatorGateway, PrimaryLinguistGateway {
   TyphoonTranslatorGateway({
     required TyphoonChatClient chatClient,
     required TyphoonTranslatorConfig config,
@@ -154,7 +157,7 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
   }
 
   @override
-  Future<SemanticAuditReport> auditMatrix({
+  Future<SemanticAuditReport> auditMatrixSinglePass({
     required String apiKey,
     required String originalSourceText,
     required TranslationLanguage originalSourceLanguage,
@@ -166,7 +169,7 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
       routes: routes,
     );
 
-    final _IndependentAuditPass firstPass =
+    final _IndependentAuditPass auditPass =
         await _runIndependentAuditPassSafely(
           apiKey: apiKey,
           originalSourceText: originalSourceText,
@@ -176,22 +179,272 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
           maxTokens: _config.auditMaxTokens,
           failurePrefix: 'AUDIT_PASS_A',
         );
-    final _IndependentAuditPass secondPass =
-        await _runIndependentAuditPassSafely(
-          apiKey: apiKey,
-          originalSourceText: originalSourceText,
-          originalSourceLanguage: originalSourceLanguage,
-          routes: routes,
-          systemPrompt: _auditSecondPassSystemPrompt,
-          maxTokens: _config.auditVerificationMaxTokens,
-          failurePrefix: 'AUDIT_PASS_B',
-        );
 
-    return _reconcileIndependentAuditPasses(
-      routes: routes,
-      firstPass: firstPass,
-      secondPass: secondPass,
+    return _materializeSingleAuditPass(routes: routes, auditPass: auditPass);
+  }
+
+  @override
+  Future<PrimaryLinguistReport> evaluatePrimaryTranslations({
+    required String apiKey,
+    required String originalSourceText,
+    required TranslationLanguage originalSourceLanguage,
+    required List<TranslationRouteResult> primaryRoutes,
+  }) async {
+    _validatePrimaryLinguistInput(
+      originalSourceText: originalSourceText,
+      originalSourceLanguage: originalSourceLanguage,
+      primaryRoutes: primaryRoutes,
     );
+
+    final String content = await _chatClient.complete(
+      apiKey: apiKey,
+      systemPrompt: _primaryLinguistSystemPrompt,
+      userContent: jsonEncode(<String, Object>{
+        'original_source_language': originalSourceLanguage.code,
+        'original_source_text': originalSourceText,
+        'primary_routes': primaryRoutes
+            .map(
+              (TranslationRouteResult route) => <String, Object>{
+                'route': route.route.id,
+                'target_language': route.route.target.code,
+                'translated_text': route.translatedText,
+              },
+            )
+            .toList(growable: false),
+      }),
+      maxTokens: _config.linguistMaxTokens,
+    );
+
+    final Map<String, Object?> json = _jsonParser.parse(content);
+
+    _requireExactKeys(json, const <String>{'assessments'});
+
+    final Object? rawAssessments = json['assessments'];
+
+    if (rawAssessments is! List<dynamic> ||
+        rawAssessments.length != primaryRoutes.length) {
+      throw const TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'Linguist response must contain one ordered assessment '
+        'per primary route.',
+      );
+    }
+
+    final List<PrimaryLinguistAssessment> assessments =
+        <PrimaryLinguistAssessment>[];
+
+    final List<String> limitations = <String>[];
+    final Set<String> seenLimitations = <String>{};
+
+    for (int index = 0; index < primaryRoutes.length; index += 1) {
+      final PrimaryLinguistAssessment assessment =
+          _parsePrimaryLinguistAssessment(
+            rawAssessments[index],
+            primaryRoutes[index],
+            originalSourceText,
+          );
+
+      assessments.add(assessment);
+
+      _appendUniqueLimitations(
+        source: assessment.limitations,
+        target: limitations,
+        seen: seenLimitations,
+      );
+    }
+
+    return PrimaryLinguistReport(
+      assessments: List<PrimaryLinguistAssessment>.unmodifiable(assessments),
+      limitations: List<String>.unmodifiable(limitations),
+    );
+  }
+
+  static void _validatePrimaryLinguistInput({
+    required String originalSourceText,
+    required TranslationLanguage originalSourceLanguage,
+    required List<TranslationRouteResult> primaryRoutes,
+  }) {
+    if (originalSourceText.trim().isEmpty || primaryRoutes.isEmpty) {
+      throw const TranslatorException(
+        TranslatorFailureKind.validation,
+        'Primary Linguist input is incomplete.',
+      );
+    }
+
+    final Set<String> routeIds = <String>{};
+    final Set<TranslationLanguage> targetLanguages = <TranslationLanguage>{};
+
+    for (final TranslationRouteResult route in primaryRoutes) {
+      if (route.route.role != TranslationRouteRole.primary ||
+          route.route.source != originalSourceLanguage ||
+          route.sourceText != originalSourceText ||
+          route.translatedText.trim().isEmpty ||
+          !routeIds.add(route.route.id) ||
+          !targetLanguages.add(route.route.target)) {
+        throw const TranslatorException(
+          TranslatorFailureKind.validation,
+          'Primary Linguist input must contain unique completed '
+          'primary translations derived from the exact original source.',
+        );
+      }
+    }
+  }
+
+  PrimaryLinguistAssessment _parsePrimaryLinguistAssessment(
+    Object? rawAssessment,
+    TranslationRouteResult route,
+    String originalSourceText,
+  ) {
+    if (rawAssessment is! Map<String, dynamic>) {
+      throw const TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'Every Linguist assessment must be a JSON object.',
+      );
+    }
+
+    final Map<String, Object?> assessment = Map<String, Object?>.from(
+      rawAssessment,
+    );
+
+    _requireExactKeys(assessment, const <String>{
+      'route',
+      'target_language',
+      'status',
+      'source_excerpt',
+      'target_excerpt',
+      'limitations',
+    });
+
+    final String routeId = _parseNonEmptyString(
+      assessment['route'],
+      fieldName: 'route',
+    );
+
+    if (routeId != route.route.id) {
+      throw TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'Linguist route $routeId does not match expected route '
+        '${route.route.id}.',
+      );
+    }
+
+    final String targetLanguageCode = _parseUppercaseCode(
+      assessment['target_language'],
+      fieldName: 'target_language',
+    );
+
+    if (targetLanguageCode != route.route.target.code) {
+      throw TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'Linguist target language $targetLanguageCode does not match '
+        '${route.route.target.code}.',
+      );
+    }
+
+    final String statusCode = _parseUppercaseCode(
+      assessment['status'],
+      fieldName: 'status',
+    );
+
+    final PrimaryLinguistStatus status = switch (statusCode) {
+      'COMPATIBLE' => PrimaryLinguistStatus.compatible,
+      'INCOMPATIBLE' => PrimaryLinguistStatus.incompatible,
+      'UNRESOLVED' => PrimaryLinguistStatus.unresolved,
+      _ => throw TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'Unknown Linguist status $statusCode.',
+      ),
+    };
+
+    final String? sourceExcerpt = _parseNullableString(
+      assessment['source_excerpt'],
+      fieldName: 'source_excerpt',
+    );
+
+    final String? targetExcerpt = _parseNullableString(
+      assessment['target_excerpt'],
+      fieldName: 'target_excerpt',
+    );
+
+    final Object? rawLimitations = assessment['limitations'];
+
+    if (rawLimitations is! List<dynamic>) {
+      throw const TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'Linguist limitations must be an array.',
+      );
+    }
+
+    final List<String> limitations = <String>[
+      for (final Object? rawLimitation in rawLimitations)
+        _parseLinguistLimitation(rawLimitation),
+    ];
+
+    switch (status) {
+      case PrimaryLinguistStatus.compatible:
+        if (sourceExcerpt != null ||
+            targetExcerpt != null ||
+            limitations.isNotEmpty) {
+          throw const TranslatorException(
+            TranslatorFailureKind.invalidResponse,
+            'COMPATIBLE Linguist assessment requires null excerpts '
+            'and no limitations.',
+          );
+        }
+
+      case PrimaryLinguistStatus.incompatible:
+        if (sourceExcerpt == null ||
+            targetExcerpt == null ||
+            limitations.isNotEmpty ||
+            !originalSourceText.contains(sourceExcerpt) ||
+            !route.translatedText.contains(targetExcerpt)) {
+          throw const TranslatorException(
+            TranslatorFailureKind.invalidResponse,
+            'INCOMPATIBLE Linguist assessment requires grounded '
+            'source and target excerpts and no limitations.',
+          );
+        }
+
+      case PrimaryLinguistStatus.unresolved:
+        if (sourceExcerpt != null ||
+            targetExcerpt != null ||
+            limitations.isEmpty) {
+          throw const TranslatorException(
+            TranslatorFailureKind.invalidResponse,
+            'UNRESOLVED Linguist assessment requires null excerpts '
+            'and at least one limitation.',
+          );
+        }
+    }
+
+    return PrimaryLinguistAssessment(
+      routeId: route.route.id,
+      targetLanguage: route.route.target,
+      status: status,
+      sourceExcerpt: sourceExcerpt,
+      targetExcerpt: targetExcerpt,
+      limitations: List<String>.unmodifiable(limitations),
+    );
+  }
+
+  static String _parseLinguistLimitation(Object? value) {
+    final String code = _parseUppercaseCode(value, fieldName: 'limitations[]');
+
+    const Set<String> allowed = <String>{
+      'INSUFFICIENT_CONTEXT',
+      'SOURCE_AMBIGUITY',
+      'CROSS_LANGUAGE_EQUIVALENCE_UNCERTAIN',
+      'OTHER_UNVERIFIABLE',
+    };
+
+    if (!allowed.contains(code)) {
+      throw TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'Unknown Linguist limitation $code.',
+      );
+    }
+
+    return code;
   }
 
   void _validateAuditInput({
@@ -367,180 +620,31 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
     );
   }
 
-  SemanticAuditReport _reconcileIndependentAuditPasses({
+  SemanticAuditReport _materializeSingleAuditPass({
     required List<TranslationRouteResult> routes,
-    required _IndependentAuditPass firstPass,
-    required _IndependentAuditPass secondPass,
+    required _IndependentAuditPass auditPass,
   }) {
     final List<SemanticObservation> observations = <SemanticObservation>[];
-    final List<String> limitations = <String>[];
-    final Set<String> seenLimitations = <String>{};
-
-    _appendUniqueLimitations(
-      source: firstPass.limitations,
-      target: limitations,
-      seen: seenLimitations,
-    );
-    _appendUniqueLimitations(
-      source: secondPass.limitations,
-      target: limitations,
-      seen: seenLimitations,
-    );
-
-    bool passesDisagree = false;
 
     for (final TranslationRouteResult route in routes) {
-      final _CandidateRouteAudit firstAudit =
-          firstPass.routeAudits[route.route.id]!;
-      final _CandidateRouteAudit secondAudit =
-          secondPass.routeAudits[route.route.id]!;
+      final _CandidateRouteAudit routeAudit =
+          auditPass.routeAudits[route.route.id]!;
 
-      if (firstAudit.routeUnverifiable || secondAudit.routeUnverifiable) {
-        final _CandidateRouteAudit? availableAudit;
-
-        if (firstAudit.routeUnverifiable == secondAudit.routeUnverifiable) {
-          availableAudit = null;
-        } else if (firstAudit.routeUnverifiable) {
-          availableAudit = secondAudit;
-        } else {
-          availableAudit = firstAudit;
-        }
-
-        if (availableAudit == null || availableAudit.candidates.isEmpty) {
-          observations.add(_buildUnverifiableRouteObservation(route));
-        } else {
-          observations.addAll(
-            _deduplicateCandidates(
-              availableAudit.candidates,
-            ).map(_buildUnverifiableCandidateObservation),
-          );
-        }
-
-        passesDisagree =
-            passesDisagree ||
-            firstAudit.routeUnverifiable != secondAudit.routeUnverifiable ||
-            firstAudit.candidates.isNotEmpty ||
-            secondAudit.candidates.isNotEmpty;
+      if (routeAudit.candidates.isEmpty) {
+        observations.add(_buildUnverifiableRouteObservation(route));
         continue;
       }
 
-      final _RouteReconciliation reconciliation = _reconcileRouteCandidates(
-        firstCandidates: firstAudit.candidates,
-        secondCandidates: secondAudit.candidates,
+      observations.addAll(
+        _deduplicateCandidates(
+          routeAudit.candidates,
+        ).map(_buildSinglePassCandidateObservation),
       );
-
-      observations.addAll(reconciliation.observations);
-      passesDisagree = passesDisagree || reconciliation.passesDisagree;
-    }
-
-    if (passesDisagree && seenLimitations.add('AUDIT_PASSES_DISAGREE')) {
-      limitations.add('AUDIT_PASSES_DISAGREE');
     }
 
     return SemanticAuditReport(
       observations: List<SemanticObservation>.unmodifiable(observations),
-      limitations: List<String>.unmodifiable(limitations),
-    );
-  }
-
-  _RouteReconciliation _reconcileRouteCandidates({
-    required List<_ObservationCandidate> firstCandidates,
-    required List<_ObservationCandidate> secondCandidates,
-  }) {
-    final List<_ObservationCandidate> first = _deduplicateCandidates(
-      firstCandidates,
-    );
-    final List<_ObservationCandidate> second = _deduplicateCandidates(
-      secondCandidates,
-    );
-    final List<SemanticObservation> observations = <SemanticObservation>[];
-    final Set<int> matchedSecondIndexes = <int>{};
-    final List<_ObservationCandidate> unmatchedFirst =
-        <_ObservationCandidate>[];
-
-    for (final _ObservationCandidate candidate in first) {
-      final int matchIndex = _findMatchingTupleIndex(
-        candidate: candidate,
-        candidates: second,
-        excludedIndexes: matchedSecondIndexes,
-      );
-
-      if (matchIndex < 0) {
-        unmatchedFirst.add(candidate);
-        continue;
-      }
-
-      matchedSecondIndexes.add(matchIndex);
-      observations.add(_buildConfirmedObservation(candidate));
-    }
-
-    final List<_ObservationCandidate> stillUnmatchedFirst =
-        <_ObservationCandidate>[];
-    bool passesDisagree = false;
-
-    for (final _ObservationCandidate candidate in unmatchedFirst) {
-      final int evidenceMatchIndex = _findMatchingEvidenceIndex(
-        candidate: candidate,
-        candidates: second,
-        excludedIndexes: matchedSecondIndexes,
-      );
-
-      if (evidenceMatchIndex < 0) {
-        stillUnmatchedFirst.add(candidate);
-        continue;
-      }
-
-      final _ObservationCandidate verifier = second[evidenceMatchIndex];
-      matchedSecondIndexes.add(evidenceMatchIndex);
-
-      if (candidate.preservation == MeaningPreservation.preserved ||
-          verifier.preservation == MeaningPreservation.preserved) {
-        passesDisagree = true;
-
-        final _ObservationCandidate alteredCandidate =
-            candidate.preservation == MeaningPreservation.altered
-            ? candidate
-            : verifier;
-
-        observations.add(
-          _buildUnverifiableCandidateObservation(alteredCandidate),
-        );
-        continue;
-      }
-
-      passesDisagree = true;
-      observations.add(
-        _buildConflictObservation(candidate: candidate, verifier: verifier),
-      );
-    }
-
-    for (final _ObservationCandidate candidate in stillUnmatchedFirst) {
-      if (candidate.preservation == MeaningPreservation.preserved) {
-        continue;
-      }
-
-      passesDisagree = true;
-      observations.add(_buildUnverifiableCandidateObservation(candidate));
-    }
-
-    for (int index = 0; index < second.length; index += 1) {
-      if (matchedSecondIndexes.contains(index)) {
-        continue;
-      }
-
-      final _ObservationCandidate candidate = second[index];
-
-      if (candidate.preservation == MeaningPreservation.preserved) {
-        continue;
-      }
-
-      passesDisagree = true;
-      observations.add(_buildUnverifiableCandidateObservation(candidate));
-    }
-
-    return _RouteReconciliation(
-      observations: List<SemanticObservation>.unmodifiable(observations),
-      passesDisagree: passesDisagree,
+      limitations: List<String>.unmodifiable(auditPass.limitations),
     );
   }
 
@@ -558,45 +662,6 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
     }
 
     return unique;
-  }
-
-  static int _findMatchingTupleIndex({
-    required _ObservationCandidate candidate,
-    required List<_ObservationCandidate> candidates,
-    required Set<int> excludedIndexes,
-  }) {
-    for (int index = 0; index < candidates.length; index += 1) {
-      if (excludedIndexes.contains(index)) {
-        continue;
-      }
-
-      final _ObservationCandidate other = candidates[index];
-      final bool matches =
-          candidate.preservation == MeaningPreservation.preserved
-          ? candidate.hasSameTuple(other)
-          : candidate.hasSameTupleAndEvidence(other);
-
-      if (matches) {
-        return index;
-      }
-    }
-
-    return -1;
-  }
-
-  static int _findMatchingEvidenceIndex({
-    required _ObservationCandidate candidate,
-    required List<_ObservationCandidate> candidates,
-    required Set<int> excludedIndexes,
-  }) {
-    for (int index = 0; index < candidates.length; index += 1) {
-      if (!excludedIndexes.contains(index) &&
-          candidate.hasSameEvidence(candidates[index])) {
-        return index;
-      }
-    }
-
-    return -1;
   }
 
   _CandidateRouteAudit _parseCandidateRouteAudit(
@@ -942,7 +1007,7 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
     return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   }
 
-  static SemanticObservation _buildConfirmedObservation(
+  static SemanticObservation _buildSinglePassCandidateObservation(
     _ObservationCandidate candidate,
   ) {
     return SemanticObservation(
@@ -951,41 +1016,7 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
       relation: candidate.relation,
       dimension: candidate.dimension,
       preservation: candidate.preservation,
-      verificationStatus: ObservationVerificationStatus.confirmed,
-      sourceExcerpt: candidate.sourceExcerpt,
-      targetExcerpt: candidate.targetExcerpt,
-    );
-  }
-
-  static SemanticObservation _buildConflictObservation({
-    required _ObservationCandidate candidate,
-    required _ObservationCandidate verifier,
-  }) {
-    return SemanticObservation(
-      routeId: candidate.route.route.id,
-      routeRole: candidate.route.route.role,
-      relation: candidate.relation,
-      dimension: candidate.dimension,
-      preservation: candidate.preservation,
-      verificationStatus: ObservationVerificationStatus.conflict,
-      sourceExcerpt: candidate.sourceExcerpt,
-      targetExcerpt: candidate.targetExcerpt,
-      verifierRelation: verifier.relation,
-      verifierDimension: verifier.dimension,
-      verifierPreservation: verifier.preservation,
-    );
-  }
-
-  static SemanticObservation _buildUnverifiableCandidateObservation(
-    _ObservationCandidate candidate,
-  ) {
-    return SemanticObservation(
-      routeId: candidate.route.route.id,
-      routeRole: candidate.route.route.role,
-      relation: candidate.relation,
-      dimension: candidate.dimension,
-      preservation: candidate.preservation,
-      verificationStatus: ObservationVerificationStatus.unverifiable,
+      verificationStatus: ObservationVerificationStatus.singlePass,
       sourceExcerpt: candidate.sourceExcerpt,
       targetExcerpt: candidate.targetExcerpt,
     );
@@ -1115,6 +1146,78 @@ final class TyphoonTranslatorGateway implements TranslatorGateway {
     _chatClient.close();
   }
 
+  static const String _primaryLinguistSystemPrompt = '''
+You are an independent translation linguist for Russian (RU), English (EN), and Thai (TH).
+
+The user payload contains only:
+- original_source_language;
+- original_source_text;
+- primary_routes.
+
+Each primary route contains only:
+- route;
+- target_language;
+- translated_text.
+
+You do not receive cross-check translations, matrix audit findings, another model result, or a final verdict.
+
+The original source text is the authoritative semantic anchor.
+
+Evaluate each primary translation independently against the original source.
+
+Do not use one primary translation to reinterpret, justify, repair, or criticize another primary translation.
+
+Use only ordinary contemporary meanings supported by the shown source and candidate.
+
+Use exactly one status:
+- COMPATIBLE: the candidate can express the same real-world message without materially adding, removing, narrowing, broadening, or changing an established fact.
+- INCOMPATIBLE: the shown source and candidate establish a concrete semantic incompatibility.
+- UNRESOLVED: the shown texts are insufficient to decide without inventing context.
+
+Synonyms, natural grammar, morphology, register, and ordinary professional labels are COMPATIBLE when they can identify the same real-world referent and preserve established facts.
+
+Do not invent hidden context, scenarios, professions, products, intentions, preferred dictionary senses, or missing facts.
+
+For COMPATIBLE:
+- source_excerpt is null;
+- target_excerpt is null;
+- limitations is empty.
+
+For INCOMPATIBLE:
+- source_excerpt is an exact substring of original_source_text;
+- target_excerpt is an exact substring of that route's translated_text;
+- limitations is empty.
+
+For UNRESOLVED:
+- source_excerpt is null;
+- target_excerpt is null;
+- limitations contains at least one allowed code.
+
+Allowed limitation codes:
+INSUFFICIENT_CONTEXT,
+SOURCE_AMBIGUITY,
+CROSS_LANGUAGE_EQUIVALENCE_UNCERTAIN,
+OTHER_UNVERIFIABLE.
+
+Do not return source meaning, explanations, notes, reasoning, recommendations, corrections, or a final verdict.
+
+Preserve primary_routes input order.
+
+Return exactly one JSON object and no other text:
+{
+  "assessments": [
+    {
+      "route": "<exact input route>",
+      "target_language": "<exact input target language>",
+      "status": "<COMPATIBLE, INCOMPATIBLE, or UNRESOLVED>",
+      "source_excerpt": null,
+      "target_excerpt": null,
+      "limitations": []
+    }
+  ]
+}
+''';
+
   static const String _translationSystemPrompt = '''
 You are a literal multilingual translator for Russian (RU), English (EN), and Thai (TH).
 
@@ -1220,78 +1323,6 @@ Return exactly one JSON object and no other text:
   ]
 }
 ''';
-
-  static const String _auditSecondPassSystemPrompt = '''
-You are audit judge B, acting only as an independent counterexample challenger for Russian (RU), English (EN), and Thai (TH).
-
-You receive no findings from another judge. Analyze every route from scratch and preserve input order.
-
-The user payload contains original_source_language, original_source_text, and the complete translation matrix in routes.
-
-Your task is not to repeat an ordinary equivalence judgment. Try to falsify semantic equivalence.
-
-For every route, search for one concrete real-world counterexample in which the supported meaning of source_text and translated_text cannot both describe the same situation.
-
-Other routes are contextual evidence, not votes, and this is not a majority vote.
-
-Role rules:
-- For role "primary", source_text itself controls the meaning. Matrix context may clarify genuine ambiguity, but it cannot excuse a target that materially changes that source meaning.
-- For role "crossCheck", source_text is an intermediate translation produced by a primary branch of this run. First establish the lineage-supported sense using original_source_text, the primary branch that produced the intermediate text, and compatible sibling evidence.
-- An alternative dictionary sense that conflicts with the translation lineage is not a valid counterexample.
-- Cross-route disagreement alone is not a counterexample.
-
-Counterexample rules:
-- A valid counterexample must identify a concrete supported situation in which one text is true or applicable while the other is false or inapplicable.
-- Different wording, grammar, register, politeness, morphology, synonyms, professional labels, or lexical choices are not counterexamples by themselves.
-- A lexical difference is not a counterexample when both expressions can identify the same real-world participant, object, action, event, or condition under the supported meaning.
-- Broader or narrower wording is a counterexample only when it admits a concrete real-world case that changes the message.
-- If your own source_fact and target_fact describe compatible real-world facts, do not return DIFFERENT_MEANING.
-- Do not invent products, scenarios, hidden context, corrections, or unsupported dictionary distinctions merely to manufacture a counterexample.
-
-Use exactly one judgment:
-- DIFFERENT_MEANING: one concrete counterexample survives scrutiny.
-- SAME_MEANING: no concrete counterexample survives scrutiny and the shown texts remain compatible under the supported meaning.
-- UNSURE: the available text does not establish whether a proposed counterexample is valid.
-
-For DIFFERENT_MEANING:
-- Report only the strongest concrete semantic difference.
-- difference must use exact excerpts copied character-for-character from the current route only.
-- source_fact and target_fact must be short English propositions describing the incompatible real-world facts.
-- The facts must themselves demonstrate the counterexample rather than merely describe different words.
-
-Allowed difference_type codes:
-OMISSION, ADDITION, CONTRADICTION, ACTION_CHANGE, NEGATION_CHANGE,
-MODALITY_CHANGE, QUANTITY_CHANGE, TIME_CHANGE, CONDITION_CHANGE,
-ACTOR_CHANGE, OBJECT_CHANGE, DIRECTION_CHANGE, CAUSE_CHANGE,
-RESTRICTION_CHANGE, TERMINOLOGY_CHANGE, SPECIFICITY_CHANGE.
-
-Shape rules:
-- SAME_MEANING: difference is null and limitations is empty.
-- UNSURE: difference is null and limitations contains at least one allowed code.
-- DIFFERENT_MEANING: difference is present and limitations is empty.
-- OMISSION: source_excerpt and source_fact are present; target_excerpt and target_fact are null.
-- ADDITION: target_excerpt and target_fact are present; source_excerpt and source_fact are null.
-- Every other difference type requires both excerpts and both facts.
-
-Allowed limitation codes:
-INSUFFICIENT_CONTEXT, SOURCE_AMBIGUITY,
-CROSS_LANGUAGE_EQUIVALENCE_UNCERTAIN,
-IDIOM_OR_CULTURAL_EQUIVALENCE_UNCERTAIN,
-EVIDENCE_INSUFFICIENT, OTHER_UNVERIFIABLE.
-
-There is no default judgment.
-
-Return exactly one JSON object and no other text:
-{
-  "route_audits": [
-    {
-      "judgment": "<SAME_MEANING, DIFFERENT_MEANING, or UNSURE>",
-      "difference": "<null or the required structured object>",
-      "limitations": ["<allowed code only when required>"]
-    }
-  ]
-}
-''';
 }
 
 final class _PairDifferenceMapping {
@@ -1365,14 +1396,4 @@ final class _IndependentAuditPass {
 
   final Map<String, _CandidateRouteAudit> routeAudits;
   final List<String> limitations;
-}
-
-final class _RouteReconciliation {
-  const _RouteReconciliation({
-    required this.observations,
-    required this.passesDisagree,
-  });
-
-  final List<SemanticObservation> observations;
-  final bool passesDisagree;
 }

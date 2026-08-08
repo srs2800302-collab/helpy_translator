@@ -74,28 +74,6 @@ void main() {
     expect(result.verdict, MatrixVerdict.acceptableVariation);
   });
 
-  test('pass disagreement is indeterminate instead of reclassified', () {
-    final MatrixAssessment result = policy.assess(
-      SemanticAuditReport(
-        observations: <SemanticObservation>[
-          _observation(
-            role: TranslationRouteRole.primary,
-            relation: SemanticRelation.substitution,
-            dimension: SemanticDimension.object,
-            preservation: MeaningPreservation.altered,
-            verificationStatus: ObservationVerificationStatus.conflict,
-            verifierRelation: SemanticRelation.scopeChange,
-            verifierDimension: SemanticDimension.specificity,
-            verifierPreservation: MeaningPreservation.unknown,
-          ),
-        ],
-        limitations: const <String>[],
-      ),
-    );
-
-    expect(result.verdict, MatrixVerdict.indeterminate);
-  });
-
   test('unverifiable observation is indeterminate', () {
     final MatrixAssessment result = policy.assess(
       SemanticAuditReport(
@@ -347,9 +325,6 @@ SemanticObservation _observation({
       ObservationVerificationStatus.confirmed,
   String? sourceExcerpt = 'source-token',
   String? targetExcerpt = 'target-token',
-  SemanticRelation? verifierRelation,
-  SemanticDimension? verifierDimension,
-  MeaningPreservation? verifierPreservation,
 }) {
   return SemanticObservation(
     routeId: routeId,
@@ -360,8 +335,5 @@ SemanticObservation _observation({
     verificationStatus: verificationStatus,
     sourceExcerpt: sourceExcerpt,
     targetExcerpt: targetExcerpt,
-    verifierRelation: verifierRelation,
-    verifierDimension: verifierDimension,
-    verifierPreservation: verifierPreservation,
   );
 }

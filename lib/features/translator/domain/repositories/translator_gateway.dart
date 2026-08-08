@@ -16,7 +16,7 @@ abstract interface class TranslatorGateway {
     required List<TranslationBatchRequest> requests,
   });
 
-  Future<SemanticAuditReport> auditMatrix({
+  Future<SemanticAuditReport> auditMatrixSinglePass({
     required String apiKey,
     required String originalSourceText,
     required TranslationLanguage originalSourceLanguage,

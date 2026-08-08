@@ -137,7 +137,7 @@ enum MeaningPreservation {
   }
 }
 
-enum ObservationVerificationStatus { confirmed, conflict, unverifiable }
+enum ObservationVerificationStatus { confirmed, singlePass, unverifiable }
 
 final class SemanticObservation extends Equatable {
   const SemanticObservation({
@@ -149,9 +149,6 @@ final class SemanticObservation extends Equatable {
     required this.verificationStatus,
     required this.sourceExcerpt,
     required this.targetExcerpt,
-    this.verifierRelation,
-    this.verifierDimension,
-    this.verifierPreservation,
   });
 
   final String routeId;
@@ -163,17 +160,7 @@ final class SemanticObservation extends Equatable {
   final String? sourceExcerpt;
   final String? targetExcerpt;
 
-  /// Populated only when the verification pass disagrees with the first pass.
-  final SemanticRelation? verifierRelation;
-  final SemanticDimension? verifierDimension;
-  final MeaningPreservation? verifierPreservation;
-
   bool get isPrimary => routeRole == TranslationRouteRole.primary;
-
-  bool get hasVerifierTuple =>
-      verifierRelation != null ||
-      verifierDimension != null ||
-      verifierPreservation != null;
 
   @override
   List<Object?> get props => <Object?>[
@@ -185,9 +172,6 @@ final class SemanticObservation extends Equatable {
     verificationStatus,
     sourceExcerpt,
     targetExcerpt,
-    verifierRelation,
-    verifierDimension,
-    verifierPreservation,
   ];
 
   Map<String, Object?> toJson() {
@@ -200,9 +184,6 @@ final class SemanticObservation extends Equatable {
       'verification_status': verificationStatus.name,
       'source_excerpt': sourceExcerpt,
       'target_excerpt': targetExcerpt,
-      'verifier_relation': verifierRelation?.code,
-      'verifier_dimension': verifierDimension?.code,
-      'verifier_preservation': verifierPreservation?.code,
     };
   }
 }

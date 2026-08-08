@@ -3,6 +3,7 @@ import 'package:helpy_translator/features/translator/application/run_translation
 import 'package:helpy_translator/features/translator/application/translator_cancellation_signal.dart';
 import 'package:helpy_translator/features/translator/application/translator_progress.dart';
 import 'package:helpy_translator/features/translator/domain/entities/matrix_assessment.dart';
+import 'package:helpy_translator/features/translator/domain/entities/primary_linguist_report.dart';
 import 'package:helpy_translator/features/translator/domain/entities/semantic_audit_report.dart';
 import 'package:helpy_translator/features/translator/domain/entities/semantic_observation.dart';
 import 'package:helpy_translator/features/translator/domain/entities/translation_batch_request.dart';
@@ -11,9 +12,11 @@ import 'package:helpy_translator/features/translator/domain/entities/translation
 import 'package:helpy_translator/features/translator/domain/entities/translation_route.dart';
 import 'package:helpy_translator/features/translator/domain/entities/translation_route_result.dart';
 import 'package:helpy_translator/features/translator/domain/errors/translator_exception.dart';
+import 'package:helpy_translator/features/translator/domain/repositories/primary_linguist_gateway.dart';
 import 'package:helpy_translator/features/translator/domain/repositories/translator_api_key_store.dart';
 import 'package:helpy_translator/features/translator/domain/repositories/translator_gateway.dart';
 import 'package:helpy_translator/features/translator/domain/services/honesty_assessment_policy.dart';
+import 'package:helpy_translator/features/translator/domain/services/linguist_constraint_policy.dart';
 import 'package:helpy_translator/features/translator/domain/services/source_language_detector.dart';
 import 'package:helpy_translator/features/translator/domain/services/translation_route_planner.dart';
 
@@ -28,9 +31,11 @@ void main() {
     useCase = RunTranslationMatrix(
       apiKeyStore: apiKeyStore,
       gateway: gateway,
+      primaryLinguistGateway: gateway,
       languageDetector: const ScriptSourceLanguageDetector(),
       routePlanner: const CompleteThreeLanguageRoutePlanner(),
       assessmentPolicy: const ConservativeHonestyAssessmentPolicy(),
+      linguistConstraintPolicy: const ConservativeLinguistConstraintPolicy(),
       clock: () => DateTime.utc(2026, 8, 7),
     );
   });
@@ -63,8 +68,8 @@ void main() {
     );
     expect(gateway.translateCalls, 6);
     expect(gateway.batchCalls, 0);
-    expect(gateway.auditCalls, 1);
-    expect(result.assessment.verdict, MatrixVerdict.acceptableVariation);
+    expect(gateway.singleAuditCalls, 1);
+    expect(result.assessment.verdict, MatrixVerdict.noCriticalDriftDetected);
     expect(result.toJson()['audit_coverage'], 'expanded');
     expect(gateway.translationInputs, <String>[
       'EN_TO_RU::$exactSource',
@@ -129,7 +134,7 @@ void main() {
     expect(result.routes, hasLength(6));
     expect(result.assessment.verdict, MatrixVerdict.unreliable);
     expect(gateway.translateCalls, 6);
-    expect(gateway.auditCalls, 1);
+    expect(gateway.singleAuditCalls, 1);
   });
 
   test('empty route translation is rejected before audit', () async {
@@ -152,7 +157,7 @@ void main() {
     );
 
     expect(gateway.translateCalls, 6);
-    expect(gateway.auditCalls, 0);
+    expect(gateway.singleAuditCalls, 0);
   });
 
   test('incomplete audit coverage is rejected before assessment', () async {
@@ -180,7 +185,7 @@ void main() {
     );
 
     expect(gateway.translateCalls, 6);
-    expect(gateway.auditCalls, 1);
+    expect(gateway.singleAuditCalls, 1);
   });
 
   test(
@@ -241,7 +246,7 @@ void main() {
         2,
       );
       expect(gateway.translateCalls, 6);
-      expect(gateway.auditCalls, 1);
+      expect(gateway.singleAuditCalls, 1);
     },
   );
 
@@ -283,7 +288,7 @@ void main() {
     );
 
     expect(gateway.translateCalls, 6);
-    expect(gateway.auditCalls, 1);
+    expect(gateway.singleAuditCalls, 1);
   });
 
   test('automatic mixed-language input fails without provider calls', () async {
@@ -304,7 +309,7 @@ void main() {
     );
 
     expect(gateway.translateCalls, 0);
-    expect(gateway.auditCalls, 0);
+    expect(gateway.singleAuditCalls, 0);
   });
 
   test('missing key fails before provider calls', () async {
@@ -327,16 +332,18 @@ void main() {
     );
 
     expect(gateway.translateCalls, 0);
-    expect(gateway.auditCalls, 0);
+    expect(gateway.singleAuditCalls, 0);
   });
 
   test('secure-storage failure is reported before provider calls', () async {
     useCase = RunTranslationMatrix(
       apiKeyStore: const _ThrowingApiKeyStore(),
       gateway: gateway,
+      primaryLinguistGateway: gateway,
       languageDetector: const ScriptSourceLanguageDetector(),
       routePlanner: const CompleteThreeLanguageRoutePlanner(),
       assessmentPolicy: const ConservativeHonestyAssessmentPolicy(),
+      linguistConstraintPolicy: const ConservativeLinguistConstraintPolicy(),
       clock: () => DateTime.utc(2026, 8, 7),
     );
 
@@ -357,7 +364,7 @@ void main() {
     );
 
     expect(gateway.translateCalls, 0);
-    expect(gateway.auditCalls, 0);
+    expect(gateway.singleAuditCalls, 0);
   });
 }
 
@@ -411,10 +418,13 @@ final class _MemoryApiKeyStore implements TranslatorApiKeyStore {
   }
 }
 
-final class _RecordingGateway implements TranslatorGateway {
+final class _RecordingGateway
+    implements TranslatorGateway, PrimaryLinguistGateway {
   int translateCalls = 0;
   int batchCalls = 0;
   int auditCalls = 0;
+  int singleAuditCalls = 0;
+  int linguistCalls = 0;
   int? emptyTranslationCall;
 
   final List<String> translationInputs = <String>[];
@@ -455,13 +465,13 @@ final class _RecordingGateway implements TranslatorGateway {
   }
 
   @override
-  Future<SemanticAuditReport> auditMatrix({
+  Future<SemanticAuditReport> auditMatrixSinglePass({
     required String apiKey,
     required String originalSourceText,
     required TranslationLanguage originalSourceLanguage,
     required List<TranslationRouteResult> routes,
   }) async {
-    auditCalls += 1;
+    singleAuditCalls += 1;
 
     if (auditReports.isNotEmpty) {
       return auditReports.removeAt(0);
@@ -476,9 +486,34 @@ final class _RecordingGateway implements TranslatorGateway {
             relation: SemanticRelation.wordingVariation,
             dimension: SemanticDimension.proposition,
             preservation: MeaningPreservation.preserved,
-            verificationStatus: ObservationVerificationStatus.confirmed,
+            verificationStatus: ObservationVerificationStatus.singlePass,
             sourceExcerpt: route.sourceText,
             targetExcerpt: route.translatedText,
+          ),
+      ],
+      limitations: const <String>[],
+    );
+  }
+
+  @override
+  Future<PrimaryLinguistReport> evaluatePrimaryTranslations({
+    required String apiKey,
+    required String originalSourceText,
+    required TranslationLanguage originalSourceLanguage,
+    required List<TranslationRouteResult> primaryRoutes,
+  }) async {
+    linguistCalls += 1;
+
+    return PrimaryLinguistReport(
+      assessments: <PrimaryLinguistAssessment>[
+        for (final TranslationRouteResult route in primaryRoutes)
+          PrimaryLinguistAssessment(
+            routeId: route.route.id,
+            targetLanguage: route.route.target,
+            status: PrimaryLinguistStatus.compatible,
+            sourceExcerpt: null,
+            targetExcerpt: null,
+            limitations: const <String>[],
           ),
       ],
       limitations: const <String>[],

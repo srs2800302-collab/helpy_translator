@@ -5,19 +5,19 @@ final class TyphoonTranslatorConfig {
     this.requestTimeout = const Duration(seconds: 90),
     this.translationMaxTokens = 2048,
     this.auditMaxTokens = 4096,
-    this.auditVerificationMaxTokens = 4096,
+    this.linguistMaxTokens = 1200,
   }) : assert(baseUrl != ''),
        assert(model != ''),
        assert(translationMaxTokens > 0),
        assert(auditMaxTokens > 0),
-       assert(auditVerificationMaxTokens > 0);
+       assert(linguistMaxTokens > 0);
 
   final String baseUrl;
   final String model;
   final Duration requestTimeout;
   final int translationMaxTokens;
   final int auditMaxTokens;
-  final int auditVerificationMaxTokens;
+  final int linguistMaxTokens;
 
   Uri get chatCompletionsUri {
     final String normalizedBaseUrl = baseUrl.endsWith('/')

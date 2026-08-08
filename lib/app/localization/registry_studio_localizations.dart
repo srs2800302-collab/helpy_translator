@@ -210,6 +210,11 @@ final class RegistryStudioLocalizations {
         en: 'Base audit — $routeCount routes',
         th: 'การตรวจสอบพื้นฐาน — $routeCount เส้นทาง',
       ),
+      'expanded' => _value(
+        ru: 'Проверка готовой матрицы — $routeCount маршрутов',
+        en: 'Completed-matrix audit — $routeCount routes',
+        th: 'การตรวจสอบเมทริกซ์ที่เสร็จแล้ว — $routeCount เส้นทาง',
+      ),
       'prototype' => _value(
         ru: 'Прототипная проверка — $routeCount маршрутов',
         en: 'Prototype audit — $routeCount routes',
@@ -221,9 +226,9 @@ final class RegistryStudioLocalizations {
         th: 'การตรวจสอบแบบแยกข้อมูล — $routeCount เส้นทาง',
       ),
       _ => _value(
-        ru: 'Маршрутная проверка — $routeCount маршрутов',
-        en: 'Route-isolated audit — $routeCount routes',
-        th: 'การตรวจสอบแยกตามเส้นทาง — $routeCount เส้นทาง',
+        ru: 'Проверка — $routeCount маршрутов',
+        en: 'Audit — $routeCount routes',
+        th: 'การตรวจสอบ — $routeCount เส้นทาง',
       ),
     };
   }
@@ -272,24 +277,79 @@ final class RegistryStudioLocalizations {
 
   String get auditPassDisclosure => _value(
     ru:
-        'Запуск выполняет шесть отдельных переводов и две изолированные '
-        'проверки готовой матрицы: максимум восемь API-вызовов. '
-        'Автоматические повторы запросов не выполняются. Обе проверки '
-        'используют одну модель одного API-провайдера и не являются '
-        'независимой экспертизой. Ошибка одного прохода не удаляет выводы '
-        'другого.',
+        'Запуск выполняет шесть отдельных переводов, одну проверку готовой '
+        'матрицы и одну отдельную проверку двух основных переводов '
+        'лингвистом: максимум восемь API-вызовов. Автоматические повторы '
+        'запросов не выполняются. Проверка матрицы и лингвист не получают '
+        'выводы друг друга и используют одну модель одного API-провайдера; '
+        'это не является независимой проверкой разными моделями.',
     en:
-        'A run performs six separate translations and two isolated audits of '
-        'the completed matrix: at most eight API calls. Requests are never '
-        'retried automatically. Both audits use the same model from one API '
-        'provider and are not an independent review. A failure in one pass '
-        'does not erase the other pass findings.',
+        'A run performs six separate translations, one audit of the completed '
+        'matrix, and one separate Linguist review of the two primary '
+        'translations: at most eight API calls. Requests are never retried '
+        'automatically. The matrix audit and Linguist do not receive each '
+        "other's findings and use the same model from the same API provider; "
+        'this is not an independent review by different models.',
     th:
-        'การทำงานหนึ่งครั้งประกอบด้วยการแปลแยกกันหกครั้งและการตรวจสอบเมทริกซ์'
-        'ที่เสร็จแล้วแบบแยกกันสองรอบ รวมสูงสุดแปดคำขอ API '
-        'ระบบจะไม่ลองคำขอซ้ำโดยอัตโนมัติ การตรวจสอบทั้งสองใช้โมเดลเดียวกันจาก'
-        'ผู้ให้บริการ API รายเดียวกัน จึงไม่ใช่การตรวจสอบอิสระ '
-        'ความล้มเหลวของรอบหนึ่งจะไม่ลบผลของอีกรอบ',
+        'การทำงานหนึ่งครั้งประกอบด้วยการแปลแยกกันหกครั้ง '
+        'การตรวจสอบเมทริกซ์ที่เสร็จแล้วหนึ่งครั้ง '
+        'และการตรวจสอบคำแปลหลักสองรายการโดยนักภาษาศาสตร์อีกหนึ่งครั้ง '
+        'รวมสูงสุดแปดคำขอ API ไม่มีการลองคำขอซ้ำโดยอัตโนมัติ '
+        'การตรวจสอบเมทริกซ์และนักภาษาศาสตร์ไม่เห็นผลลัพธ์ของกันและกัน '
+        'และใช้โมเดลเดียวกันจากผู้ให้บริการ API เดียวกัน '
+        'จึงไม่ใช่การตรวจสอบอิสระโดยโมเดลต่างกัน',
+  );
+
+  String get primaryLinguistReview => _value(
+    ru: 'Отдельная проверка лингвиста',
+    en: 'Separate Linguist review',
+    th: 'การตรวจสอบแยกโดยนักภาษาศาสตร์',
+  );
+
+  String get primaryLinguistScopeNote => _value(
+    ru:
+        'Лингвист видит только исходный текст и два основных перевода. '
+        'Статус COMPATIBLE не является доказательством эквивалентности.',
+    en:
+        'The Linguist sees only the original source and the two primary '
+        'translations. COMPATIBLE is not proof of equivalence.',
+    th:
+        'นักภาษาศาสตร์เห็นเฉพาะต้นฉบับและคำแปลหลักสองรายการ '
+        'สถานะ COMPATIBLE ไม่ใช่หลักฐานของความเทียบเท่า',
+  );
+
+  String get primaryLinguistNoAssessments => _value(
+    ru: 'Лингвист не вернул пригодных оценок.',
+    en: 'The Linguist returned no usable assessments.',
+    th: 'นักภาษาศาสตร์ไม่ได้ส่งการประเมินที่ใช้งานได้',
+  );
+
+  String get primaryLinguistLimitations => _value(
+    ru: 'Ограничения проверки лингвиста',
+    en: 'Linguist review limitations',
+    th: 'ข้อจำกัดของการตรวจสอบโดยนักภาษาศาสตร์',
+  );
+
+  String primaryLinguistStatusLabel(String statusName) {
+    return switch (statusName) {
+      'compatible' => _value(
+        ru: 'Совместимо — не доказательство',
+        en: 'Compatible — not proof',
+        th: 'สอดคล้อง — ไม่ใช่หลักฐาน',
+      ),
+      'incompatible' => _value(
+        ru: 'Несовместимо',
+        en: 'Incompatible',
+        th: 'ไม่สอดคล้อง',
+      ),
+      _ => _value(ru: 'Не определено', en: 'Unresolved', th: 'ยังสรุปไม่ได้'),
+    };
+  }
+
+  String primaryLinguistLimitationLabel(String limitationCode) => _value(
+    ru: 'Ограничение: $limitationCode',
+    en: 'Limitation: $limitationCode',
+    th: 'ข้อจำกัด: $limitationCode',
   );
 
   String primaryObservationCount(int count) => _value(
@@ -505,30 +565,33 @@ final class RegistryStudioLocalizations {
               '$dimension ได้',
         ),
       },
-      'conflict' => _value(
+      'singlePass' => _value(
         ru:
-            'Два изолированных прохода дали разные выводы. Система не выбирает '
-            'более благоприятный или более строгий результат.',
+            'Одна проверка матрицы сформировала это наблюдение по '
+            'характеристике «$dimension». Оно может блокировать положительный '
+            'результат, но само по себе не является независимо подтверждённым.',
         en:
-            'The two isolated passes disagreed. The system does not select the '
-            'more favorable or harsher result.',
+            'The single matrix audit produced this finding for $dimension. '
+            'It may block a positive result, but it is not independently '
+            'confirmed by itself.',
         th:
-            'การตรวจสอบแบบแยกกันสองรอบให้ผลไม่ตรงกัน ระบบจะไม่เลือกผลที่เป็น'
-            'ประโยชน์กว่าหรือเข้มงวดกว่า',
+            'การตรวจสอบเมทริกซ์หนึ่งครั้งสร้างข้อสังเกตนี้ในมิติ $dimension '
+            'ข้อสังเกตนี้อาจปิดกั้นผลเชิงบวกได้ '
+            'แต่ยังไม่ได้รับการยืนยันอย่างอิสระ',
       ),
       _ => _value(
         ru:
-            'Один из проходов не дал валидного подтверждения. Доступное '
-            'заключение и точные фрагменты сохранены, но не повышены до '
-            'подтверждённого результата.',
+            'Проверка матрицы не смогла сформировать пригодное подтверждаемое '
+            'наблюдение по характеристике «$dimension». Доступные точные '
+            'фрагменты сохранены без положительного подтверждения.',
         en:
-            'One pass did not provide valid confirmation. The available '
-            'finding and exact excerpts were preserved but not upgraded to a '
-            'confirmed result.',
+            'The matrix audit could not produce a usable grounded finding for '
+            '$dimension. Available exact excerpts were preserved without '
+            'positive confirmation.',
         th:
-            'การตรวจสอบหนึ่งรอบไม่สามารถให้การยืนยันที่ถูกต้องได้ '
-            'ระบบเก็บข้อสรุปและข้อความอ้างอิงที่มีไว้ '
-            'แต่ไม่ยกระดับเป็นผลที่ยืนยันแล้ว',
+            'การตรวจสอบเมทริกซ์ไม่สามารถสร้างข้อสังเกตที่มีหลักฐานรองรับ '
+            'และใช้งานได้สำหรับมิติ $dimension '
+            'ข้อความที่ตรงกันซึ่งมีอยู่ถูกเก็บไว้โดยไม่มีการยืนยันเชิงบวก',
       ),
     };
     final String routeNote = isCrossCheck
@@ -559,7 +622,6 @@ final class RegistryStudioLocalizations {
   String observationVerificationLabel({
     required String statusName,
     required String candidateTuple,
-    required String? verifierTuple,
   }) {
     return switch (statusName) {
       'confirmed' => _value(
@@ -573,28 +635,26 @@ final class RegistryStudioLocalizations {
             'การตรวจสอบแบบแยกกันสองรอบสอดคล้องกัน: $candidateTuple '
             'ทั้งสองรอบใช้โมเดลเดียวกันจากผู้ให้บริการ API รายเดียวกัน',
       ),
-      'conflict' => _value(
+      'singlePass' => _value(
         ru:
-            'Изолированные проходы расходятся: $candidateTuple и '
-            '${verifierTuple ?? 'UNKNOWN'}. Конфликт не повышается до '
-            'положительного результата.',
+            'Наблюдение одной проверки матрицы: $candidateTuple. '
+            'Оно не является независимо подтверждённым.',
         en:
-            'The isolated passes disagree: $candidateTuple and '
-            '${verifierTuple ?? 'UNKNOWN'}. The conflict cannot be upgraded '
-            'to a positive result.',
+            'Single matrix-audit finding: $candidateTuple. '
+            'It is not independently confirmed.',
         th:
-            'ผลการตรวจสอบที่แยกจากกันไม่ตรงกัน: $candidateTuple และ '
-            '${verifierTuple ?? 'UNKNOWN'} ระบบจะไม่ยกระดับความขัดแย้งนี้เป็นผลเชิงบวก',
+            'ข้อสังเกตจากการตรวจสอบเมทริกซ์หนึ่งครั้ง: $candidateTuple '
+            'ข้อสังเกตนี้ยังไม่ได้รับการยืนยันอย่างอิสระ',
       ),
       _ => _value(
         ru:
-            'Маршрут не получил подтверждение двух проходов. Доступное '
-            'доказательство сохранено как непроверенное.',
+            'Проверка матрицы не смогла подтвердить наблюдение для этого '
+            'маршрута. Доступное доказательство сохранено как непроверенное.',
         en:
-            'The route did not receive confirmation from both passes. The '
+            'The matrix audit could not verify a finding for this route. The '
             'available evidence was preserved as unverified.',
         th:
-            'เส้นทางนี้ไม่ได้รับการยืนยันจากทั้งสองรอบ '
+            'การตรวจสอบเมทริกซ์ไม่สามารถยืนยันข้อสังเกตสำหรับเส้นทางนี้ได้ '
             'หลักฐานที่มีถูกเก็บไว้ในสถานะยังไม่ยืนยัน',
       ),
     };
@@ -605,13 +665,6 @@ final class RegistryStudioLocalizations {
       return _auditPassFailureLabel(
         passName: 'A',
         reasonCode: limitationCode.substring('AUDIT_PASS_A_'.length),
-      );
-    }
-
-    if (limitationCode.startsWith('AUDIT_PASS_B_')) {
-      return _auditPassFailureLabel(
-        passName: 'B',
-        reasonCode: limitationCode.substring('AUDIT_PASS_B_'.length),
       );
     }
 
@@ -677,17 +730,6 @@ final class RegistryStudioLocalizations {
         th:
             'คำตอบการตรวจสอบของเส้นทางหนึ่งมีรูปแบบไม่ถูกต้อง '
             'ระบบเก็บผลของเส้นทางอื่นไว้',
-      ),
-      'AUDIT_PASSES_DISAGREE' => _value(
-        ru:
-            'Два изолированных прохода одной модели дали разные выводы. Ни '
-            'один вывод не выбран автоматически.',
-        en:
-            'Two isolated passes by the same model disagreed. Neither finding '
-            'was selected automatically.',
-        th:
-            'การตรวจสอบแบบแยกกันสองรอบจากโมเดลเดียวให้ผลไม่ตรงกัน '
-            'ระบบไม่เลือกข้อสรุปใดโดยอัตโนมัติ',
       ),
       'AUDIT_SIGNALS_DISAGREE' => _value(
         ru:

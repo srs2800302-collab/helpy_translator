@@ -45,29 +45,35 @@ strategy, including:
 A failed honesty evaluation may change any of these mechanisms without changing
 the invariant.
 
-## 3. Current Stage 5 strategy
+## 3. Current production strategy
 
-The current strategy is not a permanent contract.
+The current production strategy is an implementation profile, not a permanent
+architectural invariant.
 
-It currently uses:
+It currently:
 
-1. two primary translations from the detected or selected source language;
-2. four diagnostic cross-check routes for RU, EN, and TH;
-3. one route-local first audit pass per route;
-4. a route-local second factual pass to the same model;
-5. exact application-side validation of every source and target excerpt;
-6. a universal factual tuple instead of a model-selected verdict category:
-   - relation;
-   - semantic dimension;
-   - meaning preservation;
-7. explicit pass outcomes:
-   - `CONFIRMED` when both factual tuples match exactly;
-   - `CONFLICT` when the factual tuples differ;
-   - `UNVERIFIABLE` when a tuple cannot be supported;
-8. deterministic application-side verdicts and explanations;
-9. preservation of completed translations when an audit route fails.
+1. obtains the configured translation matrix while preserving every provider
+   translation unchanged;
+2. gives the completed matrix to one single-pass matrix audit;
+3. gives only the original source and the primary translations to a separate
+   Primary Linguist review;
+4. prevents the matrix audit and the Linguist from receiving each other's
+   findings;
+5. validates displayed evidence against exact source and/or target excerpts;
+6. calculates the matrix verdict deterministically in application code;
+7. applies the Linguist only as a conservative constraint after the matrix
+   verdict has been calculated;
+8. preserves completed translations when the audit or Linguist cannot complete,
+   while exposing the resulting limitation.
 
-The second pass is explicitly not an independent expert review.
+The matrix audit and the Linguist are separate evidence channels. In the current
+implementation they use the same configured provider and model, so they must
+not be described as independent expert review by different models.
+
+The route topology, supported language set, provider, model, prompts, request
+budget, number of calls, and number of evidence passes remain replaceable
+product configuration. This contract does not freeze those implementation
+details.
 
 ## 4. Current factual vocabulary
 
@@ -115,24 +121,48 @@ verdict.
 
 ## 5. Current deterministic verdict policy
 
-- Any limitation, ungrounded evidence, malformed audit response, unknown fact,
-  or disagreement between passes produces `INDETERMINATE`.
-- A confirmed `ALTERED` observation on a primary route produces `UNRELIABLE`
-  when:
-  - the relation is `ADDITION`, `OMISSION`, or `CONTRADICTION`; or
-  - the semantic dimension is proposition, negation, modality, quantity, time,
-    condition, actor, object, direction, cause, restriction, or ambiguity.
-- A confirmed altered observation that is not critical under the current policy
-  produces `REVIEW_REQUIRED`.
-- A confirmed altered observation that exists only on a cross-check route
-  produces `REVIEW_REQUIRED`, because cross-check drift is diagnostic evidence,
-  not proof that a primary translation is wrong.
-- Only confirmed preserved variations produce `ACCEPTABLE_VARIATION`.
-- No detected observations produces `NO_CRITICAL_DRIFT_DETECTED`, accompanied
-  by an explicit statement that this is not proof of absolute equivalence.
+The provider does not select the final user-visible verdict. Application code
+first evaluates grounded matrix-audit evidence and then applies the Primary
+Linguist as a conservative constraint.
 
-This policy is replaceable when evidence shows that another policy is more
-honest.
+For the active matrix-audit path:
+
+- `SINGLE_PASS` means evidence produced by one audit of the completed matrix. It
+  is not independent confirmation.
+- A grounded `ALTERED` single-pass observation requires review.
+- An unusable or `UNVERIFIABLE` observation, malformed evidence, or an audit
+  limitation cannot make the result more positive and may produce
+  `INDETERMINATE`.
+- When no concrete drift is detected, the application may produce
+  `NO_CRITICAL_DRIFT_DETECTED`, accompanied by the explicit statement that this
+  is not proof of absolute equivalence.
+
+Historical persisted `CONFIRMED` observations remain readable for compatibility
+with results created by the former two-pass implementation. They are not
+produced by the active runtime. Their existing interpretation remains
+compatible with stored results:
+
+- confirmed critical altered evidence on a primary route may produce
+  `UNRELIABLE`;
+- other confirmed altered evidence produces `REVIEW_REQUIRED`;
+- confirmed preserved variation may produce `ACCEPTABLE_VARIATION`.
+
+The Primary Linguist is applied after the matrix verdict and is monotonic: it
+may preserve or lower confidence, but it may never promote the matrix result.
+
+- `COMPATIBLE` never upgrades the matrix verdict and is not proof of
+  equivalence;
+- `INCOMPATIBLE` may lower confidence only when the required exact difference
+  evidence is grounded;
+- `UNRESOLVED`, report limitations, missing usable coverage, or invalid
+  Linguist evidence cannot make a positive result greener and may lower it to
+  `INDETERMINATE`.
+
+Linguist assessments, excerpts, and limitations must remain separately visible
+to the user. Linguist evidence must not be silently absorbed into the final
+verdict.
+
+The final acceptance or rejection decision remains with the user.
 
 ## 6. Testing strategy
 

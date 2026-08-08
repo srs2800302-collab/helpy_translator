@@ -1,4 +1,5 @@
 import '../domain/entities/language_detection_result.dart';
+import '../domain/entities/primary_linguist_report.dart';
 import '../domain/entities/semantic_audit_report.dart';
 import '../domain/entities/semantic_observation.dart';
 import '../domain/entities/translation_language.dart';
@@ -6,9 +7,11 @@ import '../domain/entities/translation_matrix_result.dart';
 import '../domain/entities/translation_route.dart';
 import '../domain/entities/translation_route_result.dart';
 import '../domain/errors/translator_exception.dart';
+import '../domain/repositories/primary_linguist_gateway.dart';
 import '../domain/repositories/translator_api_key_store.dart';
 import '../domain/repositories/translator_gateway.dart';
 import '../domain/services/honesty_assessment_policy.dart';
+import '../domain/services/linguist_constraint_policy.dart';
 import '../domain/services/source_language_detector.dart';
 import '../domain/services/translation_route_planner.dart';
 import 'translator_cancellation_signal.dart';
@@ -21,9 +24,11 @@ final class RunTranslationMatrix {
   const RunTranslationMatrix({
     required this.apiKeyStore,
     required this.gateway,
+    required this.primaryLinguistGateway,
     required this.languageDetector,
     required this.routePlanner,
     required this.assessmentPolicy,
+    required this.linguistConstraintPolicy,
     this.clock = DateTime.now,
   });
 
@@ -31,9 +36,11 @@ final class RunTranslationMatrix {
 
   final TranslatorApiKeyStore apiKeyStore;
   final TranslatorGateway gateway;
+  final PrimaryLinguistGateway primaryLinguistGateway;
   final SourceLanguageDetector languageDetector;
   final TranslationRoutePlanner routePlanner;
   final HonestyAssessmentPolicy assessmentPolicy;
+  final LinguistConstraintPolicy linguistConstraintPolicy;
   final TranslatorClock clock;
 
   Future<TranslationMatrixResult> call({
@@ -115,7 +122,7 @@ final class RunTranslationMatrix {
       ),
     );
 
-    final SemanticAuditReport auditReport = await gateway.auditMatrix(
+    final SemanticAuditReport auditReport = await gateway.auditMatrixSinglePass(
       apiKey: apiKey,
       originalSourceText: sourceText,
       originalSourceLanguage: sourceLanguage,
@@ -126,7 +133,39 @@ final class RunTranslationMatrix {
 
     _validateAuditReport(routes: routeResults, report: auditReport);
 
-    final assessment = assessmentPolicy.assess(auditReport);
+    final baseAssessment =
+        assessmentPolicy.assess(auditReport);
+
+    final List<TranslationRouteResult> primaryRoutes =
+        routeResults
+            .where(
+              (TranslationRouteResult route) =>
+                  route.route.role ==
+                  TranslationRouteRole.primary,
+            )
+            .toList(growable: false);
+
+    cancellationSignal.throwIfCancelled();
+
+    final PrimaryLinguistReport linguistReport =
+        await _evaluatePrimaryLinguistSafely(
+          apiKey: apiKey,
+          originalSourceText: sourceText,
+          originalSourceLanguage: sourceLanguage,
+          primaryRoutes: primaryRoutes,
+        );
+
+    cancellationSignal.throwIfCancelled();
+
+    _validateLinguistReport(
+      primaryRoutes: primaryRoutes,
+      report: linguistReport,
+    );
+
+    final assessment = linguistConstraintPolicy.apply(
+      matrixAssessment: baseAssessment,
+      linguistReport: linguistReport,
+    );
 
     onProgress(
       const TranslatorProgress(
@@ -141,6 +180,7 @@ final class RunTranslationMatrix {
       sourceLanguage: sourceLanguage,
       routes: List<TranslationRouteResult>.unmodifiable(routeResults),
       assessment: assessment,
+      linguistReport: linguistReport,
       createdAt: clock(),
       auditCoverage: TranslationAuditCoverage.expanded,
     );
@@ -409,6 +449,103 @@ final class RunTranslationMatrix {
         TranslatorFailureKind.invalidResponse,
         'The audit omitted one or more translation routes.',
       );
+    }
+  }
+
+  Future<PrimaryLinguistReport>
+  _evaluatePrimaryLinguistSafely({
+    required String apiKey,
+    required String originalSourceText,
+    required TranslationLanguage originalSourceLanguage,
+    required List<TranslationRouteResult> primaryRoutes,
+  }) async {
+    try {
+      return await primaryLinguistGateway
+          .evaluatePrimaryTranslations(
+            apiKey: apiKey,
+            originalSourceText: originalSourceText,
+            originalSourceLanguage:
+                originalSourceLanguage,
+            primaryRoutes:
+                List<TranslationRouteResult>.unmodifiable(
+                  primaryRoutes,
+                ),
+          );
+    } on TranslatorException catch (error) {
+      final String? limitation =
+          _linguistFailureLimitation(error.kind);
+
+      if (limitation == null) {
+        rethrow;
+      }
+
+      return PrimaryLinguistReport(
+        assessments:
+            const <PrimaryLinguistAssessment>[],
+        limitations: <String>[limitation],
+      );
+    }
+  }
+
+  static String? _linguistFailureLimitation(
+    TranslatorFailureKind kind,
+  ) {
+    return switch (kind) {
+      TranslatorFailureKind.invalidResponse =>
+        'LINGUIST_RESPONSE_INVALID',
+      TranslatorFailureKind.transport =>
+        'LINGUIST_TRANSPORT_FAILURE',
+      TranslatorFailureKind.authorization =>
+        'LINGUIST_AUTHORIZATION_FAILURE',
+      TranslatorFailureKind.rateLimited =>
+        'LINGUIST_RATE_LIMITED',
+      TranslatorFailureKind.provider =>
+        'LINGUIST_PROVIDER_FAILURE',
+      _ => null,
+    };
+  }
+
+  static void _validateLinguistReport({
+    required List<TranslationRouteResult> primaryRoutes,
+    required PrimaryLinguistReport report,
+  }) {
+    if (report.assessments.isEmpty) {
+      return;
+    }
+
+    if (report.assessments.length !=
+        primaryRoutes.length) {
+      throw const TranslatorException(
+        TranslatorFailureKind.invalidResponse,
+        'The Linguist omitted one or more primary routes.',
+      );
+    }
+
+    final Map<String, TranslationRouteResult>
+    expectedByRouteId =
+        <String, TranslationRouteResult>{
+          for (final TranslationRouteResult route
+              in primaryRoutes)
+            route.route.id: route,
+        };
+
+    final Set<String> seenRouteIds = <String>{};
+
+    for (final PrimaryLinguistAssessment assessment
+        in report.assessments) {
+      final TranslationRouteResult? route =
+          expectedByRouteId[assessment.routeId];
+
+      if (route == null ||
+          !seenRouteIds.add(assessment.routeId) ||
+          assessment.targetLanguage !=
+              route.route.target) {
+        throw const TranslatorException(
+          TranslatorFailureKind.invalidResponse,
+          'The Linguist returned inconsistent '
+          'primary-route coverage.',
+        );
+      }
     }
   }
 
