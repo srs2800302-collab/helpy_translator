@@ -28,13 +28,13 @@ typedef _Scenario = ({
 
 void main() {
   test(
-    'RU EN TH production runs use exactly six translations one audit and one linguist call',
+    'RU EN TH production runs use six translations six route audits and one linguist call',
     () async {
       for (final _SourceCase sourceCase in _cases) {
         final _Scenario scenario = await _run(sourceCase: sourceCase);
 
-        expect(scenario.requestCount, 8, reason: sourceCase.selection.name);
-        expect(scenario.auditCalls, 1);
+        expect(scenario.requestCount, 13, reason: sourceCase.selection.name);
+        expect(scenario.auditCalls, 6);
         expect(scenario.linguistCalls, 1);
         expect(scenario.result.routes, hasLength(6));
         expect(scenario.result.linguistReport.assessments, hasLength(2));
@@ -42,30 +42,33 @@ void main() {
     },
   );
 
-  test('single audit failure is not retried and total remains eight', () async {
-    final _Scenario scenario = await _run(
-      sourceCase: _cases.first,
-      failAudit: true,
-    );
+  test(
+    'single route audit provider failure is not retried and total remains thirteen',
+    () async {
+      final _Scenario scenario = await _run(
+        sourceCase: _cases.first,
+        failAudit: true,
+      );
 
-    expect(scenario.requestCount, 8);
-    expect(scenario.auditCalls, 1);
-    expect(scenario.linguistCalls, 1);
-    expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
-    expect(
-      scenario.result.assessment.limitations,
-      contains('AUDIT_PASS_A_PROVIDER_FAILURE'),
-    );
-  });
+      expect(scenario.requestCount, 13);
+      expect(scenario.auditCalls, 6);
+      expect(scenario.linguistCalls, 1);
+      expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
+      expect(
+        scenario.result.assessment.limitations,
+        contains('AUDIT_PASS_A_PROVIDER_FAILURE'),
+      );
+    },
+  );
 
-  test('linguist failure is not retried and total remains eight', () async {
+  test('linguist failure is not retried and total remains thirteen', () async {
     final _Scenario scenario = await _run(
       sourceCase: _cases[1],
       failLinguist: true,
     );
 
-    expect(scenario.requestCount, 8);
-    expect(scenario.auditCalls, 1);
+    expect(scenario.requestCount, 13);
+    expect(scenario.auditCalls, 6);
     expect(scenario.linguistCalls, 1);
     expect(scenario.result.routes, hasLength(6));
     expect(scenario.result.assessment.verdict, MatrixVerdict.indeterminate);
@@ -81,8 +84,8 @@ void main() {
       auditDrift: true,
     );
 
-    expect(scenario.requestCount, 8);
-    expect(scenario.auditCalls, 1);
+    expect(scenario.requestCount, 13);
+    expect(scenario.auditCalls, 6);
     expect(scenario.linguistCalls, 1);
     expect(scenario.result.assessment.verdict, MatrixVerdict.reviewRequired);
   });
@@ -93,11 +96,26 @@ void main() {
       linguistDrift: true,
     );
 
-    expect(scenario.requestCount, 8);
-    expect(scenario.auditCalls, 1);
+    expect(scenario.requestCount, 13);
+    expect(scenario.auditCalls, 6);
     expect(scenario.linguistCalls, 1);
     expect(scenario.result.assessment.verdict, MatrixVerdict.reviewRequired);
   });
+
+  test(
+    'all six local corrective retries cap the run at nineteen calls',
+    () async {
+      final _Scenario scenario = await _run(
+        sourceCase: _cases.first,
+        retryAllAuditRoutes: true,
+      );
+
+      expect(scenario.requestCount, 19);
+      expect(scenario.auditCalls, 12);
+      expect(scenario.linguistCalls, 1);
+      expect(scenario.result.routes, hasLength(6));
+    },
+  );
 }
 
 const List<_SourceCase> _cases = <_SourceCase>[
@@ -118,6 +136,7 @@ Future<_Scenario> _run({
   bool failLinguist = false,
   bool auditDrift = false,
   bool linguistDrift = false,
+  bool retryAllAuditRoutes = false,
 }) async {
   const TyphoonTranslatorConfig config = TyphoonTranslatorConfig();
 
@@ -145,7 +164,7 @@ Future<_Scenario> _run({
     if (payload.containsKey('routes')) {
       auditCalls += 1;
 
-      if (failAudit) {
+      if (failAudit && auditCalls == 1) {
         return http.Response(
           'provider failure',
           503,
@@ -157,11 +176,26 @@ Future<_Scenario> _run({
 
       final List<dynamic> routes = payload['routes'] as List<dynamic>;
 
+      if (retryAllAuditRoutes && auditCalls <= 6) {
+        return _chat(
+          jsonEncode(<String, Object>{
+            'route_audits': <Object>[
+              <String, Object?>{
+                'judgment': 'SAME_MEANING',
+                'difference': null,
+                'limitations': <Object>[],
+                'unexpected_field': true,
+              },
+            ],
+          }),
+        );
+      }
+
       return _chat(
         jsonEncode(<String, Object>{
           'route_audits': <Object>[
             for (int index = 0; index < routes.length; index += 1)
-              if (auditDrift && index == 0)
+              if (auditDrift && auditCalls == 1 && index == 0)
                 <String, Object?>{
                   'judgment': 'DIFFERENT_MEANING',
                   'difference': <String, Object?>{

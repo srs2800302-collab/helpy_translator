@@ -380,7 +380,7 @@ void main() {
     );
   });
 
-  testWidgets('shows current eight-call disclosure', (
+  testWidgets('shows current route-local call disclosure', (
     WidgetTester tester,
   ) async {
     final TranslationMatrixResult result = TranslationMatrixResult(
@@ -401,10 +401,12 @@ void main() {
     );
     await _toggleResultCard(tester, result);
 
-    expect(find.text('Completed-matrix audit — 0 routes'), findsOneWidget);
+    expect(find.text('Independent route audit — 0 routes'), findsOneWidget);
     expect(find.text('Automated checks agree'), findsOneWidget);
     expect(find.textContaining('six separate translations'), findsOneWidget);
-    expect(find.textContaining('eight API calls'), findsOneWidget);
+    expect(find.textContaining('13 base API calls'), findsOneWidget);
+    expect(find.textContaining('maximum is 19 API calls'), findsOneWidget);
+    expect(find.textContaining('six independent route audits'), findsOneWidget);
     expect(
       find.textContaining('same model from the same API provider'),
       findsOneWidget,

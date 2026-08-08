@@ -38,7 +38,7 @@ void main() {
     );
   });
 
-  test('disclosure states the active eight-call topology', () {
+  test('expanded coverage describes independent route audits', () {
     const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
       Locale('ru'),
     );
@@ -49,22 +49,56 @@ void main() {
       Locale('th'),
     );
 
-    expect(ru.auditPassDisclosure, contains('максимум восемь API-вызовов'));
-    expect(ru.auditPassDisclosure, contains('одну проверку готовой матрицы'));
-    expect(ru.auditPassDisclosure, contains('лингвистом'));
-    expect(ru.auditPassDisclosure, contains('не получают выводы друг друга'));
+    expect(
+      ru.auditCoverageLabel('expanded', 6),
+      'Независимая проверка маршрутов — 6 маршрутов',
+    );
+    expect(
+      en.auditCoverageLabel('expanded', 6),
+      'Independent route audit — 6 routes',
+    );
+    expect(
+      th.auditCoverageLabel('expanded', 6),
+      'การตรวจสอบเส้นทางแบบอิสระ — 6 เส้นทาง',
+    );
+  });
 
-    expect(en.auditPassDisclosure, contains('at most eight API calls'));
+  test('disclosure states the active thirteen-to-nineteen-call topology', () {
+    const RegistryStudioLocalizations ru = RegistryStudioLocalizations(
+      Locale('ru'),
+    );
+    const RegistryStudioLocalizations en = RegistryStudioLocalizations(
+      Locale('en'),
+    );
+    const RegistryStudioLocalizations th = RegistryStudioLocalizations(
+      Locale('th'),
+    );
+
+    expect(ru.auditPassDisclosure, contains('13 базовых API-вызовов'));
+    expect(ru.auditPassDisclosure, contains('максимум — 19 API-вызовов'));
+    expect(
+      ru.auditPassDisclosure,
+      contains('не более одного локального корректирующего повтора'),
+    );
+    expect(
+      ru.auditPassDisclosure,
+      contains('Ошибки провайдера автоматически не повторяются'),
+    );
+
+    expect(en.auditPassDisclosure, contains('13 base API calls'));
+    expect(en.auditPassDisclosure, contains('maximum is 19 API calls'));
     expect(
       en.auditPassDisclosure,
-      contains('one audit of the completed matrix'),
+      contains('at most one local corrective retry'),
     );
-    expect(en.auditPassDisclosure, contains('one separate Linguist review'));
-    expect(en.auditPassDisclosure, contains('do not receive each'));
-    expect(en.auditPassDisclosure, contains('never retried automatically'));
+    expect(
+      en.auditPassDisclosure,
+      contains('Provider failures are not retried automatically'),
+    );
 
-    expect(th.auditPassDisclosure, contains('รวมสูงสุดแปดคำขอ API'));
-    expect(th.auditPassDisclosure, contains('ไม่มีการลองคำขอซ้ำโดยอัตโนมัติ'));
+    expect(th.auditPassDisclosure, contains('13 ครั้ง'));
+    expect(th.auditPassDisclosure, contains('สูงสุดคือ 19 คำขอ API'));
+    expect(th.auditPassDisclosure, contains('ไม่เกินหนึ่งครั้ง'));
   });
 
   test('new evidence limitations are localized', () {

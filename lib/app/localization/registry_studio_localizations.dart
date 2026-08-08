@@ -211,9 +211,9 @@ final class RegistryStudioLocalizations {
         th: 'การตรวจสอบพื้นฐาน — $routeCount เส้นทาง',
       ),
       'expanded' => _value(
-        ru: 'Проверка готовой матрицы — $routeCount маршрутов',
-        en: 'Completed-matrix audit — $routeCount routes',
-        th: 'การตรวจสอบเมทริกซ์ที่เสร็จแล้ว — $routeCount เส้นทาง',
+        ru: 'Независимая проверка маршрутов — $routeCount маршрутов',
+        en: 'Independent route audit — $routeCount routes',
+        th: 'การตรวจสอบเส้นทางแบบอิสระ — $routeCount เส้นทาง',
       ),
       'prototype' => _value(
         ru: 'Прототипная проверка — $routeCount маршрутов',
@@ -277,29 +277,39 @@ final class RegistryStudioLocalizations {
 
   String get auditPassDisclosure => _value(
     ru:
-        'Запуск выполняет шесть отдельных переводов, одну проверку готовой '
-        'матрицы и одну отдельную проверку двух основных переводов '
-        'лингвистом: максимум восемь API-вызовов. Автоматические повторы '
-        'запросов не выполняются. Проверка матрицы и лингвист не получают '
-        'выводы друг друга и используют одну модель одного API-провайдера; '
-        'это не является независимой проверкой разными моделями.',
+        'Запуск выполняет шесть отдельных переводов, шесть независимых '
+        'проверок маршрутов и одну отдельную проверку двух основных '
+        'переводов лингвистом: 13 базовых API-вызовов. Для каждого '
+        'маршрута допускается не более одного локального корректирующего '
+        'повтора при некорректном ответе или доказательстве, не '
+        'привязанном к тексту, поэтому максимум — 19 API-вызовов. '
+        'Ошибки провайдера автоматически не повторяются. Проверки '
+        'маршрутов и лингвист не получают выводы друг друга и используют '
+        'одну модель одного API-провайдера; это не является независимой '
+        'проверкой разными моделями.',
     en:
-        'A run performs six separate translations, one audit of the completed '
-        'matrix, and one separate Linguist review of the two primary '
-        'translations: at most eight API calls. Requests are never retried '
-        'automatically. The matrix audit and Linguist do not receive each '
-        "other's findings and use the same model from the same API provider; "
-        'this is not an independent review by different models.',
+        'A run performs six separate translations, six independent route '
+        'audits, and one separate Linguist review of the two primary '
+        'translations: 13 base API calls. Each route allows at most one '
+        'local corrective retry for an invalid response or ungrounded '
+        'evidence, so the maximum is 19 API calls. Provider failures are '
+        'not retried automatically. Route audits and the Linguist do not '
+        "receive each other's findings and use the same model from the "
+        'same API provider; this is not an independent review by '
+        'different models.',
     th:
         'การทำงานหนึ่งครั้งประกอบด้วยการแปลแยกกันหกครั้ง '
-        'การตรวจสอบเมทริกซ์ที่เสร็จแล้วหนึ่งครั้ง '
+        'การตรวจสอบเส้นทางแบบอิสระหกครั้ง '
         'และการตรวจสอบคำแปลหลักสองรายการโดยนักภาษาศาสตร์อีกหนึ่งครั้ง '
-        'รวมสูงสุดแปดคำขอ API ไม่มีการลองคำขอซ้ำโดยอัตโนมัติ '
-        'การตรวจสอบเมทริกซ์และนักภาษาศาสตร์ไม่เห็นผลลัพธ์ของกันและกัน '
+        'รวมเป็นคำขอ API พื้นฐาน 13 ครั้ง '
+        'แต่ละเส้นทางอนุญาตให้ลองแก้ไขซ้ำเฉพาะเส้นทางได้ไม่เกินหนึ่งครั้ง '
+        'เมื่อคำตอบไม่ถูกต้องหรือหลักฐานไม่ยึดโยง '
+        'ดังนั้นสูงสุดคือ 19 คำขอ API '
+        'ข้อผิดพลาดจากผู้ให้บริการจะไม่ถูกลองซ้ำโดยอัตโนมัติ '
+        'การตรวจสอบเส้นทางและนักภาษาศาสตร์ไม่เห็นผลลัพธ์ของกันและกัน '
         'และใช้โมเดลเดียวกันจากผู้ให้บริการ API เดียวกัน '
         'จึงไม่ใช่การตรวจสอบอิสระโดยโมเดลต่างกัน',
   );
-
   String get primaryLinguistReview => _value(
     ru: 'Отдельная проверка лингвиста',
     en: 'Separate Linguist review',

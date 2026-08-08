@@ -15,12 +15,43 @@ void main() {
   const TyphoonTranslatorConfig config = TyphoonTranslatorConfig();
 
   test(
-    'single Audit A uses one request and marks evidence singlePass',
+    'single Audit A sends one route-local request and marks evidence singlePass',
     () async {
       int calls = 0;
 
       final MockClient client = MockClient((http.Request request) async {
         calls += 1;
+
+        final Map<String, dynamic> body =
+            jsonDecode(request.body) as Map<String, dynamic>;
+
+        final List<dynamic> messages = body['messages'] as List<dynamic>;
+
+        final String systemPrompt =
+            (messages.first as Map<String, dynamic>)['content'] as String;
+
+        final Map<String, dynamic> payload =
+            jsonDecode(
+                  (messages[1] as Map<String, dynamic>)['content'] as String,
+                )
+                as Map<String, dynamic>;
+
+        final List<dynamic> payloadRoutes = payload['routes'] as List<dynamic>;
+
+        expect(payloadRoutes, hasLength(1));
+        expect(payload.containsKey('original_source_text'), isFalse);
+        expect(
+          systemPrompt,
+          contains('exactly one translation route in routes'),
+        );
+        expect(
+          systemPrompt,
+          contains(
+            "Use only the current route's source_text "
+            "and translated_text as semantic evidence",
+          ),
+        );
+        expect(systemPrompt, isNot(contains('sibling primary branches')));
 
         return _response(
           jsonEncode(<String, Object>{
@@ -64,9 +95,11 @@ void main() {
   );
 
   test(
-    'invalid route response is retried once without retrying successful routes',
+    'invalid route response is retried once without sharing sibling routes',
     () async {
       int calls = 0;
+
+      final List<String> requestedSources = <String>[];
 
       final List<TranslationRouteResult> routes = <TranslationRouteResult>[
         const TranslationRouteResult(
@@ -94,16 +127,28 @@ void main() {
 
         final Map<String, dynamic> body =
             jsonDecode(request.body) as Map<String, dynamic>;
+
         final List<dynamic> messages = body['messages'] as List<dynamic>;
+
         final Map<String, dynamic> payload =
             jsonDecode(
                   (messages[1] as Map<String, dynamic>)['content'] as String,
                 )
                 as Map<String, dynamic>;
+
         final List<dynamic> payloadRoutes = payload['routes'] as List<dynamic>;
 
+        expect(payloadRoutes, hasLength(1));
+        expect(payload.containsKey('original_source_text'), isFalse);
+
+        final String sourceText =
+            (payloadRoutes.single as Map<String, dynamic>)['source_text']
+                as String;
+
+        requestedSources.add(sourceText);
+
         if (calls == 1) {
-          expect(payloadRoutes, hasLength(2));
+          expect(sourceText, 'source A');
 
           return _response(
             jsonEncode(<String, Object>{
@@ -114,6 +159,17 @@ void main() {
                   'limitations': <Object>[],
                   'unexpected_field': true,
                 },
+              ],
+            }),
+          );
+        }
+
+        if (calls == 2) {
+          expect(sourceText, 'source B');
+
+          return _response(
+            jsonEncode(<String, Object>{
+              'route_audits': <Object>[
                 <String, Object?>{
                   'judgment': 'SAME_MEANING',
                   'difference': null,
@@ -124,12 +180,8 @@ void main() {
           );
         }
 
-        expect(calls, 2);
-        expect(payloadRoutes, hasLength(1));
-        expect(
-          (payloadRoutes.single as Map<String, dynamic>)['source_text'],
-          'source A',
-        );
+        expect(calls, 3);
+        expect(sourceText, 'source A');
 
         return _response(
           jsonEncode(<String, Object>{
@@ -158,9 +210,13 @@ void main() {
         routes: routes,
       );
 
-      expect(calls, 2);
+      expect(calls, 3);
+
+      expect(requestedSources, <String>['source A', 'source B', 'source A']);
+
       expect(report.limitations, isEmpty);
       expect(report.observations, hasLength(2));
+
       expect(
         report.observations.every(
           (observation) =>
@@ -169,6 +225,7 @@ void main() {
         ),
         isTrue,
       );
+
       expect(
         report.observations.every(
           (observation) =>
