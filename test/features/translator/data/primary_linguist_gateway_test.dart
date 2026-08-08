@@ -78,6 +78,66 @@ void main() {
     expect(serialized, isNot(contains('observations')));
   });
 
+  test('linguist prompt requires positive semantic equivalence', () async {
+    int requestCount = 0;
+    late String systemPrompt;
+
+    final MockClient httpClient = MockClient((http.Request request) async {
+      requestCount += 1;
+
+      final Map<String, dynamic> body =
+          jsonDecode(request.body) as Map<String, dynamic>;
+
+      final List<dynamic> messages = body['messages'] as List<dynamic>;
+
+      systemPrompt = (messages[0] as Map<String, dynamic>)['content'] as String;
+
+      return _chatResponse(
+        jsonEncode(<String, Object>{
+          'assessments': <Object>[
+            _compatible('RU_TO_EN', 'EN'),
+            _compatible('RU_TO_TH', 'TH'),
+          ],
+        }),
+      );
+    });
+
+    final TyphoonTranslatorGateway gateway = TyphoonTranslatorGateway(
+      chatClient: TyphoonChatClient(config: config, httpClient: httpClient),
+      config: config,
+    );
+
+    addTearDown(gateway.close);
+
+    await gateway.evaluatePrimaryTranslations(
+      apiKey: 'secret',
+      originalSourceText: 'мастер может приехать завтра',
+      originalSourceLanguage: TranslationLanguage.russian,
+      primaryRoutes: _russianPrimaries,
+    );
+
+    expect(requestCount, 1);
+
+    expect(
+      systemPrompt,
+      contains('COMPATIBLE is a positive equivalence claim'),
+    );
+
+    expect(
+      systemPrompt,
+      contains(
+        'different real-world referent, object category, action, participant',
+      ),
+    );
+
+    expect(systemPrompt, contains('use UNRESOLVED rather than COMPATIBLE'));
+
+    expect(systemPrompt, isNot(contains('cooktop')));
+    expect(systemPrompt, isNot(contains('oven')));
+    expect(systemPrompt, isNot(contains('варочная панель')));
+    expect(systemPrompt, isNot(contains('เตาอบ')));
+  });
+
   test('grounded incompatible evidence is accepted', () async {
     final MockClient httpClient = MockClient((http.Request request) async {
       return _chatResponse(

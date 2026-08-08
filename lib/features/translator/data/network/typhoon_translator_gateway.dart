@@ -1201,11 +1201,15 @@ Do not use one primary translation to reinterpret, justify, repair, or criticize
 Use only ordinary contemporary meanings supported by the shown source and candidate.
 
 Use exactly one status:
-- COMPATIBLE: the candidate can express the same real-world message without materially adding, removing, narrowing, broadening, or changing an established fact.
-- INCOMPATIBLE: the shown source and candidate establish a concrete semantic incompatibility.
-- UNRESOLVED: the shown texts are insufficient to decide without inventing context.
+- COMPATIBLE: positive equivalence is established from the shown source and candidate. Their ordinary meanings identify the same real-world referent, action, participant, quantity, time, modality, condition, and other established facts.
+- INCOMPATIBLE: the shown source and candidate establish a concrete semantic incompatibility, including a different real-world referent, object category, action, participant, or a materially broader or narrower meaning.
+- UNRESOLVED: positive equivalence cannot be established from the shown texts without inventing context or choosing an unsupported lexical sense.
 
-Synonyms, natural grammar, morphology, register, and ordinary professional labels are COMPATIBLE when they can identify the same real-world referent and preserve established facts.
+COMPATIBLE is a positive equivalence claim, not a default for plausible, related, associated, or contextually usable wording.
+
+Synonyms, natural grammar, morphology, register, and ordinary professional labels are COMPATIBLE only when their ordinary meanings can identify the same real-world referent and preserve all established facts.
+
+A related term is not automatically a synonym. If the ordinary source meaning and ordinary candidate meaning identify different categories or different referents, use INCOMPATIBLE. If the shown pair does not establish whether they identify the same referent, use UNRESOLVED rather than COMPATIBLE.
 
 Do not invent hidden context, scenarios, professions, products, intentions, preferred dictionary senses, or missing facts.
 
